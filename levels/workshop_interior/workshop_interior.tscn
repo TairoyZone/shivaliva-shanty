@@ -1,0 +1,119 @@
+[gd_scene format=4 uid="uid://bbd1qb17jritn"]
+
+[ext_resource type="Script" uid="uid://cl8tpmbh2pxlc" path="res://levels/workshop_interior/workshop_interior.gd" id="1_wkshp"]
+[ext_resource type="TileSet" uid="uid://ttl82eyaqrvu" path="res://assets/iso/isometric_tileset.tres" id="2_tileset"]
+[ext_resource type="PackedScene" uid="uid://blr4e33qxprt2" path="res://levels/door/door.tscn" id="3_door"]
+[ext_resource type="PackedScene" uid="uid://c84w318i58qgr" path="res://components/npc/npc.tscn" id="4_npc"]
+[ext_resource type="PackedScene" path="res://buildings/workshop/hiring_board/hiring_board.tscn" id="5_hb"]
+[ext_resource type="PackedScene" path="res://buildings/workshop/wood_dropoff/wood_dropoff.tscn" id="6_drop"]
+[ext_resource type="PackedScene" path="res://buildings/workshop/lumber_pile/lumber_pile.tscn" id="7_pile"]
+[ext_resource type="PackedScene" path="res://buildings/workshop/ship_shop/ship_shop.tscn" id="8_shop"]
+
+[sub_resource type="StyleBoxFlat" id="banner_style"]
+content_margin_left = 28.0
+content_margin_top = 8.0
+content_margin_right = 28.0
+content_margin_bottom = 8.0
+bg_color = Color(0, 0, 0, 0.55)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[node name="WorkshopInterior" type="Node2D" unique_id=391737006]
+script = ExtResource("1_wkshp")
+pirate_spawn_position = Vector2(0, 0)
+
+[node name="GroundTileMapLayer" type="TileMapLayer" parent="." unique_id=803172488]
+tile_map_data = PackedByteArray("AAD//wAAAAACAAAAAAD+////AAACAAAAAAD///7/AAACAAAAAAD///3/AAACAAAAAAAAAP7/AAACAAAAAAAAAP//AAACAAAAAAAAAAAAAAACAAAAAAD//wEAAAACAAAAAAD+/wAAAAACAAAAAAD+/wEAAAACAAAAAAD//wIAAAACAAAAAAD//wMAAAACAAAAAAAAAAIAAAACAAAAAAAAAAEAAAACAAAAAAABAAAAAAACAAAAAAABAP//AAACAAAAAAABAP7/AAACAAAAAAAAAP3/AAACAAAAAAAAAPz/AAACAAAAAAD///v/AAACAAAAAAD///z/AAACAAAAAAD+//3/AAACAAAAAAD+//7/AAACAAAAAAD9////AAACAAAAAAD/////AAACAAAAAAA=")
+tile_set = ExtResource("2_tileset")
+metadata/_edit_lock_ = true
+
+[node name="UpperTileMapLayer" type="TileMapLayer" parent="." unique_id=62323684]
+position = Vector2(0, -78)
+tile_set = ExtResource("2_tileset")
+
+[node name="YSortNode2D" type="Node2D" parent="." unique_id=2013536547]
+y_sort_enabled = true
+
+[node name="GroundObjectsTileMapLayer" type="TileMapLayer" parent="YSortNode2D" unique_id=213938558]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD//wQAAAADAAAAAAD+/wMAAAADAAAAAAD+/wIAAAADAAAAAAD9/wEAAAADAAAAAAD9/wAAAAADAAAAAAD8////AAADAAAAAAD9//7/AAADAAAAAAD9//3/AAADAAAAAAD+//z/AAADAAAAAAD+//v/AAADAAAAAAD///r/AAADAAAAAAD///n/AAADAAAAAAAAAPr/AAADAAAAAAAAAPv/AAADAAAAAAABAPz/AAADAAAAAAABAP3/AAADAAAAAAACAP7/AAADAAAAAAACAP//AAADAAAAAAACAAAAAAADAAAAAAABAAEAAAADAAAAAAABAAIAAAADAAAAAAAAAAMAAAADAAAAAAAAAAQAAAADAAAAAAD//wUAAAADAAAAAAA=")
+tile_set = ExtResource("2_tileset")
+
+[node name="UpperObjectsTileMapLayer" type="TileMapLayer" parent="YSortNode2D" unique_id=1985825882]
+y_sort_enabled = true
+position = Vector2(0, -78)
+tile_set = ExtResource("2_tileset")
+
+[node name="GodfreyNpc" parent="YSortNode2D" unique_id=394935966 instance=ExtResource("4_npc")]
+position = Vector2(-16, -120)
+npc_name = "Cogwise Godfrey"
+dialog_lines = Array[String](["Give me a blueprint and a week, I'll give you a ship.", "Every problem is just math you haven't finished yet.", "I've been watching how you play, you know. I always am."])
+portrait_color = Color(0.3, 0.55, 0.82, 1)
+
+[node name="DoorOut" parent="YSortNode2D" unique_id=512464127 instance=ExtResource("3_door")]
+position = Vector2(299, 150)
+target_scene = "res://levels/shore/shore.tscn"
+target_spawn_anchor = "WorkshopDoor"
+wall_facing = 1
+marker_label = "Step outside"
+interact_message = ""
+spawn_offset = Vector2(0, -60)
+
+[node name="HiringBoard" parent="YSortNode2D" unique_id=2047750613 instance=ExtResource("5_hb")]
+position = Vector2(528, 16)
+
+[node name="WoodDropoff" parent="YSortNode2D" unique_id=819215142 instance=ExtResource("6_drop")]
+position = Vector2(48, -16)
+
+[node name="LumberPile" parent="YSortNode2D/WoodDropoff" unique_id=866098424 instance=ExtResource("7_pile")]
+position = Vector2(0, -12)
+
+[node name="ShipShop" parent="YSortNode2D" instance=ExtResource("8_shop")]
+position = Vector2(-160, 96)
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=101154088]
+layer = 5
+
+[node name="LocationBanner" type="PanelContainer" parent="UI" unique_id=715077522]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 16.0
+offset_right = 200.0
+offset_bottom = 64.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("banner_style")
+
+[node name="LocationLabel" type="Label" parent="UI/LocationBanner" unique_id=1298997162]
+modulate = Color(0.98, 0.92, 0.65, 1)
+layout_mode = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 26
+text = "The Workshop"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HelpButton" type="Button" parent="UI" unique_id=802957892]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -64.0
+offset_top = -64.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 0
+grow_vertical = 0
+tooltip_text = "The Workshop
+
+• Press E near Cogwise Godfrey to talk
+• Walk to the door to step outside"
+focus_mode = 0
+theme_override_font_sizes/font_size = 22
+text = "?"

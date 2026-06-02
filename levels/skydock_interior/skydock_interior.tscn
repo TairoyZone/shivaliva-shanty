@@ -1,0 +1,106 @@
+[gd_scene format=4 uid="uid://b6dlk527jritn"]
+
+[ext_resource type="Script" path="res://levels/skydock_interior/skydock_interior.gd" id="1_skdck"]
+[ext_resource type="TileSet" uid="uid://ttl82eyaqrvu" path="res://assets/iso/isometric_tileset.tres" id="2_tileset"]
+[ext_resource type="PackedScene" uid="uid://blr4e33qxprt2" path="res://levels/door/door.tscn" id="3_door"]
+[ext_resource type="PackedScene" uid="uid://c84w318i58qgr" path="res://components/npc/npc.tscn" id="4_npc"]
+[ext_resource type="PackedScene" path="res://buildings/skydock/sky_helm/sky_helm.tscn" id="5_helm"]
+
+[sub_resource type="StyleBoxFlat" id="banner_style"]
+content_margin_left = 28.0
+content_margin_top = 8.0
+content_margin_right = 28.0
+content_margin_bottom = 8.0
+bg_color = Color(0, 0, 0, 0.55)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[node name="SkydockInterior" type="Node2D"]
+script = ExtResource("1_skdck")
+pirate_spawn_position = Vector2(0, 0)
+
+[node name="GroundTileMapLayer" type="TileMapLayer" parent="."]
+tile_map_data = PackedByteArray("AAD//wAAAAACAAAAAAD+////AAACAAAAAAD///7/AAACAAAAAAD///3/AAACAAAAAAAAAP7/AAACAAAAAAAAAP//AAACAAAAAAAAAAAAAAACAAAAAAD//wEAAAACAAAAAAD+/wAAAAACAAAAAAD+/wEAAAACAAAAAAD//wIAAAACAAAAAAD//wMAAAACAAAAAAAAAAIAAAACAAAAAAAAAAEAAAACAAAAAAABAAAAAAACAAAAAAABAP//AAACAAAAAAABAP7/AAACAAAAAAAAAP3/AAACAAAAAAAAAPz/AAACAAAAAAD///v/AAACAAAAAAD///z/AAACAAAAAAD+//3/AAACAAAAAAD+//7/AAACAAAAAAD9////AAACAAAAAAD/////AAACAAAAAAA=")
+tile_set = ExtResource("2_tileset")
+
+[node name="UpperTileMapLayer" type="TileMapLayer" parent="."]
+position = Vector2(0, -78)
+tile_set = ExtResource("2_tileset")
+
+[node name="YSortNode2D" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="GroundObjectsTileMapLayer" type="TileMapLayer" parent="YSortNode2D"]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD//wQAAAADAAAAAAD+/wMAAAADAAAAAAD+/wIAAAADAAAAAAD9/wEAAAADAAAAAAD9/wAAAAADAAAAAAD8////AAADAAAAAAD9//7/AAADAAAAAAD9//3/AAADAAAAAAD+//z/AAADAAAAAAD+//v/AAADAAAAAAD///r/AAADAAAAAAD///n/AAADAAAAAAAAAPr/AAADAAAAAAAAAPv/AAADAAAAAAABAPz/AAADAAAAAAABAP3/AAADAAAAAAACAP7/AAADAAAAAAACAP//AAADAAAAAAACAAAAAAADAAAAAAABAAEAAAADAAAAAAABAAIAAAADAAAAAAAAAAMAAAADAAAAAAAAAAQAAAADAAAAAAD//wUAAAADAAAAAAA=")
+tile_set = ExtResource("2_tileset")
+
+[node name="UpperObjectsTileMapLayer" type="TileMapLayer" parent="YSortNode2D"]
+y_sort_enabled = true
+position = Vector2(0, -78)
+tile_set = ExtResource("2_tileset")
+
+[node name="JerichoNpc" parent="YSortNode2D" instance=ExtResource("4_npc")]
+position = Vector2(-16, -120)
+npc_name = "Stormy Jericho"
+dialog_lines = Array[String](["Ships in by dusk, weather willing.", "I've moored vessels in gales that'd peel the paint off you.", "You'll want your own craft before I can send you anywhere worth going."])
+portrait_color = Color(0.5, 0.5, 0.62, 1)
+
+[node name="SkyHelm" parent="YSortNode2D" instance=ExtResource("5_helm")]
+position = Vector2(120, 24)
+
+[node name="DoorOut" parent="YSortNode2D" instance=ExtResource("3_door")]
+position = Vector2(299, 150)
+target_scene = "res://levels/shore/shore.tscn"
+target_spawn_anchor = "SkydockDoor"
+wall_facing = 1
+marker_label = "Step outside"
+interact_message = ""
+spawn_offset = Vector2(0, -60)
+
+[node name="UI" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="LocationBanner" type="PanelContainer" parent="UI"]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 16.0
+offset_right = 200.0
+offset_bottom = 64.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("banner_style")
+
+[node name="LocationLabel" type="Label" parent="UI/LocationBanner"]
+modulate = Color(0.98, 0.92, 0.65, 1)
+layout_mode = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 26
+text = "The Skydock"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HelpButton" type="Button" parent="UI"]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -64.0
+offset_top = -64.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 0
+grow_vertical = 0
+tooltip_text = "The Skydock
+
+• Press E near Stormy Jericho to talk
+• Walk to the door to step outside"
+focus_mode = 0
+theme_override_font_sizes/font_size = 22
+text = "?"

@@ -1,0 +1,139 @@
+[gd_scene format=4 uid="uid://dpnt24bl8wbgn"]
+
+[ext_resource type="Script" uid="uid://d3jbgvdoe6cv1" path="res://levels/tavern/tavern.gd" id="1_tavern"]
+[ext_resource type="TileSet" uid="uid://ttl82eyaqrvu" path="res://assets/iso/isometric_tileset.tres" id="2_tileset"]
+[ext_resource type="PackedScene" uid="uid://syqg82dnkqjy" path="res://puzzles/gem_drop/table/table.tscn" id="3_table"]
+[ext_resource type="PackedScene" uid="uid://blr4e33qxprt2" path="res://levels/door/door.tscn" id="4_door"]
+[ext_resource type="PackedScene" uid="uid://duapk8jxnk2qa" path="res://puzzles/poker/table/table.tscn" id="5_poker"]
+[ext_resource type="PackedScene" uid="uid://c84w318i58qgr" path="res://components/npc/npc.tscn" id="6_npc"]
+[ext_resource type="PackedScene" uid="uid://c1l5gbatp0um" path="res://buildings/tournament_board/tournament_board.tscn" id="7_tboard"]
+[ext_resource type="PackedScene" uid="uid://cskirmishsign01" path="res://puzzles/skirmish/skirmish_sign/skirmish_sign.tscn" id="8_skirm"]
+
+[sub_resource type="StyleBoxFlat" id="banner_style"]
+content_margin_left = 28.0
+content_margin_top = 8.0
+content_margin_right = 28.0
+content_margin_bottom = 8.0
+bg_color = Color(0, 0, 0, 0.55)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[node name="Tavern" type="Node2D" unique_id=874232710]
+script = ExtResource("1_tavern")
+pirate_spawn_position = Vector2(0, 0)
+
+[node name="GroundTileMapLayer" type="TileMapLayer" parent="." unique_id=666183851]
+tile_map_data = PackedByteArray("AAD+//7/AAACAAAAAAD+//3/AAACAAAAAAD///z/AAACAAAAAAD///v/AAACAAAAAAAAAPz/AAACAAAAAAAAAP3/AAACAAAAAAABAP7/AAACAAAAAAABAP//AAACAAAAAAD9////AAACAAAAAAD+/wAAAAACAAAAAAD+/wEAAAACAAAAAAD//wIAAAACAAAAAAD//wMAAAACAAAAAAAAAAIAAAACAAAAAAAAAAEAAAACAAAAAAABAAAAAAACAAAAAAD+////AAACAAAAAAD///7/AAACAAAAAAD///3/AAACAAAAAAAAAP7/AAACAAAAAAAAAP//AAACAAAAAAAAAAAAAAACAAAAAAD//wEAAAACAAAAAAD//wAAAAACAAAAAAD/////AAACAAAAAAD8////AAACAAAAAAD9/wAAAAACAAAAAAD9/wEAAAACAAAAAAD+/wIAAAACAAAAAAD+/wMAAAACAAAAAAD//wQAAAACAAAAAAD//wUAAAACAAAAAAAAAAQAAAACAAAAAAAAAAMAAAACAAAAAAABAAIAAAACAAAAAAABAAEAAAACAAAAAAACAAAAAAACAAAAAAACAP//AAACAAAAAAACAP7/AAACAAAAAAABAP3/AAACAAAAAAABAPz/AAACAAAAAAAAAPv/AAACAAAAAAAAAPr/AAACAAAAAAD///n/AAACAAAAAAD///r/AAACAAAAAAD+//v/AAACAAAAAAD+//z/AAACAAAAAAD9//3/AAACAAAAAAD9//7/AAACAAAAAAD//wcAAAACAAAAAAAAAAYAAAACAAAAAAAAAAUAAAACAAAAAAABAAQAAAACAAAAAAABAAMAAAACAAAAAAACAAIAAAACAAAAAAACAAEAAAACAAAAAAADAAAAAAACAAAAAAADAP//AAACAAAAAAADAP7/AAACAAAAAAACAP3/AAACAAAAAAACAPz/AAACAAAAAAABAPv/AAACAAAAAAAAAPn/AAACAAAAAAAAAPj/AAACAAAAAAABAPr/AAACAAAAAAD///f/AAACAAAAAAD///j/AAACAAAAAAD+//n/AAACAAAAAAD+//r/AAACAAAAAAD9//v/AAACAAAAAAD9//z/AAACAAAAAAD8//3/AAACAAAAAAD8//7/AAACAAAAAAD7////AAACAAAAAAD8/wAAAAACAAAAAAD8/wEAAAACAAAAAAD9/wIAAAACAAAAAAD9/wMAAAACAAAAAAD+/wQAAAACAAAAAAD+/wUAAAACAAAAAAD//wYAAAACAAAAAAA=")
+tile_set = ExtResource("2_tileset")
+metadata/_edit_lock_ = true
+
+[node name="UpperTileMapLayer" type="TileMapLayer" parent="." unique_id=1579649210]
+position = Vector2(0, -78)
+tile_set = ExtResource("2_tileset")
+
+[node name="YSortNode2D" type="Node2D" parent="." unique_id=1576507512]
+y_sort_enabled = true
+
+[node name="GroundObjectsTileMapLayer" type="TileMapLayer" parent="YSortNode2D" unique_id=1435032475]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD9/wUAAAADAAAAAAD9/wQAAAADAAAAAAD8/wMAAAADAAAAAAD8/wIAAAADAAAAAAD7/wEAAAADAAAAAAD7/wAAAAADAAAAAAD6////AAADAAAAAAD7//7/AAADAAAAAAD7//3/AAADAAAAAAD8//z/AAADAAAAAAD8//v/AAADAAAAAAD9//r/AAADAAAAAAD9//n/AAADAAAAAAD+//j/AAADAAAAAAD+//f/AAADAAAAAAD///b/AAADAAAAAAD///X/AAADAAAAAAAAAPb/AAADAAAAAAAAAPf/AAADAAAAAAABAPj/AAADAAAAAAABAPn/AAADAAAAAAACAPr/AAADAAAAAAACAPv/AAADAAAAAAADAPz/AAADAAAAAAADAP3/AAADAAAAAAAEAP7/AAADAAAAAAAEAP//AAADAAAAAAAEAAAAAAADAAAAAAADAAEAAAADAAAAAAADAAIAAAADAAAAAAACAAMAAAADAAAAAAACAAQAAAADAAAAAAABAAUAAAADAAAAAAABAAYAAAADAAAAAAAAAAcAAAADAAAAAAAAAAgAAAADAAAAAAD//wkAAAADAAAAAAD//wgAAAADAAAAAAD+/wcAAAADAAAAAAD+/wYAAAADAAAAAAA=")
+tile_set = ExtResource("2_tileset")
+
+[node name="UpperObjectsTileMapLayer" type="TileMapLayer" parent="YSortNode2D" unique_id=928829742]
+y_sort_enabled = true
+position = Vector2(0, -78)
+tile_set = ExtResource("2_tileset")
+
+[node name="GemDropTable" parent="YSortNode2D" unique_id=1128508382 instance=ExtResource("3_table")]
+position = Vector2(-256, -104)
+
+[node name="PokerTable" parent="YSortNode2D" unique_id=2138744001 instance=ExtResource("5_poker")]
+position = Vector2(120, -160)
+
+[node name="DoorOut" parent="YSortNode2D" unique_id=80866916 instance=ExtResource("4_door")]
+position = Vector2(616, 248)
+target_scene = "res://levels/shore/shore.tscn"
+target_spawn_anchor = "InnDoor"
+wall_facing = 1
+marker_label = "Step outside"
+interact_message = ""
+spawn_offset = Vector2(-60, -30)
+
+[node name="BrianNpc" parent="YSortNode2D" unique_id=1857623763 instance=ExtResource("6_npc")]
+position = Vector2(208, -176)
+npc_name = "Hearty Brian"
+dialog_lines = Array[String](["Welcome to the Inn, friend — pull up a stool.", "Everyone on Cradle Rock passes through here eventually.", "Hungry? Thirsty? Want to lose some gold at cards? We've got all three."])
+portrait_color = Color(0.92, 0.66, 0.3, 1)
+
+[node name="MiaNpc" parent="YSortNode2D" unique_id=1139953103 instance=ExtResource("6_npc")]
+position = Vector2(-176, -96)
+npc_name = "Spritely Mia"
+dialog_lines = Array[String](["Smell that? Tonight's special — and no, you can't have it yet.", "Quick hands, hot pans. That's the whole secret.", "Sit, eat, lose at cards. In that order, ideally."])
+portrait_color = Color(0.95, 0.55, 0.65, 1)
+
+[node name="KerrNpc" parent="YSortNode2D" unique_id=643999588 instance=ExtResource("6_npc")]
+position = Vector2(-40, 136)
+npc_name = "Flint Kerr"
+dialog_lines = Array[String](["You here to play, or just to watch?", "I don't bluff. ...Or do I.", "Sit at my table if you think you're quick enough."])
+portrait_color = Color(0.78, 0.32, 0.32, 1)
+
+[node name="EllisonNpc" parent="YSortNode2D" unique_id=2641224 instance=ExtResource("6_npc")]
+position = Vector2(-40, -232)
+npc_name = "Hollow Ellison"
+dialog_lines = Array[String](["Every island remembers more than its people do.", "I've forgotten more stories than most folk ever hear.", "Sit by the fire. I'll tell you something true. Mostly true."])
+portrait_color = Color(0.62, 0.55, 0.72, 1)
+
+[node name="TournamentBoard" parent="YSortNode2D" instance=ExtResource("7_tboard")]
+position = Vector2(360, -60)
+
+[node name="SkirmishSign" parent="YSortNode2D" instance=ExtResource("8_skirm")]
+position = Vector2(-380, 24)
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=2028402885]
+layer = 5
+
+[node name="LocationBanner" type="PanelContainer" parent="UI" unique_id=1907230475]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 16.0
+offset_right = 200.0
+offset_bottom = 64.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("banner_style")
+
+[node name="LocationLabel" type="Label" parent="UI/LocationBanner" unique_id=1077266044]
+modulate = Color(0.98, 0.92, 0.65, 1)
+layout_mode = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 26
+text = "The Inn"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HelpButton" type="Button" parent="UI" unique_id=1769147327]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -64.0
+offset_top = -64.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 0
+grow_vertical = 0
+tooltip_text = "The Inn
+
+• Press E near a table to play (Gem Drop · Poker)
+• Press E near any of the folk to talk
+• Walk to the door to step outside
+• ESC — back to Cradle Rock"
+focus_mode = 0
+theme_override_font_sizes/font_size = 22
+text = "?"

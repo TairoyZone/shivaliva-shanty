@@ -1,0 +1,134 @@
+[gd_scene format=4 uid="uid://6arfdt21fpe5"]
+
+[ext_resource type="Script" uid="uid://277d3uarjxpl" path="res://levels/mine/mine.gd" id="1_mine"]
+[ext_resource type="TileSet" uid="uid://ttl82eyaqrvu" path="res://assets/iso/isometric_tileset.tres" id="2_ts"]
+[ext_resource type="PackedScene" uid="uid://blr4e33qxprt2" path="res://levels/door/door.tscn" id="3_door"]
+[ext_resource type="PackedScene" uid="uid://brn1vaio8slxb" path="res://puzzles/mining/station/station.tscn" id="4_sign"]
+[ext_resource type="PackedScene" path="res://levels/mine/boulder.tscn" id="5_boulder"]
+
+[sub_resource type="StyleBoxFlat" id="banner_style"]
+content_margin_left = 28.0
+content_margin_top = 8.0
+content_margin_right = 28.0
+content_margin_bottom = 8.0
+bg_color = Color(0, 0, 0, 0.55)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[node name="Mine" type="Node2D" unique_id=528116734]
+script = ExtResource("1_mine")
+pirate_spawn_position = Vector2(0, 80)
+escape_scene = "res://main.tscn"
+
+[node name="GroundTileMapLayer" type="TileMapLayer" parent="." unique_id=339279369]
+tile_map_data = PackedByteArray("AAD+/wAAAAACAAAAAAD9////AAACAAAAAAD9//7/AAACAAAAAAD9//3/AAACAAAAAAD+//z/AAACAAAAAAD+//v/AAACAAAAAAD///z/AAACAAAAAAD+//3/AAACAAAAAAD+//7/AAACAAAAAAD+////AAACAAAAAAD///7/AAACAAAAAAD///3/AAACAAAAAAAAAPz/AAACAAAAAAAAAP3/AAACAAAAAAABAPz/AAACAAAAAAABAP3/AAACAAAAAAACAP7/AAACAAAAAAACAP//AAACAAAAAAACAAAAAAACAAAAAAAAAAMAAAACAAAAAAAAAAIAAAACAAAAAAAAAAEAAAACAAAAAAAAAAAAAAACAAAAAAAAAP//AAACAAAAAAABAP7/AAACAAAAAAABAP//AAACAAAAAAABAAAAAAACAAAAAAABAAEAAAACAAAAAAABAAIAAAACAAAAAAD//wEAAAACAAAAAAD//wIAAAACAAAAAAD+/wEAAAACAAAAAAD//wAAAAACAAAAAAD/////AAACAAAAAAAAAP7/AAACAAAAAAAAAAQAAAACAAAAAAD//wMAAAACAAAAAAD//wQAAAACAAAAAAD9/wEAAAACAAAAAAD9/wAAAAACAAAAAAD8////AAACAAAAAAD+/wIAAAACAAAAAAD+/wMAAAACAAAAAAD//wUAAAACAAAAAAD///r/AAACAAAAAAD///v/AAACAAAAAAAAAPr/AAACAAAAAAAAAPv/AAACAAAAAAD///n/AAACAAAAAAA=")
+tile_set = ExtResource("2_ts")
+metadata/_edit_lock_ = true
+
+[node name="UpperTileMapLayer" type="TileMapLayer" parent="." unique_id=21976085]
+position = Vector2(0, -78)
+tile_set = ExtResource("2_ts")
+
+[node name="YSortNode2D" type="Node2D" parent="." unique_id=2099668379]
+y_sort_enabled = true
+
+[node name="GroundObjectsTileMapLayer" type="TileMapLayer" parent="YSortNode2D" unique_id=1749639758]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD+/wUAAAADAAAAAAD+/wQAAAADAAAAAAD9/wMAAAADAAAAAAD9/wIAAAADAAAAAAD8/wEAAAADAAAAAAD8/wAAAAADAAAAAAD7////AAADAAAAAAD8//7/AAADAAAAAAD8//3/AAADAAAAAAD9//z/AAADAAAAAAD9//v/AAADAAAAAAD+//r/AAADAAAAAAD+//n/AAADAAAAAAD///j/AAADAAAAAAD///f/AAADAAAAAAAAAPj/AAADAAAAAAAAAPn/AAADAAAAAAABAPr/AAADAAAAAAABAPv/AAADAAAAAAACAPz/AAADAAAAAAACAP3/AAADAAAAAAADAP7/AAADAAAAAAADAP//AAADAAAAAAADAAAAAAADAAAAAAACAAEAAAADAAAAAAACAAIAAAADAAAAAAABAAMAAAADAAAAAAABAAQAAAADAAAAAAAAAAUAAAADAAAAAAAAAAYAAAADAAAAAAD//wcAAAADAAAAAAD//wYAAAADAAAAAAA=")
+tile_set = ExtResource("2_ts")
+
+[node name="UpperObjectsTileMapLayer" type="TileMapLayer" parent="YSortNode2D" unique_id=1985902418]
+y_sort_enabled = true
+position = Vector2(0, -78)
+tile_set = ExtResource("2_ts")
+
+[node name="BoulderNW" parent="YSortNode2D" unique_id=374267544 instance=ExtResource("5_boulder")]
+position = Vector2(-320, -150)
+size_variation = 1.2
+
+[node name="BoulderN" parent="YSortNode2D" unique_id=138882559 instance=ExtResource("5_boulder")]
+position = Vector2(170, -210)
+size_variation = 0.85
+
+[node name="BoulderNE" parent="YSortNode2D" unique_id=1128790804 instance=ExtResource("5_boulder")]
+position = Vector2(360, -120)
+size_variation = 1.05
+
+[node name="BoulderNE2" parent="YSortNode2D" unique_id=1787118163 instance=ExtResource("5_boulder")]
+position = Vector2(-96, -240)
+size_variation = 1.05
+
+[node name="BoulderW" parent="YSortNode2D" unique_id=1439298181 instance=ExtResource("5_boulder")]
+position = Vector2(-400, 40)
+size_variation = 1.1
+
+[node name="BoulderE" parent="YSortNode2D" unique_id=244065686 instance=ExtResource("5_boulder")]
+position = Vector2(400, 80)
+size_variation = 0.95
+
+[node name="BoulderSW" parent="YSortNode2D" unique_id=476001800 instance=ExtResource("5_boulder")]
+position = Vector2(-240, 200)
+size_variation = 0.9
+
+[node name="BoulderSE" parent="YSortNode2D" unique_id=1809611608 instance=ExtResource("5_boulder")]
+position = Vector2(240, 210)
+
+[node name="MiningSign" parent="YSortNode2D" unique_id=1951154999 instance=ExtResource("4_sign")]
+position = Vector2(0, -80)
+spawn_offset = Vector2(0, 60)
+
+[node name="ToShore" parent="YSortNode2D" unique_id=548985524 instance=ExtResource("3_door")]
+position = Vector2(0, 280)
+target_scene = "res://levels/shore/shore.tscn"
+target_spawn_anchor = "ToMine"
+marker_label = "Back to Cradle Rock"
+interact_message = ""
+spawn_offset = Vector2(0, -60)
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=996700236]
+layer = 5
+
+[node name="LocationBanner" type="PanelContainer" parent="UI" unique_id=772580847]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 16.0
+offset_right = 200.0
+offset_bottom = 64.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("banner_style")
+
+[node name="LocationLabel" type="Label" parent="UI/LocationBanner" unique_id=1375961080]
+modulate = Color(0.78, 0.84, 0.96, 1)
+layout_mode = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 26
+text = "The Mine"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HelpButton" type="Button" parent="UI" unique_id=1092398151]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -64.0
+offset_top = -64.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 0
+grow_vertical = 0
+tooltip_text = "The Mine
+
+• Walk to the sign and press E to mine ore
+• Apply for the job at Cinder Troy's Forge first
+• Walk south to return to Cradle Rock"
+focus_mode = 0
+theme_override_font_sizes/font_size = 22
+text = "?"

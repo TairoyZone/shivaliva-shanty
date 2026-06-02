@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://cahole5jritn"]
+
+[ext_resource type="Script" uid="uid://dcafeosmybeqb" path="res://puzzles/gem_drop/hole.gd" id="1_hole"]
+
+[sub_resource type="CircleShape2D" id="trigger_circle"]
+radius = 5.0
+
+[node name="Hole" type="Node2D" unique_id=1046048772]
+script = ExtResource("1_hole")
+
+[node name="TriggerArea" type="Area2D" parent="." unique_id=1084797121]
+monitoring = false
+monitorable = false
+
+[node name="Shape" type="CollisionShape2D" parent="TriggerArea" unique_id=1440314869]
+shape = SubResource("trigger_circle")

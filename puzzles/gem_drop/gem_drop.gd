@@ -1,0 +1,192 @@
+## Gem Drop — the playable parlor-game scene launched by the
+## [GemDropTable] prop at the Inn. Inherits HUD-hiding, ESC return,
+## click-to-dismiss, and the winnings helper from [PuzzleScene]; this
+## script only owns puzzle-specific UI label bindings + signal wiring.
+extends PuzzleScene
+
+
+## Active player's score label glows in their identity color; the
+## inactive player is dimmed but still tinted so identity reads at a
+## glance. Turn indicator labels (under each panel) carry their colors
+## in the .tscn — only visibility is toggled here.
+const HUMAN_COLOR : Color = Palette.GOLD_TEXT
+const AI_COLOR : Color = Palette.GEM_RUBY_LIGHT
+const INACTIVE_DIM : float = 0.45  # multiplier on the identity color
+const WINNINGS_ON_VICTORY := 10
+## Gold taken on the way OUT if the human didn't win this
+## session. Covers both completed losses and mid-match Leaves —
+## winners exit free. Should match [member GemDropTable.play_cost].
+const PLAY_COST_ON_EXIT : int = 5
+## Rapport gained with the opponent for finishing a match, plus a bonus
+## for beating them.
+const PLAY_AFFINITY : int = 1
+const WIN_AFFINITY_BONUS : int = 2
+
+@onready var _board: GemDropBoard = $Board
+@onready var _round_label: Label = $UI/TopBar/CenterBanner/CenterColumn/RoundLabel
+@onready var _rounds_label: Label = $UI/TopBar/CenterBanner/CenterColumn/RoundsLabel
+@onready var _you_label: Label = $UI/TopBar/YouColumn/YouPanel/YouLabel
+@onready var _ai_label: Label = $UI/TopBar/AiColumn/AiPanel/AiLabel
+@onready var _you_turn_label: Label = $UI/TopBar/YouColumn/YouTurnIndicator
+@onready var _ai_turn_label: Label = $UI/TopBar/AiColumn/AiTurnIndicator
+
+## NPC opponent for this match — picked randomly from [NpcRegistry] in
+## [method _ready]. Their personality drives the board's minimax weights
+## + search depth, and their name + color appear on the AI panel.
+var _opponent : NpcPersonality
+
+## Flips true the moment [method _on_game_complete] sees a human win.
+## [method _return_to_launching_scene] checks this to skip the
+## play-cost charge on a victorious exit.
+var _human_won_match : bool = false
+
+## Set from the lobby on entry — a FREE table plays for rapport only, no
+## gold won or lost. Read in [method _on_game_complete] +
+## [method _return_to_launching_scene] to suppress every gold change.
+var _free_table : bool = false
+
+
+func _ready() -> void:
+
+	super._ready()
+	set_help_text("How to play\n\n"
+		+ "• Click an entry slot at the top to drop a gem (your turn only)\n"
+		+ "• A gem RESTS on an empty pad, BOUNCES off an occupied pad, and FLIPS a switch when it crosses the lever side\n"
+		+ "• Odd flips drop the resting gem off the pad — bumped gems can merge with falling ones into multi-coins (xN score)\n"
+		+ "• First to the round target wins the round\n"
+		+ "• Best of 4 rounds wins the game (cumulative score tiebreaker)")
+	# Opponent + stakes come from the lobby the player just sat at; fall
+	# back to a fresh roll if launched without one. Their personality is
+	# handed to the board so the minimax eval reads from it.
+	var setup : Dictionary = PlayerState.consume_lobby_setup()
+	_free_table = bool(setup.get("free", false))
+	var seated : Array[NpcPersonality] = LobbyModal.profiles_from_paths(setup.get("seated_paths", []))
+	_opponent = seated[0] if not seated.is_empty() else NpcRegistry.pick_one()
+	if _opponent != null:
+		_board.ai_personality = _opponent
+		# Personalize the turn indicator — "GODFREY THINKING…" rather
+		# than the generic "AI THINKING…".
+		_ai_turn_label.text = "▲  %s THINKING…" % _opponent_short_name().to_upper()
+	_board.scores_changed.connect(_on_scores_changed)
+	_board.round_advanced.connect(_on_round_advanced)
+	_board.round_clearing.connect(_on_round_clearing)
+	_board.rounds_won_changed.connect(_on_rounds_won_changed)
+	_board.turn_changed.connect(_on_turn_changed)
+	_board.game_complete.connect(_on_game_complete)
+	_on_round_advanced(_board.round_number, _board.round_target)
+	_on_scores_changed(_board.player_scores[0], _board.player_scores[1], _board.round_target)
+	_on_rounds_won_changed(_board.rounds_won[0], _board.rounds_won[1])
+	_on_turn_changed(_board.current_player)
+
+
+func _on_scores_changed(human_score: int, ai_score: int, target: int) -> void:
+
+	_you_label.text = "YOU  %d / %d" % [human_score, target]
+	_ai_label.text = "%s  %d / %d" % [_opponent_short_name(), ai_score, target]
+
+
+# Just the given name (no adjective prefix) so the score panel fits.
+# Full "Cogwise Godfrey" goes in the game-complete and round-clear
+# banners where there's room to read.
+func _opponent_short_name() -> String:
+
+	if _opponent == null:
+		return "Rival"
+	var parts : PackedStringArray = _opponent.npc_name.split(" ")
+	return parts[parts.size() - 1] if parts.size() > 0 else "Rival"
+
+
+# Full adjective + given name for headline banners.
+func _opponent_full_name() -> String:
+
+	return _opponent.npc_name if _opponent != null else "Rival"
+
+
+func _on_round_advanced(new_round: int, new_target: int) -> void:
+
+	if new_round == GemDropBoard.TIEBREAKER_ROUND:
+		_round_label.text = "TIEBREAKER · HOLES   ·   Target %d" % new_target
+	else:
+		_round_label.text = "Round %d   ·   Target %d" % [new_round, new_target]
+
+
+func _on_round_clearing(winner: int) -> void:
+
+	# Hide both turn indicators while the inter-round pause plays out;
+	# the active-state will be re-asserted by _on_turn_changed when the
+	# next round starts.
+	_you_turn_label.visible = false
+	_ai_turn_label.visible = false
+	# Special-case the round 4 → 5 transition (always at 2-2): the next
+	# round is the sudden-death Holes tiebreaker, not a normal round.
+	var going_to_tiebreaker : bool = (
+		_board.round_number == GemDropBoard.FINAL_ROUND
+		and _board.rounds_won[0] == _board.rounds_won[1])
+	if going_to_tiebreaker:
+		_rounds_label.text = "TIED 2-2 — Sudden-death Holes round incoming!"
+		return
+	if winner == GemDropBoard.HUMAN_PLAYER:
+		_rounds_label.text = "ROUND CLEAR — next round in a moment…"
+	else:
+		_rounds_label.text = "%s cleared the round — next round in a moment…" % _opponent_full_name()
+
+
+func _on_rounds_won_changed(human_rounds: int, ai_rounds: int) -> void:
+
+	# Tiebreaker round reframes the format — drop the "Best of 4" once
+	# we're in the sudden-death overtime. The opponent's given name
+	# stands in for the old generic "AI".
+	var rival : String = _opponent_short_name()
+	if _board.round_number == GemDropBoard.TIEBREAKER_ROUND:
+		_rounds_label.text = "SUDDEN DEATH   ·   YOU %d   ★   %s %d" % [human_rounds, rival, ai_rounds]
+	else:
+		_rounds_label.text = "Best of 4   ·   YOU %d   ★   %s %d" % [human_rounds, rival, ai_rounds]
+
+
+func _on_turn_changed(player: int) -> void:
+
+	var human_active : bool = (player == GemDropBoard.HUMAN_PLAYER)
+	_you_turn_label.visible = human_active
+	_ai_turn_label.visible = not human_active
+	_you_label.modulate = HUMAN_COLOR if human_active else HUMAN_COLOR * INACTIVE_DIM
+	_ai_label.modulate = AI_COLOR if not human_active else AI_COLOR * INACTIVE_DIM
+
+
+func _on_game_complete(winner: int, human_rounds: int, ai_rounds: int) -> void:
+
+	_you_turn_label.visible = false
+	_ai_turn_label.visible = false
+	if winner == GemDropBoard.HUMAN_PLAYER:
+		_rounds_label.text = "YOU WIN!   %d rounds to %d   ·   click anywhere or ESC to return" % [human_rounds, ai_rounds]
+		if not _free_table:
+			award_winnings(WINNINGS_ON_VICTORY)
+		_human_won_match = true
+	else:
+		_rounds_label.text = "%s WINS!   %d rounds to %d   ·   click anywhere or ESC to return" % [_opponent_full_name(), ai_rounds, human_rounds]
+	# Rapport — playing a full match builds a little rapport with the
+	# opponent; winning earns their respect for a bit more.
+	if _opponent != null:
+		var gain : int = PLAY_AFFINITY + (WIN_AFFINITY_BONUS if winner == GemDropBoard.HUMAN_PLAYER else 0)
+		PlayerState.add_affinity(_opponent.npc_name, gain)
+	# Final-line context reflects whether a tiebreaker was needed.
+	if _board.round_number >= GemDropBoard.TIEBREAKER_ROUND:
+		_round_label.text = "Match settled in sudden death"
+	else:
+		_round_label.text = "All four rounds complete"
+	_set_awaiting_dismiss(true)
+
+
+# Charge the play_cost on the way out — but only if the player didn't
+# win. Winners walk away with their full +10 winnings; losers and
+# mid-match leavers pay the entry fee here. Either way, the deduction
+# fires while the HUD is still hidden, so it gets folded into the
+# pending-change flush and the player sees a clean toast on the
+# overworld instead of a flashed-by deduction at entry.
+func _return_to_launching_scene() -> void:
+
+	# Record the result for any caller that launched this as a graded match
+	# (a tournament bracket reads it to advance).
+	PlayerState.last_gem_drop_won = _human_won_match
+	if not _human_won_match and not _free_table and PLAY_COST_ON_EXIT > 0:
+		PlayerState.add_coins(-PLAY_COST_ON_EXIT)
+	super._return_to_launching_scene()

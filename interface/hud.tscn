@@ -1,0 +1,112 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" uid="uid://djhc3s32u44d8" path="res://interface/hud.gd" id="1_hud"]
+[ext_resource type="Script" uid="uid://cm75oixjnm765" path="res://interface/coin_icon.gd" id="2_coin"]
+[ext_resource type="PackedScene" path="res://interface/inventory_panel/inventory_panel.tscn" id="3_inv"]
+[ext_resource type="PackedScene" path="res://interface/journal_panel/journal_panel.tscn" id="4_journal"]
+
+[sub_resource type="StyleBoxFlat" id="objective_style"]
+content_margin_left = 18.0
+content_margin_top = 6.0
+content_margin_right = 18.0
+content_margin_bottom = 6.0
+bg_color = Color(0.12, 0.09, 0.05, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.7, 0.55, 0.28, 0.95)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0, 0, 0, 0.4)
+shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="purse_style"]
+content_margin_left = 14.0
+content_margin_top = 8.0
+content_margin_right = 18.0
+content_margin_bottom = 8.0
+bg_color = Color(0.18, 0.11, 0.06, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.78, 0.58, 0.24, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 8
+
+[node name="HUD" type="CanvasLayer" unique_id=756252853]
+layer = 10
+script = ExtResource("1_hud")
+
+[node name="Margin" type="MarginContainer" parent="." unique_id=1057818589]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -260.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 76.0
+grow_horizontal = 0
+mouse_filter = 2
+
+[node name="Purse" type="PanelContainer" parent="Margin" unique_id=1962640974]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_styles/panel = SubResource("purse_style")
+
+[node name="HBox" type="HBoxContainer" parent="Margin/Purse" unique_id=727832692]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CoinIcon" type="Control" parent="Margin/Purse/HBox" unique_id=607678807]
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Gold — your in-world currency. Earned from puzzles, parlor games, and treasures."
+script = ExtResource("2_coin")
+
+[node name="CoinLabel" type="Label" parent="Margin/Purse/HBox" unique_id=1253492281]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.92, 0.55, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 22
+text = "0"
+vertical_alignment = 1
+
+[node name="JournalButton" type="Button" parent="."]
+unique_name_in_owner = true
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -70.0
+offset_top = 88.0
+offset_right = -20.0
+offset_bottom = 138.0
+grow_horizontal = 0
+focus_mode = 0
+tooltip_text = "Objectives (J) — your current goals"
+theme_override_styles/normal = SubResource("objective_style")
+theme_override_styles/hover = SubResource("objective_style")
+theme_override_styles/pressed = SubResource("objective_style")
+theme_override_colors/font_color = Color(0.96, 0.78, 0.3, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 26
+text = "!"
+
+[node name="InventoryPanel" parent="." instance=ExtResource("3_inv")]
+
+[node name="JournalPanel" parent="." instance=ExtResource("4_journal")]
+unique_name_in_owner = true
+visible = false

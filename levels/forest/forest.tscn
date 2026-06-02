@@ -1,0 +1,145 @@
+[gd_scene format=4 uid="uid://8xspor7y8h04"]
+
+[ext_resource type="Script" uid="uid://cq4v8wtc70t4n" path="res://levels/forest/forest.gd" id="1_forest"]
+[ext_resource type="TileSet" uid="uid://ttl82eyaqrvu" path="res://assets/iso/isometric_tileset.tres" id="2_05q5h"]
+[ext_resource type="PackedScene" uid="uid://blr4e33qxprt2" path="res://levels/door/door.tscn" id="2_door"]
+[ext_resource type="PackedScene" path="res://puzzles/lumberjacking/station/station.tscn" id="3_sign"]
+[ext_resource type="PackedScene" path="res://levels/forest/tree.tscn" id="4_tree"]
+
+[sub_resource type="StyleBoxFlat" id="banner_style"]
+content_margin_left = 28.0
+content_margin_top = 8.0
+content_margin_right = 28.0
+content_margin_bottom = 8.0
+bg_color = Color(0, 0, 0, 0.55)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[node name="Forest" type="Node2D" unique_id=1423118151]
+script = ExtResource("1_forest")
+pirate_spawn_position = Vector2(0, 80)
+escape_scene = "res://main.tscn"
+
+[node name="GroundTileMapLayer" type="TileMapLayer" parent="." unique_id=1868131291]
+tile_map_data = PackedByteArray("AAD+/wAAAAACAAAAAAD9////AAACAAAAAAD9//7/AAACAAAAAAD9//3/AAACAAAAAAD+//z/AAACAAAAAAD+//v/AAACAAAAAAD///z/AAACAAAAAAD+//3/AAACAAAAAAD+//7/AAACAAAAAAD+////AAACAAAAAAD///7/AAACAAAAAAD///3/AAACAAAAAAAAAPz/AAACAAAAAAAAAP3/AAACAAAAAAABAPz/AAACAAAAAAABAP3/AAACAAAAAAACAP7/AAACAAAAAAACAP//AAACAAAAAAACAAAAAAACAAAAAAAAAAMAAAACAAAAAAAAAAIAAAACAAAAAAAAAAEAAAACAAAAAAAAAAAAAAACAAAAAAAAAP//AAACAAAAAAABAP7/AAACAAAAAAABAP//AAACAAAAAAABAAAAAAACAAAAAAABAAEAAAACAAAAAAABAAIAAAACAAAAAAD//wEAAAACAAAAAAD//wIAAAACAAAAAAD+/wEAAAACAAAAAAD//wAAAAACAAAAAAD/////AAACAAAAAAAAAP7/AAACAAAAAAAAAAQAAAACAAAAAAD//wMAAAACAAAAAAD//wQAAAACAAAAAAD9/wEAAAACAAAAAAD9/wAAAAACAAAAAAD8////AAACAAAAAAD+/wIAAAACAAAAAAD+/wMAAAACAAAAAAD//wUAAAACAAAAAAD///r/AAACAAAAAAD///v/AAACAAAAAAAAAPr/AAACAAAAAAAAAPv/AAACAAAAAAD///n/AAACAAAAAAA=")
+tile_set = ExtResource("2_05q5h")
+metadata/_edit_lock_ = true
+
+[node name="UpperTileMapLayer" type="TileMapLayer" parent="." unique_id=1572488605]
+position = Vector2(0, -78)
+tile_set = ExtResource("2_05q5h")
+
+[node name="YSortNode2D2" type="Node2D" parent="." unique_id=712441294]
+y_sort_enabled = true
+
+[node name="GroundObjectsTileMapLayer" type="TileMapLayer" parent="YSortNode2D2" unique_id=1944873833]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD+/wUAAAADAAAAAAD+/wQAAAADAAAAAAD9/wMAAAADAAAAAAD9/wIAAAADAAAAAAD8/wEAAAADAAAAAAD8/wAAAAADAAAAAAD7////AAADAAAAAAD8//7/AAADAAAAAAD8//3/AAADAAAAAAD9//z/AAADAAAAAAD9//v/AAADAAAAAAD+//r/AAADAAAAAAD+//n/AAADAAAAAAD///j/AAADAAAAAAD///f/AAADAAAAAAAAAPj/AAADAAAAAAAAAPn/AAADAAAAAAABAPr/AAADAAAAAAABAPv/AAADAAAAAAACAPz/AAADAAAAAAACAP3/AAADAAAAAAADAP7/AAADAAAAAAADAP//AAADAAAAAAADAAAAAAADAAAAAAACAAEAAAADAAAAAAACAAIAAAADAAAAAAABAAMAAAADAAAAAAABAAQAAAADAAAAAAAAAAUAAAADAAAAAAAAAAYAAAADAAAAAAD//wcAAAADAAAAAAD//wYAAAADAAAAAAA=")
+tile_set = ExtResource("2_05q5h")
+
+[node name="UpperObjectsTileMapLayer" type="TileMapLayer" parent="YSortNode2D2" unique_id=978707383]
+y_sort_enabled = true
+position = Vector2(0, -78)
+tile_set = ExtResource("2_05q5h")
+
+[node name="YSortNode2D" type="Node2D" parent="." unique_id=320135775]
+y_sort_enabled = true
+
+[node name="TreeNW" parent="YSortNode2D" unique_id=167795519 instance=ExtResource("4_tree")]
+position = Vector2(-340, -180)
+size_variation = 1.1
+
+[node name="TreeN1" parent="YSortNode2D" unique_id=332167495 instance=ExtResource("4_tree")]
+position = Vector2(-160, -240)
+size_variation = 0.9
+
+[node name="TreeN2" parent="YSortNode2D" unique_id=1319133579 instance=ExtResource("4_tree")]
+position = Vector2(180, -220)
+size_variation = 1.05
+
+[node name="TreeNE" parent="YSortNode2D" unique_id=1465853412 instance=ExtResource("4_tree")]
+position = Vector2(360, -170)
+size_variation = 0.95
+
+[node name="TreeW1" parent="YSortNode2D" unique_id=758778264 instance=ExtResource("4_tree")]
+position = Vector2(-420, -40)
+size_variation = 1.15
+
+[node name="TreeW2" parent="YSortNode2D" unique_id=900786536 instance=ExtResource("4_tree")]
+position = Vector2(-380, 120)
+
+[node name="TreeE1" parent="YSortNode2D" unique_id=932132990 instance=ExtResource("4_tree")]
+position = Vector2(400, 0)
+size_variation = 0.95
+
+[node name="TreeE2" parent="YSortNode2D" unique_id=1646277261 instance=ExtResource("4_tree")]
+position = Vector2(380, 160)
+size_variation = 1.1
+
+[node name="TreeS1" parent="YSortNode2D" unique_id=263671885 instance=ExtResource("4_tree")]
+position = Vector2(-220, 240)
+size_variation = 0.9
+
+[node name="TreeS2" parent="YSortNode2D" unique_id=343436907 instance=ExtResource("4_tree")]
+position = Vector2(220, 240)
+size_variation = 1.05
+
+[node name="WoodCuttingSign" parent="YSortNode2D" unique_id=2114036154 instance=ExtResource("3_sign")]
+position = Vector2(0, -80)
+spawn_offset = Vector2(0, 60)
+
+[node name="ToShore" parent="YSortNode2D" unique_id=1926770177 instance=ExtResource("2_door")]
+position = Vector2(0, 280)
+target_scene = "res://levels/shore/shore.tscn"
+target_spawn_anchor = "ToForest"
+marker_label = "Back to Cradle Rock"
+interact_message = ""
+spawn_offset = Vector2(0, -60)
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=2043595081]
+layer = 5
+
+[node name="LocationBanner" type="PanelContainer" parent="UI" unique_id=1506515054]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 16.0
+offset_right = 200.0
+offset_bottom = 64.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("banner_style")
+
+[node name="LocationLabel" type="Label" parent="UI/LocationBanner" unique_id=1724195537]
+modulate = Color(0.86, 0.96, 0.72, 1)
+layout_mode = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 26
+text = "The Grove"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HelpButton" type="Button" parent="UI" unique_id=1358553253]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -64.0
+offset_top = -64.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 0
+grow_vertical = 0
+tooltip_text = "The Grove
+
+• Walk to the sign and press E to chop wood
+• Apply for the job at Cogwise Godfrey's Workshop first
+• Walk south to return to Cradle Rock"
+focus_mode = 0
+theme_override_font_sizes/font_size = 22
+text = "?"

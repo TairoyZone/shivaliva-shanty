@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="NpcPersonality" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://components/npc/personality.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+npc_name = "Hollow Ellison"
+portrait_color = Color(0.62, 0.55, 0.72, 1.0)
+aggression = 0.40
+risk_tolerance = 0.40
+patience = 0.80
+perception = 0.80
+vpip_target = 0.20
+pfr_target = 0.15
+bluff_rate = 0.18
+w_score = 1.0
+w_denial = 1.0
+w_chain = 1.4
+search_depth = 4
+skirmish_weapon = "long_range"

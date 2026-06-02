@@ -1,0 +1,86 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://puzzles/lumberjacking/lumberjacking.gd" id="1_lj"]
+[ext_resource type="PackedScene" path="res://puzzles/lumberjacking/board/board.tscn" id="2_board"]
+[ext_resource type="PackedScene" path="res://puzzles/lumberjacking/next_preview/next_preview.tscn" id="4_np"]
+
+[sub_resource type="StyleBoxFlat" id="hud_panel"]
+content_margin_left = 20.0
+content_margin_top = 8.0
+content_margin_right = 20.0
+content_margin_bottom = 8.0
+bg_color = Color(0.18, 0.11, 0.06, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.78, 0.58, 0.24, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[node name="Lumberjacking" type="Node2D"]
+script = ExtResource("1_lj")
+
+[node name="Background" type="ColorRect" parent="."]
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+color = Color(0.2, 0.14, 0.08, 1)
+
+[node name="Board" parent="." instance=ExtResource("2_board")]
+position = Vector2(532, 126)
+
+[node name="NextPreview" parent="." instance=ExtResource("4_np")]
+position = Vector2(396, 150)
+
+[node name="UI" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="TopBar" type="HBoxContainer" parent="UI"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 24.0
+offset_top = 16.0
+offset_right = -24.0
+offset_bottom = 80.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_constants/separation = 18
+
+[node name="YieldPanel" type="PanelContainer" parent="UI/TopBar"]
+custom_minimum_size = Vector2(380, 0)
+mouse_filter = 2
+theme_override_styles/panel = SubResource("hud_panel")
+
+[node name="YieldLabel" type="Label" parent="UI/TopBar/YieldPanel"]
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.95, 0.82, 0.55, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 24
+text = "WOOD  0      SCORE  0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Spacer" type="Control" parent="UI/TopBar"]
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="DifficultyPanel" type="PanelContainer" parent="UI/TopBar"]
+custom_minimum_size = Vector2(200, 0)
+mouse_filter = 2
+theme_override_styles/panel = SubResource("hud_panel")
+
+[node name="DifficultyLabel" type="Label" parent="UI/TopBar/DifficultyPanel"]
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.92, 0.76, 0.36, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 22
+text = "Steady"
+horizontal_alignment = 1
+vertical_alignment = 1

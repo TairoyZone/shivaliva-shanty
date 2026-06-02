@@ -1,0 +1,110 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://levels/frontier_isle/frontier_isle.gd" id="1_isle"]
+[ext_resource type="TileSet" uid="uid://ttl82eyaqrvu" path="res://assets/iso/isometric_tileset.tres" id="2_ts"]
+[ext_resource type="PackedScene" uid="uid://blr4e33qxprt2" path="res://levels/door/door.tscn" id="3_door"]
+[ext_resource type="PackedScene" path="res://levels/mine/boulder.tscn" id="4_boulder"]
+
+[sub_resource type="StyleBoxFlat" id="banner_style"]
+content_margin_left = 28.0
+content_margin_top = 8.0
+content_margin_right = 28.0
+content_margin_bottom = 8.0
+bg_color = Color(0, 0, 0, 0.55)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[node name="FrontierIsle" type="Node2D"]
+script = ExtResource("1_isle")
+pirate_spawn_position = Vector2(0, 80)
+escape_scene = "res://main.tscn"
+
+[node name="GroundTileMapLayer" type="TileMapLayer" parent="."]
+tile_map_data = PackedByteArray("AAD+/wAAAAACAAAAAAD9////AAACAAAAAAD9//7/AAACAAAAAAD9//3/AAACAAAAAAD+//z/AAACAAAAAAD+//v/AAACAAAAAAD///z/AAACAAAAAAD+//3/AAACAAAAAAD+//7/AAACAAAAAAD+////AAACAAAAAAD///7/AAACAAAAAAD///3/AAACAAAAAAAAAPz/AAACAAAAAAAAAP3/AAACAAAAAAABAPz/AAACAAAAAAABAP3/AAACAAAAAAACAP7/AAACAAAAAAACAP//AAACAAAAAAACAAAAAAACAAAAAAAAAAMAAAACAAAAAAAAAAIAAAACAAAAAAAAAAEAAAACAAAAAAAAAAAAAAACAAAAAAAAAP//AAACAAAAAAABAP7/AAACAAAAAAABAP//AAACAAAAAAABAAAAAAACAAAAAAABAAEAAAACAAAAAAABAAIAAAACAAAAAAD//wEAAAACAAAAAAD//wIAAAACAAAAAAD+/wEAAAACAAAAAAD//wAAAAACAAAAAAD/////AAACAAAAAAAAAP7/AAACAAAAAAAAAAQAAAACAAAAAAD//wMAAAACAAAAAAD//wQAAAACAAAAAAD9/wEAAAACAAAAAAD9/wAAAAACAAAAAAD8////AAACAAAAAAD+/wIAAAACAAAAAAD+/wMAAAACAAAAAAD//wUAAAACAAAAAAD///r/AAACAAAAAAD///v/AAACAAAAAAAAAPr/AAACAAAAAAAAAPv/AAACAAAAAAD///n/AAACAAAAAAA=")
+tile_set = ExtResource("2_ts")
+
+[node name="UpperTileMapLayer" type="TileMapLayer" parent="."]
+position = Vector2(0, -78)
+tile_set = ExtResource("2_ts")
+
+[node name="YSortNode2D" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="BoulderNW" parent="YSortNode2D" instance=ExtResource("4_boulder")]
+position = Vector2(-330, -140)
+size_variation = 1.25
+
+[node name="BoulderN" parent="YSortNode2D" instance=ExtResource("4_boulder")]
+position = Vector2(120, -220)
+size_variation = 0.9
+
+[node name="BoulderNE" parent="YSortNode2D" instance=ExtResource("4_boulder")]
+position = Vector2(370, -100)
+size_variation = 1.1
+
+[node name="BoulderW" parent="YSortNode2D" instance=ExtResource("4_boulder")]
+position = Vector2(-410, 60)
+size_variation = 1.0
+
+[node name="BoulderE" parent="YSortNode2D" instance=ExtResource("4_boulder")]
+position = Vector2(410, 90)
+size_variation = 0.85
+
+[node name="BoulderS" parent="YSortNode2D" instance=ExtResource("4_boulder")]
+position = Vector2(-150, 210)
+size_variation = 1.15
+
+[node name="ToShore" parent="YSortNode2D" instance=ExtResource("3_door")]
+position = Vector2(0, 300)
+target_scene = "res://levels/shore/shore.tscn"
+target_spawn_anchor = "SkydockDoor"
+marker_label = "Sail back to Cradle Rock"
+interact_message = ""
+spawn_offset = Vector2(0, -60)
+
+[node name="UI" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="LocationBanner" type="PanelContainer" parent="UI"]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 16.0
+offset_right = 200.0
+offset_bottom = 64.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("banner_style")
+
+[node name="LocationLabel" type="Label" parent="UI/LocationBanner"]
+modulate = Color(0.86, 0.92, 1, 1)
+layout_mode = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 26
+text = "Driftspar"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HelpButton" type="Button" parent="UI"]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -64.0
+offset_top = -64.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 0
+grow_vertical = 0
+tooltip_text = "Driftspar — a frontier rock
+
+• You sailed here. Nothing's been built on it yet…
+• Walk south to sail back to Cradle Rock"
+focus_mode = 0
+theme_override_font_sizes/font_size = 22
+text = "?"

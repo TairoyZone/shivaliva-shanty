@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="NpcPersonality" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://components/npc/personality.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+npc_name = "Spritely Mia"
+portrait_color = Color(0.95, 0.55, 0.65, 1.0)
+aggression = 0.65
+risk_tolerance = 0.65
+patience = 0.30
+perception = 0.10
+vpip_target = 0.40
+pfr_target = 0.25
+bluff_rate = 0.30
+w_score = 1.2
+w_denial = 0.6
+w_chain = 0.4
+search_depth = 2

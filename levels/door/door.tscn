@@ -1,0 +1,34 @@
+[gd_scene format=3 uid="uid://blr4e33qxprt2"]
+
+[ext_resource type="Script" uid="uid://bd8vbmbbjlmqp" path="res://levels/door/door.gd" id="1"]
+
+[sub_resource type="RectangleShape2D" id="1"]
+size = Vector2(40, 60)
+
+[node name="Door" type="Area2D" unique_id=2119106129]
+collision_layer = 4
+collision_mask = 0
+monitoring = false
+script = ExtResource("1")
+marker_label = "Enter"
+interact_message = Vector2(0, 60)
+spawn_offset = null
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1076873913]
+visible = false
+shape = SubResource("1")
+
+[node name="Tooltip" type="Label" parent="." unique_id=87422212]
+unique_name_in_owner = true
+visible = false
+modulate = Color(0.98, 0.92, 0.55, 1)
+z_index = 1
+offset_left = -120.0
+offset_top = -122.0
+offset_right = 120.0
+offset_bottom = -98.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+vertical_alignment = 1

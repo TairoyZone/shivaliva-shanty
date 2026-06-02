@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://levels/ship_deck/ship_deck.gd" id="1_deck"]
+
+[node name="ShipDeck" type="Node2D"]
+script = ExtResource("1_deck")
+
+[node name="YSortNode2D" type="Node2D" parent="."]
+y_sort_enabled = true

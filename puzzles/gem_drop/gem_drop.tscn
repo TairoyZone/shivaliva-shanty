@@ -1,0 +1,149 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://puzzles/gem_drop/gem_drop.gd" id="1_gd"]
+[ext_resource type="PackedScene" path="res://puzzles/gem_drop/board.tscn" id="2_board"]
+
+[sub_resource type="StyleBoxFlat" id="hud_panel"]
+content_margin_left = 20.0
+content_margin_top = 8.0
+content_margin_right = 20.0
+content_margin_bottom = 8.0
+bg_color = Color(0.18, 0.11, 0.06, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.78, 0.58, 0.24, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="hud_banner"]
+content_margin_left = 28.0
+content_margin_top = 8.0
+content_margin_right = 28.0
+content_margin_bottom = 8.0
+bg_color = Color(0.18, 0.11, 0.06, 0.94)
+border_width_top = 2
+border_width_bottom = 2
+border_color = Color(0.92, 0.76, 0.36, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="GemDrop" type="Node2D"]
+script = ExtResource("1_gd")
+
+[node name="Background" type="ColorRect" parent="."]
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+color = Color(0.11, 0.07, 0.05, 1)
+
+[node name="Board" parent="." instance=ExtResource("2_board")]
+position = Vector2(352, 123)
+
+[node name="UI" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="TopBar" type="HBoxContainer" parent="UI"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 24.0
+offset_top = 16.0
+offset_right = -24.0
+offset_bottom = 96.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_constants/separation = 18
+
+[node name="YouColumn" type="VBoxContainer" parent="UI/TopBar"]
+custom_minimum_size = Vector2(240, 0)
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="YouPanel" type="PanelContainer" parent="UI/TopBar/YouColumn"]
+mouse_filter = 2
+theme_override_styles/panel = SubResource("hud_panel")
+
+[node name="YouLabel" type="Label" parent="UI/TopBar/YouColumn/YouPanel"]
+mouse_filter = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 26
+text = "YOU  0 / 6"
+horizontal_alignment = 1
+vertical_alignment = 1
+modulate = Color(0.97, 0.87, 0.55, 1)
+
+[node name="YouTurnIndicator" type="Label" parent="UI/TopBar/YouColumn"]
+mouse_filter = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 16
+text = "▲  YOUR TURN"
+horizontal_alignment = 1
+vertical_alignment = 1
+modulate = Color(1, 0.86, 0.42, 1)
+
+[node name="CenterBanner" type="PanelContainer" parent="UI/TopBar"]
+size_flags_horizontal = 3
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_styles/panel = SubResource("hud_banner")
+
+[node name="CenterColumn" type="VBoxContainer" parent="UI/TopBar/CenterBanner"]
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="RoundLabel" type="Label" parent="UI/TopBar/CenterBanner/CenterColumn"]
+mouse_filter = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 26
+text = "Round 1   ·   Target 6"
+horizontal_alignment = 1
+vertical_alignment = 1
+modulate = Color(1, 0.88, 0.46, 1)
+
+[node name="RoundsLabel" type="Label" parent="UI/TopBar/CenterBanner/CenterColumn"]
+mouse_filter = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.7)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 15
+text = "Best of 4   ·   YOU 0   ★   Rival 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+modulate = Color(0.86, 0.78, 0.58, 1)
+
+[node name="AiColumn" type="VBoxContainer" parent="UI/TopBar"]
+custom_minimum_size = Vector2(240, 0)
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="AiPanel" type="PanelContainer" parent="UI/TopBar/AiColumn"]
+mouse_filter = 2
+theme_override_styles/panel = SubResource("hud_panel")
+
+[node name="AiLabel" type="Label" parent="UI/TopBar/AiColumn/AiPanel"]
+mouse_filter = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 26
+text = "Rival  0 / 6"
+horizontal_alignment = 1
+vertical_alignment = 1
+modulate = Color(1, 0.55, 0.55, 1)
+
+[node name="AiTurnIndicator" type="Label" parent="UI/TopBar/AiColumn"]
+mouse_filter = 2
+visible = false
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 16
+text = "▲  THINKING…"
+horizontal_alignment = 1
+vertical_alignment = 1
+modulate = Color(1, 0.55, 0.55, 1)

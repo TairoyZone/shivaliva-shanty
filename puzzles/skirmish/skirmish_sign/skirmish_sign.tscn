@@ -1,0 +1,48 @@
+[gd_scene format=3 uid="uid://042rxtltydum"]
+
+[ext_resource type="Script" uid="uid://bj7ghy1lvh47" path="res://puzzles/skirmish/skirmish_sign/skirmish_sign.gd" id="1_ss"]
+
+[sub_resource type="CircleShape2D" id="proximity_shape"]
+radius = 56.0
+
+[sub_resource type="RectangleShape2D" id="solid_shape"]
+size = Vector2(40, 24)
+
+[node name="SkirmishSign" type="Area2D" unique_id=1660366251]
+collision_layer = 4
+collision_mask = 0
+monitoring = false
+script = ExtResource("1_ss")
+puzzle_scene = "res://puzzles/skirmish/skirmish_duel.tscn"
+marker_label = "Spar  —  Skirmish"
+spawn_offset = Vector2(0, 40)
+
+[node name="ProximityShape" type="CollisionShape2D" parent="." unique_id=471231047]
+visible = false
+position = Vector2(0, -56)
+shape = SubResource("proximity_shape")
+
+[node name="SolidBody" type="StaticBody2D" parent="." unique_id=826508536]
+collision_layer = 2
+collision_mask = 0
+
+[node name="SolidShape" type="CollisionShape2D" parent="SolidBody" unique_id=1232093279]
+visible = false
+position = Vector2(0, -8)
+shape = SubResource("solid_shape")
+
+[node name="Tooltip" type="Label" parent="." unique_id=741107695]
+unique_name_in_owner = true
+visible = false
+modulate = Color(0.98, 0.92, 0.55, 1)
+z_index = 1
+offset_left = -160.0
+offset_top = -144.0
+offset_right = 160.0
+offset_bottom = -120.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+text = "Spar  —  Skirmish   [E]"
+horizontal_alignment = 1
+vertical_alignment = 1

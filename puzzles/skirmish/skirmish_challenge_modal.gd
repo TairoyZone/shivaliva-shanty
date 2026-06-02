@@ -1,0 +1,182 @@
+## The Skirmish "who do you want to spar?" picker — opened by the Spar post
+## ([SkirmishSign]) BEFORE the duel loads. Lists the Cradle Rock cast (with the
+## player's rapport tier for flavour) and, on a pick, emits [signal challenged]
+## with that NPC so the prop can seat the foe + launch the duel. A pause-tree
+## CanvasLayer that owns its own input — chrome cloned from [LobbyModal]. See
+## [[combat-puzzle-direction]] (versus-only).
+class_name SkirmishChallengeModal
+extends CanvasLayer
+
+
+## Emitted when the player chooses an opponent.
+signal challenged(profile: NpcPersonality)
+## Emitted on backing out.
+signal cancelled
+
+
+func _ready() -> void:
+
+	layer = 40
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	_build()
+	get_tree().paused = true
+
+
+func _exit_tree() -> void:
+
+	if get_tree() != null:
+		get_tree().paused = false
+
+
+func _build() -> void:
+
+	var dim : ColorRect = ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.anchor_right = 1.0
+	dim.anchor_bottom = 1.0
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(dim)
+
+	var panel : PanelContainer = PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", _panel_style())
+	panel.anchor_left = 0.5
+	panel.anchor_top = 0.5
+	panel.anchor_right = 0.5
+	panel.anchor_bottom = 0.5
+	panel.offset_left = -300.0
+	panel.offset_top = -230.0
+	panel.offset_right = 300.0
+	panel.offset_bottom = 230.0
+	add_child(panel)
+
+	var vbox : VBoxContainer = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 14)
+	panel.add_child(vbox)
+	vbox.add_child(_make_title("CHALLENGE TO A SPAR"))
+	vbox.add_child(_make_caption("Who do you want to test your mettle against?"))
+
+	var scroll : ScrollContainer = ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0.0, 280.0)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_child(scroll)
+	var list : VBoxContainer = VBoxContainer.new()
+	list.add_theme_constant_override("separation", 8)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	# Easiest foes first (by their search_depth "wits"), so a new player
+	# naturally starts gentle. Each button is colour-coded by difficulty.
+	var cast : Array[NpcPersonality] = NpcRegistry.all().duplicate()
+	cast.sort_custom(func(a, b): return a.search_depth < b.search_depth)
+	for profile in cast:
+		var diff : String = _difficulty_tier(profile.search_depth)
+		var btn : Button = _make_walnut_button("%s   ·   %s" % [profile.npc_name, diff],
+			_difficulty_color(profile.search_depth))
+		btn.pressed.connect(_on_pick.bind(profile))
+		list.add_child(btn)
+
+	vbox.add_child(_make_caption("Tougher foes think harder. New to sparring? Start with a Novice."))
+	var back : Button = _make_walnut_button("Never mind", Color(0.95, 0.84, 0.56, 1.0))
+	back.pressed.connect(_on_cancel)
+	vbox.add_child(back)
+
+
+# Player-facing difficulty from the foe's search_depth "wits" (1..5).
+func _difficulty_tier(search_depth: int) -> String:
+
+	if search_depth <= 2:
+		return "Novice"
+	if search_depth == 3:
+		return "Regular"
+	return "Expert"
+
+
+func _difficulty_color(search_depth: int) -> Color:
+
+	if search_depth <= 2:
+		return Color(0.55, 0.92, 0.55)   # green — gentle
+	if search_depth == 3:
+		return Color(0.95, 0.85, 0.40)   # gold — even
+	return Color(1.0, 0.62, 0.34)        # orange — tough
+
+
+func _on_pick(profile: NpcPersonality) -> void:
+
+	if get_tree() != null:
+		get_tree().paused = false
+	challenged.emit(profile)
+	queue_free()
+
+
+func _on_cancel() -> void:
+
+	if get_tree() != null:
+		get_tree().paused = false
+	cancelled.emit()
+	queue_free()
+
+
+# --- Styling (cloned from LobbyModal so the modals match) -------------
+
+func _make_title(text: String) -> Label:
+
+	var label : Label = Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 30)
+	label.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
+	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	label.add_theme_constant_override("outline_size", 4)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	return label
+
+
+func _make_caption(text: String) -> Label:
+
+	var label : Label = Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 15)
+	label.add_theme_color_override("font_color", Color(0.74, 0.80, 0.92, 1.0))
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	return label
+
+
+func _panel_style() -> StyleBoxFlat:
+
+	var style : StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = Color(0.18, 0.11, 0.06, 0.96)
+	style.border_color = Color(0.78, 0.58, 0.24, 1.0)
+	style.set_border_width_all(3)
+	style.set_corner_radius_all(14)
+	style.content_margin_left = 30
+	style.content_margin_right = 30
+	style.content_margin_top = 24
+	style.content_margin_bottom = 24
+	return style
+
+
+func _make_walnut_button(text: String, font_color: Color) -> Button:
+
+	var btn : Button = Button.new()
+	btn.text = text
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.add_theme_font_size_override("font_size", 19)
+	btn.add_theme_color_override("font_color", font_color)
+	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	btn.add_theme_constant_override("outline_size", 3)
+	for state in ["normal", "hover", "pressed"]:
+		var s : StyleBoxFlat = StyleBoxFlat.new()
+		var bg : Color = Color(0.22, 0.14, 0.08, 0.95)
+		if state == "hover":
+			bg = bg.lightened(0.10)
+		elif state == "pressed":
+			bg = bg.darkened(0.12)
+		s.bg_color = bg
+		s.border_color = Color(0.78, 0.58, 0.24, 1.0)
+		s.set_border_width_all(2)
+		s.set_corner_radius_all(8)
+		s.content_margin_left = 18
+		s.content_margin_right = 18
+		s.content_margin_top = 8
+		s.content_margin_bottom = 8
+		btn.add_theme_stylebox_override(state, s)
+	return btn

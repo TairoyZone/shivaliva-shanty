@@ -1,0 +1,197 @@
+[gd_scene format=4 uid="uid://csicbd7104txv"]
+
+[ext_resource type="Script" uid="uid://c1papnrx6rbbp" path="res://levels/shore/shore.gd" id="1_shore"]
+[ext_resource type="TileSet" uid="uid://ttl82eyaqrvu" path="res://assets/iso/isometric_tileset.tres" id="2_tileset"]
+[ext_resource type="PackedScene" uid="uid://brmstrkpawpq" path="res://buildings/outpost/outpost_building.tscn" id="4_inn"]
+[ext_resource type="PackedScene" uid="uid://dm7sl5hn2n7hi" path="res://buildings/player_shanty/player_shanty.tscn" id="5_shanty"]
+[ext_resource type="PackedScene" uid="uid://b1forge8k2qra" path="res://buildings/forge/forge.tscn" id="6_forge"]
+[ext_resource type="PackedScene" uid="uid://b2healh7k3qrb" path="res://buildings/healers_hut/healers_hut.tscn" id="7_apoth"]
+[ext_resource type="PackedScene" uid="uid://b3wkshp8k4qrc" path="res://buildings/workshop/workshop.tscn" id="8_wkshp"]
+[ext_resource type="PackedScene" uid="uid://b4skdclak5qrd" path="res://buildings/skydock/skydock.tscn" id="9_skdck"]
+[ext_resource type="PackedScene" path="res://levels/forest/tree.tscn" id="10_170tr"]
+[ext_resource type="PackedScene" uid="uid://blr4e33qxprt2" path="res://levels/door/door.tscn" id="10_door"]
+[ext_resource type="PackedScene" path="res://levels/mine/boulder.tscn" id="11_1n1ob"]
+
+[sub_resource type="StyleBoxFlat" id="banner_style"]
+content_margin_left = 28.0
+content_margin_top = 8.0
+content_margin_right = 28.0
+content_margin_bottom = 8.0
+bg_color = Color(0, 0, 0, 0.55)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[node name="Shore" type="Node2D" unique_id=1161041205]
+script = ExtResource("1_shore")
+pirate_spawn_position = Vector2(0, 0)
+escape_scene = "res://main.tscn"
+
+[node name="GroundTileMapLayer" type="TileMapLayer" parent="." unique_id=1496222394]
+tile_map_data = PackedByteArray("AAD+/wAAAAACAAAAAAD9////AAACAAAAAAD9//7/AAACAAAAAAD9//3/AAACAAAAAAD+//z/AAACAAAAAAD+//v/AAACAAAAAAD///z/AAACAAAAAAD+//3/AAACAAAAAAD+//7/AAACAAAAAAD+////AAACAAAAAAD///7/AAACAAAAAAD///3/AAACAAAAAAAAAPz/AAACAAAAAAAAAP3/AAACAAAAAAABAPz/AAACAAAAAAABAP3/AAACAAAAAAACAP7/AAACAAAAAAACAP//AAACAAAAAAACAAAAAAACAAAAAAACAAEAAAACAAAAAAACAAIAAAACAAAAAAABAAMAAAACAAAAAAABAAQAAAACAAAAAAAAAAMAAAACAAAAAAAAAAIAAAACAAAAAAAAAAEAAAACAAAAAAAAAAAAAAACAAAAAAAAAP//AAACAAAAAAABAP7/AAACAAAAAAABAP//AAACAAAAAAABAAAAAAACAAAAAAABAAEAAAACAAAAAAABAAIAAAACAAAAAAD//wEAAAACAAAAAAD//wIAAAACAAAAAAD+/wEAAAACAAAAAAD//wAAAAACAAAAAAD/////AAACAAAAAAAAAP7/AAACAAAAAAAAAAUAAAACAAAAAAAAAAQAAAACAAAAAAD//wMAAAACAAAAAAD//wQAAAACAAAAAAD+/wUAAAACAAAAAAD+/wQAAAACAAAAAAD9/wMAAAACAAAAAAD9/wIAAAACAAAAAAD9/wEAAAACAAAAAAD9/wAAAAACAAAAAAD8////AAACAAAAAAD+/wIAAAACAAAAAAD+/wMAAAACAAAAAAD//wUAAAACAAAAAAAAAAYAAAACAAAAAAD//wYAAAACAAAAAAD//wcAAAACAAAAAAD8/wEAAAACAAAAAAD8/wAAAAACAAAAAAADAAAAAAACAAAAAAADAP//AAACAAAAAAD7////AAACAAAAAAD8//7/AAACAAAAAAD8//3/AAACAAAAAAD9//z/AAACAAAAAAD9//v/AAACAAAAAAD+//r/AAACAAAAAAD+//n/AAACAAAAAAD///r/AAACAAAAAAD///v/AAACAAAAAAAAAPr/AAACAAAAAAAAAPv/AAACAAAAAAACAPz/AAACAAAAAAACAP3/AAACAAAAAAADAP7/AAACAAAAAAADAP3/AAACAAAAAAADAPz/AAACAAAAAAACAPv/AAACAAAAAAABAPv/AAACAAAAAAABAPr/AAACAAAAAAAAAPn/AAACAAAAAAAAAPj/AAACAAAAAAD///n/AAACAAAAAAD///j/AAACAAAAAAD9//r/AAACAAAAAAD8//v/AAACAAAAAAD8//z/AAACAAAAAAD7//3/AAACAAAAAAD7//7/AAACAAAAAAD9//n/AAACAAAAAAD///f/AAACAAAAAAD///b/AAACAAAAAAD+//f/AAACAAAAAAD+//j/AAACAAAAAAAAAPb/AAACAAAAAAAAAPf/AAACAAAAAAABAPj/AAACAAAAAAABAPn/AAACAAAAAAACAPr/AAACAAAAAAAEAP7/AAACAAAAAAD///X/AAACAAAAAAD6////AAACAAAAAAD7/wAAAAACAAAAAAD7/wEAAAACAAAAAAD8/wIAAAACAAAAAAD8/wMAAAACAAAAAAD9/wQAAAACAAAAAAD9/wUAAAACAAAAAAD+/wYAAAACAAAAAAD+/wcAAAACAAAAAAD//wgAAAACAAAAAAD//wkAAAACAAAAAAAAAAgAAAACAAAAAAAAAAcAAAACAAAAAAABAAYAAAACAAAAAAABAAUAAAACAAAAAAACAAQAAAACAAAAAAACAAMAAAACAAAAAAADAAIAAAACAAAAAAADAAEAAAACAAAAAAAEAAAAAAACAAAAAAAEAP//AAACAAAAAAA=")
+tile_set = ExtResource("2_tileset")
+metadata/_edit_lock_ = true
+
+[node name="UpperTileMapLayer" type="TileMapLayer" parent="." unique_id=1872038654]
+position = Vector2(0, -78)
+tile_set = ExtResource("2_tileset")
+
+[node name="YSortNode2D" type="Node2D" parent="." unique_id=1253342460]
+y_sort_enabled = true
+
+[node name="GroundObjectsTileMapLayer" type="TileMapLayer" parent="YSortNode2D" unique_id=201589454]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD6//3/AAADAAAAAAD7//z/AAADAAAAAAD7//v/AAADAAAAAAD8//r/AAADAAAAAAD8//n/AAADAAAAAAD9//j/AAADAAAAAAD9//f/AAADAAAAAAD+//b/AAADAAAAAAD+//X/AAADAAAAAAD///T/AAADAAAAAAD///P/AAADAAAAAAAAAPT/AAADAAAAAAAAAPX/AAADAAAAAAABAPb/AAADAAAAAAABAPf/AAADAAAAAAACAPj/AAADAAAAAAACAPn/AAADAAAAAAADAPr/AAADAAAAAAADAPv/AAADAAAAAAAEAPz/AAADAAAAAAAEAP3/AAADAAAAAAAFAP7/AAADAAAAAAAFAP//AAADAAAAAAD6//7/AAADAAAAAAD5////AAADAAAAAAD6/wAAAAADAAAAAAD6/wEAAAADAAAAAAD7/wIAAAADAAAAAAD7/wMAAAADAAAAAAD8/wQAAAADAAAAAAD8/wUAAAADAAAAAAD9/wYAAAADAAAAAAD9/wcAAAADAAAAAAD+/wgAAAADAAAAAAD+/wkAAAADAAAAAAD//woAAAADAAAAAAD//wsAAAADAAAAAAAAAAoAAAADAAAAAAAAAAkAAAADAAAAAAABAAgAAAADAAAAAAABAAcAAAADAAAAAAACAAYAAAADAAAAAAACAAUAAAADAAAAAAADAAQAAAADAAAAAAADAAMAAAADAAAAAAAEAAIAAAADAAAAAAAEAAEAAAADAAAAAAAFAAAAAAADAAAAAAA=")
+tile_set = ExtResource("2_tileset")
+
+[node name="UpperObjectsTileMapLayer" type="TileMapLayer" parent="YSortNode2D" unique_id=645778121]
+y_sort_enabled = true
+position = Vector2(0, -78)
+tile_set = ExtResource("2_tileset")
+
+[node name="OutpostBuilding" parent="YSortNode2D" unique_id=1730077042 instance=ExtResource("4_inn")]
+position = Vector2(0, -56)
+
+[node name="PlayerShanty" parent="YSortNode2D" unique_id=834931299 instance=ExtResource("5_shanty")]
+position = Vector2(-1024, 0)
+
+[node name="Forge" parent="YSortNode2D" unique_id=441243707 instance=ExtResource("6_forge")]
+position = Vector2(0, -488)
+
+[node name="HealersHut" parent="YSortNode2D" unique_id=308611854 instance=ExtResource("7_apoth")]
+position = Vector2(1032, 0)
+
+[node name="Workshop" parent="YSortNode2D" unique_id=921222377 instance=ExtResource("8_wkshp")]
+position = Vector2(576, 232)
+
+[node name="Skydock" parent="YSortNode2D" unique_id=223000752 instance=ExtResource("9_skdck")]
+position = Vector2(0, 520)
+
+[node name="ToForest" parent="YSortNode2D" unique_id=332582226 instance=ExtResource("10_door")]
+y_sort_enabled = true
+position = Vector2(-456, -320)
+target_scene = "res://levels/forest/forest.tscn"
+target_spawn_anchor = "ToShore"
+marker_label = "To the Grove"
+interact_message = ""
+spawn_offset = Vector2(0, 60)
+
+[node name="Trees" type="Node2D" parent="YSortNode2D/ToForest" unique_id=2116011873]
+y_sort_enabled = true
+
+[node name="ForestTree" parent="YSortNode2D/ToForest/Trees" unique_id=169506905 instance=ExtResource("10_170tr")]
+position = Vector2(-128, 88)
+
+[node name="ForestTree3" parent="YSortNode2D/ToForest/Trees" unique_id=1398003991 instance=ExtResource("10_170tr")]
+position = Vector2(-24, -96)
+
+[node name="ForestTree8" parent="YSortNode2D/ToForest/Trees" unique_id=2123612521 instance=ExtResource("10_170tr")]
+position = Vector2(-72, -24)
+
+[node name="ForestTree4" parent="YSortNode2D/ToForest/Trees" unique_id=1331016205 instance=ExtResource("10_170tr")]
+position = Vector2(56, -80)
+
+[node name="ForestTree5" parent="YSortNode2D/ToForest/Trees" unique_id=1020162396 instance=ExtResource("10_170tr")]
+position = Vector2(96, -32)
+
+[node name="ForestTree6" parent="YSortNode2D/ToForest/Trees" unique_id=166316646 instance=ExtResource("10_170tr")]
+position = Vector2(-160, -40)
+
+[node name="ForestTree7" parent="YSortNode2D/ToForest/Trees" unique_id=757803776 instance=ExtResource("10_170tr")]
+position = Vector2(-48, 80)
+
+[node name="ForestTree2" parent="YSortNode2D/ToForest/Trees" unique_id=1337748100 instance=ExtResource("10_170tr")]
+position = Vector2(-208, 32)
+
+[node name="ToMine" parent="YSortNode2D" unique_id=1109625490 instance=ExtResource("10_door")]
+y_sort_enabled = true
+position = Vector2(456, -320)
+target_scene = "res://levels/mine/mine.tscn"
+target_spawn_anchor = "ToShore"
+marker_label = "To the Mine"
+interact_message = ""
+spawn_offset = Vector2(0, 60)
+
+[node name="Boulders" type="Node2D" parent="YSortNode2D/ToMine" unique_id=1520059860]
+y_sort_enabled = true
+
+[node name="Boulder" parent="YSortNode2D/ToMine/Boulders" unique_id=710897734 instance=ExtResource("11_1n1ob")]
+position = Vector2(-104, -80)
+size_variation = 1.2
+
+[node name="Boulder2" parent="YSortNode2D/ToMine/Boulders" unique_id=462542675 instance=ExtResource("11_1n1ob")]
+position = Vector2(0, -112)
+size_variation = 1.2
+
+[node name="Boulder3" parent="YSortNode2D/ToMine/Boulders" unique_id=1880298617 instance=ExtResource("11_1n1ob")]
+position = Vector2(88, -48)
+size_variation = 1.2
+
+[node name="Boulder4" parent="YSortNode2D/ToMine/Boulders" unique_id=1143474921 instance=ExtResource("11_1n1ob")]
+position = Vector2(136, 24)
+size_variation = 1.2
+
+[node name="Boulder5" parent="YSortNode2D/ToMine/Boulders" unique_id=73872294 instance=ExtResource("11_1n1ob")]
+position = Vector2(88, 64)
+size_variation = 1.2
+
+[node name="Boulder6" parent="YSortNode2D/ToMine/Boulders" unique_id=1512379344 instance=ExtResource("11_1n1ob")]
+position = Vector2(-80, -128)
+size_variation = 1.2
+
+[node name="Boulder7" parent="YSortNode2D/ToMine/Boulders" unique_id=515831833 instance=ExtResource("11_1n1ob")]
+position = Vector2(-88, -32)
+size_variation = 1.2
+
+[node name="Boulder8" parent="YSortNode2D/ToMine/Boulders" unique_id=2062122306 instance=ExtResource("11_1n1ob")]
+position = Vector2(176, -56)
+size_variation = 1.2
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=1533197401]
+layer = 5
+visible = false
+
+[node name="LocationBanner" type="PanelContainer" parent="UI" unique_id=559855485]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 16.0
+offset_right = 200.0
+offset_bottom = 64.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("banner_style")
+
+[node name="LocationLabel" type="Label" parent="UI/LocationBanner" unique_id=1495127784]
+modulate = Color(0.98, 0.92, 0.65, 1)
+layout_mode = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 26
+text = "Cradle Rock"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HelpButton" type="Button" parent="UI" unique_id=1680855003]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -64.0
+offset_top = -64.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 0
+grow_vertical = 0
+tooltip_text = "Cradle Rock
+
+• WASD / arrow keys — 8-direction iso movement
+• Walk near a door and press E to enter
+• Walls block you; paint the rock in the editor
+• ESC — return to the title screen"
+focus_mode = 0
+theme_override_font_sizes/font_size = 22
+text = "?"

@@ -1,0 +1,33 @@
+[gd_scene format=3 uid="uid://dm7sl5hn2n7hi"]
+
+[ext_resource type="Script" uid="uid://dvp0ejr3mm0tx" path="res://buildings/player_shanty/player_shanty.gd" id="1"]
+[ext_resource type="PackedScene" uid="uid://blr4e33qxprt2" path="res://levels/door/door.tscn" id="2_door"]
+
+[node name="PlayerShanty" type="StaticBody2D" unique_id=875914352]
+collision_layer = 2
+collision_mask = 0
+script = ExtResource("1")
+wall_width = 140.0
+wall_height = 100.0
+roof_overhang = 20.0
+roof_height = 52.0
+window_size = Vector2(22, 22)
+window_front_right = false
+color_walls = Color(0.48, 0.34, 0.18, 1)
+color_walls_outline = Color(0.22, 0.14, 0.06, 1)
+color_roof = Color(0.3, 0.18, 0.08, 1)
+color_roof_outline = Color(0.14, 0.08, 0.03, 1)
+color_window = Color(0.45, 0.28, 0.1, 1)
+color_window_frame = Color(0.4, 0.24, 0.08, 1)
+
+[node name="Foundation" type="CollisionPolygon2D" parent="." unique_id=1775410474]
+visible = false
+polygon = PackedVector2Array(0, 35, 70, 0, 0, -35, -70, 0)
+
+[node name="ShantyDoor" parent="." unique_id=339369330 instance=ExtResource("2_door")]
+position = Vector2(35, 17.5)
+target_scene = "res://levels/player_shanty_interior/player_shanty_interior.tscn"
+target_spawn_anchor = "DoorOut"
+wall_facing = 1
+marker_label = "Enter your shanty"
+spawn_offset = Vector2(0, 40)

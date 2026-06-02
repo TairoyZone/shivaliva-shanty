@@ -1,0 +1,47 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://buildings/workshop/ship_shop/ship_shop.gd" id="1_shop"]
+
+[sub_resource type="CircleShape2D" id="proximity_shape"]
+radius = 56.0
+
+[sub_resource type="RectangleShape2D" id="solid_shape"]
+size = Vector2(92, 28)
+
+[node name="ShipShop" type="Area2D"]
+collision_layer = 4
+collision_mask = 0
+monitoring = false
+script = ExtResource("1_shop")
+marker_label = "Order a ship"
+spawn_offset = Vector2(0, 40)
+
+[node name="ProximityShape" type="CollisionShape2D" parent="."]
+visible = false
+position = Vector2(0, -40)
+shape = SubResource("proximity_shape")
+
+[node name="SolidBody" type="StaticBody2D" parent="."]
+collision_layer = 2
+collision_mask = 0
+
+[node name="SolidShape" type="CollisionShape2D" parent="SolidBody"]
+visible = false
+position = Vector2(0, -28)
+shape = SubResource("solid_shape")
+
+[node name="Tooltip" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+modulate = Color(0.98, 0.92, 0.55, 1)
+z_index = 1
+offset_left = -150.0
+offset_top = -120.0
+offset_right = 150.0
+offset_bottom = -96.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+text = "Order a ship   [E]"
+horizontal_alignment = 1
+vertical_alignment = 1

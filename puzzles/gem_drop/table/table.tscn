@@ -1,0 +1,49 @@
+[gd_scene format=3 uid="uid://syqg82dnkqjy"]
+
+[ext_resource type="Script" uid="uid://qmt5ev5h2gn7" path="res://puzzles/gem_drop/table/table.gd" id="1"]
+
+[sub_resource type="CircleShape2D" id="proximity_shape"]
+radius = 50.0
+
+[sub_resource type="RectangleShape2D" id="solid_shape"]
+size = Vector2(96, 62)
+
+[node name="GemDropTable" type="Area2D" unique_id=997735200]
+collision_layer = 4
+collision_mask = 0
+monitoring = false
+script = ExtResource("1")
+puzzle_scene = "res://puzzles/gem_drop/gem_drop.tscn"
+play_cost = 5
+marker_label = "Gem Drop"
+spawn_offset = Vector2(0, 20)
+
+[node name="ProximityShape" type="CollisionShape2D" parent="." unique_id=347104810]
+visible = false
+position = Vector2(0, -48)
+shape = SubResource("proximity_shape")
+
+[node name="SolidBody" type="StaticBody2D" parent="." unique_id=1049697377]
+collision_layer = 2
+collision_mask = 0
+
+[node name="SolidShape" type="CollisionShape2D" parent="SolidBody" unique_id=1614700955]
+visible = false
+position = Vector2(0, -33)
+shape = SubResource("solid_shape")
+
+[node name="Tooltip" type="Label" parent="." unique_id=1061504699]
+unique_name_in_owner = true
+visible = false
+modulate = Color(0.98, 0.92, 0.55, 1)
+z_index = 1
+offset_left = -120.0
+offset_top = -145.0
+offset_right = 120.0
+offset_bottom = -121.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+text = "5 gold to play   [E]"
+horizontal_alignment = 1
+vertical_alignment = 1

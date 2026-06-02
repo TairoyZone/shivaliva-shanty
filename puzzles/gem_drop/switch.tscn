@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://ccbvhulnyibux"]
+
+[ext_resource type="Script" path="res://puzzles/gem_drop/switch.gd" id="1_switch"]
+
+[node name="Switch" type="Node2D"]
+script = ExtResource("1_switch")

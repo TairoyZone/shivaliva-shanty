@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="NpcPersonality" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://components/npc/personality.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+npc_name = "Cogwise Godfrey"
+portrait_color = Color(0.30, 0.55, 0.82, 1.0)
+aggression = 0.50
+risk_tolerance = 0.40
+patience = 0.85
+perception = 0.90
+vpip_target = 0.22
+pfr_target = 0.18
+bluff_rate = 0.15
+w_score = 1.2
+w_denial = 0.8
+w_chain = 1.5
+search_depth = 4

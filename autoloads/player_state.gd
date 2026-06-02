@@ -1,0 +1,1150 @@
+## Persistent player state — survives scene changes AND application restarts.
+##
+## Two flavors of state live here:
+##
+## Permanent (saved to user://save.cfg, restored on launch):
+##   - total_coins           : the gold balance (HUD currency — NOT in the bag)
+##   - inventory             : the slot-based backpack (Stardew-style). Holds
+##                             stackable items (wood, future ore/planks/etc).
+##                             `total_wood` is a convenience read of the wood count.
+##   - inventory_capacity    : number of backpack slots (starts at 6, expandable later)
+##   - hired_at_workshop     : has the player applied for Godfrey's lumberjacking job?
+##   - godfrey_lumber_stock  : accumulated wood the player has delivered to Godfrey
+##                             (drives the visible LumberPile + future ship-build gating)
+##   - npc_affinity          : per-NPC rapport (name → 0..MAX_AFFINITY)
+##   - last_scene            : the scene the player was in when they quit
+##   - last_position         : where on that scene they were
+##
+## Transient (in-memory only — drives the next scene's spawn placement):
+##   - pending_spawn_anchor : name of a Marker2D in the next scene to
+##                            spawn at (set by a Door or a puzzle table
+##                            before scene change)
+##   - pending_spawn_position : raw position to spawn at (set on resume
+##                              from a saved session)
+##
+## BaseLocation consumes the transient fields in _ready() — anchor takes
+## priority, then position, then falls back to pirate_spawn_position.
+extends Node
+
+
+signal coins_changed(new_total: int)
+## Fires whenever the backpack contents change (item added/removed, or
+## capacity expanded). UI (the inventory overlay, bag button) listens.
+signal inventory_changed
+## Fires whenever the player's carried WOOD count specifically changes —
+## a convenience signal so wood-aware UI (Workshop drop-off tooltip, the
+## bag-button wood-gain feedback) doesn't have to recompute on every
+## unrelated inventory change. Carries the new wood total.
+signal wood_changed(new_total: int)
+## Fires whenever Godfrey's accumulated lumber stock grows (or shrinks
+## once ship-building consumes it). Drives the visible LumberPile prop
+## inside the Workshop.
+signal lumber_stock_changed(new_total: int)
+## Mirror of [signal wood_changed] for ore — lets the Forge ore drop-off
+## tooltip refresh when the carried ore count changes.
+signal ore_changed(new_total: int)
+## Mirror of [signal lumber_stock_changed] for Cinder Troy's accumulated
+## ore stock. Drives the visible OrePile prop inside the Forge.
+signal ore_stock_changed(new_total: int)
+## Fires when the player's current onboarding objective MIGHT have changed
+## (got hired, bought a ship). The HUD objective banner listens + recomputes
+## via [method current_objective]. (Coin/lumber progress updates ride the
+## existing coins_changed / lumber_stock_changed signals.)
+signal objective_changed
+## Fires when the player buys a spacecraft. The ship-shop modal listens
+## to refresh its rows (Buy → Owned).
+signal ships_changed
+## Fires when the player buys a Skirmish weapon. The forge weapon-shop listens
+## to refresh its rows (Buy → Owned).
+signal weapons_changed
+## Fires whenever an NPC's rapport changes. UI (toasts, dialogue tier
+## line) listens to surface the gain.
+signal affinity_changed(npc_name: String, new_value: int, tier: String)
+## Fires when a puzzle's mastery tier increases (a new best crossed a
+## threshold). Puzzle result screens listen to pop the "NEW RANK" flourish.
+signal mastery_ranked_up(puzzle_id: String, tier_index: int, tier_name: String)
+
+const SAVE_PATH : String = "user://save.cfg"
+const SAVE_SECTION : String = "player"
+const STARTING_GOLD : int = 0
+## The first-ship onboarding goal — mirrors the cheapest spacecraft in
+## ship_shop.gd's catalog (the Driftpod). Drives [method current_objective].
+const FIRST_SHIP_NAME : String = "Driftpod"
+const FIRST_SHIP_GOLD : int = 300
+const FIRST_SHIP_LUMBER : int = 60
+## Gold paid per wood delivered at the Workshop drop-off. 1:1 is
+## intentional — Gem Drop tops out at +10 per match, a clean Lumberjacking
+## session yields ~10-30 wood, so 1:1 puts wages in the same earning band
+## as parlor games without making chopping trivially better.
+const WOOD_TO_GOLD_RATE : float = 1.0
+## Gold paid per ore delivered at the Forge drop-off. Ore pays DOUBLE wood
+## (2026-05-31): Lumberjacking is open-ended so wood piles up, while Mining
+## caps at CHUNK_TARGET per session, making ore the scarcer, harder-won
+## (and thematically premium — forge → tech → spacecraft) material. The 2×
+## rate rewards the tougher job so it isn't out-earned by easy chopping.
+const ORE_TO_GOLD_RATE : float = 2.0
+const MAX_AFFINITY : int = 100
+
+# --- Puzzle mastery (per-puzzle proficiency ladder) --------------------
+## Reskin of YPP's per-puzzle "Standing" — but ABSOLUTE + non-decaying +
+## alt-proof: your single BEST session score per puzzle (a high-water mark)
+## sets your rank. One shared 6-tier ladder, tracked separately per puzzle.
+## See [[ypp-template]] / [[roadmap]] (Phase 1).
+const MASTERY_TIERS : Array = ["Greenhorn", "Hand", "Adept", "Master", "Ace", "Legend"]
+## Per-puzzle config: display name + the best-score needed to REACH each
+## tier (index-aligned to MASTERY_TIERS; index 0 = Greenhorn at 0). These
+## thresholds are first-pass guesses — TUNE against real session scores.
+const MASTERY_PUZZLES : Dictionary = {
+	"lumberjacking": {"name": "Lumberjacking", "thresholds": [0, 20, 40, 65, 95, 135]},
+	"mining": {"name": "Mining", "thresholds": [0, 20, 40, 65, 95, 135]},
+	"gem_drop": {"name": "Gem Drop", "thresholds": [0, 15, 35, 60, 95, 140]},
+	"poker": {"name": "Poker", "thresholds": [0, 25, 75, 150, 275, 450]},
+	"skirmish": {"name": "Skirmish", "thresholds": [0, 400, 1200, 3000, 7000, 15000]},
+	"loft": {"name": "Lofting", "thresholds": [0, 120, 280, 480, 750, 1100]},
+}
+
+# --- Inventory (Stardew-style slot backpack) -------------------------
+## The canonical item id for raw lumber. Future puzzles add more ids
+## (ore, planks, …) to [constant ITEM_DEFS]; the inventory is generic.
+const ITEM_WOOD : String = "wood"
+## The canonical item id for raw ore (mined at the Mine, delivered to
+## Cinder Troy at the Forge).
+const ITEM_ORE : String = "ore"
+## Per-item definitions. max_stack is how many fit in one slot — Troy
+## chose a "tight" backpack (small stacks) so space pressure is felt
+## early and expansion matters.
+const ITEM_DEFS : Dictionary = {
+	"wood": {"name": "Wood", "max_stack": 50},
+	"ore": {"name": "Ore", "max_stack": 50},
+}
+## Fallback stack cap for any item missing from ITEM_DEFS.
+const DEFAULT_MAX_STACK : int = 50
+## Slots the backpack starts with. Expandable later (buy a bigger
+## backpack) via [method expand_inventory]; the value persists.
+const INVENTORY_START_CAPACITY : int = 6
+# Tier thresholds (inclusive lower bound). Used for dialogue gating +
+# the eventual hire/crew system — Confidant is the "can recruit" tier.
+const AFFINITY_TIERS : Array = [
+	{"min": 80, "name": "Confidant"},
+	{"min": 50, "name": "Friend"},
+	{"min": 20, "name": "Acquaintance"},
+	{"min": 0,  "name": "Stranger"},
+]
+
+# Permanent state — written to disk.
+var total_coins : int = STARTING_GOLD :
+	set(value):
+		if total_coins == value:
+			return
+		total_coins = value
+		coins_changed.emit(total_coins)
+		_save()
+
+## Lifetime gold EARNED — monotonic (only ever rises; ignores spending), so
+## wealth-milestone trophies stay earn-and-keep. Persisted; bumped in
+## [method add_coins].
+var lifetime_coins_earned : int = 0
+
+## The backpack: a dense Array of `inventory_capacity` slots. Each slot
+## is either {} (empty) or {"id": String, "count": int}. Mutate ONLY via
+## [method add_item] / [method remove_item] so signals + persistence fire.
+var inventory : Array = []
+## Number of backpack slots. Starts at [constant INVENTORY_START_CAPACITY];
+## grows via [method expand_inventory]. Persisted.
+var inventory_capacity : int = INVENTORY_START_CAPACITY
+
+## Convenience read-only accessor for the carried wood count, so existing
+## call sites (Workshop drop-off, HUD) can keep reading `total_wood`.
+## Writes go through [method add_item] / [method remove_item].
+var total_wood : int :
+	get:
+		return item_count(ITEM_WOOD)
+
+## Convenience read-only accessor for the carried ore count (mirror of
+## [member total_wood]). Writes go through [method add_item] / [method remove_item].
+var total_ore : int :
+	get:
+		return item_count(ITEM_ORE)
+
+## Spacecraft the player has bought from Cogwise Godfrey's ship shop, as
+## an Array of ship-id Strings. Vanity ownership for now (the travel/
+## sailing arc that uses them is far future); persisted. See
+## [method buy_ship] / [method owns_ship].
+var owned_ships : Array = []
+
+## The player's Skirmish weapons. You start with just FISTS (brawl); the rest are bought
+## at Cinder Troy's forge ([WeaponShop]) → appended here. The EQUIPPED one is the attack
+## your boarding/duel sends. Switched in the inventory (the Backpack tab), never mid-fight.
+## See [SkirmishWeapon] / [[combat-puzzle-direction]].
+var owned_weapons : Array = ["brawl"]
+var equipped_weapon : String = "brawl"
+
+## True once the player has signed up at the Hiring Board for Godfrey's
+## lumberjacking job. Gates the WoodCuttingSign in the Forest — without
+## this flag, the sign tells the player to apply at the Workshop first.
+var hired_at_workshop : bool = false :
+	set(value):
+		if hired_at_workshop == value:
+			return
+		hired_at_workshop = value
+		objective_changed.emit()
+		_save()
+
+## True once the player has seen the one-time opening welcome (shown on
+## first launch in the shanty). Gates the IntroOverlay so it never repeats.
+var has_seen_intro : bool = false :
+	set(value):
+		if has_seen_intro == value:
+			return
+		has_seen_intro = value
+		_save()
+
+## True once the player has won their first voyage — unlocks ongoing
+## access to the frontier isle. Persisted.
+var frontier_unlocked : bool = false :
+	set(value):
+		if frontier_unlocked == value:
+			return
+		frontier_unlocked = value
+		_save()
+
+# --- Voyage (transient, in-memory only — drives the Voyage scene flow) ---
+## Scene to return to when a voyage ends ("Sail home"); set by the Skydock
+## helm before launching the voyage.
+var voyage_home_scene : String = ""
+## The Voyage scene's _ready branches on this: 0 = fresh (cast off → the LOFT
+## station); 1 = back from the Loft (encounter → the SKIRMISH boarding fight);
+## 2 = back from the fight (resolve booty + disembark / sail home).
+var voyage_phase : int = 0
+## The wood yield of the most recent Lumberjacking session (set by
+## lumberjacking.gd on commit; robust to a full backpack, unlike a
+## carried-wood delta). The Voyage reads it as the boarding-fight result.
+var last_lumberjacking_yield : int = 0
+## The LIFT banked in the most recent Loft session (set by loft.gd on session
+## end). The Voyage reads it as the MAKE-WAY result — it scales the booty and
+## seeds the boarding fight (better sailing → an easier board).
+var last_loft_lift : int = 0
+## Did the player win the most recent Skirmish duel? (Set by skirmish_duel.gd on
+## end.) The Voyage reads it as the boarding-fight outcome.
+var last_skirmish_won : bool = false
+## Transient: how much the foe's Skirmish board is pre-buried at the start of a
+## voyage boarding fight (the "arrival footing" — derived from last_loft_lift).
+## Read + cleared by SkirmishDuel on load; 0 outside a voyage.
+var voyage_boarding_seed : int = 0
+
+## The walkable ShipDeck's pillage phase (re-entered after each station/fight
+## scene-swap): 0 = just boarded (man the Loft); 1 = back from the Loft (a brigand —
+## board them); 2 = back from the boarding fight (take your cut + disembark).
+var pillage_phase : int = 0
+## The crew the player jobbed onto at the Voyages board (set on Accept) — shown on
+## the ShipDeck (captain name + banner). Empty = a generic crew.
+var pillage_captain : String = ""
+var pillage_crew : String = ""
+
+## Transient: the chosen Skirmish-duel opponent's NPC resource path. Set by the
+## Spar post's challenge picker; consumed (and cleared) by SkirmishDuel on load.
+var skirmish_opponent : String = ""
+
+# --- Tournament (transient — drives the TournamentScene bracket flow) ---
+## True while the player is in a tournament bracket.
+var tournament_active : bool = false
+## The 3 rival NPC profile paths in the bracket (the player is the 4th seed).
+var tournament_field : Array = []
+## 1 = semifinal, 2 = final.
+var tournament_round : int = 1
+## Gold prize pool the champion takes.
+var tournament_pot : int = 0
+## True while a bracket match is being played, so the TournamentScene knows
+## to score the result when it loads again.
+var tournament_awaiting : bool = false
+## How the player's bracket run currently stands.
+enum TournamentOutcome { IN_PROGRESS, CHAMPION, KNOCKED_OUT }
+## Current outcome of the player's run. See [enum TournamentOutcome].
+var tournament_outcome : TournamentOutcome = TournamentOutcome.IN_PROGRESS
+## The other finalist's profile path — the winner of the parallel semifinal,
+## decided once the player wins their semi; becomes the final opponent.
+var tournament_finalist : String = ""
+## Scene to return to when the tournament ends (the Inn).
+var tournament_home : String = ""
+## Result of the most recent Gem Drop match — set by GemDropScene on exit,
+## read by the TournamentScene to advance the bracket.
+var last_gem_drop_won : bool = false
+
+## Accumulated wood the player has delivered to Cogwise Godfrey. Survives
+## drop-offs (it's HIS stock, separate from the player's [member total_wood]).
+## Drives the visible LumberPile in the Workshop + future ship-build gating.
+var godfrey_lumber_stock : int = 0 :
+	set(value):
+		var clamped : int = max(0, value)
+		if godfrey_lumber_stock == clamped:
+			return
+		godfrey_lumber_stock = clamped
+		lumber_stock_changed.emit(godfrey_lumber_stock)
+		_save()
+
+## True once the player has signed up at the Forge Hiring Board for Cinder
+## Troy's mining job. Gates the MiningSign in the Mine.
+var hired_at_forge : bool = false :
+	set(value):
+		if hired_at_forge == value:
+			return
+		hired_at_forge = value
+		objective_changed.emit()
+		_save()
+
+## Accumulated ore the player has delivered to Cinder Troy (his stock,
+## separate from the player's [member total_ore]). Drives the visible
+## OrePile in the Forge + future smithing gating. Mirrors godfrey_lumber_stock.
+var cinder_ore_stock : int = 0 :
+	set(value):
+		var clamped : int = max(0, value)
+		if cinder_ore_stock == clamped:
+			return
+		cinder_ore_stock = clamped
+		ore_stock_changed.emit(cinder_ore_stock)
+		_save()
+
+## Per-NPC rapport. Keyed by the NPC's full name ("Hearty Brian").
+## Persisted to disk. Read via [method get_affinity] / [method affinity_tier].
+var npc_affinity : Dictionary = {}
+
+## Per-NPC lifetime favour count (name → times the player has done a small
+## favour for them). Persisted. Bumped via [method record_favor]; drives
+## "you've helped me N times" warmth + is the hook for future favour
+## milestones. See [[parlor-social-system]].
+var npc_favor_done : Dictionary = {}
+
+## Favours the player has ACCEPTED but not yet turned in (name → {item,
+## amount}). Persisted. Surfaced in the Objectives log via
+## [method current_quests]; added ONLY by an explicit
+## [method accept_favor] (never on a mere offer) and removed by
+## [method complete_favor] on turn-in, so a favour never lingers as "done".
+var active_favors : Dictionary = {}
+
+## Lifetime tournaments won (champion count). Persisted — an earn-only
+## achievement stat. Bumped via [method record_tournament_win].
+var tournaments_won : int = 0
+
+## Per-puzzle BEST session score (high-water mark), keyed by puzzle id
+## (see [constant MASTERY_PUZZLES]). Drives the mastery tier. Persisted.
+## Mutate only via [method record_puzzle_result].
+var puzzle_mastery : Dictionary = {}
+
+var last_scene : String = ""
+var last_position : Vector2 = Vector2.ZERO
+
+# Transient spawn intent — consumed by the next BaseLocation._ready().
+## When a PuzzleScene should return somewhere OTHER than last_scene on
+## exit (e.g. a Voyage launches Lumberjacking as a boarding fight and wants
+## it back). Transient; PuzzleScene._return_to_launching_scene prefers +
+## clears it. Keeps last_scene pointing at a real resumable location.
+var puzzle_return_scene : String = ""
+
+# --- Parlor lobby (transient, in-memory only) -------------------------
+## Resource paths of the NPC profiles a [LobbyModal] seated for the parlor
+## game about to launch. The parlor scene loads these so its opponents
+## match the faces the player just watched fill the table. Consumed
+## (cleared) by [method consume_lobby_setup] on the scene's _ready.
+var lobby_seated_paths : Array = []
+## True when the player chose a FREE table — no buy-in, no gold won or
+## lost, just rapport. The parlor scene reads this to suppress every gold
+## change while still granting affinity. Consumed with the above.
+var free_table : bool = false
+## The table seated last time (any parlor game), kept in-memory so the
+## next lobby can EXCLUDE those faces and avoid back-to-back repeats. Not
+## consumed — it's the cross-session memory, reset only on a game restart.
+var last_lobby_seated_paths : Array = []
+
+var pending_spawn_anchor : String = ""
+var pending_spawn_position : Vector2 = Vector2.ZERO
+var _has_pending_position : bool = false
+
+## Guard: suppresses [method _save] while [method _load] is assigning
+## fields. Without it, the property setters (which each call _save) would
+## write the file mid-load — persisting still-default npc_affinity /
+## last_scene / last_position over the very data being read back, losing
+## it on a later crash. Also lets [method clear_save] reset many fields
+## with a single final write instead of one per field.
+var _suppress_save : bool = false
+
+
+func _ready() -> void:
+
+	_init_inventory()
+	_load()
+
+
+func _notification(what: int) -> void:
+
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		save_session()
+
+
+func add_coins(amount: int) -> void:
+
+	# Track lifetime earnings (monotonic) BEFORE the total_coins setter fires
+	# _save(), so the new lifetime value lands in the same write.
+	if amount > 0:
+		lifetime_coins_earned += amount
+	total_coins += amount
+
+
+# --- Inventory ---------------------------------------------------------
+
+# Fill the backpack with `inventory_capacity` empty slots. Called once
+# in _ready before _load (which may overwrite it with saved contents).
+func _init_inventory() -> void:
+
+	inventory = []
+	for _i in inventory_capacity:
+		inventory.append({})
+
+
+func _max_stack(item_id: String) -> int:
+
+	var def : Dictionary = ITEM_DEFS.get(item_id, {})
+	return int(def.get("max_stack", DEFAULT_MAX_STACK))
+
+
+## Total count of [param item_id] across every slot.
+func item_count(item_id: String) -> int:
+
+	var total : int = 0
+	for slot in inventory:
+		if not slot.is_empty() and slot["id"] == item_id:
+			total += int(slot["count"])
+	return total
+
+
+## How many MORE of [param item_id] the backpack can hold right now —
+## remaining room in existing partial stacks plus empty slots × max_stack.
+func space_for(item_id: String) -> int:
+
+	var cap : int = _max_stack(item_id)
+	var room : int = 0
+	for slot in inventory:
+		if slot.is_empty():
+			room += cap
+		elif slot["id"] == item_id:
+			room += maxi(0, cap - int(slot["count"]))
+	return room
+
+
+## True if every slot is occupied (no empties). Note: a non-full bag may
+## still reject an item if its matching stacks are all maxed — use
+## [method space_for] for an exact "can this fit" check.
+func is_inventory_full() -> bool:
+
+	for slot in inventory:
+		if slot.is_empty():
+			return false
+	return true
+
+
+## Add [param count] of [param item_id]. Tops up existing partial stacks
+## first, then fills empty slots, each capped at the item's max_stack.
+## Returns the OVERFLOW — the amount that did NOT fit (0 = all stored).
+## The caller decides what to do with overflow (warn, drop, etc.).
+func add_item(item_id: String, count: int) -> int:
+
+	if count <= 0:
+		return maxi(0, count)
+	var cap : int = _max_stack(item_id)
+	var remaining : int = count
+	# Pass 1: top up existing partial stacks of this item.
+	for slot in inventory:
+		if remaining <= 0:
+			break
+		if not slot.is_empty() and slot["id"] == item_id and int(slot["count"]) < cap:
+			var add : int = mini(remaining, cap - int(slot["count"]))
+			slot["count"] = int(slot["count"]) + add
+			remaining -= add
+	# Pass 2: fill empty slots with fresh stacks.
+	for i in inventory.size():
+		if remaining <= 0:
+			break
+		if inventory[i].is_empty():
+			var add : int = mini(remaining, cap)
+			inventory[i] = {"id": item_id, "count": add}
+			remaining -= add
+	if remaining != count:
+		_on_inventory_mutated(item_id)
+	return remaining
+
+
+## Remove up to [param count] of [param item_id]. Returns the amount
+## actually removed (may be less if the bag held fewer). Empties any slot
+## that hits zero.
+func remove_item(item_id: String, count: int) -> int:
+
+	if count <= 0:
+		return 0
+	var remaining : int = count
+	for i in inventory.size():
+		if remaining <= 0:
+			break
+		var slot : Dictionary = inventory[i]
+		if slot.is_empty() or slot["id"] != item_id:
+			continue
+		var take : int = mini(remaining, int(slot["count"]))
+		var left : int = int(slot["count"]) - take
+		inventory[i] = {} if left <= 0 else {"id": item_id, "count": left}
+		remaining -= take
+	var removed : int = count - remaining
+	if removed > 0:
+		_on_inventory_mutated(item_id)
+	return removed
+
+
+## Grow the backpack by [param extra] slots (the future "buy a bigger
+## backpack" upgrade). Persists.
+func expand_inventory(extra: int) -> void:
+
+	if extra <= 0:
+		return
+	inventory_capacity += extra
+	for _i in extra:
+		inventory.append({})
+	inventory_changed.emit()
+	_save()
+
+
+# Fire the change signals + persist after any add/remove. Emits the
+# specific wood_changed too when wood was the item touched.
+func _on_inventory_mutated(item_id: String) -> void:
+
+	inventory_changed.emit()
+	if item_id == ITEM_WOOD:
+		wood_changed.emit(item_count(ITEM_WOOD))
+	elif item_id == ITEM_ORE:
+		ore_changed.emit(item_count(ITEM_ORE))
+	_save()
+
+
+# --- Wood / lumberjacking ----------------------------------------------
+
+## Credit the player with wood from a Lumberjacking session. Returns the
+## OVERFLOW (wood that didn't fit in the backpack) so the caller can warn
+## the player their bag was too full to hold the whole haul.
+func add_wood(amount: int) -> int:
+
+	if amount <= 0:
+		return 0
+	return add_item(ITEM_WOOD, amount)
+
+
+## Player drops `amount` of carried wood at Godfrey's Workshop. Wood
+## moves from the backpack into Godfrey's stock, and the player is paid
+## gold at the [member WOOD_TO_GOLD_RATE]. Caller passes a
+## reasonable amount (typically [member total_wood] for a full drop-off).
+## Returns the gold actually paid, so the UI can show a clean toast.
+func deliver_wood(amount: int) -> int:
+
+	var removed : int = remove_item(ITEM_WOOD, amount)
+	if removed <= 0:
+		return 0
+	godfrey_lumber_stock += removed
+	var payout : int = int(round(removed * WOOD_TO_GOLD_RATE))
+	add_coins(payout)
+	return payout
+
+
+# --- Ore / mining ------------------------------------------------------
+
+## Credit the player with ore from a Mining session. Returns the OVERFLOW
+## (ore that didn't fit in the backpack). Mirror of [method add_wood].
+func add_ore(amount: int) -> int:
+
+	if amount <= 0:
+		return 0
+	return add_item(ITEM_ORE, amount)
+
+
+## Player drops `amount` of carried ore at Cinder Troy's Forge: it moves
+## from the backpack into his stock and the player is paid gold at
+## [constant ORE_TO_GOLD_RATE]. Returns the gold paid. Mirror of
+## [method deliver_wood].
+func deliver_ore(amount: int) -> int:
+
+	var removed : int = remove_item(ITEM_ORE, amount)
+	if removed <= 0:
+		return 0
+	cinder_ore_stock += removed
+	var payout : int = int(round(removed * ORE_TO_GOLD_RATE))
+	add_coins(payout)
+	return payout
+
+
+# --- Ships (Godfrey's ship shop) ---------------------------------------
+
+## Does the player already own [param ship_id]?
+func owns_ship(ship_id: String) -> bool:
+
+	return owned_ships.has(ship_id)
+
+
+## True if the player owns ANY spacecraft — gates the Skydock voyage helm.
+func has_ship() -> bool:
+
+	return not owned_ships.is_empty()
+
+
+## Can the player afford + is eligible to buy [param ship_id]? Needs the
+## gold AND enough of Godfrey's delivered lumber stock, and must not
+## already own it.
+func can_buy_ship(ship_id: String, gold_cost: int, lumber_cost: int) -> bool:
+
+	if owns_ship(ship_id):
+		return false
+	return total_coins >= gold_cost and godfrey_lumber_stock >= lumber_cost
+
+
+## Buy [param ship_id]: spends gold + consumes that much of Godfrey's
+## lumber stock (he builds it from the wood you delivered — closing the
+## Lumberjacking loop). Returns true on success. No-ops if unaffordable or
+## already owned.
+func buy_ship(ship_id: String, gold_cost: int, lumber_cost: int) -> bool:
+
+	if not can_buy_ship(ship_id, gold_cost, lumber_cost):
+		return false
+	add_coins(-gold_cost)
+	godfrey_lumber_stock -= lumber_cost   # setter emits lumber_stock_changed + saves
+	owned_ships.append(ship_id)
+	ships_changed.emit()
+	objective_changed.emit()
+	_save()
+	return true
+
+
+# --- Skirmish weapons --------------------------------------------------
+
+## Equip a Skirmish weapon you OWN (no-op if unowned). What your boarding/duel attacks
+## use. Switched here (the inventory) only, never mid-fight. Persisted.
+func equip_weapon(weapon_id: String) -> void:
+
+	if not owned_weapons.has(weapon_id):
+		return
+	equipped_weapon = weapon_id
+	_save()
+
+
+func owns_weapon(weapon_id: String) -> bool:
+
+	return owned_weapons.has(weapon_id)
+
+
+## True if [param weapon_id] is unowned and the player can afford [param gold_cost].
+func can_buy_weapon(weapon_id: String, gold_cost: int) -> bool:
+
+	return not owns_weapon(weapon_id) and total_coins >= gold_cost
+
+
+## Buy a weapon at the forge: spend gold, add it to [member owned_weapons]. Returns true
+## on success. No-op if already owned or unaffordable. Persisted.
+func buy_weapon(weapon_id: String, gold_cost: int) -> bool:
+
+	if not can_buy_weapon(weapon_id, gold_cost):
+		return false
+	add_coins(-gold_cost)
+	owned_weapons.append(weapon_id)
+	weapons_changed.emit()
+	_save()
+	return true
+
+
+# --- Onboarding objective ----------------------------------------------
+
+## The player's current driving goal, as {text, done}. Derived purely from
+## existing progress flags so it auto-updates — no separate quest state.
+## Drives the HUD objective banner. The arc: get hired → earn gold +
+## deliver lumber to Godfrey → buy your first spacecraft.
+func current_objective() -> Dictionary:
+
+	if not owned_ships.is_empty():
+		return {
+			"text": "You earned your first spacecraft! More of the skies to come.",
+			"done": true}
+	if not hired_at_workshop and not hired_at_forge:
+		return {
+			"text": "Find work — apply at the Workshop (Cogwise Godfrey) or the Forge (Cinder Troy).",
+			"done": false}
+	if total_coins >= FIRST_SHIP_GOLD and godfrey_lumber_stock >= FIRST_SHIP_LUMBER:
+		return {
+			"text": "Buy your first ship — the %s — at the Workshop ship desk." % FIRST_SHIP_NAME,
+			"done": false}
+	return {
+		"text": "Toward your first ship:  %d / %d gold  ·  %d / %d lumber to Godfrey" % [
+			mini(total_coins, FIRST_SHIP_GOLD), FIRST_SHIP_GOLD,
+			mini(godfrey_lumber_stock, FIRST_SHIP_LUMBER), FIRST_SHIP_LUMBER],
+		"done": false}
+
+
+## The player's quest log, as an ordered Array of {title, detail, done}.
+## Derived purely from progress flags (no stored quest state), so quests
+## tick themselves done. Drives the [JournalPanel]. Add entries here as the
+## game grows; keep the first-ship line as the spine for now.
+func current_quests() -> Array:
+
+	var quests : Array = []
+	quests.append({
+		"title": "Find Honest Work",
+		"detail": ("Cradle Rock's folk pay gold for puzzle-work. Apply for a job "
+			+ "at Cogwise Godfrey's Workshop (lumber) or Cinder Troy's Forge (ore)."),
+		"done": hired_at_workshop or hired_at_forge,
+	})
+	var ship_done : bool = not owned_ships.is_empty()
+	var ship_detail : String
+	if ship_done:
+		ship_detail = "Done — you fly your own %s now. More of the skies to come." % FIRST_SHIP_NAME
+	else:
+		ship_detail = ("Earn %d gold and deliver %d lumber to Cogwise Godfrey, then buy "
+			+ "a %s at the Workshop ship desk.\n\nProgress:  %d / %d gold   ·   %d / %d lumber") % [
+			FIRST_SHIP_GOLD, FIRST_SHIP_LUMBER, FIRST_SHIP_NAME,
+			mini(total_coins, FIRST_SHIP_GOLD), FIRST_SHIP_GOLD,
+			mini(godfrey_lumber_stock, FIRST_SHIP_LUMBER), FIRST_SHIP_LUMBER]
+	quests.append({
+		"title": "A Ship of Your Own",
+		"detail": ship_detail,
+		"done": ship_done,
+	})
+	# Accepted favours — small side-quests the player chose to take on. They
+	# carry done=false (a favour is never shown as "done": turning it in
+	# erases it via complete_favor, so it simply drops off the log).
+	for fav_name in active_favors:
+		if not (active_favors[fav_name] is Dictionary):
+			continue
+		var fav : Dictionary = active_favors[fav_name]
+		var fav_item : String = String(fav.get("item", ""))
+		var fav_amount : int = int(fav.get("amount", 0))
+		var have : int = item_count(fav_item)
+		var detail : String
+		if have >= fav_amount:
+			detail = "Ready! Bring %d %s back to %s." % [fav_amount, fav_item, fav_name]
+		else:
+			detail = "Bring %d %s to %s.   (You have %d.)" % [fav_amount, fav_item, fav_name, have]
+		quests.append({
+			"title": "A favour for %s" % fav_name,
+			"detail": detail,
+			"done": false,
+		})
+	return quests
+
+
+## True if any quest is still open (drives the journal button's "!" badge).
+func has_active_quests() -> bool:
+
+	for quest in current_quests():
+		if not quest["done"]:
+			return true
+	return false
+
+
+# --- Rapport / affinity ------------------------------------------------
+
+## Current rapport with [param npc_name] (0 if never interacted).
+func get_affinity(npc_name: String) -> int:
+
+	return int(npc_affinity.get(npc_name, 0))
+
+
+## Tier name for the current rapport level — "Stranger" → "Acquaintance"
+## → "Friend" → "Confidant".
+func affinity_tier(npc_name: String) -> String:
+
+	var value : int = get_affinity(npc_name)
+	for tier in AFFINITY_TIERS:
+		if value >= tier["min"]:
+			return tier["name"]
+	return "Stranger"
+
+
+## Raise (or lower) rapport with an NPC, clamped to [0, MAX_AFFINITY].
+## Emits [signal affinity_changed] + persists when the value actually
+## moves. No-ops on empty name or zero delta.
+func add_affinity(npc_name: String, amount: int) -> void:
+
+	if npc_name.is_empty() or amount == 0:
+		return
+	var old_val : int = get_affinity(npc_name)
+	var new_val : int = clampi(old_val + amount, 0, MAX_AFFINITY)
+	if new_val == old_val:
+		return
+	npc_affinity[npc_name] = new_val
+	affinity_changed.emit(npc_name, new_val, affinity_tier(npc_name))
+	_save()
+
+
+## Record that the player completed a favour for [param npc_name]. Bumps
+## the lifetime count, persists, and returns the new total (for the
+## "you've helped me N times" thank-you). Rapport itself is granted
+## separately via [method add_affinity] so the two stay independently tunable.
+func record_favor(npc_name: String) -> int:
+
+	if npc_name.is_empty():
+		return int(npc_favor_done.get(npc_name, 0))
+	var count : int = int(npc_favor_done.get(npc_name, 0)) + 1
+	npc_favor_done[npc_name] = count
+	_save()
+	return count
+
+
+## Accept an offered favour — adds it to [member active_favors] so it shows
+## in the Objectives log. Idempotent. ONLY the player's explicit "accept"
+## calls this (a mere offer must not). Emits [signal objective_changed].
+func accept_favor(npc_name: String, item_id: String, amount: int) -> void:
+
+	if npc_name.is_empty() or active_favors.has(npc_name):
+		return
+	active_favors[npc_name] = {"item": item_id, "amount": amount}
+	objective_changed.emit()
+	_save()
+
+
+## Turn in / clear an accepted favour — removes it from the Objectives log
+## so it disappears the moment it's done. No-op if it was never tracked
+## (e.g. handed over on the spot without accepting). Emits [signal objective_changed].
+func complete_favor(npc_name: String) -> void:
+
+	if not active_favors.has(npc_name):
+		return
+	active_favors.erase(npc_name)
+	objective_changed.emit()
+	_save()
+
+
+## True if [param npc_name]'s favour is currently on the player's
+## objectives (accepted, not yet turned in).
+func has_active_favor(npc_name: String) -> bool:
+
+	return active_favors.has(npc_name)
+
+
+## Atomically turn in a favour: spend the items, grant the rapport, clear it
+## from the objectives log, and bump the lifetime count — batched into a
+## SINGLE save instead of one write per step. Returns the new lifetime
+## count. The caller must have already verified the player holds [param amount].
+func turn_in_favor(npc_name: String, item_id: String, amount: int, affinity: int) -> int:
+
+	_suppress_save = true
+	remove_item(item_id, amount)
+	add_affinity(npc_name, affinity)
+	complete_favor(npc_name)
+	var count : int = record_favor(npc_name)
+	_suppress_save = false
+	_save()
+	return count
+
+
+# --- Tournament flow ---------------------------------------------------
+
+## Begin a tournament: seed the 3-rival bracket, stash the pot + the scene
+## to return to. Transient — a tournament doesn't survive a quit.
+func start_tournament(field: Array, pot: int, home: String) -> void:
+
+	tournament_active = true
+	tournament_field = field.duplicate()
+	tournament_round = 1
+	tournament_pot = pot
+	tournament_awaiting = false
+	tournament_outcome = TournamentOutcome.IN_PROGRESS
+	tournament_finalist = ""
+	tournament_home = home
+
+
+## Clear all tournament state (on leaving the bracket).
+func end_tournament() -> void:
+
+	tournament_active = false
+	tournament_field = []
+	tournament_round = 1
+	tournament_pot = 0
+	tournament_awaiting = false
+	tournament_outcome = TournamentOutcome.IN_PROGRESS
+	tournament_finalist = ""
+
+
+## The player's current bracket opponent path — semifinal = the first seed,
+## final = the other finalist.
+func tournament_opponent() -> String:
+
+	if tournament_round >= 2:
+		return tournament_finalist
+	if tournament_field.is_empty():
+		return ""
+	return String(tournament_field[0])
+
+
+## Record a tournament championship — the earn-only win count. Persisted.
+func record_tournament_win() -> void:
+
+	tournaments_won += 1
+	_save()
+
+
+## Overall popularity = the summed rapport across the whole cast. A pure
+## DERIVED read — never stored, never decays (honours earn-and-keep), so
+## it can't be farmed or lost and is alt-proof. Used only as participation
+## flavour; never surfaced as a raw number or tied to a reward.
+func reputation() -> int:
+
+	var total : int = 0
+	for value in npc_affinity.values():
+		total += int(value)
+	return total
+
+
+## One-shot read of a [LobbyModal]'s choices for the parlor scene that is
+## loading. Returns {"seated_paths": Array, "free": bool} and RESETS both
+## transients so a later non-lobby launch can't inherit stale settings.
+func consume_lobby_setup() -> Dictionary:
+
+	var setup : Dictionary = {
+		"seated_paths": lobby_seated_paths.duplicate(),
+		"free": free_table,
+	}
+	lobby_seated_paths = []
+	free_table = false
+	return setup
+
+
+# --- Puzzle mastery ----------------------------------------------------
+
+## Record a finished puzzle session's score. Updates the per-puzzle BEST
+## (high-water mark) and, if that crossed into a new tier, emits
+## [signal mastery_ranked_up]. Returns {best, tier_index, tier_name,
+## is_new_best, ranked_up} so the result screen can show the right flourish.
+func record_puzzle_result(puzzle_id: String, score: int) -> Dictionary:
+
+	if not MASTERY_PUZZLES.has(puzzle_id):
+		return {"best": score, "tier_index": 0, "tier_name": MASTERY_TIERS[0],
+			"is_new_best": false, "ranked_up": false}
+	var old_best : int = int(puzzle_mastery.get(puzzle_id, 0))
+	var old_tier : int = _mastery_tier_index(puzzle_id, old_best)
+	var is_new_best : bool = score > old_best
+	var best : int = maxi(old_best, score)
+	if is_new_best:
+		puzzle_mastery[puzzle_id] = best
+		_save()
+	var new_tier : int = _mastery_tier_index(puzzle_id, best)
+	var ranked_up : bool = new_tier > old_tier
+	if ranked_up:
+		mastery_ranked_up.emit(puzzle_id, new_tier, MASTERY_TIERS[new_tier])
+	return {"best": best, "tier_index": new_tier, "tier_name": MASTERY_TIERS[new_tier],
+		"is_new_best": is_new_best, "ranked_up": ranked_up}
+
+
+## The player's best recorded score for a puzzle (0 if never played).
+func mastery_best(puzzle_id: String) -> int:
+
+	return int(puzzle_mastery.get(puzzle_id, 0))
+
+
+## {index, name} of a puzzle's current mastery tier.
+func mastery_tier(puzzle_id: String) -> Dictionary:
+
+	var idx : int = _mastery_tier_index(puzzle_id, mastery_best(puzzle_id))
+	return {"index": idx, "name": MASTERY_TIERS[idx]}
+
+
+# Highest tier index whose threshold the score has reached.
+func _mastery_tier_index(puzzle_id: String, score: int) -> int:
+
+	var cfg : Dictionary = MASTERY_PUZZLES.get(puzzle_id, {})
+	var thresholds : Array = cfg.get("thresholds", [0])
+	var idx : int = 0
+	for i in thresholds.size():
+		if score >= int(thresholds[i]):
+			idx = i
+		else:
+			break
+	return idx
+
+
+# Called by Door / GemDropTable before they change_scene_to_file.
+# BaseLocation.consume_anchor() drains this in the next scene's _ready.
+func request_spawn_at_anchor(anchor_name: String) -> void:
+
+	pending_spawn_anchor = anchor_name
+
+
+func consume_anchor() -> String:
+
+	var anchor : String = pending_spawn_anchor
+	pending_spawn_anchor = ""
+	return anchor
+
+
+# Set by resume-from-save logic on launch. BaseLocation reads it once.
+func request_spawn_at_position(pos: Vector2) -> void:
+
+	pending_spawn_position = pos
+	_has_pending_position = true
+
+
+func consume_position() -> Variant:
+
+	if not _has_pending_position:
+		return null
+	_has_pending_position = false
+	var pos : Vector2 = pending_spawn_position
+	pending_spawn_position = Vector2.ZERO
+	return pos
+
+
+# Returns true if user://save.cfg has a restorable scene + position
+# (i.e. the player has played before and we can resume them).
+func has_resumable_session() -> bool:
+
+	return not last_scene.is_empty()
+
+
+# Writes current scene path + player's world position to disk. Called on
+# game close (NOTIFICATION_WM_CLOSE_REQUEST) and could also be called
+# manually after meaningful checkpoints if we want to harden against crashes.
+func save_session() -> void:
+
+	var tree : SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null or tree.current_scene == null:
+		_save()
+		return
+	var current_scene : Node = tree.current_scene
+	var scene_path : String = current_scene.scene_file_path
+	# Only save scene+position if a Player is present (skip puzzle/title
+	# scenes — they have no player, so there's nothing to anchor to).
+	var players : Array = tree.get_nodes_in_group("player")
+	if scene_path.is_empty() or players.is_empty():
+		_save()
+		return
+	last_scene = scene_path
+	last_position = (players[0] as Node2D).global_position
+	_save()
+
+
+# Clear the save file and reset state. Useful for a "New Game" button.
+# Resets fields under the save-suppress guard so the New Game wipe writes
+# the file exactly once (via the final _save) instead of once per setter.
+func clear_save() -> void:
+
+	if FileAccess.file_exists(SAVE_PATH):
+		DirAccess.remove_absolute(SAVE_PATH)
+	_suppress_save = true
+	total_coins = STARTING_GOLD
+	lifetime_coins_earned = 0
+	hired_at_workshop = false
+	godfrey_lumber_stock = 0
+	hired_at_forge = false
+	cinder_ore_stock = 0
+	has_seen_intro = false
+	frontier_unlocked = false
+	puzzle_mastery = {}
+	owned_ships = []
+	owned_weapons = ["brawl"]
+	equipped_weapon = "brawl"
+	npc_affinity = {}
+	npc_favor_done = {}
+	active_favors = {}
+	tournaments_won = 0
+	last_scene = ""
+	last_position = Vector2.ZERO
+	inventory_capacity = INVENTORY_START_CAPACITY
+	_init_inventory()
+	_suppress_save = false
+	inventory_changed.emit()
+	wood_changed.emit(0)
+	ore_changed.emit(0)
+	ore_stock_changed.emit(0)
+	ships_changed.emit()
+	objective_changed.emit()
+	_save()
+
+
+func _save() -> void:
+
+	# Guarded so loads / batch resets don't write the file mid-update
+	# (see [member _suppress_save]).
+	if _suppress_save:
+		return
+	var config : ConfigFile = ConfigFile.new()
+	config.set_value(SAVE_SECTION, "total_coins", total_coins)
+	config.set_value(SAVE_SECTION, "lifetime_coins_earned", lifetime_coins_earned)
+	config.set_value(SAVE_SECTION, "inventory", inventory)
+	config.set_value(SAVE_SECTION, "inventory_capacity", inventory_capacity)
+	config.set_value(SAVE_SECTION, "hired_at_workshop", hired_at_workshop)
+	config.set_value(SAVE_SECTION, "godfrey_lumber_stock", godfrey_lumber_stock)
+	config.set_value(SAVE_SECTION, "hired_at_forge", hired_at_forge)
+	config.set_value(SAVE_SECTION, "cinder_ore_stock", cinder_ore_stock)
+	config.set_value(SAVE_SECTION, "has_seen_intro", has_seen_intro)
+	config.set_value(SAVE_SECTION, "frontier_unlocked", frontier_unlocked)
+	config.set_value(SAVE_SECTION, "puzzle_mastery", puzzle_mastery)
+	config.set_value(SAVE_SECTION, "owned_ships", owned_ships)
+	config.set_value(SAVE_SECTION, "owned_weapons", owned_weapons)
+	config.set_value(SAVE_SECTION, "equipped_weapon", equipped_weapon)
+	config.set_value(SAVE_SECTION, "npc_affinity", npc_affinity)
+	config.set_value(SAVE_SECTION, "npc_favor_done", npc_favor_done)
+	config.set_value(SAVE_SECTION, "active_favors", active_favors)
+	config.set_value(SAVE_SECTION, "tournaments_won", tournaments_won)
+	config.set_value(SAVE_SECTION, "last_scene", last_scene)
+	config.set_value(SAVE_SECTION, "last_position_x", last_position.x)
+	config.set_value(SAVE_SECTION, "last_position_y", last_position.y)
+	config.save(SAVE_PATH)
+
+
+func _load() -> void:
+
+	var config : ConfigFile = ConfigFile.new()
+	if config.load(SAVE_PATH) != OK:
+		return
+	# Suppress per-field saves while we assign — the property setters each
+	# call _save(), which (before this guard) wrote the file before
+	# npc_affinity/last_scene/last_position were read back, blanking them
+	# on disk. Audited 2026-05-29.
+	_suppress_save = true
+	total_coins = int(config.get_value(SAVE_SECTION, "total_coins", STARTING_GOLD))
+	# Backfill old saves (pre-trophy) with their current balance as lifetime.
+	lifetime_coins_earned = int(config.get_value(SAVE_SECTION, "lifetime_coins_earned", total_coins))
+	hired_at_workshop = bool(config.get_value(SAVE_SECTION, "hired_at_workshop", false))
+	godfrey_lumber_stock = int(config.get_value(SAVE_SECTION, "godfrey_lumber_stock", 0))
+	hired_at_forge = bool(config.get_value(SAVE_SECTION, "hired_at_forge", false))
+	cinder_ore_stock = int(config.get_value(SAVE_SECTION, "cinder_ore_stock", 0))
+	has_seen_intro = bool(config.get_value(SAVE_SECTION, "has_seen_intro", false))
+	frontier_unlocked = bool(config.get_value(SAVE_SECTION, "frontier_unlocked", false))
+	puzzle_mastery = config.get_value(SAVE_SECTION, "puzzle_mastery", {})
+	owned_ships = config.get_value(SAVE_SECTION, "owned_ships", [])
+	owned_weapons = config.get_value(SAVE_SECTION, "owned_weapons", ["brawl"])
+	equipped_weapon = String(config.get_value(SAVE_SECTION, "equipped_weapon", "brawl"))
+	npc_affinity = config.get_value(SAVE_SECTION, "npc_affinity", {})
+	npc_favor_done = config.get_value(SAVE_SECTION, "npc_favor_done", {})
+	active_favors = config.get_value(SAVE_SECTION, "active_favors", {})
+	tournaments_won = int(config.get_value(SAVE_SECTION, "tournaments_won", 0))
+	last_scene = String(config.get_value(SAVE_SECTION, "last_scene", ""))
+	last_position = Vector2(
+		float(config.get_value(SAVE_SECTION, "last_position_x", 0.0)),
+		float(config.get_value(SAVE_SECTION, "last_position_y", 0.0)),
+	)
+	inventory_capacity = int(config.get_value(SAVE_SECTION, "inventory_capacity", INVENTORY_START_CAPACITY))
+	_load_inventory(config)
+	_suppress_save = false
+
+
+# Restore the backpack from the save file. Rebuilds a clean
+# inventory_capacity-length slot array, copying saved slots in. Migrates
+# legacy saves that stored a flat `total_wood` int (pre-inventory) by
+# seeding that much wood into the fresh backpack.
+func _load_inventory(config: ConfigFile) -> void:
+
+	_init_inventory()
+	# New-format save: an "inventory" key exists (even if the bag was
+	# empty). has_section_key distinguishes it from a legacy/fresh save
+	# AND avoids get_value's "null default = error" footgun.
+	if config.has_section_key(SAVE_SECTION, "inventory"):
+		var saved : Variant = config.get_value(SAVE_SECTION, "inventory", [])
+		if saved is Array:
+			for i in mini(saved.size(), inventory.size()):
+				var slot : Variant = saved[i]
+				if slot is Dictionary and not slot.is_empty() and slot.has("id") and slot.has("count"):
+					inventory[i] = {"id": String(slot["id"]), "count": int(slot["count"])}
+		return
+	# Legacy migration: pre-inventory saves carried a flat total_wood int.
+	var legacy_wood : int = int(config.get_value(SAVE_SECTION, "total_wood", 0))
+	if legacy_wood > 0:
+		add_item(ITEM_WOOD, legacy_wood)

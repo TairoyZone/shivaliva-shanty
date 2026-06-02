@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://b4skdclak5qrd"]
+
+[ext_resource type="Script" path="res://buildings/skydock/skydock.gd" id="1_skdck"]
+[ext_resource type="PackedScene" uid="uid://blr4e33qxprt2" path="res://levels/door/door.tscn" id="2_door"]
+
+[node name="Skydock" type="StaticBody2D"]
+collision_layer = 2
+collision_mask = 0
+script = ExtResource("1_skdck")
+wall_height = 200.0
+window_size = Vector2(44, 44)
+window_front_right = false
+color_walls = Color(0.46, 0.47, 0.53, 1)
+color_walls_outline = Color(0.2, 0.21, 0.25, 1)
+color_roof = Color(0.34, 0.35, 0.43, 1)
+color_roof_outline = Color(0.16, 0.17, 0.22, 1)
+color_window = Color(0.78, 0.86, 0.96, 0.6)
+color_window_frame = Color(0.2, 0.21, 0.26, 1)
+
+[node name="Foundation" type="CollisionPolygon2D" parent="."]
+visible = false
+polygon = PackedVector2Array(0, 60, 120, 0, 0, -60, -120, 0)
+
+[node name="SkydockDoor" parent="." instance=ExtResource("2_door")]
+position = Vector2(60, 30)
+target_scene = "res://levels/skydock_interior/skydock_interior.tscn"
+target_spawn_anchor = "DoorOut"
+wall_facing = 1
+marker_label = "Enter the Skydock"
+spawn_offset = Vector2(0, 40)

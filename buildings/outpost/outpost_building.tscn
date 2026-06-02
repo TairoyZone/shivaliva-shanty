@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://brmstrkpawpq"]
+
+[ext_resource type="Script" uid="uid://d133yt8y6qbgv" path="res://buildings/outpost/outpost_building.gd" id="1_outpost"]
+[ext_resource type="PackedScene" uid="uid://blr4e33qxprt2" path="res://levels/door/door.tscn" id="2_5pirx"]
+
+[node name="OutpostBuilding" type="StaticBody2D" unique_id=972122493]
+collision_layer = 2
+collision_mask = 0
+script = ExtResource("1_outpost")
+window_size = Vector2(64, 64)
+window_front_right = false
+
+[node name="Foundation" type="CollisionPolygon2D" parent="." unique_id=1298889274]
+visible = false
+polygon = PackedVector2Array(0, 60, 120, 0, 0, -60, -120, 0)
+
+[node name="InnDoor" parent="." unique_id=50641162 instance=ExtResource("2_5pirx")]
+position = Vector2(60, 30)
+target_scene = "res://levels/tavern/tavern.tscn"
+target_spawn_anchor = "DoorOut"
+wall_facing = 1
+marker_label = "Enter the Inn"
+spawn_offset = Vector2(0, 40)

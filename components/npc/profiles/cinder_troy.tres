@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="NpcPersonality" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://components/npc/personality.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+npc_name = "Cinder Troy"
+portrait_color = Color(0.78, 0.42, 0.22, 1.0)
+aggression = 0.55
+risk_tolerance = 0.55
+patience = 0.65
+perception = 0.50
+vpip_target = 0.25
+pfr_target = 0.18
+bluff_rate = 0.22
+w_score = 1.1
+w_denial = 1.1
+w_chain = 0.5
+search_depth = 3

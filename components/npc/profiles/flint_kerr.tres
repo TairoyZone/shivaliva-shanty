@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="NpcPersonality" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://components/npc/personality.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+npc_name = "Flint Kerr"
+portrait_color = Color(0.78, 0.32, 0.32, 1.0)
+aggression = 0.85
+risk_tolerance = 0.75
+patience = 0.20
+perception = 0.20
+vpip_target = 0.45
+pfr_target = 0.35
+bluff_rate = 0.45
+w_score = 1.0
+w_denial = 1.5
+w_chain = 0.3
+search_depth = 3
+skirmish_weapon = "sword"

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="NpcPersonality" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://components/npc/personality.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+npc_name = "Hearty Brian"
+portrait_color = Color(0.92, 0.66, 0.30, 1.0)
+aggression = 0.40
+risk_tolerance = 0.50
+patience = 0.40
+perception = 0.40
+vpip_target = 0.35
+pfr_target = 0.10
+bluff_rate = 0.20
+w_score = 1.0
+w_denial = 0.7
+w_chain = 0.6
+search_depth = 3

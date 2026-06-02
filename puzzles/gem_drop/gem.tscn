@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://puzzles/gem_drop/gem.gd" id="1_gem"]
+[ext_resource type="SpriteFrames" path="res://puzzles/gem_drop/assets/gem_frames.tres" id="2_frames"]
+
+[node name="Gem" type="Node2D"]
+script = ExtResource("1_gem")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+unique_name_in_owner = true
+texture_filter = 1
+scale = Vector2(2, 2)
+sprite_frames = ExtResource("2_frames")
+animation = &"spin"
+autoplay = "spin"

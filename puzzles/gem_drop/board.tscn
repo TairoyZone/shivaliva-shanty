@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://cqahgp7vlebli"]
+
+[ext_resource type="Script" uid="uid://d38phqqkyt4b7" path="res://puzzles/gem_drop/board.gd" id="1_board"]
+
+[node name="Board" type="Node2D" unique_id=696348971]
+script = ExtResource("1_board")
