@@ -122,6 +122,7 @@ func _seed_demo_route_if_unset() -> void:
 	PlayerState.pillage_log = []
 	PlayerState.pillage_encounters = ["", "a marine cutter", ""]
 	PlayerState.voyage_active = true
+	PlayerState.voyage_ship_t = 0.0
 
 
 # --- Pillage phase ----------------------------------------------------

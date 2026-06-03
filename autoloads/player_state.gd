@@ -261,6 +261,9 @@ var pillage_encounters : Array = []
 ## True from boarding a crew (Accept) until you disembark — lets the voyage stations (e.g.
 ## the Loft) know they're being played AS PART of a pillage, so they can show the chart.
 var voyage_active : bool = false
+## The voyage chart sloop's live position (0..1 along the whole route). Persisted across the
+## deck↔Loft scene swaps so she keeps sailing CONTINUOUSLY instead of snapping back each load.
+var voyage_ship_t : float = 0.0
 
 ## Transient: the chosen Skirmish-duel opponent's NPC resource path. Set by the
 ## Spar post's challenge picker; consumed (and cleared) by SkirmishDuel on load.

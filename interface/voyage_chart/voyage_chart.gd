@@ -39,11 +39,19 @@ var _done : int = 0
 var _log : Array = []
 var _encounters : Array = []
 var _haul : int = 0
-var _ship_t : float = 0.0        # animated 0..1 along the track (origin → destination)
-var _tw : Tween
-var _bg : StyleBoxFlat            # self-drawn panel backing (so any scene can drop us in bare)
+var _ship_t : float = 0.0        # current sloop position, 0..1 along the track
+var _goal_t : float = 0.0        # where she's sailing toward right now (continuous creep)
+var _inited : bool = false       # snap to the start stop on the first feed, then creep
+var _bob : float = 0.0           # bob phase (gentle real-time sway on the wind)
+var _bg : StyleBoxFlat           # self-drawn panel backing (so any scene can drop us in bare)
 
 const SIZE : Vector2 = Vector2(326.0, 116.0)
+## Real-time sailing: the sloop steadily creeps toward ~80% of the CURRENT leg (so you always
+## SEE her making way while you work), and clearing a stop nudges the goal a leg further on.
+const CREEP_SPEED : float = 0.05     # track-fraction per second
+const CREEP_FRAC : float = 0.8       # how far into the working leg she sails before the stop
+const BOB_RATE : float = 2.4
+const BOB_AMP : float = 2.5
 
 
 func _ready() -> void:
@@ -86,10 +94,11 @@ func refresh_from_state(animate: bool) -> void:
 		PlayerState.pillage_log, PlayerState.pillage_encounters, haul, animate)
 
 
-# Feed the live route. `animate` slides the sloop from the previous stop to `done`
-# (call it true only right after a leg resolves, so the hop is SHOWN, not popped).
+# Feed the live route. The sloop SAILS toward her goal continuously (see _process); a cleared
+# stop just moves the goal a leg onward, so she keeps making way rather than teleporting.
+# (`animate` is vestigial now that motion is continuous — kept for the call sites.)
 func set_route(dest: String, total: int, done: int, leg_log: Array, encounters: Array,
-		haul: int, animate: bool) -> void:
+		haul: int, _animate: bool = false) -> void:
 
 	_dest = dest
 	_total = maxi(1, total)
@@ -97,23 +106,25 @@ func set_route(dest: String, total: int, done: int, leg_log: Array, encounters: 
 	_log = leg_log
 	_encounters = encounters
 	_haul = haul
-	var target : float = clampf(float(done) / float(_total), 0.0, 1.0)
-	if _tw != null and _tw.is_valid():
-		_tw.kill()
-	if animate and done > 0 and is_inside_tree():
-		var from : float = clampf(float(done - 1) / float(_total), 0.0, 1.0)
-		_ship_t = from
-		_tw = create_tween()
-		_tw.tween_method(_set_ship_t, from, target, 0.55) \
-			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	if done >= _total:
+		_goal_t = 1.0                                              # arrived — sail up to the isle
 	else:
-		_ship_t = target
+		_goal_t = clampf((float(done) + CREEP_FRAC) / float(_total), 0.0, 1.0)
+	if not _inited:
+		# Resume exactly where the sloop was on the last screen (capped only so she can't
+		# overshoot the goal), so deck↔Loft swaps stay continuous AND a just-cleared stop lets
+		# her sail smoothly THROUGH the node rather than snapping onto it.
+		_ship_t = clampf(PlayerState.voyage_ship_t, 0.0, _goal_t)
+		_inited = true
 	queue_redraw()
 
 
-func _set_ship_t(v: float) -> void:
+# Sail toward the goal every frame + bob on the wind — the "real-time" motion.
+func _process(delta: float) -> void:
 
-	_ship_t = v
+	_ship_t = move_toward(_ship_t, _goal_t, CREEP_SPEED * delta)
+	PlayerState.voyage_ship_t = _ship_t   # carry the position across scene swaps
+	_bob += delta
 	queue_redraw()
 
 
@@ -169,8 +180,9 @@ func _draw() -> void:
 		draw_circle(Vector2(_node_x(i), TRACK_Y), 4.0, WAYPOINT)
 	_draw_island(Vector2(_node_x(_total), TRACK_Y), ISLE, ISLE_PEAK)
 
-	# The sloop, sailing the line (drawn last so it rides on top).
-	_draw_ship(Vector2(ship_x, TRACK_Y))
+	# The sloop, sailing the line + a gentle bob on the wind (drawn last so she rides on top).
+	var bob_y : float = sin(_bob * BOB_RATE) * BOB_AMP
+	_draw_ship(Vector2(ship_x, TRACK_Y + bob_y))
 
 	# Footer: stop tally (left) + haul (right).
 	if font != null:
