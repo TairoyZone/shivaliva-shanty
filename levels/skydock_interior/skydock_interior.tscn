@@ -45,7 +45,7 @@ tile_set = ExtResource("2_tileset")
 [node name="JerichoNpc" parent="YSortNode2D" instance=ExtResource("4_npc")]
 position = Vector2(-16, -120)
 npc_name = "Stormy Jericho"
-dialog_lines = Array[String](["Ships in by dusk, weather willing.", "I've moored vessels in gales that'd peel the paint off you.", "You'll want your own craft before I can send you anywhere worth going."])
+dialog_lines = Array[String](["Ships in by dusk, weather willing.", "I've moored vessels in gales that'd peel the paint off you.", "Take the wheel yonder and sign onto a crew, sailor — no craft of yer own needed yet. Win gold and lumber out there and you'll soon have one."])
 portrait_color = Color(0.5, 0.5, 0.62, 1)
 
 [node name="SkyHelm" parent="YSortNode2D" instance=ExtResource("5_helm")]
@@ -99,6 +99,7 @@ grow_horizontal = 0
 grow_vertical = 0
 tooltip_text = "The Skydock
 
+• Press E at the ship's wheel to sign onto a crew and sail (no ship needed)
 • Press E near Stormy Jericho to talk
 • Walk to the door to step outside"
 focus_mode = 0

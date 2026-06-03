@@ -1,5 +1,6 @@
 {
   "permissions": {
+    "defaultMode": "bypassPermissions",
     "allow": [
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Troy Pepito\\\\OneDrive\\\\Documents\\\\Shivaliva Shanty\\\\shivaliva-shanty\" -Recurse -Filter \"*.gd\")",
       "Bash(Select-Object FullName)"

@@ -1,3 +1,8 @@
+## ⚠️ DEAD / SUPERSEDED 2026-06-03 — NOTHING launches this anymore. The LIVE voyage path is
+## SkyHelm → VoyagesBoard → levels/ship_deck/ship_deck.tscn (which uses `pillage_phase`, not
+## `voyage_phase`, and the Skirmish BOARDING, not the duel). Kept only for reference; do NOT
+## edit this as if it were live, and prefer ship_deck.gd. Safe to delete with voyage.tscn.
+##
 ## A Voyage — the skyfaring core loop (see [[voyage-loop-research]]). Launched from
 ## the Skydock's [SkyHelm]. The loop, as a screen flow that re-enters itself off
 ## [member PlayerState.voyage_phase] each time a station/fight puzzle returns here:

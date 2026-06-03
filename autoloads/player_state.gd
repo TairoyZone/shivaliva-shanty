@@ -664,16 +664,15 @@ func current_objective() -> Dictionary:
 		return {
 			"text": "You earned your first spacecraft! More of the skies to come.",
 			"done": true}
-	if not hired_at_workshop and not hired_at_forge:
-		return {
-			"text": "Find work — apply at the Workshop (Cogwise Godfrey) or the Forge (Cinder Troy).",
-			"done": false}
 	if total_coins >= FIRST_SHIP_GOLD and godfrey_lumber_stock >= FIRST_SHIP_LUMBER:
 		return {
 			"text": "Buy your first ship — the %s — at the Workshop ship desk." % FIRST_SHIP_NAME,
 			"done": false}
+	# The headline MVP loop: sign onto a jobbing VOYAGE at the Skydock helm — no ship of
+	# your own needed. It pays gold AND the lumber Godfrey needs for your first hull, so a
+	# few good voyages fund the ship outright.
 	return {
-		"text": "Toward your first ship:  %d / %d gold  ·  %d / %d lumber to Godfrey" % [
+		"text": "Sail a jobbing voyage — take the helm at the SKYDOCK (no ship needed).   Toward your first ship:  %d / %d gold  ·  %d / %d lumber" % [
 			mini(total_coins, FIRST_SHIP_GOLD), FIRST_SHIP_GOLD,
 			mini(godfrey_lumber_stock, FIRST_SHIP_LUMBER), FIRST_SHIP_LUMBER],
 		"done": false}

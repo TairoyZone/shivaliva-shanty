@@ -11,8 +11,12 @@ Compatibility, 1280×720. No build step — run `main.tscn`, or any `puzzles/*/<
 ---
 
 ## 🔑 Standing rules (do not break)
-- **Never build a feature without Troy's explicit go on that specific piece.** Establish → design →
-  build the agreed slice. Don't balloon scope. ("I don't wanna waste time reverting garbage features.")
+- **Build proactively; flag only the big forks** (Troy 2026-06-03, replacing the old "ask before every
+  feature" rule). Just build routine work + already-agreed slices without checking in. STILL pause to
+  confirm only: (a) genuinely-forking DESIGN decisions where the wrong pick wastes real work (e.g. which
+  voyage shape, lodged-vs-falling), and (b) irreversible / outward-facing actions. The point is unchanged
+  — "I don't wanna waste time reverting garbage features" — just trust the routine. Repo is now git-backed
+  (baseline commit), so snapshot at sensible checkpoints; everything is revertible.
 - **Placeholder-first art**: procedural `_draw()` shapes + flat colors. Do NOT lift/import art assets.
 - **Animate everything**: every state change is SHOWN as motion (an awaited tween), never an instant
   pop-in. Garbage/stones/pieces visibly fall. (Troy is a visual thinker; teleports read as broken.)
@@ -46,7 +50,7 @@ levels/           walkable overworld scenes (extend BaseLocation): shore, tavern
 buildings/        building props + their interiors' work-sites (forge, workshop, skydock, …)
 player/           the Player character (top-down move + InteractionZone)
 puzzles/          one folder per mini-game: skirmish, mining, gem_drop, poker, lumberjacking, loft
-voyages/          voyage.gd — the skyfaring loop (currently a thin slice)
+voyages/          voyage.gd — ⚠️ DEAD/superseded; LIVE voyage = levels/ship_deck/ship_deck.gd
 tournaments/      tournament.gd
 main.gd/.tscn     entry point / title → resume or new session
 ```

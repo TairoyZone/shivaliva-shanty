@@ -14,14 +14,14 @@ const TITLE_TEXT : String = "WELCOME TO CRADLE ROCK"
 
 const BODY_TEXT : String = (
 	"This little shanty is yours now, newcomer.\n\n"
-	+ "The island's folk pay good gold for a hand with their work — and every "
-	+ "job here is a puzzle. Cogwise Godfrey at the Workshop is building ships and "
-	+ "needs lumber; Cinder Troy at the Forge needs ore. There's coin to be won at "
-	+ "the Inn's parlor tables, too.\n\n"
-	+ "Earn your keep, deliver what folk need, and you'll soon have a spacecraft of "
-	+ "your very own.\n\n"
-	+ "Step outside when you're ready — the banner up top always shows what to aim "
-	+ "for next.")
+	+ "Every job on Cradle Rock is a puzzle, and the folk pay good gold for a hand. Your "
+	+ "quickest road to the skies: head to the SKYDOCK and take the helm — sign onto a "
+	+ "crew and sail a jobbing voyage. No ship of your own needed yet; you'll win the gold "
+	+ "AND the lumber for your first one out there among the brigands.\n\n"
+	+ "Fancy warming up first? Cogwise Godfrey's Workshop and Cinder Troy's Forge always "
+	+ "need hands, and there's coin at the Inn's parlor tables.\n\n"
+	+ "Step outside when you're ready — the banner up top always shows what to aim for "
+	+ "next.")
 
 
 func _ready() -> void:
