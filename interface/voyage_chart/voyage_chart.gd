@@ -48,14 +48,15 @@ var _goal_t : float = 0.0        # the node she's sailing toward — she STOPS h
 var _inited : bool = false       # resume the position from PlayerState on the first feed
 var _bob : float = 0.0           # bob phase (gentle sway on the wind)
 var _sail_speed : float = 0.05   # track-fraction/sec — set ENTIRELY by the crew's sailing skill
-var _enc_fired : bool = false    # this crossing's encounter mark already signalled (fire once)
+var _goal_is_swords : bool = false   # the current goal is an encounter leg's swords (board on arrival)
 var _bg : StyleBoxFlat           # self-drawn panel backing (so any scene can drop us in bare)
 
 const SIZE : Vector2 = Vector2(326.0, 116.0)
-## She STOPS at each node and only sails BETWEEN them; the pace is set by how good the crew are
-## (their average duty_skill) — a top crew crosses a leg fast, no/poor crew the slowest.
-const SAIL_SECS_SLOW : float = 7.0   # seconds to cross one leg with no / poor crew
-const SAIL_SECS_FAST : float = 2.8   # …with a top crew
+## She sails CONTINUOUSLY while you work the station (deck + Loft charts share voyage_ship_t, so
+## the progress is the same on both screens), stopping at each event; the pace is how good the
+## crew are (avg duty_skill). Slow enough that the motion reads during a puzzle session.
+const SAIL_SECS_SLOW : float = 16.0   # seconds to cross one leg with no / poor crew
+const SAIL_SECS_FAST : float = 7.0    # …with a top crew
 const BOB_RATE : float = 2.4
 const BOB_AMP : float = 2.5
 
@@ -131,16 +132,21 @@ func set_route(dest: String, total: int, done: int, leg_log: Array, encounters: 
 	_log = leg_log
 	_encounters = encounters
 	_haul = haul
+	# Where she's bound RIGHT NOW: holding at the node, sailing to the next node, OR — on an
+	# unfought encounter leg — only as far as the SWORDS, where the boarding fires.
+	_goal_is_swords = false
 	if done >= _total:
-		_goal_t = 1.0                                                  # arrived — up to the isle
-	elif sailing:
-		_goal_t = clampf((float(done) + 1.0) / float(_total), 0.0, 1.0)  # crossing → the NEXT node
+		_goal_t = 1.0                                                     # arrived — up to the isle
+	elif not sailing:
+		_goal_t = clampf(float(done) / float(_total), 0.0, 1.0)           # holding AT this node
+	elif _is_encounter(done) and PlayerState.pillage_phase == 1:
+		_goal_t = clampf((float(done) + 0.5) / float(_total), 0.0, 1.0)   # sail to the swords
+		_goal_is_swords = true
 	else:
-		_goal_t = clampf(float(done) / float(_total), 0.0, 1.0)          # holding AT this node
+		_goal_t = clampf((float(done) + 1.0) / float(_total), 0.0, 1.0)   # calm / post-fight → next node
 	if not _inited:
 		_ship_t = clampf(PlayerState.voyage_ship_t, 0.0, _goal_t)
 		_inited = true
-	_enc_fired = false   # re-arm the encounter mark for this feed
 	queue_redraw()
 
 
@@ -149,16 +155,13 @@ func set_route(dest: String, total: int, done: int, leg_log: Array, encounters: 
 func _process(delta: float) -> void:
 
 	if _ship_t != _goal_t:
-		var prev : float = _ship_t
 		_ship_t = move_toward(_ship_t, _goal_t, _sail_speed * delta)
-		PlayerState.voyage_ship_t = _ship_t   # carry the position across scene swaps
-		if not _enc_fired and _is_encounter(_done):
-			var mid : float = (float(_done) + 0.5) / float(_total)
-			if prev < mid and _ship_t >= mid:
-				_enc_fired = true
-				reached_encounter.emit()
+		PlayerState.voyage_ship_t = _ship_t   # carry the position across scene swaps (deck↔Loft sync)
 		if _ship_t == _goal_t:
-			reached_stop.emit()
+			if _goal_is_swords:
+				reached_encounter.emit()   # reached the swords — board 'em
+			else:
+				reached_stop.emit()        # reached a node — league point / arrival
 	_bob += delta
 	queue_redraw()
 
