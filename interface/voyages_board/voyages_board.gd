@@ -15,6 +15,9 @@ const ISLAND_CRADLE : Dictionary = {"name": "Cradle Rock", "scene": "res://level
 const ISLAND_DRIFTSPAR : Dictionary = {"name": "Driftspar", "scene": "res://levels/frontier_isle/frontier_isle.tscn"}
 const LEGS_MIN : int = 2
 const LEGS_MAX : int = 4
+## Direct paid passage to the nearest island (skips the pillage) — the "fare" alternative to
+## jobbing a crew. Cheap: it's just a ride, where pillaging EARNS gold.
+const FARE_GOLD : int = 20
 
 
 # The nearest OTHER island from where the player launched (the helm stored that in
@@ -82,7 +85,8 @@ func _show_list() -> void:
 
 	_clear_content()
 	_content.add_child(_make_title("VOYAGES — PILLAGING WITH A CREW"))
-	_content.add_child(_make_caption("These crews are seeking a hand to pillage the high skies. Sign on for a cut of the booty."))
+	_content.add_child(_make_caption("These crews are seeking a hand to pillage the high skies. Sign on for a cut of the booty — or just buy fare for a straight ride."))
+	_content.add_child(_make_fare_row(_destination_island()))
 	for crew in CREWS:
 		_content.add_child(_make_crew_row(crew))
 	_content.add_child(_make_caption("You job a single station and fight the boarding; you can't strand yourself."))
@@ -161,6 +165,42 @@ func _on_accept(crew: Dictionary) -> void:
 	if get_tree() != null:
 		get_tree().paused = false
 	get_tree().change_scene_to_file(SHIP_DECK_SCENE)
+
+
+# --- Fare: direct paid passage (no pillage) --------------------------
+
+func _make_fare_row(dest: Dictionary) -> PanelContainer:
+
+	var row_panel : PanelContainer = PanelContainer.new()
+	row_panel.add_theme_stylebox_override("panel", _row_style())
+	var row : HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row_panel.add_child(row)
+	var info : Label = Label.new()
+	info.text = "Buy fare — a straight ride to %s, no pillaging.   %d gold" % [String(dest["name"]), FARE_GOLD]
+	info.add_theme_font_size_override("font_size", 15)
+	info.add_theme_color_override("font_color", Color(0.86, 0.92, 1.0, 1.0))
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(info)
+	var can_afford : bool = PlayerState.total_coins >= FARE_GOLD
+	var fare : Button = _make_button("Pay fare" if can_afford else "Need %d gold" % FARE_GOLD,
+		Color(0.80, 1.0, 0.66, 1.0) if can_afford else Color(0.72, 0.72, 0.76, 1.0))
+	fare.disabled = not can_afford
+	if can_afford:
+		fare.pressed.connect(_on_fare.bind(dest))
+	row.add_child(fare)
+	return row_panel
+
+
+func _on_fare(dest: Dictionary) -> void:
+
+	if PlayerState.total_coins < FARE_GOLD:
+		return
+	PlayerState.add_coins(-FARE_GOLD)
+	PlayerState.pillage_phase = 0   # a straight ride — no pillage state on the far side
+	if get_tree() != null:
+		get_tree().paused = false
+	get_tree().change_scene_to_file(String(dest["scene"]))
 
 
 func _on_cancel() -> void:
