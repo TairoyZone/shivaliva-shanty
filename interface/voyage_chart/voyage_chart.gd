@@ -39,17 +39,23 @@ var _done : int = 0
 var _log : Array = []
 var _encounters : Array = []
 var _haul : int = 0
+
+signal reached_stop        # the sloop arrived at a route node (a league point) — show the report
+signal reached_encounter   # the sloop reached an encounter leg's swords — time to board / fight
+
 var _ship_t : float = 0.0        # current sloop position, 0..1 along the track
-var _goal_t : float = 0.0        # where she's sailing toward right now (continuous creep)
-var _inited : bool = false       # snap to the start stop on the first feed, then creep
-var _bob : float = 0.0           # bob phase (gentle real-time sway on the wind)
+var _goal_t : float = 0.0        # the node she's sailing toward — she STOPS here
+var _inited : bool = false       # resume the position from PlayerState on the first feed
+var _bob : float = 0.0           # bob phase (gentle sway on the wind)
+var _sail_speed : float = 0.05   # track-fraction/sec — set ENTIRELY by the crew's sailing skill
+var _enc_fired : bool = false    # this crossing's encounter mark already signalled (fire once)
 var _bg : StyleBoxFlat           # self-drawn panel backing (so any scene can drop us in bare)
 
 const SIZE : Vector2 = Vector2(326.0, 116.0)
-## Real-time sailing: the sloop steadily creeps toward ~80% of the CURRENT leg (so you always
-## SEE her making way while you work), and clearing a stop nudges the goal a leg further on.
-const CREEP_SPEED : float = 0.05     # track-fraction per second
-const CREEP_FRAC : float = 0.8       # how far into the working leg she sails before the stop
+## She STOPS at each node and only sails BETWEEN them; the pace is set by how good the crew are
+## (their average duty_skill) — a top crew crosses a leg fast, no/poor crew the slowest.
+const SAIL_SECS_SLOW : float = 7.0   # seconds to cross one leg with no / poor crew
+const SAIL_SECS_FAST : float = 2.8   # …with a top crew
 const BOB_RATE : float = 2.4
 const BOB_AMP : float = 2.5
 
@@ -83,22 +89,41 @@ func place_at(parent: CanvasLayer, top: bool) -> void:
 	parent.add_child(self)
 
 
-# Pull the live route straight from PlayerState (so callers don't duplicate the read).
-func refresh_from_state(animate: bool) -> void:
+# Pull the live route straight from PlayerState. `sailing` = she's CROSSING a leg now (sails
+# toward the NEXT node); else she HOLDS at the current node. Pace comes from the crew's skill.
+func refresh_from_state(sailing: bool) -> void:
 
 	var dest : String = PlayerState.pillage_destination if not PlayerState.pillage_destination.is_empty() else "the lanes"
 	var haul : int = 0
 	for r in PlayerState.pillage_log:
 		haul += int(r.get("gold", 0))
+	_sail_speed = _crew_sail_speed()
 	set_route(dest, PlayerState.pillage_legs_total, PlayerState.pillage_log.size(),
-		PlayerState.pillage_log, PlayerState.pillage_encounters, haul, animate)
+		PlayerState.pillage_log, PlayerState.pillage_encounters, haul, sailing)
 
 
-# Feed the live route. The sloop SAILS toward her goal continuously (see _process); a cleared
-# stop just moves the goal a leg onward, so she keeps making way rather than teleporting.
-# (`animate` is vestigial now that motion is continuous — kept for the call sites.)
+# Ship PACE = how good the crew are: the higher their average duty_skill, the faster she
+# crosses a leg. No crew at all → the slowest pace. (The player's Loft does NOT affect speed.)
+func _crew_sail_speed() -> float:
+
+	var legs : int = maxi(1, PlayerState.pillage_legs_total)
+	var sum : float = 0.0
+	var n : int = 0
+	for m in PlayerState.pillage_duty_crew:
+		# Pace = the SAILING HANDS only — skip you, and skip the captain (he navigates, not sails).
+		if bool(m.get("is_player", false)) or String(m.get("duty", "")) == DutyReport.CAPTAIN_DUTY:
+			continue
+		sum += float(m.get("skill", 0.0))
+		n += 1
+	var avg : float = (sum / float(n)) if n > 0 else 0.0
+	var secs : float = lerpf(SAIL_SECS_SLOW, SAIL_SECS_FAST, clampf(avg, 0.0, 1.0))
+	return (1.0 / float(legs)) / maxf(secs, 0.5)   # track-fraction/sec to cross one leg in `secs`
+
+
+# Feed the live route. She sails toward _goal_t in _process at the crew's pace, STOPPING at the
+# node; en route she signals reached_encounter (at an encounter leg's swords) and reached_stop.
 func set_route(dest: String, total: int, done: int, leg_log: Array, encounters: Array,
-		haul: int, _animate: bool = false) -> void:
+		haul: int, sailing: bool = false) -> void:
 
 	_dest = dest
 	_total = maxi(1, total)
@@ -107,25 +132,48 @@ func set_route(dest: String, total: int, done: int, leg_log: Array, encounters: 
 	_encounters = encounters
 	_haul = haul
 	if done >= _total:
-		_goal_t = 1.0                                              # arrived — sail up to the isle
+		_goal_t = 1.0                                                  # arrived — up to the isle
+	elif sailing:
+		_goal_t = clampf((float(done) + 1.0) / float(_total), 0.0, 1.0)  # crossing → the NEXT node
 	else:
-		_goal_t = clampf((float(done) + CREEP_FRAC) / float(_total), 0.0, 1.0)
+		_goal_t = clampf(float(done) / float(_total), 0.0, 1.0)          # holding AT this node
 	if not _inited:
-		# Resume exactly where the sloop was on the last screen (capped only so she can't
-		# overshoot the goal), so deck↔Loft swaps stay continuous AND a just-cleared stop lets
-		# her sail smoothly THROUGH the node rather than snapping onto it.
 		_ship_t = clampf(PlayerState.voyage_ship_t, 0.0, _goal_t)
 		_inited = true
+	_enc_fired = false   # re-arm the encounter mark for this feed
 	queue_redraw()
 
 
-# Sail toward the goal every frame + bob on the wind — the "real-time" motion.
+# Sail toward the goal at the crew's pace; fire reached_encounter at the swords and reached_stop
+# at the node. A gentle bob keeps her alive even while holding at a stop.
 func _process(delta: float) -> void:
 
-	_ship_t = move_toward(_ship_t, _goal_t, CREEP_SPEED * delta)
-	PlayerState.voyage_ship_t = _ship_t   # carry the position across scene swaps
+	if _ship_t != _goal_t:
+		var prev : float = _ship_t
+		_ship_t = move_toward(_ship_t, _goal_t, _sail_speed * delta)
+		PlayerState.voyage_ship_t = _ship_t   # carry the position across scene swaps
+		if not _enc_fired and _is_encounter(_done):
+			var mid : float = (float(_done) + 0.5) / float(_total)
+			if prev < mid and _ship_t >= mid:
+				_enc_fired = true
+				reached_encounter.emit()
+		if _ship_t == _goal_t:
+			reached_stop.emit()
 	_bob += delta
 	queue_redraw()
+
+
+# Has she still got track to cover before her goal? (The deck uses this to know whether a
+# crossing will actually animate, so a zero-distance "sail" still triggers the stop logic.)
+func needs_sail() -> bool:
+
+	return not is_equal_approx(_ship_t, _goal_t)
+
+
+# Hold her exactly where she is (e.g. parked at the swords while the boarding cry plays).
+func freeze() -> void:
+
+	_goal_t = _ship_t
 
 
 # This leg's logged report (or {} if not run yet).

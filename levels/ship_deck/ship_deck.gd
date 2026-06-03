@@ -49,7 +49,7 @@ const INTERACT_RANGE : float = 95.0
 
 ## Functional station grid cells (well spread out).
 const LOFT_G : Vector2 = Vector2(2.6, 7.0)     # the playable Loft
-const HELM_G : Vector2 = Vector2(4.0, 3.2)     # captain + the "board" point
+const HELM_G : Vector2 = Vector2(4.0, 3.2)     # captain's post + the navigation prop
 const PLANK_G : Vector2 = Vector2(4.0, 15.2)   # the gangplank (disembark)
 const SPAWN_G : Vector2 = Vector2(4.0, 13.0)
 
@@ -84,7 +84,7 @@ var _active : String = ""
 var _prompt : Label
 var _captain_label : Label
 var _chart : VoyageChart         # the drawn voyage progress ribbon
-var _advanced_this_load : bool = false   # set when a leg resolves this load → animate the chart hop
+var _crossing : bool = false     # the ship is sailing between stops — stations locked, watch her make way
 
 
 # Iso projection, centred so the deck middle sits on the world origin.
@@ -129,24 +129,77 @@ func _seed_demo_route_if_unset() -> void:
 
 # --- Pillage phase ----------------------------------------------------
 
+# The voyage now PLAYS OUT ON THE CHART: at a node you man the Loft (your duty), then the ship
+# SAILS the leg at the crew's pace — fires the boarding when she reaches the swords, and the
+# duty report when she makes the next node. Phase 0 = at a node; 1 = crossing; 2 = crossing
+# after the boarding (resume to the node).
 func _setup_phase() -> void:
 
+	if _arrived():
+		# Voyage's end. Also guards a redundant re-load so the last leg is never re-banked.
+		_say("%s dead ahead — voyage's end! Total haul: %d gold. Take the plank to make port." % [
+			_destination(), _voyage_total_gold()])
+		_refresh_chart(false)
+		return
 	match PlayerState.pillage_phase:
 		1:
-			# Back from the Loft. If a ship's out there, sound the boarding; if the skies
-			# are clear, this was just a calm stretch — bank the salvage and sail on.
-			if _is_encounter_leg(PlayerState.pillage_leg):
-				_say("Sail ho — %s off the bow! Get to the helm and board 'em!" % _foe_name(PlayerState.pillage_leg))
-			else:
-				_resolve_calm()
+			_say("Underway toward %s — hold fast, hand." % _destination())
+			_begin_sail()
 		2:
-			_resolve_boarding()
+			_say("Back to the crossing — making way toward %s." % _destination())
+			_begin_sail()
 		_:
 			if PlayerState.pillage_leg <= 0:
-				_say("Welcome aboard, hand! We make for %s — man the Loft to keep her aloft." % _destination())
+				_say("Welcome aboard, hand! Man the Loft, then we make for %s." % _destination())
 			else:
-				_say("Man the Loft for the next stretch toward %s." % _destination())
-	_refresh_chart()
+				_say("Waypoint made — man the Loft for the next stretch toward %s." % _destination())
+			_refresh_chart(false)
+
+
+# Start (or resume) the crossing: the chart sails toward the next node at crew pace. If she's
+# somehow already there (zero-distance), resolve the stop straight away.
+func _begin_sail() -> void:
+
+	_crossing = true
+	_refresh_chart(true)
+	if _chart != null and not _chart.needs_sail():
+		# Degenerate zero-distance crossing: we still owe the boarding on an encounter leg.
+		if PlayerState.pillage_phase == 1 and _is_encounter_leg(PlayerState.pillage_leg):
+			_on_chart_reached_encounter()
+		else:
+			_on_chart_reached_stop()
+
+
+# The sloop reached this leg's swords on the chart — board 'em (only on the first pass; the
+# post-fight resume is phase 2, which this ignores). Cry the alarm and hold her at the swords
+# for a beat BEFORE the Skirmish loads, so the boarding never reads as a teleport.
+func _on_chart_reached_encounter() -> void:
+
+	if PlayerState.pillage_phase != 1 or not _is_encounter_leg(PlayerState.pillage_leg):
+		return
+	if _chart != null:
+		_chart.freeze()
+	_say("Sail ho — %s off the bow! Grapples away, hands — board 'em!" % _foe_name(PlayerState.pillage_leg))
+	await get_tree().create_timer(1.1).timeout
+	if not is_instance_valid(self) or not is_inside_tree():
+		return   # bailed (or left) during the cry
+	_board_brigand()
+
+
+# The sloop made the next node (a league point) — resolve the leg (fight booty or calm salvage)
+# and post the DUTY REPORT here, the way YPP shows it at every league point.
+func _on_chart_reached_stop() -> void:
+
+	if not _crossing:
+		return
+	_crossing = false
+	if _is_encounter_leg(PlayerState.pillage_leg):
+		_resolve_boarding()
+	else:
+		_resolve_calm()
+	_refresh_chart(false)   # update done/haul + hold at the node
+	if not PlayerState.last_duty_report.is_empty():
+		_show_duty_report()
 
 
 # Back from the boarding Skirmish on an encounter leg → tally booty + report it.
@@ -189,7 +242,6 @@ func _finish_leg(entry: Dictionary, outcome_line: String) -> void:
 	# Log this leg's DUTY REPORT — your Loft rating (from lift) + each hand's simmed station.
 	if not PlayerState.pillage_duty_crew.is_empty():
 		PlayerState.last_duty_report = DutyReport.snapshot(PlayerState.pillage_duty_crew, int(entry.get("lift", 0)))
-	_advanced_this_load = true   # the chart should SHOW the sloop hop on this load
 	if PlayerState.pillage_leg >= PlayerState.pillage_legs_total - 1:
 		PlayerState.frontier_unlocked = true
 		_say("%s  %s dead ahead — voyage's end! Total haul: %d gold. Take the plank to make port." % [
@@ -197,7 +249,7 @@ func _finish_leg(entry: Dictionary, outcome_line: String) -> void:
 	else:
 		PlayerState.pillage_leg += 1
 		PlayerState.pillage_phase = 0
-		_say("%s  Next stretch toward %s — man the Loft, hand." % [outcome_line, _destination()])
+		_say("%s  Waypoint made — man the Loft for the next stretch toward %s." % [outcome_line, _destination()])
 
 
 func _voyage_total_gold() -> int:
@@ -259,8 +311,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	match _active:
 		"loft":
 			_man_loft()
-		"board":
-			_board_brigand()
 		"plank":
 			_disembark()
 
@@ -285,13 +335,8 @@ func _stations_for_phase() -> Array:
 	if _arrived():
 		return [plank]   # voyage's end — the plank is all that's left
 	match PlayerState.pillage_phase:
-		1:
-			# Only an encounter leg parks here with a ship to board (calm legs auto-resolve).
-			if _is_encounter_leg(PlayerState.pillage_leg):
-				return [["board", _iso(HELM_G.x, HELM_G.y)], plank]
-			return [plank]
-		2:
-			return [plank]
+		1, 2:
+			return [plank]   # crossing — watch her make way (the boarding fires itself at the swords)
 		_:
 			return [["loft", _iso(LOFT_G.x, LOFT_G.y)], plank]
 
@@ -301,8 +346,6 @@ func _action_label(id: String) -> String:
 	match id:
 		"loft":
 			return "Man the Loft"
-		"board":
-			return "Board the brigand!"
 		"plank":
 			return "Disembark"
 	return ""
@@ -398,6 +441,8 @@ func _build_ui() -> void:
 	# [E] prompt bottom-centre). Populated by _setup_phase → _refresh_chart right after this.
 	_chart = VoyageChart.new()
 	_chart.place_at(layer, false)
+	_chart.reached_stop.connect(_on_chart_reached_stop)
+	_chart.reached_encounter.connect(_on_chart_reached_encounter)
 
 	# DUTY REPORT button (top-left — how the crew fared last leg, YPP-style).
 	var report_btn : Button = Button.new()
@@ -419,19 +464,26 @@ func _say(line: String) -> void:
 		_captain_label.text = "Cap'n %s:  \"%s\"" % [_captain_name(), line]
 
 
-# Open the YPP-style duty report (last leg's per-hand ratings).
+# Open the YPP-style duty report (last leg's per-hand ratings) — one at a time.
 func _open_duty_report() -> void:
 
+	_show_duty_report()
+
+
+func _show_duty_report() -> void:
+
+	if get_tree().get_first_node_in_group("duty_report") != null:
+		return   # already showing — don't stack panels
 	add_child(DutyReportPanel.create(PlayerState.last_duty_report))
 
 
-# Feed the live route into the drawn chart. Animates the sloop hop only when a leg just
-# resolved this load (_advanced_this_load) — a fresh board / man-the-Loft return sits still.
-func _refresh_chart() -> void:
+# Feed the live route into the drawn chart. `sailing` = she's crossing a leg now (sails toward
+# the next node, crew-paced); false = hold at the current node.
+func _refresh_chart(sailing: bool) -> void:
 
 	if _chart == null:
 		return
-	_chart.refresh_from_state(_advanced_this_load)
+	_chart.refresh_from_state(sailing)
 
 
 # The captain you jobbed onto at the [VoyagesBoard] (falls back to Jericho when
@@ -491,8 +543,10 @@ func _draw() -> void:
 		_draw_cannon(_iso(0.7, gy))
 		_draw_cannon(_iso(float(GW) - 0.7, gy))
 	_draw_chest(_iso(5.4, 5.4))
-	# Glow the ONE station this phase needs (its job is read by the glow, not a tag).
-	_draw_glow(_active_world_pos())
+	# Glow the ONE station this phase needs (its job is read by the glow, not a tag). While
+	# crossing there's nothing to man — you just watch her make way — so no glow.
+	if not _crossing:
+		_draw_glow(_active_world_pos())
 	# Clean station props (no labels): playable Loft + helm + the flavour props + plank.
 	_draw_prop(_iso(LOFT_G.x, LOFT_G.y), "loft")
 	_draw_prop(_iso(HELM_G.x, HELM_G.y), "navigation")
@@ -502,18 +556,13 @@ func _draw() -> void:
 	# (Crew are real Npc instances added in _add_crew — not drawn here.)
 
 
-# World position of the station active this phase (the one that glows).
+# World position of the station active this phase (the one that glows). Only used outside a
+# crossing: at a node it's the Loft (your duty); on arrival it's the plank.
 func _active_world_pos() -> Vector2:
 
 	if _arrived():
-		return _iso(PLANK_G.x, PLANK_G.y)   # glow the plank on arrival, however the last leg ended
-	match PlayerState.pillage_phase:
-		1:
-			return _iso(HELM_G.x, HELM_G.y)
-		2:
-			return _iso(PLANK_G.x, PLANK_G.y)
-		_:
-			return _iso(LOFT_G.x, LOFT_G.y)
+		return _iso(PLANK_G.x, PLANK_G.y)
+	return _iso(LOFT_G.x, LOFT_G.y)
 
 
 # A soft accent halo marking the active station (no text needed).

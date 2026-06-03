@@ -21,6 +21,7 @@ func _ready() -> void:
 
 	layer = 50
 	process_mode = Node.PROCESS_MODE_ALWAYS   # stays live while the tree is paused
+	add_to_group("duty_report")               # so the deck never stacks two at once
 	# Pause the deck while the report's up (matches VoyagesBoard) so E can't fire
 	# man-the-Loft / board / disembark behind the panel and orphan it.
 	get_tree().paused = true
