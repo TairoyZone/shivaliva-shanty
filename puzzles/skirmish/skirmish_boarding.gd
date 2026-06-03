@@ -56,6 +56,24 @@ const DEFEND_RING : Color = Color(0.55, 1.0, 0.66, 1.0)    # defending a mate (g
 const NAME_ALLY : Color = Color(0.72, 0.95, 0.76, 1.0)
 const NAME_FOE : Color = Color(0.97, 0.70, 0.70, 1.0)
 
+## The enemy crew is GENERIC (sky-brigands / marines you're plundering), NOT the friendly cast —
+## red names + menacing tints make "these are opponents" read instantly (YPP-style). Allies still
+## come from the real cast (they're your jobbed crew).
+const BRIGAND_NAMES : Array = [
+	"Stormy Brigand", "Raging Brigandor", "Grim Marauder", "Black-Hearted Corsair",
+	"Snarling Reaver", "Vile Cutthroat", "Rotten Knave", "Wretched Buccaneer",
+	"Iron-Fanged Marine", "Bristling Privateer", "Scarred Rogue", "Ill-Tempered Swab",
+]
+const FOE_TINTS : Array = [
+	Color(0.62, 0.20, 0.20, 1.0),   # blood red
+	Color(0.45, 0.16, 0.22, 1.0),   # dark maroon
+	Color(0.34, 0.30, 0.34, 1.0),   # ashen grey
+	Color(0.30, 0.36, 0.24, 1.0),   # sickly olive
+	Color(0.50, 0.28, 0.14, 1.0),   # rust
+	Color(0.26, 0.22, 0.34, 1.0),   # bruise purple
+]
+const FOE_WEAPONS : Array = ["brawl", "sword", "long_range"]
+
 
 ## One fighter in the boarding: a board + its identity/AI state + who it attacks.
 ## (An inner class with no `extends` defaults to RefCounted.)
@@ -85,6 +103,9 @@ var _combatants : Array = []
 var _player : Combatant
 var _over : bool = false
 var _ui : CanvasLayer
+## This fight's shuffled generic foe names + the next-foe index (so a boarding never repeats one).
+var _foe_names : Array = []
+var _foe_i : int = 0
 
 ## Window top index per side (which member is first-shown). Bigger crews scroll.
 var _scroll_ally : int = 0
@@ -158,16 +179,18 @@ func _build_combatants() -> void:
 	_player.color = SkirmishWeapon.color_for(_player.weapon)
 	_combatants.append(_player)
 
-	# Draw the crews from the cast (distinct where possible; generic if it runs out).
+	# ALLIES = your jobbed crew, from the real cast. FOES = generic sky-brigands / marines.
 	var cast : Array = NpcRegistry.all().duplicate()
 	cast.shuffle()
+	_foe_names = BRIGAND_NAMES.duplicate()
+	_foe_names.shuffle()
+	_foe_i = 0
 	var ci : int = 0
 	for _a in ALLY_COUNT:
 		_combatants.append(_make_ai(cast[ci] if ci < cast.size() else null, false))
 		ci += 1
 	for _f in FOE_COUNT:
-		_combatants.append(_make_ai(cast[ci] if ci < cast.size() else null, true))
-		ci += 1
+		_combatants.append(_make_ai(null, true))   # generic brigands — NOT the friendly cast
 
 
 func _make_ai(profile: NpcPersonality, enemy: bool) -> Combatant:
@@ -175,7 +198,15 @@ func _make_ai(profile: NpcPersonality, enemy: bool) -> Combatant:
 	var c : Combatant = Combatant.new()
 	c.board = SkirmishBoard.new()
 	c.enemy = enemy
-	if profile != null:
+	if enemy:
+		# A GENERIC opponent (red name via NAME_FOE) — a sky-brigand or marine, not the cast.
+		c.cname = String(_foe_names[_foe_i % _foe_names.size()]) if not _foe_names.is_empty() else "Brigand"
+		c.portrait = FOE_TINTS[_foe_i % FOE_TINTS.size()]
+		c.skill = randf_range(0.30, 0.70)
+		c.aggr = randf_range(0.45, 0.80)
+		c.weapon = String(FOE_WEAPONS[randi() % FOE_WEAPONS.size()])
+		_foe_i += 1
+	elif profile != null:
 		c.cname = profile.npc_name
 		c.portrait = profile.portrait_color
 		# search_depth 1..5 → skill 0..1 (cast runs 2..4); aggression drives garbage.
@@ -184,7 +215,7 @@ func _make_ai(profile: NpcPersonality, enemy: bool) -> Combatant:
 		var w : String = profile.skirmish_weapon
 		c.weapon = w if not w.is_empty() else "brawl"
 	else:
-		c.cname = "Brigand" if enemy else "Mate"
+		c.cname = "Mate"
 	c.color = SkirmishWeapon.color_for(c.weapon)
 	c.board.set_ai_controlled(true, c.skill)
 	c.board.set_show_preview(false)   # thumbnails drop the next-piece box (cleaner/narrower)

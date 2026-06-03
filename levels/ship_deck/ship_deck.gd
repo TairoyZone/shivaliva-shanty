@@ -22,21 +22,8 @@ const SELF_SCENE : String = "res://levels/ship_deck/ship_deck.tscn"
 const FALLBACK_HOME : String = "res://levels/shore/shore.tscn"
 ## Crew are REAL [Npc] instances (reuse the overworld character), not drawn figures.
 const NPC_SCENE : PackedScene = preload("res://components/npc/npc.tscn")
-
-const BOOTY_BASE : int = 40
-const BOOTY_PER_LIFT_DIV : int = 6
-const BOOTY_LIFT_BONUS_CAP : int = 100
-const SEED_PER_LIFT_DIV : int = 150
-## A LOST run still limps home with a small consolation cut (scaled to Loft lift) so a voyage
-## is never a total zero — a first-timer never feels the whole run was wasted.
-const BOOTY_LOSS_DIV : int = 14
-const BOOTY_LOSS_CAP : int = 24
-const SEED_CAP : int = 3
-## A CALM stretch (no ship met) pays only modest SALVAGE, scaled to how well you flew the
-## Loft — so calm legs still reward good sailing, but a fight is worth far more.
-const SALVAGE_PER_LIFT_DIV : int = 10
-const SALVAGE_MIN : int = 8
-const SALVAGE_CAP : int = 40
+# Voyage payout / footing tuning now lives on PlayerState (shared with the Loft cockpit):
+# resolve_voyage_leg(), voyage_seed_from_lift(), voyage_total_gold().
 
 ## Iso deck grid (tiles) + tile size (2:1, matching the iso Player). Big, so the
 ## Player is a small figure on a roomy deck (stations don't overlap).
@@ -121,6 +108,7 @@ func _seed_demo_route_if_unset() -> void:
 	PlayerState.pillage_leg = 0
 	PlayerState.pillage_log = []
 	PlayerState.pillage_encounters = ["", "a marine cutter", ""]
+	PlayerState.pillage_encounter_pos = [0.5, 0.55, 0.5]
 	PlayerState.voyage_active = true
 	PlayerState.voyage_ship_t = 0.0
 	PlayerState.pillage_duty_crew = DutyReport.build_roster(_captain_name())
@@ -138,7 +126,7 @@ func _setup_phase() -> void:
 	if _arrived():
 		# Voyage's end. Also guards a redundant re-load so the last leg is never re-banked.
 		_say("%s dead ahead — voyage's end! Total haul: %d gold. Take the plank to make port." % [
-			_destination(), _voyage_total_gold()])
+			_destination(), PlayerState.voyage_total_gold()])
 		_refresh_chart(false)
 		return
 	match PlayerState.pillage_phase:
@@ -170,20 +158,23 @@ func _begin_sail() -> void:
 # The sloop MADE THE NEXT STOP (a league point) — whether you were here or working the Loft.
 # A fight stop boards first (after a "Sail ho!" beat, so it never teleports); then the leg
 # resolves (fight booty or calm salvage) and the DUTY REPORT posts here, YPP-style.
+# The sloop reached this leg's swords (the random mid-leg spot) — board 'em.
+func _on_chart_reached_encounter() -> void:
+
+	if not _crossing or PlayerState.pillage_phase != 1 or not _is_encounter_leg(PlayerState.pillage_leg):
+		return
+	_crossing = false
+	await _deck_board_now()
+
+
 func _on_chart_reached_stop() -> void:
 
 	if not _crossing:
 		return
 	_crossing = false
-	# A fight stop (encounter leg, not yet fought) → board first; the report comes after.
+	# Fallback: an unfought encounter leg reached the node (the mid-leg swords didn't fire) → board.
 	if _is_encounter_leg(PlayerState.pillage_leg) and PlayerState.pillage_phase == 1:
-		if _chart != null:
-			_chart.freeze()
-		_say("Sail ho — %s off the bow! Grapples away, hands — board 'em!" % _foe_name(PlayerState.pillage_leg))
-		await get_tree().create_timer(1.1).timeout
-		if not is_instance_valid(self) or not is_inside_tree():
-			return   # bailed (or left) during the cry
-		_board_brigand()
+		await _deck_board_now()
 		return
 	# Calm stop, or back from the boarding → resolve the leg + post the duty report here.
 	if _is_encounter_leg(PlayerState.pillage_leg):
@@ -195,62 +186,41 @@ func _on_chart_reached_stop() -> void:
 		_show_duty_report()
 
 
-# Back from the boarding Skirmish on an encounter leg → tally booty + report it.
+# The "Sail ho!" cry + a held beat, then swap to the Skirmish (so the boarding never teleports).
+func _deck_board_now() -> void:
+
+	if _chart != null:
+		_chart.freeze()
+	_say("Sail ho — %s off the bow! Grapples away, hands — board 'em!" % _foe_name(PlayerState.pillage_leg))
+	await get_tree().create_timer(1.1).timeout
+	if not is_instance_valid(self) or not is_inside_tree():
+		return   # bailed (or left) during the cry
+	_board_brigand()
+
+
+# Resolve a leg via the SHARED PlayerState logic (so the deck + the Loft cockpit never diverge),
+# then say the outcome. (Normally the Loft cockpit drives the crossing; this is the deck-side
+# path for when you're on the deck — e.g. you bailed the Loft mid-crossing.)
 func _resolve_boarding() -> void:
 
-	var won : bool = PlayerState.last_skirmish_won
-	var lift : int = PlayerState.last_loft_lift
-	var cut : int = 0
-	if won:
-		@warning_ignore("integer_division")
-		var bonus : int = clampi(lift / BOOTY_PER_LIFT_DIV, 0, BOOTY_LIFT_BONUS_CAP)
-		cut = BOOTY_BASE + bonus
-	else:
-		@warning_ignore("integer_division")
-		cut = clampi(lift / BOOTY_LOSS_DIV, 0, BOOTY_LOSS_CAP)
-	if cut > 0:
-		PlayerState.add_coins(cut)
-	var line : String = ("We sent 'em running — %d gold for the cut!" % cut) if won \
-		else ("They slipped our grapple — %d gold salvaged." % cut)
-	_finish_leg({"leg": PlayerState.pillage_leg, "type": "fight", "won": won, "lift": lift, "gold": cut}, line)
+	_after_resolve(PlayerState.resolve_voyage_leg(true, PlayerState.last_skirmish_won,
+		PlayerState.last_loft_lift, PlayerState.last_loft_swaps))
 
 
-# A calm stretch (no ship met) — bank modest salvage scaled to how well the Loft was flown.
 func _resolve_calm() -> void:
 
-	var lift : int = PlayerState.last_loft_lift
-	@warning_ignore("integer_division")
-	var cut : int = clampi(lift / SALVAGE_PER_LIFT_DIV, SALVAGE_MIN, SALVAGE_CAP)
-	if cut > 0:
-		PlayerState.add_coins(cut)
-	_finish_leg({"leg": PlayerState.pillage_leg, "type": "calm", "won": true, "lift": lift, "gold": cut},
-		"Clear skies — a fair stretch. %d gold in salvage." % cut)
+	_after_resolve(PlayerState.resolve_voyage_leg(false, true,
+		PlayerState.last_loft_lift, PlayerState.last_loft_swaps))
 
 
-# Log this stop's report (drives the chart), then either sail on to the next leg or, if this
-# was the last stop, arrive at the destination island (a completed voyage → First Voyage).
-func _finish_leg(entry: Dictionary, outcome_line: String) -> void:
+func _after_resolve(r: Dictionary) -> void:
 
-	PlayerState.pillage_log.append(entry)
-	# Log this leg's DUTY REPORT — your Loft rating (from lift) + each hand's simmed station.
-	if not PlayerState.pillage_duty_crew.is_empty():
-		PlayerState.last_duty_report = DutyReport.snapshot(PlayerState.pillage_duty_crew, int(entry.get("lift", 0)))
-	if PlayerState.pillage_leg >= PlayerState.pillage_legs_total - 1:
-		PlayerState.frontier_unlocked = true
+	if bool(r["arrived"]):
 		_say("%s  %s dead ahead — voyage's end! Total haul: %d gold. Take the plank to make port." % [
-			outcome_line, _destination(), _voyage_total_gold()])
+			String(r["outcome_line"]), _destination(), PlayerState.voyage_total_gold()])
 	else:
-		PlayerState.pillage_leg += 1
-		PlayerState.pillage_phase = 0
-		_say("%s  Waypoint made — man the Loft for the next stretch toward %s." % [outcome_line, _destination()])
-
-
-func _voyage_total_gold() -> int:
-
-	var t : int = 0
-	for r in PlayerState.pillage_log:
-		t += int(r.get("gold", 0))
-	return t
+		_say("%s  Waypoint made — man the Loft for the next stretch toward %s." % [
+			String(r["outcome_line"]), _destination()])
 
 
 # The whole route is run — the destination island is reached; only the plank remains.
@@ -347,6 +317,7 @@ func _action_label(id: String) -> String:
 func _man_loft() -> void:
 
 	PlayerState.last_loft_lift = 0
+	PlayerState.last_loft_swaps = 0   # reset the lift/swaps PAIR together (the rate's denominator)
 	PlayerState.pillage_phase = 1
 	PlayerState.puzzle_return_scene = SELF_SCENE
 	get_tree().change_scene_to_file(LOFT_SCENE)
@@ -356,9 +327,7 @@ func _board_brigand() -> void:
 
 	PlayerState.last_skirmish_won = false
 	PlayerState.pillage_phase = 2
-	@warning_ignore("integer_division")
-	var boarding_seed : int = clampi(PlayerState.last_loft_lift / SEED_PER_LIFT_DIV, 0, SEED_CAP)
-	PlayerState.voyage_boarding_seed = boarding_seed
+	PlayerState.voyage_boarding_seed = PlayerState.voyage_seed_from_lift(PlayerState.last_loft_lift)
 	PlayerState.skirmish_opponent = ""
 	PlayerState.puzzle_return_scene = SELF_SCENE
 	get_tree().change_scene_to_file(SKIRMISH_SCENE)
@@ -375,7 +344,9 @@ func _disembark() -> void:
 		target = PlayerState.voyage_home_scene
 	if target.is_empty():
 		target = FALLBACK_HOME
-	# Voyage's over either way — wipe the scaffolding so nothing stale carries to the next run.
+	# Voyage's over either way — pay out the pooled booty (you keep what you plundered), then wipe
+	# the scaffolding so nothing stale carries to the next run.
+	PlayerState.cash_out_voyage()
 	PlayerState.clear_voyage()
 	get_tree().change_scene_to_file(target)
 
@@ -435,6 +406,7 @@ func _build_ui() -> void:
 	_chart = VoyageChart.new()
 	_chart.place_at(layer, false)
 	_chart.reached_stop.connect(_on_chart_reached_stop)
+	_chart.reached_encounter.connect(_on_chart_reached_encounter)
 
 	# DUTY REPORT button (top-left — how the crew fared last leg, YPP-style).
 	var report_btn : Button = Button.new()

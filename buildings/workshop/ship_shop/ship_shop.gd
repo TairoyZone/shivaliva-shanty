@@ -18,17 +18,17 @@ extends Interactable
 const SHIPS : Array = [
 	{
 		"id": "driftpod", "name": "Driftpod",
-		"gold": 300, "lumber": 0,
+		"gold": 750, "lumber": 0,
 		"blurb": "A one-seat skiff for short hops between nearby rocks.",
 	},
 	{
 		"id": "cloudcutter", "name": "Cloud Cutter",
-		"gold": 1200, "lumber": 180,
+		"gold": 3000, "lumber": 220,
 		"blurb": "A nimble cutter — room for a small crew and some cargo.",
 	},
 	{
 		"id": "skygalleon", "name": "Sky Galleon",
-		"gold": 4000, "lumber": 450,
+		"gold": 10000, "lumber": 550,
 		"blurb": "A great hull built for long voyages across the void.",
 	},
 ]

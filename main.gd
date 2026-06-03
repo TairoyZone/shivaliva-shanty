@@ -8,6 +8,7 @@ extends Control
 ## IntroOverlay there).
 const FIRST_SCENE : String = "res://levels/player_shanty_interior/player_shanty_interior.tscn"
 
+@onready var _title : Label = $Title
 @onready var _subtitle : Label = $Subtitle
 
 ## The overwrite-confirm overlay while it's up (guards against stacking).
@@ -19,23 +20,46 @@ func _ready() -> void:
 	# The HUD is a gameplay element — keep it off the title.
 	if HUD:
 		HUD.visible = false
-	_subtitle.text = "A puzzle-pirate life among the floating isles"
+	# Living procedural sky behind the menu (drifting isles + stardust). Sits over the flat
+	# fallback bg, beneath the title/buttons.
+	var backdrop : MenuBackdrop = MenuBackdrop.new()
+	add_child(backdrop)
+	move_child(backdrop, 1)
+	_style_title()
 	_build_menu()
+
+
+func _style_title() -> void:
+
+	_title.text = "Shivaliva Shanty"
+	_title.add_theme_font_size_override("font_size", 64)
+	_title.add_theme_color_override("font_color", Color(0.98, 0.95, 0.86, 1.0))
+	_title.add_theme_color_override("font_outline_color", Color(0.04, 0.03, 0.02, 0.95))
+	_title.add_theme_constant_override("outline_size", 6)
+	_title.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.55))
+	_title.add_theme_constant_override("shadow_offset_x", 0)
+	_title.add_theme_constant_override("shadow_offset_y", 5)
+
+	_subtitle.text = "Pirate or marine — make your name among the floating isles"
+	_subtitle.add_theme_font_size_override("font_size", 21)
+	_subtitle.add_theme_color_override("font_color", Color(0.74, 0.82, 0.96, 0.95))
+	_subtitle.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.7))
+	_subtitle.add_theme_constant_override("outline_size", 3)
 
 
 func _build_menu() -> void:
 
 	var vbox : VBoxContainer = VBoxContainer.new()
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	vbox.add_theme_constant_override("separation", 14)
+	vbox.add_theme_constant_override("separation", 16)
 	vbox.anchor_left = 0.5
 	vbox.anchor_right = 0.5
 	vbox.anchor_top = 0.5
 	vbox.anchor_bottom = 0.5
-	vbox.offset_left = -140.0
-	vbox.offset_top = 64.0
-	vbox.offset_right = 140.0
-	vbox.offset_bottom = 260.0
+	vbox.offset_left = -150.0
+	vbox.offset_top = 18.0
+	vbox.offset_right = 150.0
+	vbox.offset_bottom = 280.0
 	vbox.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	add_child(vbox)
 
@@ -164,7 +188,7 @@ func _make_button(text: String, font_color: Color) -> Button:
 	var btn : Button = Button.new()
 	btn.text = text
 	btn.focus_mode = Control.FOCUS_NONE
-	btn.custom_minimum_size = Vector2(220, 0)
+	btn.custom_minimum_size = Vector2(260, 0)
 	btn.add_theme_font_size_override("font_size", 22)
 	btn.add_theme_color_override("font_color", font_color)
 	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))

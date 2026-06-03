@@ -73,7 +73,7 @@ const STARTING_GOLD : int = 0
 ## The first-ship onboarding goal — mirrors the cheapest spacecraft in
 ## ship_shop.gd's catalog (the Driftpod). Drives [method current_objective].
 const FIRST_SHIP_NAME : String = "Driftpod"
-const FIRST_SHIP_GOLD : int = 300
+const FIRST_SHIP_GOLD : int = 750
 const FIRST_SHIP_LUMBER : int = 0   # MVP: the first ship (Driftpod) is GOLD-ONLY (Troy 2026-06-03)
 ## Gold paid per wood delivered at the Workshop drop-off. 1:1 is
 ## intentional — Gem Drop tops out at +10 per match, a clean Lumberjacking
@@ -228,6 +228,9 @@ var last_lumberjacking_yield : int = 0
 ## end). The Voyage reads it as the MAKE-WAY result — it scales the booty and
 ## seeds the boarding fight (better sailing → an easier board).
 var last_loft_lift : int = 0
+## Swaps the player spent in that Loft session — with last_loft_lift gives the per-swap RATE
+## that drives the duty report (so a short, sharp session still rates well; see [[duty-report]]).
+var last_loft_swaps : int = 0
 ## Did the player win the most recent Skirmish duel? (Set by skirmish_duel.gd on
 ## end.) The Voyage reads it as the boarding-fight outcome.
 var last_skirmish_won : bool = false
@@ -254,10 +257,13 @@ var pillage_destination_scene : String = ""
 var pillage_legs_total : int = 1
 var pillage_leg : int = 0
 var pillage_log : Array = []   # entries: {leg:int, type:"fight"|"calm", won:bool, lift:int, gold:int}
-## One entry PER LEG, pre-rolled on Accept: "" = a calm sailing stretch (salvage only),
+## One entry PER LEG, pre-rolled on Accept: "" = a calm sailing stretch (no fight),
 ## a non-empty FOE name (e.g. "a marine cutter") = an ENCOUNTER that triggers the boarding
 ## Skirmish. So fights happen only when you MEET a ship, never on every stop.
 var pillage_encounters : Array = []
+## For each encounter leg, WHERE along the leg (0..1) you meet the foe — pre-rolled on Accept so
+## the swords sit at a random spot BETWEEN the stops (not pinned to a node) and the fight fires there.
+var pillage_encounter_pos : Array = []
 ## True from boarding a crew (Accept) until you disembark — lets the voyage stations (e.g.
 ## the Loft) know they're being played AS PART of a pillage, so they can show the chart.
 var voyage_active : bool = false
@@ -269,6 +275,91 @@ var voyage_ship_t : float = 0.0
 ## is_player}. The LAST leg's rated snapshot (DutyReport.snapshot): {name,duty,rating_idx,...}.
 var pillage_duty_crew : Array = []
 var last_duty_report : Array = []
+
+## --- Voyage payout / footing tuning (shared by the Loft + the ship deck) ---
+const BOOTY_BASE : int = 40
+const BOOTY_PER_LIFT_DIV : int = 6
+const BOOTY_LIFT_BONUS_CAP : int = 100
+## A LOST boarding still grabs a little scrap from the scuffle (so a fought leg isn't a flat zero);
+## a CALM leg pays nothing — gold is the cut of PLUNDER from DEFEATING a crew, not a waypoint toll.
+const BOOTY_LOSS_DIV : int = 14
+const BOOTY_LOSS_CAP : int = 24
+## Arrival footing: how much the foe's Skirmish board is pre-buried, from the Loft lift.
+const SEED_PER_LIFT_DIV : int = 150
+const SEED_CAP : int = 3
+## Your DUTY-REPORT rating is a RATE — lift banked per swap — so a short leg still rates by HOW
+## WELL you flew, not how long the crew let you puzzle. This is the lift/swap that earns Incredible.
+## Calibrated to Troy's real capture (a GOOD leg ≈ 8 lift/swap): at 12 that reads Good/Excellent,
+## ~10.6+ earns Incredible, a weak leg Poor, a do-nothing leg Booched.
+const DUTY_RATE_FOR_TOP : float = 12.0
+
+
+# Resolve one voyage leg (shared by the Loft cockpit and the ship deck): bank the cut, snapshot
+# the duty report (your row rated on lift-per-swap), log the leg, and advance / mark arrival.
+# Returns {arrived:bool, cut:int, outcome_line:String}.
+func resolve_voyage_leg(is_fight: bool, won: bool, lift: int, swaps: int) -> Dictionary:
+
+	# Gold = your CUT OF THE PLUNDER from DEFEATING a crew (pirates / marines), the YPP way — NOT
+	# a payout for reaching a waypoint. A calm stretch is just sailing: no fight, no plunder.
+	# The cut is POOLED in pillage_log and paid as ONE booty divvy at voyage's end (cash_out_voyage).
+	var cut : int = 0
+	if is_fight:
+		if won:
+			@warning_ignore("integer_division")
+			cut = BOOTY_BASE + clampi(lift / BOOTY_PER_LIFT_DIV, 0, BOOTY_LIFT_BONUS_CAP)
+		else:
+			@warning_ignore("integer_division")
+			cut = clampi(lift / BOOTY_LOSS_DIV, 0, BOOTY_LOSS_CAP)   # a little scrap from the scuffle
+
+	var score01 : float = clampf((float(lift) / maxf(1.0, float(swaps))) / DUTY_RATE_FOR_TOP, 0.0, 1.0)
+	if not pillage_duty_crew.is_empty():
+		last_duty_report = DutyReport.snapshot(pillage_duty_crew, score01)
+	# Voyage legs feed the SAME high-water-mark Loft mastery as standalone play (the new primary
+	# way to fly the Loft), so it still ranks up. Silent — no mid-voyage toast.
+	record_puzzle_result("loft", lift)
+	pillage_log.append({"leg": pillage_leg, "type": ("fight" if is_fight else "calm"),
+		"won": won, "lift": lift, "gold": cut})
+
+	var outcome : String
+	if is_fight:
+		outcome = ("We took 'em — %d gold, your cut of the plunder!" % cut) if won \
+			else ("They broke off — %d gold from the scrap." % cut)
+	else:
+		outcome = "Clear skies — a fair stretch. No plunder, but she's aloft and on course."
+
+	var arrived : bool = pillage_leg >= pillage_legs_total - 1
+	if arrived:
+		frontier_unlocked = true
+	else:
+		pillage_leg += 1
+		pillage_phase = 0
+	return {"arrived": arrived, "cut": cut, "outcome_line": outcome}
+
+
+# The boarding footing seed from a Loft lift (capped). Set into voyage_boarding_seed before a fight.
+func voyage_seed_from_lift(lift: int) -> int:
+
+	@warning_ignore("integer_division")
+	return clampi(lift / SEED_PER_LIFT_DIV, 0, SEED_CAP)
+
+
+# Total gold logged across the voyage so far (the chart's "Haul").
+func voyage_total_gold() -> int:
+
+	var t : int = 0
+	for r in pillage_log:
+		t += int(r.get("gold", 0))
+	return t
+
+
+# Pay out the whole voyage's POOLED booty as one divvy (YPP-style — your cut of the plunder, paid
+# at voyage's end, not per stop). Returns the total paid. Call ONCE before clear_voyage on disembark.
+func cash_out_voyage() -> int:
+
+	var total : int = voyage_total_gold()
+	if total > 0:
+		add_coins(total)
+	return total
 
 
 # Wipe all transient voyage/pillage scaffolding — called when a voyage ENDS (disembark, whether
@@ -288,6 +379,7 @@ func clear_voyage() -> void:
 	pillage_crew = ""
 	pillage_duty_crew = []
 	last_duty_report = []
+	pillage_encounter_pos = []
 
 ## Transient: the chosen Skirmish-duel opponent's NPC resource path. Set by the
 ## Spar post's challenge picker; consumed (and cleared) by SkirmishDuel on load.

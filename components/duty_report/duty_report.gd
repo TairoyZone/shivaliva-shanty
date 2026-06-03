@@ -29,11 +29,6 @@ const PLAYER_DUTY : String = "The Loft"
 
 ## Per-leg performance wobble layered on a crewmate's base skill.
 const VARIANCE : float = 0.16
-## Lift banked at the Loft that earns a top "Incredible" — your row's rating scale. Tuned to
-## the loft MASTERY_PUZZLES thresholds [0,120,280,480,750,1100] + the booty cap (~600 lift):
-## Incredible ≈ a Master leg (~490), Good ≈ Adept (~280), Fine ≈ ~155 — so your row tracks
-## skill the way the crew's does, instead of pinning at Incredible every leg.
-const LIFT_FOR_TOP : float = 560.0
 
 const FALLBACK_SKILL : float = 0.6
 const PLAYER_TINT : Color = Color(0.96, 0.82, 0.46, 1.0)
@@ -94,22 +89,23 @@ static func build_roster(captain_name: String) -> Array:
 	roster.append({
 		"name": "You",
 		"duty": PLAYER_DUTY,
-		"skill": -1.0,            # n/a — your row is rated from real Loft lift
+		"skill": -1.0,            # n/a — your row is rated from your lift-per-swap performance
 		"tint": PLAYER_TINT,
 		"is_player": true,
 	})
 	return roster
 
 
-# Snapshot this leg's report from the roster: rate the player from `lift`, sim each crewmate
-# from their skill. Each entry: {name, duty, rating_idx, is_player, tint}.
-static func snapshot(roster: Array, lift: int) -> Array:
+# Snapshot this leg's report from the roster: rate the player from `player_score01` (a 0..1
+# performance score — lift-per-swap, computed by the caller), sim each crewmate from their
+# skill. Each entry: {name, duty, rating_idx, is_player, tint}.
+static func snapshot(roster: Array, player_score01: float) -> Array:
 
 	var report : Array = []
 	for m in roster:
 		var idx : int
 		if bool(m.get("is_player", false)):
-			idx = rating_index(clampf(float(lift) / LIFT_FOR_TOP, 0.0, 1.0))
+			idx = rating_index(clampf(player_score01, 0.0, 1.0))
 		else:
 			var score : float = clampf(float(m.get("skill", FALLBACK_SKILL)) \
 				+ randf_range(-VARIANCE, VARIANCE), 0.0, 1.0)

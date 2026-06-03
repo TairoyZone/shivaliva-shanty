@@ -107,6 +107,10 @@ var grid : Array = []
 
 var _resolving : bool = false
 var _session_over : bool = false
+## Bumped each time a fresh round begins (reset_round). An in-flight swap/cascade captures this at
+## its start + bails after any await if it changed — so a stale leg's resolution can never corrupt
+## the freshly re-dealt board (the [[await-after-free-gotcha]] guard, extended to mid-leg re-deals).
+var _round_gen : int = 0
 var _total_lift : int = 0
 var _moves_left : int = MOVES_PER_ROUND
 ## Logical Stardust level; _stardust_display eases toward it (the smooth shown glide).
@@ -268,6 +272,7 @@ func _do_swap() -> void:
 	if _is_ballast(grid[a.x][a.y]) or _is_ballast(grid[b.x][b.y]):
 		return
 	_resolving = true
+	var gen : int = _round_gen   # if a fresh round (reset_round) begins mid-cascade, bail after awaits
 	_moves_left -= 1
 	moves_changed.emit(_moves_left, MOVES_PER_ROUND)
 	_pieces_this_move = 0
@@ -275,10 +280,10 @@ func _do_swap() -> void:
 	_crab_spawned_this_move = false
 	_swap_cells(a, b)
 	await _animate_pair(a, b)
-	if not is_inside_tree():
+	if not is_inside_tree() or gen != _round_gen:
 		return
-	await _resolve_cascade()
-	if not is_inside_tree():
+	await _resolve_cascade(0, gen)
+	if not is_inside_tree() or gen != _round_gen:
 		return
 	# ONE net Stardust change for the whole move — a small ambient rise UP minus what the
 	# move's clears lifted DOWN — eased into view by _process (no per-swap jitter).
@@ -292,8 +297,8 @@ func _do_swap() -> void:
 	stardust_changed.emit(_stardust)
 	# If the Stardust just climbed to a lodged ballast, it sloughs into the Stardust — big lift +
 	# the Stardust recedes (the rescue). Done BEFORE the sink check, so a ballast can save you.
-	await _check_ballast_slough()
-	if not is_inside_tree():
+	await _check_ballast_slough(gen)
+	if not is_inside_tree() or gen != _round_gen:
 		return
 	_resolving = false
 	if _stardust >= SINK_LEVEL:
@@ -306,11 +311,13 @@ func _do_swap() -> void:
 # (step 0) is the move's COMBO (multiplier = number of lines); cascade steps after
 # are chains, scored x1 (low) — so combos, not luck, own the lift. [param start_step] > 0
 # resolves everything as chains (used after a ballast slough — not an engineered combo).
-func _resolve_cascade(start_step: int = 0) -> void:
+func _resolve_cascade(start_step: int = 0, gen: int = -1) -> void:
 
 	var step : int = start_step
 	var depth : int = 0
 	while is_inside_tree() and depth < MAX_CASCADE_DEPTH:
+		if gen != -1 and gen != _round_gen:
+			return   # a fresh round began mid-cascade — abandon this stale resolution
 		depth += 1
 		var lines : Array = _find_match_lines()
 		if lines.is_empty():
@@ -330,16 +337,16 @@ func _resolve_cascade(start_step: int = 0) -> void:
 		_pieces_this_move += cleared.size()
 		if step == 0:
 			_announce_combo(lines, lift)
-		await _animate_clear(cleared)
-		if not is_inside_tree():
+		await _animate_clear(cleared, gen)
+		if not is_inside_tree() or (gen != -1 and gen != _round_gen):
 			return
 		if _settle_logical():
 			await _animate_all_to_grid()
-			if not is_inside_tree():
+			if not is_inside_tree() or (gen != -1 and gen != _round_gen):
 				return
 		if _refill_logical():
 			await _animate_all_to_grid()
-			if not is_inside_tree():
+			if not is_inside_tree() or (gen != -1 and gen != _round_gen):
 				return
 		step += 1
 
@@ -372,7 +379,7 @@ func _announce_combo(lines: Array, lift: int) -> void:
 # bonus (∝ the Stardust's height × how many at once), drop the Stardust back (jettisoned weight =
 # the rescue), then settle + resolve any matches the gaps opened (as chains). Capture the
 # bonus/count as PRIMITIVES before freeing ([[await-after-free-gotcha]]).
-func _check_ballast_slough() -> void:
+func _check_ballast_slough(gen: int = -1) -> void:
 
 	var doomed : Array = []
 	for r in ROWS:
@@ -387,7 +394,7 @@ func _check_ballast_slough() -> void:
 	lift_changed.emit(_total_lift)
 	combo_scored.emit("Ballast!", bonus)
 	await _animate_slough(doomed)
-	if not is_inside_tree():
+	if not is_inside_tree() or (gen != -1 and gen != _round_gen):
 		return
 	for cell in doomed:
 		var s : Variant = grid[cell.x][cell.y]
@@ -399,13 +406,13 @@ func _check_ballast_slough() -> void:
 	stardust_changed.emit(_stardust)
 	if _settle_logical():
 		await _animate_all_to_grid()
-		if not is_inside_tree():
+		if not is_inside_tree() or (gen != -1 and gen != _round_gen):
 			return
 	if _refill_logical():
 		await _animate_all_to_grid()
-		if not is_inside_tree():
+		if not is_inside_tree() or (gen != -1 and gen != _round_gen):
 			return
-	await _resolve_cascade(1)   # matches the freed gaps opened = chains (x1), not a combo
+	await _resolve_cascade(1, gen)   # matches the freed gaps opened = chains (x1), not a combo
 
 
 # Each freed ballast is JETTISONED — drops away through the board floor + fades into the
@@ -576,7 +583,7 @@ func _animate_pair(a: Vector2i, b: Vector2i) -> void:
 	await tw.finished
 
 
-func _animate_clear(cells: Array) -> void:
+func _animate_clear(cells: Array, gen: int = -1) -> void:
 
 	var tw : Tween = create_tween().set_parallel(true)
 	var doomed : Array = []
@@ -592,6 +599,10 @@ func _animate_clear(cells: Array) -> void:
 		tw.kill()
 		return
 	await tw.finished
+	# A fresh round began mid-clear → leave the re-dealt grid ALONE (reset_round already swept these
+	# stones into its own out-tween + frees them; nulling here could wipe a freshly-dealt cell).
+	if gen != -1 and gen != _round_gen:
+		return
 	for d in doomed:
 		var cell : Vector2i = d[0]
 		grid[cell.x][cell.y] = null
@@ -625,6 +636,13 @@ func _animate_all_to_grid() -> void:
 
 func _init_grid() -> void:
 
+	_populate_grid(false)
+
+
+# Build a fresh full board. [param from_above] stacks each new stone ABOVE its column (so a caller
+# can tween them down for an animated deal); otherwise they're placed straight at their cells.
+func _populate_grid(from_above: bool) -> void:
+
 	grid = []
 	for r in ROWS:
 		var row : Array = []
@@ -634,9 +652,71 @@ func _init_grid() -> void:
 	for c in COLS:
 		for r in range(ROWS - 1, -1, -1):
 			var s : LoftStone = _make_stone(_pick_refill_hue(r, c))
-			s.position = _cell_pos(r, c)
+			s.position = _cell_pos(r, c) if not from_above else _cell_pos(r - ROWS, c)
 			add_child(s)
 			grid[r][c] = s
+
+
+## Re-deal a FRESH round IN PLACE — the voyage's NEXT leg, WITHOUT a scene reload (so the chart
+## keeps sailing + the HUD persists; no black between-leg flash). The old stones drop away and a
+## new board falls in ([[animate-everything-principle]]); the Stardust resets to its start footing
+## on the (briefly) empty board. All round state resets + the HUD signals re-emit. Bumps _round_gen
+## so any in-flight swap from the prior leg bails. Safe to fire-and-forget (locks input itself).
+func reset_round() -> void:
+
+	_round_gen += 1          # invalidate any in-flight swap/cascade from the leg just finished
+	_resolving = true
+	_session_over = true     # lock input + session logic while the re-deal plays
+	# Sweep the old stones away (drop through the floor + fade), then free them.
+	var old : Array = []
+	for r in ROWS:
+		for c in COLS:
+			if grid[r][c] != null:
+				old.append(grid[r][c])
+				grid[r][c] = null
+	var leaving : Array = old.filter(func(s): return is_instance_valid(s))
+	if not leaving.is_empty():
+		var tw_out : Tween = create_tween().set_parallel(true)
+		for s in leaving:
+			tw_out.tween_property(s, "position", s.position + Vector2(0.0, CELL * float(ROWS)), 0.22) \
+				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			tw_out.tween_property(s, "modulate:a", 0.0, 0.22)
+		await tw_out.finished
+		if not is_inside_tree():
+			return
+		for s in leaving:
+			if is_instance_valid(s):
+				s.queue_free()
+	# Reset round state on the now-empty board. Snap the Stardust to its start footing (a clean
+	# slate — NOT an ease, which on a well-played leg would read backwards, the drift RISING the
+	# instant you succeeded).
+	_total_lift = 0
+	_moves_left = MOVES_PER_ROUND
+	_stardust = STARDUST_START
+	_stardust_display = STARDUST_START
+	_pieces_this_move = 0
+	_moves_since_crab = 0
+	_crab_spawned_this_move = false
+	_move_dir = Vector2i.ZERO
+	_das_timer = 0.0
+	@warning_ignore("integer_division")
+	_cursor = Vector2i(ROWS / 2, (COLS - 2) / 2)
+	if _overlay != null:
+		_overlay.queue_redraw()   # the cursor frame reads at centre for the whole deal (no end-jump)
+	lift_changed.emit(_total_lift)
+	moves_changed.emit(_moves_left, MOVES_PER_ROUND)
+	stardust_changed.emit(_stardust)
+	# Deal the new board, falling in from above.
+	_rng.randomize()
+	_populate_grid(true)
+	await _animate_all_to_grid()
+	if not is_inside_tree():
+		return
+	_session_over = false
+	_resolving = false
+	queue_redraw()
+	if _overlay != null:
+		_overlay.queue_redraw()
 
 
 func _make_stone(hue: int) -> LoftStone:

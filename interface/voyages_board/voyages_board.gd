@@ -42,6 +42,17 @@ func _roll_encounters(legs: int) -> Array:
 	return enc
 
 
+# Where ALONG each leg (0..1) the foe is met — a random spot in the MIDDLE stretch, so the swords
+# sit between the stops (never on a node) and the boarding fires there. (Rolled for every leg;
+# only used on encounter legs.)
+func _roll_encounter_positions(legs: int) -> Array:
+
+	var pos : Array = []
+	for i in legs:
+		pos.append(randf_range(0.28, 0.78))
+	return pos
+
+
 # The nearest OTHER island from where the player launched (the helm stored that in
 # voyage_home_scene). MVP pair: on Driftspar → head for Cradle Rock; anywhere else → Driftspar.
 func _destination_island() -> Dictionary:
@@ -154,13 +165,16 @@ func _on_apply(crew: Dictionary) -> void:
 func _show_invite(crew: Dictionary) -> void:
 
 	_clear_content()
-	# Roll this offer's route ONCE (re-showing the invite keeps the same destination/stops).
+	# CREWS is a const → its dicts are READ-ONLY. Roll this offer's route onto a MUTABLE copy
+	# (which then carries through Accept), so we never write into the const entry.
+	crew = crew.duplicate(true)
 	if not crew.has("destination"):
 		var dest : Dictionary = _destination_island()
 		crew["destination"] = dest["name"]
 		crew["dest_scene"] = dest["scene"]
 		crew["legs"] = LEGS_MIN + randi() % (LEGS_MAX - LEGS_MIN + 1)
 		crew["encounters"] = _roll_encounters(int(crew["legs"]))
+		crew["encounter_pos"] = _roll_encounter_positions(int(crew["legs"]))
 	var fights : int = 0
 	for e in crew["encounters"]:
 		if String(e) != "":
@@ -188,6 +202,7 @@ func _on_accept(crew: Dictionary) -> void:
 	PlayerState.pillage_destination_scene = String(crew.get("dest_scene", ""))
 	PlayerState.pillage_legs_total = int(crew.get("legs", 3))
 	PlayerState.pillage_encounters = crew.get("encounters", [])
+	PlayerState.pillage_encounter_pos = crew.get("encounter_pos", [])
 	PlayerState.pillage_leg = 0
 	PlayerState.pillage_log = []
 	PlayerState.pillage_phase = 0

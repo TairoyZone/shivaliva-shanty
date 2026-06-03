@@ -41,7 +41,9 @@ var _encounters : Array = []
 var _haul : int = 0
 
 signal reached_stop        # the sloop arrived at the next node — the deck/Loft handles the event there
+signal reached_encounter   # the sloop reached this leg's swords (a random mid-leg spot) — board 'em
 
+var _enc_fired : bool = false    # this crossing's encounter mark already signalled (fire once)
 var _ship_t : float = 0.0        # current sloop position, 0..1 along the track
 var _goal_t : float = 0.0        # the node she's sailing toward — she STOPS here
 var _inited : bool = false       # resume the position from PlayerState on the first feed
@@ -141,6 +143,7 @@ func set_route(dest: String, total: int, done: int, leg_log: Array, encounters: 
 	if not _inited:
 		_ship_t = clampf(PlayerState.voyage_ship_t, 0.0, _goal_t)
 		_inited = true
+	_enc_fired = false   # re-arm this crossing's encounter mark
 	queue_redraw()
 
 
@@ -149,10 +152,17 @@ func set_route(dest: String, total: int, done: int, leg_log: Array, encounters: 
 func _process(delta: float) -> void:
 
 	if not is_equal_approx(_ship_t, _goal_t):
+		var prev : float = _ship_t
 		_ship_t = move_toward(_ship_t, _goal_t, _sail_speed * delta)
 		if is_equal_approx(_ship_t, _goal_t):
 			_ship_t = _goal_t   # snap so reached_stop + needs_sail() never disagree on arrival
 		PlayerState.voyage_ship_t = _ship_t   # carry the position across scene swaps (deck↔Loft sync)
+		# Crossed this leg's swords (the random mid-leg fight spot)? Board 'em.
+		if not _enc_fired and _is_encounter(_done):
+			var ft : float = _fight_t(_done)
+			if prev < ft and _ship_t >= ft:
+				_enc_fired = true
+				reached_encounter.emit()
 		if _ship_t == _goal_t:
 			reached_stop.emit()               # reached the stop — the deck/Loft fires its event
 	_bob += delta
@@ -178,6 +188,15 @@ func freeze() -> void:
 	_goal_t = _ship_t
 
 
+# Park her exactly AT the node she's bound for — used when a station FINISHES EARLY (the leg ends
+# now), so the persisting chart doesn't carry a short-of-the-node position into the next leg.
+func snap_to_goal() -> void:
+
+	_ship_t = _goal_t
+	PlayerState.voyage_ship_t = _ship_t
+	queue_redraw()
+
+
 # This leg's logged report (or {} if not run yet).
 func _report(leg_i: int) -> Dictionary:
 
@@ -191,6 +210,22 @@ func _node_x(i: int) -> float:
 
 	var span : float = size.x - LM - RM
 	return LM + span * float(i) / float(_total)
+
+
+func _pos_x(t: float) -> float:
+
+	return LM + (size.x - LM - RM) * t
+
+
+# Where along the WHOLE track (0..1) this leg's swords / fight sits — the pre-rolled random
+# mid-leg spot (default mid-leg if unrolled). Same value drawn + crossed, so they always agree.
+func _fight_t(leg: int) -> float:
+
+	var pos : Array = PlayerState.pillage_encounter_pos
+	var frac : float = 0.5
+	if leg >= 0 and leg < pos.size():
+		frac = clampf(float(pos[leg]), 0.06, 0.94)
+	return clampf((float(leg) + frac) / float(_total), 0.0, 1.0)
 
 
 func _draw() -> void:
@@ -212,7 +247,8 @@ func _draw() -> void:
 	draw_line(Vector2(x0, TRACK_Y), Vector2(size.x - RM, TRACK_Y), TRACK_DIM, 4.0)
 	draw_line(Vector2(x0, TRACK_Y), Vector2(ship_x, TRACK_Y), TRACK_LIT, 4.0)
 
-	# Encounter marks (crossed swords) ABOVE the STOP where the fight happens (the leg's end node).
+	# Encounter marks (crossed swords) at the random MID-LEG spot where the foe is met (between
+	# the stops, never pinned to a node) — the sloop boards 'em when she reaches the mark.
 	for i in _total:
 		if not _is_encounter(i):
 			continue
@@ -220,7 +256,7 @@ func _draw() -> void:
 		var rep : Dictionary = _report(i)
 		if not rep.is_empty():
 			col = SWORD_WON if bool(rep.get("won", false)) else SWORD_LOST
-		_draw_swords(Vector2(_node_x(i + 1), TRACK_Y - 24.0), col)   # clear of the island/dot below
+		_draw_swords(Vector2(_pos_x(_fight_t(i)), TRACK_Y - 16.0), col)   # clear of the island/dot below
 
 	# Nodes: HOME isle (left, muted) · waypoint dots · DESTINATION isle (right, vivid).
 	_draw_island(Vector2(_node_x(0), TRACK_Y), HOME_ISLE, HOME_PEAK)

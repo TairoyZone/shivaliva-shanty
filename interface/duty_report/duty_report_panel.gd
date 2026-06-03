@@ -6,6 +6,8 @@ class_name DutyReportPanel
 extends CanvasLayer
 
 
+signal closed   # dismissed — the Loft uses this to continue the voyage (next leg / disembark)
+
 # Build a panel for a given report snapshot (PlayerState.last_duty_report). Add it to the tree.
 static func create(report: Array) -> DutyReportPanel:
 
@@ -15,6 +17,7 @@ static func create(report: Array) -> DutyReportPanel:
 
 
 var _report : Array = []
+var _closed : bool = false   # emit `closed` exactly once
 
 
 func _ready() -> void:
@@ -164,6 +167,9 @@ func _close() -> void:
 
 	if get_tree() != null:
 		get_tree().paused = false
+	if not _closed:
+		_closed = true
+		closed.emit()
 	queue_free()
 
 
@@ -171,3 +177,6 @@ func _exit_tree() -> void:
 
 	if get_tree() != null:
 		get_tree().paused = false
+	if not _closed:
+		_closed = true
+		closed.emit()
