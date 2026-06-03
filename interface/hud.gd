@@ -74,6 +74,9 @@ func _ready() -> void:
 	_purse.tooltip_text = "Gold — your in-world currency. Earned from puzzles, parlor games, and treasures."
 	_purse.resized.connect(_on_purse_resized)
 	PlayerState.coins_changed.connect(_on_coins_changed)
+	# A trophy earned anywhere (even mid-puzzle, while this HUD is hidden) pops a TrophyToast
+	# on the tree ROOT — not this hideable HUD — so it shows over whatever scene is up.
+	PlayerState.trophy_earned.connect(_on_trophy_earned)
 	# Journal button — wire the click and keep its "!" badge in sync with
 	# whether any quest is still open (recompute on every input to a goal).
 	_journal_button.pressed.connect(_toggle_journal)
@@ -267,6 +270,14 @@ func _on_visibility_changed() -> void:
 		return
 	flush_pending_change()
 	_refresh_journal()
+
+
+## A trophy was just earned — pop the notification on the tree ROOT so it shows even while
+## this HUD is hidden (e.g. earning Skirmisher mid-boarding). Self-frees after its animation.
+func _on_trophy_earned(_id: String, trophy_name: String) -> void:
+
+	if is_inside_tree():
+		get_tree().root.add_child(TrophyToast.create(trophy_name))
 
 
 func _on_coins_changed(new_total: int) -> void:

@@ -54,6 +54,9 @@ signal objective_changed
 ## Fires when the player buys a spacecraft. The ship-shop modal listens
 ## to refresh its rows (Buy → Owned).
 signal ships_changed
+## A trophy was JUST earned for the first time — (id, display_name). The HUD pops a
+## [TrophyToast] (the YPP "Ye Received a Trophy!" beat). Detected by [method check_new_trophies].
+signal trophy_earned(id: String, trophy_name: String)
 ## Fires when the player buys a Skirmish weapon. The forge weapon-shop listens
 ## to refresh its rows (Buy → Owned).
 signal weapons_changed
@@ -99,7 +102,7 @@ const MASTERY_PUZZLES : Dictionary = {
 	"mining": {"name": "Mining", "thresholds": [0, 20, 40, 65, 95, 135]},
 	"gem_drop": {"name": "Gem Drop", "thresholds": [0, 15, 35, 60, 95, 140]},
 	"poker": {"name": "Poker", "thresholds": [0, 25, 75, 150, 275, 450]},
-	"skirmish": {"name": "Skirmish", "thresholds": [0, 400, 1200, 3000, 7000, 15000]},
+	"skirmish": {"name": "Skirmish", "thresholds": [0, 2500, 5500, 10000, 16000, 24000]},
 	"loft": {"name": "Lofting", "thresholds": [0, 120, 280, 480, 750, 1100]},
 }
 
@@ -207,6 +210,7 @@ var frontier_unlocked : bool = false :
 			return
 		frontier_unlocked = value
 		_save()
+		check_new_trophies()   # First Voyage trophy
 
 # --- Voyage (transient, in-memory only — drives the Voyage scene flow) ---
 ## Scene to return to when a voyage ends ("Sail home"); set by the Skydock
@@ -329,6 +333,9 @@ var tournaments_won : int = 0
 ## (see [constant MASTERY_PUZZLES]). Drives the mastery tier. Persisted.
 ## Mutate only via [method record_puzzle_result].
 var puzzle_mastery : Dictionary = {}
+## Trophy ids the player has already been NOTIFIED of (so each toasts ONCE). Seeded with
+## currently-earned trophies on load so existing ones never re-toast; persisted.
+var trophies_seen : Array = []
 
 var last_scene : String = ""
 var last_position : Vector2 = Vector2.ZERO
@@ -387,6 +394,7 @@ func add_coins(amount: int) -> void:
 	if amount > 0:
 		lifetime_coins_earned += amount
 	total_coins += amount
+	check_new_trophies()   # Full Purse + a periodic sweep for any newly-earned trophy
 
 
 # --- Inventory ---------------------------------------------------------
@@ -925,8 +933,40 @@ func record_puzzle_result(puzzle_id: String, score: int) -> Dictionary:
 	var ranked_up : bool = new_tier > old_tier
 	if ranked_up:
 		mastery_ranked_up.emit(puzzle_id, new_tier, MASTERY_TIERS[new_tier])
+	check_new_trophies()
 	return {"best": best, "tier_index": new_tier, "tier_name": MASTERY_TIERS[new_tier],
 		"is_new_best": is_new_best, "ranked_up": ranked_up}
+
+
+## Detect trophies that JUST became earned (vs trophies_seen) + announce each via
+## [signal trophy_earned] (the HUD pops a [TrophyToast]). Idempotent — a trophy fires once.
+## Called from the mutators that can unlock one (mastery, coins, the frontier flag). add_coins
+## being frequent also makes this a periodic sweep that catches affinity/tournament trophies.
+func check_new_trophies() -> void:
+
+	# Never fire mid-load/reset (setters call this before trophies_seen is read back) — the
+	# load-time _seed_trophies_seen handles existing trophies silently.
+	if _suppress_save:
+		return
+	var changed : bool = false
+	for t in Trophies.ALL:
+		var id : String = String(t["id"])
+		if Trophies.is_earned(id) and not trophies_seen.has(id):
+			trophies_seen.append(id)
+			changed = true
+			trophy_earned.emit(id, String(t["name"]))
+	if changed:
+		_save()
+
+
+## Mark all CURRENTLY-earned trophies as already-seen WITHOUT announcing — called once on
+## load so existing trophies (or a pre-system save) never spam toasts; only live earns notify.
+func _seed_trophies_seen() -> void:
+
+	for t in Trophies.ALL:
+		var id : String = String(t["id"])
+		if Trophies.is_earned(id) and not trophies_seen.has(id):
+			trophies_seen.append(id)
 
 
 ## The player's best recorded score for a puzzle (0 if never played).
@@ -1033,6 +1073,7 @@ func clear_save() -> void:
 	has_seen_intro = false
 	frontier_unlocked = false
 	puzzle_mastery = {}
+	trophies_seen = []
 	owned_ships = []
 	owned_weapons = ["brawl"]
 	equipped_weapon = "brawl"
@@ -1072,6 +1113,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "has_seen_intro", has_seen_intro)
 	config.set_value(SAVE_SECTION, "frontier_unlocked", frontier_unlocked)
 	config.set_value(SAVE_SECTION, "puzzle_mastery", puzzle_mastery)
+	config.set_value(SAVE_SECTION, "trophies_seen", trophies_seen)
 	config.set_value(SAVE_SECTION, "owned_ships", owned_ships)
 	config.set_value(SAVE_SECTION, "owned_weapons", owned_weapons)
 	config.set_value(SAVE_SECTION, "equipped_weapon", equipped_weapon)
@@ -1105,6 +1147,7 @@ func _load() -> void:
 	has_seen_intro = bool(config.get_value(SAVE_SECTION, "has_seen_intro", false))
 	frontier_unlocked = bool(config.get_value(SAVE_SECTION, "frontier_unlocked", false))
 	puzzle_mastery = config.get_value(SAVE_SECTION, "puzzle_mastery", {})
+	trophies_seen = config.get_value(SAVE_SECTION, "trophies_seen", [])
 	owned_ships = config.get_value(SAVE_SECTION, "owned_ships", [])
 	owned_weapons = config.get_value(SAVE_SECTION, "owned_weapons", ["brawl"])
 	equipped_weapon = String(config.get_value(SAVE_SECTION, "equipped_weapon", "brawl"))
@@ -1120,6 +1163,8 @@ func _load() -> void:
 	inventory_capacity = int(config.get_value(SAVE_SECTION, "inventory_capacity", INVENTORY_START_CAPACITY))
 	_load_inventory(config)
 	_suppress_save = false
+	# Mark already-earned trophies as seen so loading never spam-toasts; only live earns notify.
+	_seed_trophies_seen()
 
 
 # Restore the backpack from the save file. Rebuilds a clean

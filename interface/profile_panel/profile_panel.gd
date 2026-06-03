@@ -185,14 +185,27 @@ func _make_center_column() -> Control:
 	frame.add_child(avatar)
 	col.add_child(frame)
 
-	# Trophy shelf.
-	col.add_child(_section_label("Trophies   %d / %d" % [Trophies.earned_count(), Trophies.ALL.size()]))
+	# Trophy COLLECTION — ONLY the trophies you've actually EARNED show here (Troy); the
+	# locked ones are hidden. Earning one pops a TrophyToast notification instead.
+	col.add_child(_section_label("Trophies   %d" % Trophies.earned_count()))
+	var earned_list : Array = []
+	for t in Trophies.ALL:
+		if Trophies.is_earned(String(t["id"])):
+			earned_list.append(t)
+	if earned_list.is_empty():
+		var none : Label = Label.new()
+		none.text = "No trophies yet — earn them out in the world."
+		none.add_theme_font_size_override("font_size", 12)
+		none.add_theme_color_override("font_color", COLOR_INK_SOFT)
+		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(none)
+		return col
 	var grid : GridContainer = GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 8)
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	for t in Trophies.ALL:
+	for t in earned_list:
 		grid.add_child(_make_trophy(t))
 	col.add_child(grid)
 	return col
