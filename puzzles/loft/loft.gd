@@ -14,6 +14,10 @@ var _moves_label : Label
 var _gauge_label : Label
 var _ui : CanvasLayer
 
+var _voyage_chart : VoyageChart   # the in-sync voyage ribbon while manning the Loft mid-pillage
+var _current_lift : int = 0       # live lift so far — banked if the ship's arrival ends the leg
+var _leaving : bool = false       # guard so the leg only hands off to the deck once
+
 
 func _ready() -> void:
 
@@ -68,9 +72,12 @@ func _build_ui() -> void:
 	# gauge bar and the Leave/? buttons) — and let her SAIL in real time while you work, in sync
 	# with the deck (both charts share PlayerState.voyage_ship_t). Manning a station = a crossing.
 	if PlayerState.voyage_active:
-		var chart : VoyageChart = VoyageChart.new()
-		chart.place_at(_ui, true)
-		chart.refresh_from_state(PlayerState.pillage_phase == 1 or PlayerState.pillage_phase == 2)
+		_voyage_chart = VoyageChart.new()
+		_voyage_chart.place_at(_ui, true)
+		_voyage_chart.refresh_from_state(PlayerState.pillage_phase == 1 or PlayerState.pillage_phase == 2)
+		# When she makes the next stop mid-puzzle, the leg's over — hand straight to the deck,
+		# which fires the event (report or skirmish). Your lift so far is banked.
+		_voyage_chart.reached_stop.connect(_on_voyage_reached_stop)
 
 
 func _make_label(text: String, color: Color) -> Label:
@@ -105,6 +112,7 @@ func _wrap(label: Label) -> PanelContainer:
 
 func _on_Board_lift_changed(total_lift: int) -> void:
 
+	_current_lift = total_lift
 	if _banked_label != null:
 		_banked_label.text = "BANKED  %d" % total_lift
 
@@ -172,14 +180,53 @@ func _combo_color(lift: int) -> Color:
 
 func _on_Board_session_ended(total_lift: int, sank: bool) -> void:
 
-	# Report the lift so a Voyage MAKE-WAY phase can read it (booty + fight footing).
-	# A SINK ends the round early, so total_lift is naturally lower → worse footing.
+	# Mid-pillage the Loft is a leg of the crossing — if the round runs out before the ship makes
+	# the next stop, the leg simply ends: bank the lift + hand to the deck (no standalone results
+	# panel / mastery toast aboard; the deck fires the stop's event).
+	if PlayerState.voyage_active:
+		_current_lift = total_lift
+		_voyage_leave_to_deck()
+		return
+	# Standalone: report the lift, record mastery, show the result. A SINK ends early → lower lift.
 	PlayerState.last_loft_lift = total_lift
 	var mastery : Dictionary = PlayerState.record_puzzle_result("loft", total_lift)
 	_show_results(total_lift, mastery, sank)
 	if mastery["ranked_up"]:
 		add_child(MasteryToast.create(String(mastery["tier_name"])))
 	_set_awaiting_dismiss(true)
+
+
+# The ship made the next stop while you were working the Loft — the leg's done. Bank the lift so
+# far and hand to the deck, which fires the event (report or skirmish) where she stopped.
+func _on_voyage_reached_stop() -> void:
+
+	_voyage_leave_to_deck()
+
+
+func _voyage_leave_to_deck() -> void:
+
+	if _leaving:
+		return
+	_leaving = true
+	PlayerState.last_loft_lift = _current_lift
+	# Snap her to the stop so the deck fires the event with no idle "watch her sail" — the leg's
+	# done from your side. (A no-op when HER arrival is what ended the leg; she's already there.)
+	if _voyage_chart != null:
+		PlayerState.voyage_ship_t = _voyage_chart.goal_t()
+	var deck : String = PlayerState.puzzle_return_scene
+	if deck.is_empty():
+		deck = "res://levels/ship_deck/ship_deck.tscn"
+	get_tree().change_scene_to_file(deck)
+
+
+# The persistent Leave button (base PuzzleScene return) routes through the voyage hand-off
+# mid-pillage, so bailing the Loft still BANKS the lift earned + keeps one consistent deck path.
+func _return_to_launching_scene() -> void:
+
+	if PlayerState.voyage_active:
+		_voyage_leave_to_deck()
+		return
+	super._return_to_launching_scene()
 
 
 func _show_results(total_lift: int, mastery: Dictionary, sank: bool) -> void:

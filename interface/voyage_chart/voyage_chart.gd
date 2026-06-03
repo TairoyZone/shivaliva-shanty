@@ -40,23 +40,21 @@ var _log : Array = []
 var _encounters : Array = []
 var _haul : int = 0
 
-signal reached_stop        # the sloop arrived at a route node (a league point) — show the report
-signal reached_encounter   # the sloop reached an encounter leg's swords — time to board / fight
+signal reached_stop        # the sloop arrived at the next node — the deck/Loft handles the event there
 
 var _ship_t : float = 0.0        # current sloop position, 0..1 along the track
 var _goal_t : float = 0.0        # the node she's sailing toward — she STOPS here
 var _inited : bool = false       # resume the position from PlayerState on the first feed
 var _bob : float = 0.0           # bob phase (gentle sway on the wind)
 var _sail_speed : float = 0.05   # track-fraction/sec — set ENTIRELY by the crew's sailing skill
-var _goal_is_swords : bool = false   # the current goal is an encounter leg's swords (board on arrival)
 var _bg : StyleBoxFlat           # self-drawn panel backing (so any scene can drop us in bare)
 
 const SIZE : Vector2 = Vector2(326.0, 116.0)
 ## She sails CONTINUOUSLY while you work the station (deck + Loft charts share voyage_ship_t, so
-## the progress is the same on both screens), stopping at each event; the pace is how good the
-## crew are (avg duty_skill). Slow enough that the motion reads during a puzzle session.
-const SAIL_SECS_SLOW : float = 16.0   # seconds to cross one leg with no / poor crew
-const SAIL_SECS_FAST : float = 7.0    # …with a top crew
+## the progress is identical on both screens), STOPPING at each node where the event fires. Pace
+## is how good the crew are (avg duty_skill) — slow enough to fill a puzzle session per leg.
+const SAIL_SECS_SLOW : float = 36.0   # seconds to cross one leg with no / poor crew
+const SAIL_SECS_FAST : float = 18.0   # …with a top crew
 const BOB_RATE : float = 2.4
 const BOB_AMP : float = 2.5
 
@@ -122,7 +120,7 @@ func _crew_sail_speed() -> float:
 
 
 # Feed the live route. She sails toward _goal_t in _process at the crew's pace, STOPPING at the
-# node; en route she signals reached_encounter (at an encounter leg's swords) and reached_stop.
+# next node and signalling reached_stop there (the deck/Loft decides report-or-fight).
 func set_route(dest: String, total: int, done: int, leg_log: Array, encounters: Array,
 		haul: int, sailing: bool = false) -> void:
 
@@ -132,36 +130,31 @@ func set_route(dest: String, total: int, done: int, leg_log: Array, encounters: 
 	_log = leg_log
 	_encounters = encounters
 	_haul = haul
-	# Where she's bound RIGHT NOW: holding at the node, sailing to the next node, OR — on an
-	# unfought encounter leg — only as far as the SWORDS, where the boarding fires.
-	_goal_is_swords = false
+	# Where she's bound RIGHT NOW: holding at the current node, or sailing to the NEXT node (the
+	# stop). Whatever waits at that stop — a report or a fight — fires there when she arrives.
 	if done >= _total:
 		_goal_t = 1.0                                                     # arrived — up to the isle
-	elif not sailing:
-		_goal_t = clampf(float(done) / float(_total), 0.0, 1.0)           # holding AT this node
-	elif _is_encounter(done) and PlayerState.pillage_phase == 1:
-		_goal_t = clampf((float(done) + 0.5) / float(_total), 0.0, 1.0)   # sail to the swords
-		_goal_is_swords = true
+	elif sailing:
+		_goal_t = clampf((float(done) + 1.0) / float(_total), 0.0, 1.0)   # crossing → the next stop
 	else:
-		_goal_t = clampf((float(done) + 1.0) / float(_total), 0.0, 1.0)   # calm / post-fight → next node
+		_goal_t = clampf(float(done) / float(_total), 0.0, 1.0)           # holding AT this node
 	if not _inited:
 		_ship_t = clampf(PlayerState.voyage_ship_t, 0.0, _goal_t)
 		_inited = true
 	queue_redraw()
 
 
-# Sail toward the goal at the crew's pace; fire reached_encounter at the swords and reached_stop
-# at the node. A gentle bob keeps her alive even while holding at a stop.
+# Sail toward the goal at the crew's pace; fire reached_stop when she makes the node. A gentle
+# bob keeps her alive even while holding at a stop.
 func _process(delta: float) -> void:
 
-	if _ship_t != _goal_t:
+	if not is_equal_approx(_ship_t, _goal_t):
 		_ship_t = move_toward(_ship_t, _goal_t, _sail_speed * delta)
+		if is_equal_approx(_ship_t, _goal_t):
+			_ship_t = _goal_t   # snap so reached_stop + needs_sail() never disagree on arrival
 		PlayerState.voyage_ship_t = _ship_t   # carry the position across scene swaps (deck↔Loft sync)
 		if _ship_t == _goal_t:
-			if _goal_is_swords:
-				reached_encounter.emit()   # reached the swords — board 'em
-			else:
-				reached_stop.emit()        # reached a node — league point / arrival
+			reached_stop.emit()               # reached the stop — the deck/Loft fires its event
 	_bob += delta
 	queue_redraw()
 
@@ -171,6 +164,12 @@ func _process(delta: float) -> void:
 func needs_sail() -> bool:
 
 	return not is_equal_approx(_ship_t, _goal_t)
+
+
+# The stop she's bound for (0..1). The Loft snaps her here when you finish your station early.
+func goal_t() -> float:
+
+	return _goal_t
 
 
 # Hold her exactly where she is (e.g. parked at the swords while the boarding cry plays).
@@ -213,17 +212,15 @@ func _draw() -> void:
 	draw_line(Vector2(x0, TRACK_Y), Vector2(size.x - RM, TRACK_Y), TRACK_DIM, 4.0)
 	draw_line(Vector2(x0, TRACK_Y), Vector2(ship_x, TRACK_Y), TRACK_LIT, 4.0)
 
-	# Per-leg encounter marks (crossed swords) at each leg's midpoint above the line.
+	# Encounter marks (crossed swords) ABOVE the STOP where the fight happens (the leg's end node).
 	for i in _total:
-		var enc : bool = _is_encounter(i)
-		if not enc:
+		if not _is_encounter(i):
 			continue
-		var mx : float = (_node_x(i) + _node_x(i + 1)) * 0.5
 		var col : Color = SWORD_PEND
 		var rep : Dictionary = _report(i)
 		if not rep.is_empty():
 			col = SWORD_WON if bool(rep.get("won", false)) else SWORD_LOST
-		_draw_swords(Vector2(mx, TRACK_Y - 16.0), col)
+		_draw_swords(Vector2(_node_x(i + 1), TRACK_Y - 24.0), col)   # clear of the island/dot below
 
 	# Nodes: HOME isle (left, muted) · waypoint dots · DESTINATION isle (right, vivid).
 	_draw_island(Vector2(_node_x(0), TRACK_Y), HOME_ISLE, HOME_PEAK)

@@ -162,37 +162,30 @@ func _begin_sail() -> void:
 
 	_crossing = true
 	_refresh_chart(true)
+	# Already at the stop (she made it during your Loft session)? Fire the event now.
 	if _chart != null and not _chart.needs_sail():
-		# Degenerate zero-distance crossing: we still owe the boarding on an encounter leg.
-		if PlayerState.pillage_phase == 1 and _is_encounter_leg(PlayerState.pillage_leg):
-			_on_chart_reached_encounter()
-		else:
-			_on_chart_reached_stop()
+		_on_chart_reached_stop()
 
 
-# The sloop reached this leg's swords on the chart — board 'em (only on the first pass; the
-# post-fight resume is phase 2, which this ignores). Cry the alarm and hold her at the swords
-# for a beat BEFORE the Skirmish loads, so the boarding never reads as a teleport.
-func _on_chart_reached_encounter() -> void:
-
-	if PlayerState.pillage_phase != 1 or not _is_encounter_leg(PlayerState.pillage_leg):
-		return
-	if _chart != null:
-		_chart.freeze()
-	_say("Sail ho — %s off the bow! Grapples away, hands — board 'em!" % _foe_name(PlayerState.pillage_leg))
-	await get_tree().create_timer(1.1).timeout
-	if not is_instance_valid(self) or not is_inside_tree():
-		return   # bailed (or left) during the cry
-	_board_brigand()
-
-
-# The sloop made the next node (a league point) — resolve the leg (fight booty or calm salvage)
-# and post the DUTY REPORT here, the way YPP shows it at every league point.
+# The sloop MADE THE NEXT STOP (a league point) — whether you were here or working the Loft.
+# A fight stop boards first (after a "Sail ho!" beat, so it never teleports); then the leg
+# resolves (fight booty or calm salvage) and the DUTY REPORT posts here, YPP-style.
 func _on_chart_reached_stop() -> void:
 
 	if not _crossing:
 		return
 	_crossing = false
+	# A fight stop (encounter leg, not yet fought) → board first; the report comes after.
+	if _is_encounter_leg(PlayerState.pillage_leg) and PlayerState.pillage_phase == 1:
+		if _chart != null:
+			_chart.freeze()
+		_say("Sail ho — %s off the bow! Grapples away, hands — board 'em!" % _foe_name(PlayerState.pillage_leg))
+		await get_tree().create_timer(1.1).timeout
+		if not is_instance_valid(self) or not is_inside_tree():
+			return   # bailed (or left) during the cry
+		_board_brigand()
+		return
+	# Calm stop, or back from the boarding → resolve the leg + post the duty report here.
 	if _is_encounter_leg(PlayerState.pillage_leg):
 		_resolve_boarding()
 	else:
@@ -442,7 +435,6 @@ func _build_ui() -> void:
 	_chart = VoyageChart.new()
 	_chart.place_at(layer, false)
 	_chart.reached_stop.connect(_on_chart_reached_stop)
-	_chart.reached_encounter.connect(_on_chart_reached_encounter)
 
 	# DUTY REPORT button (top-left — how the crew fared last leg, YPP-style).
 	var report_btn : Button = Button.new()
