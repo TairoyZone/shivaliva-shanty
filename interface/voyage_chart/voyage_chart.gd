@@ -55,13 +55,13 @@ func _ready() -> void:
 
 # Feed the live route. `animate` slides the sloop from the previous stop to `done`
 # (call it true only right after a leg resolves, so the hop is SHOWN, not popped).
-func set_route(dest: String, total: int, done: int, log: Array, encounters: Array,
+func set_route(dest: String, total: int, done: int, leg_log: Array, encounters: Array,
 		haul: int, animate: bool) -> void:
 
 	_dest = dest
 	_total = maxi(1, total)
 	_done = done
-	_log = log
+	_log = leg_log
 	_encounters = encounters
 	_haul = haul
 	var target : float = clampf(float(done) / float(_total), 0.0, 1.0)
