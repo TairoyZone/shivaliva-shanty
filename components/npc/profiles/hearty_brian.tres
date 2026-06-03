@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Hearty Brian"
+duty_skill = 0.50
 portrait_color = Color(0.92, 0.66, 0.30, 1.0)
 aggression = 0.40
 risk_tolerance = 0.50

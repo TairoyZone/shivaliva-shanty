@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Hollow Ellison"
+duty_skill = 0.76
 portrait_color = Color(0.62, 0.55, 0.72, 1.0)
 aggression = 0.40
 risk_tolerance = 0.40

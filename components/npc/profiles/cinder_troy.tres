@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Cinder Troy"
+duty_skill = 0.62
 portrait_color = Color(0.78, 0.42, 0.22, 1.0)
 aggression = 0.55
 risk_tolerance = 0.55

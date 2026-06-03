@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Flint Kerr"
+duty_skill = 0.42
 portrait_color = Color(0.78, 0.32, 0.32, 1.0)
 aggression = 0.85
 risk_tolerance = 0.75

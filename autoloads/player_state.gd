@@ -264,6 +264,30 @@ var voyage_active : bool = false
 ## The voyage chart sloop's live position (0..1 along the whole route). Persisted across the
 ## deck↔Loft scene swaps so she keeps sailing CONTINUOUSLY instead of snapping back each load.
 var voyage_ship_t : float = 0.0
+## The voyage crew for the DUTY REPORT (built once on Accept): the captain + real cast hands at
+## the stations + you at the Loft. Stable for the whole pillage. Entries: {name,duty,skill,tint,
+## is_player}. The LAST leg's rated snapshot (DutyReport.snapshot): {name,duty,rating_idx,...}.
+var pillage_duty_crew : Array = []
+var last_duty_report : Array = []
+
+
+# Wipe all transient voyage/pillage scaffolding — called when a voyage ENDS (disembark, whether
+# arrived or bailed) or a straight fare is taken, so nothing stale bleeds into the next run.
+func clear_voyage() -> void:
+
+	voyage_active = false
+	voyage_ship_t = 0.0
+	pillage_phase = 0
+	pillage_leg = 0
+	pillage_legs_total = 1
+	pillage_log = []
+	pillage_encounters = []
+	pillage_destination = ""
+	pillage_destination_scene = ""
+	pillage_captain = ""
+	pillage_crew = ""
+	pillage_duty_crew = []
+	last_duty_report = []
 
 ## Transient: the chosen Skirmish-duel opponent's NPC resource path. Set by the
 ## Spar post's challenge picker; consumed (and cleared) by SkirmishDuel on load.

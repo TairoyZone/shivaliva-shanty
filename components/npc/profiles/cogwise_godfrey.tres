@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Cogwise Godfrey"
+duty_skill = 0.82
 portrait_color = Color(0.30, 0.55, 0.82, 1.0)
 aggression = 0.50
 risk_tolerance = 0.40

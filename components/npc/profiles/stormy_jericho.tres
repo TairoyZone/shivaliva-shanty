@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Stormy Jericho"
+duty_skill = 0.78
 portrait_color = Color(0.50, 0.50, 0.62, 1.0)
 aggression = 0.60
 risk_tolerance = 0.70

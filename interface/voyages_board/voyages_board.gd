@@ -193,6 +193,9 @@ func _on_accept(crew: Dictionary) -> void:
 	PlayerState.pillage_phase = 0
 	PlayerState.voyage_active = true
 	PlayerState.voyage_ship_t = 0.0   # a fresh voyage sets out from the home isle
+	# Lay in the crew for the duty report: this captain + real cast hands at the stations.
+	PlayerState.pillage_duty_crew = DutyReport.build_roster(String(crew["captain"]))
+	PlayerState.last_duty_report = []
 	if get_tree() != null:
 		get_tree().paused = false
 	get_tree().change_scene_to_file(SHIP_DECK_SCENE)
@@ -228,7 +231,7 @@ func _on_fare(dest: Dictionary) -> void:
 	if PlayerState.total_coins < FARE_GOLD:
 		return
 	PlayerState.add_coins(-FARE_GOLD)
-	PlayerState.pillage_phase = 0   # a straight ride — no pillage state on the far side
+	PlayerState.clear_voyage()   # a straight ride — no pillage state on the far side
 	if get_tree() != null:
 		get_tree().paused = false
 	get_tree().change_scene_to_file(String(dest["scene"]))

@@ -123,6 +123,8 @@ func _seed_demo_route_if_unset() -> void:
 	PlayerState.pillage_encounters = ["", "a marine cutter", ""]
 	PlayerState.voyage_active = true
 	PlayerState.voyage_ship_t = 0.0
+	PlayerState.pillage_duty_crew = DutyReport.build_roster(_captain_name())
+	PlayerState.last_duty_report = []
 
 
 # --- Pillage phase ----------------------------------------------------
@@ -184,6 +186,9 @@ func _resolve_calm() -> void:
 func _finish_leg(entry: Dictionary, outcome_line: String) -> void:
 
 	PlayerState.pillage_log.append(entry)
+	# Log this leg's DUTY REPORT — your Loft rating (from lift) + each hand's simmed station.
+	if not PlayerState.pillage_duty_crew.is_empty():
+		PlayerState.last_duty_report = DutyReport.snapshot(PlayerState.pillage_duty_crew, int(entry.get("lift", 0)))
 	_advanced_this_load = true   # the chart should SHOW the sloop hop on this load
 	if PlayerState.pillage_leg >= PlayerState.pillage_legs_total - 1:
 		PlayerState.frontier_unlocked = true
@@ -325,8 +330,6 @@ func _board_brigand() -> void:
 
 func _disembark() -> void:
 
-	PlayerState.pillage_phase = 0
-	PlayerState.voyage_active = false   # off the ship — the voyage chart stops following you
 	# Finished the route → step off at the DESTINATION island; bailed mid-voyage → back home.
 	var arrived : bool = _arrived()
 	var target : String = ""
@@ -336,6 +339,8 @@ func _disembark() -> void:
 		target = PlayerState.voyage_home_scene
 	if target.is_empty():
 		target = FALLBACK_HOME
+	# Voyage's over either way — wipe the scaffolding so nothing stale carries to the next run.
+	PlayerState.clear_voyage()
 	get_tree().change_scene_to_file(target)
 
 
@@ -394,11 +399,30 @@ func _build_ui() -> void:
 	_chart = VoyageChart.new()
 	_chart.place_at(layer, false)
 
+	# DUTY REPORT button (top-left — how the crew fared last leg, YPP-style).
+	var report_btn : Button = Button.new()
+	report_btn.text = "Duty Report"
+	report_btn.add_theme_font_size_override("font_size", 16)
+	report_btn.anchor_left = 0.0
+	report_btn.anchor_top = 0.0
+	report_btn.offset_left = 16.0
+	report_btn.offset_top = 16.0
+	report_btn.offset_right = 176.0
+	report_btn.offset_bottom = 52.0
+	report_btn.pressed.connect(_open_duty_report)
+	layer.add_child(report_btn)
+
 
 func _say(line: String) -> void:
 
 	if _captain_label != null:
 		_captain_label.text = "Cap'n %s:  \"%s\"" % [_captain_name(), line]
+
+
+# Open the YPP-style duty report (last leg's per-hand ratings).
+func _open_duty_report() -> void:
+
+	add_child(DutyReportPanel.create(PlayerState.last_duty_report))
 
 
 # Feed the live route into the drawn chart. Animates the sloop hop only when a leg just
@@ -559,21 +583,52 @@ func _draw_chest(pos: Vector2) -> void:
 	draw_rect(Rect2(pos.x - 16.0, pos.y - 11.0, 32.0, 22.0), Color(0.90, 0.74, 0.34, 1.0), false, 2.0)
 
 
-# Crew = real [Npc] instances (reuse the overworld character + dialogue), placed
-# clear of the functional stations so their E-to-talk doesn't clash. Captain Jericho
-# (the recruiter) + a couple of swabbies for the crewed-ship feel.
+# Crew = real [Npc] instances drawn from the DUTY-REPORT roster, so the hands you SEE on the
+# deck are the very ones rated each leg. Each stands at their station, clear of the functional
+# interact points (Loft / helm-board / plank) so their E-to-talk doesn't clash. You man the Loft.
 func _add_crew() -> void:
 
 	var ysort : Node = find_child("YSortNode2D", false, false)
 	if ysort == null:
 		ysort = self
-	_add_npc(ysort, _captain_name(), _iso(6.0, 4.0), Color(0.5, 0.5, 0.62, 1.0),
-		["Ahoy! Welcome aboard, hand.", "Keep the Loft singing and we'll make way.",
-		"When a brigand swings in, get to the helm and board 'em!"])
-	_add_npc(ysort, "Deckhand", _iso(1.6, 9.5), Color(0.46, 0.52, 0.6, 1.0),
-		["Aye, just keepin' busy.", "Mind the Stardust don't catch us nappin'."])
-	_add_npc(ysort, "Deckhand", _iso(6.2, 13.0), Color(0.52, 0.5, 0.46, 1.0),
-		["Ahoy.", "Mind the cannons, aye?"])
+	if PlayerState.pillage_duty_crew.is_empty():
+		PlayerState.pillage_duty_crew = DutyReport.build_roster(_captain_name())
+	for m in PlayerState.pillage_duty_crew:
+		if bool(m.get("is_player", false)):
+			continue
+		var duty : String = String(m.get("duty", ""))
+		_add_npc(ysort, String(m.get("name", "Hand")), _duty_station_pos(duty),
+			m.get("tint", Color(0.5, 0.5, 0.62, 1.0)), _duty_lines(duty))
+
+
+# Where each duty's hand stands (kept off the Loft / helm-board / plank interact points).
+func _duty_station_pos(duty: String) -> Vector2:
+
+	match duty:
+		"Navigating":
+			return _iso(6.4, 4.2)   # a touch off the helm/board point so E never clashes
+		"Sailing":
+			return _iso(6.9, 8.6)
+		"Gunnery":
+			return _iso(1.2, 11.4)
+		"Carpentry":
+			return _iso(6.9, 12.4)
+	return _iso(3.0, 6.0)
+
+
+func _duty_lines(duty: String) -> Array[String]:
+
+	match duty:
+		"Navigating":
+			return ["Ahoy! Welcome aboard, hand.", "Keep the Loft singing and we'll make way.",
+				"When a ship swings in, get to the helm and board 'em!"]
+		"Sailing":
+			return ["Trimmin' the sails to catch the drift.", "Mind the Stardust don't catch us nappin'."]
+		"Gunnery":
+			return ["Cannons loaded, powder dry.", "Point me at a brigand, aye?"]
+		"Carpentry":
+			return ["Patchin' her up where she creaks.", "She'll hold. Mostly."]
+	return ["Ahoy.", "Just keepin' busy."]
 
 
 func _add_npc(parent: Node, who: String, pos: Vector2, tint: Color, lines: Array[String]) -> void:

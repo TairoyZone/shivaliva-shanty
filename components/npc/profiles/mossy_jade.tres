@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Mossy Jade"
+duty_skill = 0.74
 portrait_color = Color(0.30, 0.62, 0.36, 1.0)
 aggression = 0.30
 risk_tolerance = 0.30

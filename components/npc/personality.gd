@@ -78,3 +78,10 @@ extends Resource
 ## "brawl" (fists, the default), "sword", or "long_range". Variety, not power
 ## (all weapons share one equal budget). See [[combat-puzzle-direction]].
 @export var skirmish_weapon : String = "brawl"
+
+@export_category("Voyage")
+## How competent a hand this NPC is at a ship DUTY (sailing, gunnery, carpentry,
+## navigating). Drives their simulated per-leg DUTY REPORT rating (Booched..Incredible):
+## a high-skill crewmate trends Good/Excellent, a poor one botches more often. Per-leg
+## variance is layered on top, so even an ace has an off stretch. 0..1.
+@export_range(0.0, 1.0) var duty_skill : float = 0.55
