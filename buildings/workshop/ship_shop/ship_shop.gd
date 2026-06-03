@@ -13,12 +13,12 @@ class_name ShipShop
 extends Interactable
 
 
-## The catalog — small → large. gold + lumber are both required.
-## ids are persisted in [member PlayerState.owned_ships]; keep them stable.
+## The catalog — small → large. The starter Driftpod is GOLD-ONLY (the MVP goal); bigger
+## hulls also want lumber delivered to Godfrey. ids persist in owned_ships; keep them stable.
 const SHIPS : Array = [
 	{
 		"id": "driftpod", "name": "Driftpod",
-		"gold": 300, "lumber": 60,
+		"gold": 300, "lumber": 0,
 		"blurb": "A one-seat skiff for short hops between nearby rocks.",
 	},
 	{
@@ -105,7 +105,7 @@ func _show_modal() -> void:
 	vbox.add_child(title)
 	# Hint line — how purchases are paid.
 	var hint : Label = Label.new()
-	hint.text = "Paid in gold + the lumber you've delivered to Godfrey."
+	hint.text = "Paid in gold — bigger hulls also want lumber delivered to Godfrey."
 	hint.add_theme_font_size_override("font_size", 15)
 	hint.add_theme_color_override("font_color", Color(0.82, 0.7, 0.45, 1.0))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -153,8 +153,10 @@ func _make_ship_row(ship: Dictionary) -> Control:
 	hbox.add_child(info)
 	_add_label(info, String(ship["name"]), 20, Color(0.98, 0.88, 0.5, 1.0))
 	_add_label(info, String(ship["blurb"]), 14, Color(0.86, 0.78, 0.6, 1.0))
-	_add_label(info, "%d gold  +  %d lumber" % [int(ship["gold"]), int(ship["lumber"])],
-		15, Color(0.80, 0.92, 1.0, 1.0))
+	var cost_text : String = "%d gold" % int(ship["gold"])
+	if int(ship["lumber"]) > 0:
+		cost_text += "  +  %d lumber" % int(ship["lumber"])
+	_add_label(info, cost_text, 15, Color(0.80, 0.92, 1.0, 1.0))
 	# Right: Buy / Owned / can't-afford button.
 	var owned : bool = PlayerState.owns_ship(String(ship["id"]))
 	var can_buy : bool = PlayerState.can_buy_ship(

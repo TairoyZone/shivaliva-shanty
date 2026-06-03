@@ -71,7 +71,7 @@ const STARTING_GOLD : int = 0
 ## ship_shop.gd's catalog (the Driftpod). Drives [method current_objective].
 const FIRST_SHIP_NAME : String = "Driftpod"
 const FIRST_SHIP_GOLD : int = 300
-const FIRST_SHIP_LUMBER : int = 60
+const FIRST_SHIP_LUMBER : int = 0   # MVP: the first ship (Driftpod) is GOLD-ONLY (Troy 2026-06-03)
 ## Gold paid per wood delivered at the Workshop drop-off. 1:1 is
 ## intentional — Gem Drop tops out at +10 per match, a clean Lumberjacking
 ## session yields ~10-30 wood, so 1:1 puts wages in the same earning band
@@ -664,17 +664,15 @@ func current_objective() -> Dictionary:
 		return {
 			"text": "You earned your first spacecraft! More of the skies to come.",
 			"done": true}
-	if total_coins >= FIRST_SHIP_GOLD and godfrey_lumber_stock >= FIRST_SHIP_LUMBER:
+	if total_coins >= FIRST_SHIP_GOLD:
 		return {
 			"text": "Buy your first ship — the %s — at the Workshop ship desk." % FIRST_SHIP_NAME,
 			"done": false}
 	# The headline MVP loop: sign onto a jobbing VOYAGE at the Skydock helm — no ship of
-	# your own needed. It pays gold AND the lumber Godfrey needs for your first hull, so a
-	# few good voyages fund the ship outright.
+	# your own needed. A few good voyages bank the gold for your first hull.
 	return {
-		"text": "Sail a jobbing voyage — take the helm at the SKYDOCK (no ship needed).   Toward your first ship:  %d / %d gold  ·  %d / %d lumber" % [
-			mini(total_coins, FIRST_SHIP_GOLD), FIRST_SHIP_GOLD,
-			mini(godfrey_lumber_stock, FIRST_SHIP_LUMBER), FIRST_SHIP_LUMBER],
+		"text": "Sail a jobbing voyage — take the helm at the SKYDOCK (no ship needed).   Toward your first ship:  %d / %d gold" % [
+			mini(total_coins, FIRST_SHIP_GOLD), FIRST_SHIP_GOLD],
 		"done": false}
 
 
@@ -696,11 +694,10 @@ func current_quests() -> Array:
 	if ship_done:
 		ship_detail = "Done — you fly your own %s now. More of the skies to come." % FIRST_SHIP_NAME
 	else:
-		ship_detail = ("Earn %d gold and deliver %d lumber to Cogwise Godfrey, then buy "
-			+ "a %s at the Workshop ship desk.\n\nProgress:  %d / %d gold   ·   %d / %d lumber") % [
-			FIRST_SHIP_GOLD, FIRST_SHIP_LUMBER, FIRST_SHIP_NAME,
-			mini(total_coins, FIRST_SHIP_GOLD), FIRST_SHIP_GOLD,
-			mini(godfrey_lumber_stock, FIRST_SHIP_LUMBER), FIRST_SHIP_LUMBER]
+		ship_detail = ("Earn %d gold — a few good voyages at the Skydock will do it — then "
+			+ "buy a %s at the Workshop ship desk.\n\nProgress:  %d / %d gold") % [
+			FIRST_SHIP_GOLD, FIRST_SHIP_NAME,
+			mini(total_coins, FIRST_SHIP_GOLD), FIRST_SHIP_GOLD]
 	quests.append({
 		"title": "A Ship of Your Own",
 		"detail": ship_detail,

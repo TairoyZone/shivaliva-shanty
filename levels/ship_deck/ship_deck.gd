@@ -27,11 +27,6 @@ const BOOTY_BASE : int = 40
 const BOOTY_PER_LIFT_DIV : int = 6
 const BOOTY_LIFT_BONUS_CAP : int = 100
 const SEED_PER_LIFT_DIV : int = 150
-## A winning pillage ALSO yields looted LUMBER toward your first hull — so the voyage alone
-## funds the ship (gold + lumber), no separate lumberjacking grind required for the MVP goal.
-const BOOTY_LUMBER_BASE : int = 10
-const BOOTY_LUMBER_LIFT_DIV : int = 30
-const BOOTY_LUMBER_CAP : int = 14
 ## A LOST run still limps home with a small consolation cut (scaled to Loft lift) so a voyage
 ## is never a total zero — a first-timer never feels the whole run was wasted.
 const BOOTY_LOSS_DIV : int = 14
@@ -124,11 +119,8 @@ func _resolve_boarding() -> void:
 		var bonus : int = clampi(PlayerState.last_loft_lift / BOOTY_PER_LIFT_DIV, 0, BOOTY_LIFT_BONUS_CAP)
 		var cut : int = BOOTY_BASE + bonus
 		PlayerState.add_coins(cut)
-		@warning_ignore("integer_division")
-		var lumber_cut : int = BOOTY_LUMBER_BASE + clampi(PlayerState.last_loft_lift / BOOTY_LUMBER_LIFT_DIV, 0, BOOTY_LUMBER_CAP)
-		PlayerState.godfrey_lumber_stock += lumber_cut   # setter banks it toward the ship + saves
 		PlayerState.frontier_unlocked = true
-		_say("We sent 'em running! Yer cut: %d gold and %d lumber for the shipwright. Take the plank when ye're ready." % [cut, lumber_cut])
+		_say("We sent 'em running! Yer cut o' the booty: %d gold. Take the plank when ye're ready." % cut)
 	else:
 		@warning_ignore("integer_division")
 		var scraps : int = clampi(PlayerState.last_loft_lift / BOOTY_LOSS_DIV, 0, BOOTY_LOSS_CAP)

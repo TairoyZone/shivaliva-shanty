@@ -140,7 +140,9 @@ func _build_objective_banner() -> void:
 	panel.name = "ObjectiveBanner"
 	panel.anchor_left = 0.5
 	panel.anchor_right = 0.5
-	panel.offset_top = 12.0
+	# Sit BELOW the top-centre location-name banner some scenes show (~y16-64) and clear of
+	# the top-right purse, so the two never overlap.
+	panel.offset_top = 70.0
 	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb : StyleBoxFlat = StyleBoxFlat.new()
