@@ -244,6 +244,16 @@ var pillage_phase : int = 0
 ## the ShipDeck (captain name + banner). Empty = a generic crew.
 var pillage_captain : String = ""
 var pillage_crew : String = ""
+## The voyage's ROUTE (set on Accept at the Voyages board): the destination name, how many
+## STOPPING POINTS (legs) it takes, the current leg (0-based), and a LOG of per-leg job
+## reports — drives the ship deck's voyage CHART. Transient; a fresh voyage re-sets them.
+var pillage_destination : String = ""
+## The ISLAND scene the voyage arrives at on completion (the nearest island). Empty falls
+## back to sailing home. Bailing mid-voyage returns home instead.
+var pillage_destination_scene : String = ""
+var pillage_legs_total : int = 1
+var pillage_leg : int = 0
+var pillage_log : Array = []   # entries: {leg:int, won:bool, lift:int, gold:int}
 
 ## Transient: the chosen Skirmish-duel opponent's NPC resource path. Set by the
 ## Spar post's challenge picker; consumed (and cleared) by SkirmishDuel on load.

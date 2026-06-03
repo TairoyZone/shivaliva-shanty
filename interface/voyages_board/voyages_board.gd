@@ -9,6 +9,21 @@ extends CanvasLayer
 
 
 const SHIP_DECK_SCENE : String = "res://levels/ship_deck/ship_deck.tscn"
+## Inter-island travel (MVP: Cradle Rock ⇄ Driftspar). A pillage out of your current island
+## is bound for the NEAREST OTHER island; LEGS_* = how many stopping points the run takes.
+const ISLAND_CRADLE : Dictionary = {"name": "Cradle Rock", "scene": "res://levels/shore/shore.tscn"}
+const ISLAND_DRIFTSPAR : Dictionary = {"name": "Driftspar", "scene": "res://levels/frontier_isle/frontier_isle.tscn"}
+const LEGS_MIN : int = 2
+const LEGS_MAX : int = 4
+
+
+# The nearest OTHER island from where the player launched (the helm stored that in
+# voyage_home_scene). MVP pair: on Driftspar → head for Cradle Rock; anywhere else → Driftspar.
+func _destination_island() -> Dictionary:
+
+	if PlayerState.voyage_home_scene.find("frontier_isle") != -1:
+		return ISLAND_CRADLE
+	return ISLAND_DRIFTSPAR
 
 ## AI crews currently seeking a hand (single-player flavour; all board the deck).
 const CREWS : Array = [
@@ -113,10 +128,16 @@ func _on_apply(crew: Dictionary) -> void:
 func _show_invite(crew: Dictionary) -> void:
 
 	_clear_content()
+	# Roll this offer's route ONCE (re-showing the invite keeps the same destination/stops).
+	if not crew.has("destination"):
+		var dest : Dictionary = _destination_island()
+		crew["destination"] = dest["name"]
+		crew["dest_scene"] = dest["scene"]
+		crew["legs"] = LEGS_MIN + randi() % (LEGS_MAX - LEGS_MIN + 1)
 	_content.add_child(_make_title("JOBBING INVITE"))
 	_content.add_child(_make_caption(
-		"%s has offered ye a temporary jobbing position with '%s' aboard the %s — for a %d%% cut of the booty." % [
-		crew["captain"], crew["crew"], crew["ship"], int(crew["cut"])]))
+		"%s has offered ye a temporary jobbing position with '%s' aboard the %s — a run to %s (%d stops) for a %d%% cut of the booty." % [
+		crew["captain"], crew["crew"], crew["ship"], String(crew["destination"]), int(crew["legs"]), int(crew["cut"])]))
 	var accept : Button = _make_button("Accept — board the ship", Color(0.80, 1.0, 0.66, 1.0))
 	accept.pressed.connect(_on_accept.bind(crew))
 	_content.add_child(accept)
@@ -129,6 +150,13 @@ func _on_accept(crew: Dictionary) -> void:
 
 	PlayerState.pillage_captain = String(crew["captain"])
 	PlayerState.pillage_crew = String(crew["crew"])
+	# Lay in the route: a fresh voyage starts at leg 0 with an empty job log, bound for the
+	# nearest island (where the player disembarks on arrival).
+	PlayerState.pillage_destination = String(crew.get("destination", "Driftspar"))
+	PlayerState.pillage_destination_scene = String(crew.get("dest_scene", ""))
+	PlayerState.pillage_legs_total = int(crew.get("legs", 3))
+	PlayerState.pillage_leg = 0
+	PlayerState.pillage_log = []
 	PlayerState.pillage_phase = 0
 	if get_tree() != null:
 		get_tree().paused = false

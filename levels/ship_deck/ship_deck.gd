@@ -78,6 +78,7 @@ const STATION_IDLE : Color = Color(0.60, 0.64, 0.76, 1.0)
 var _active : String = ""
 var _prompt : Label
 var _captain_label : Label
+var _chart_box : VBoxContainer   # the voyage chart's content (rebuilt by _refresh_chart)
 
 
 # Iso projection, centred so the deck middle sits on the world origin.
@@ -109,26 +110,76 @@ func _setup_phase() -> void:
 		2:
 			_resolve_boarding()
 		_:
-			_say("Welcome aboard, hand! Man the Loft yonder — keep her aloft as we make way.")
+			if PlayerState.pillage_leg <= 0:
+				_say("Welcome aboard, hand! We make for %s — man the Loft to keep her aloft." % _destination())
+			else:
+				_say("Man the Loft for the next stretch toward %s." % _destination())
+	_refresh_chart()
 
 
 func _resolve_boarding() -> void:
 
-	if PlayerState.last_skirmish_won:
+	var won : bool = PlayerState.last_skirmish_won
+	var lift : int = PlayerState.last_loft_lift
+	var cut : int = 0
+	if won:
 		@warning_ignore("integer_division")
-		var bonus : int = clampi(PlayerState.last_loft_lift / BOOTY_PER_LIFT_DIV, 0, BOOTY_LIFT_BONUS_CAP)
-		var cut : int = BOOTY_BASE + bonus
-		PlayerState.add_coins(cut)
-		PlayerState.frontier_unlocked = true
-		_say("We sent 'em running! Yer cut o' the booty: %d gold. Take the plank when ye're ready." % cut)
+		var bonus : int = clampi(lift / BOOTY_PER_LIFT_DIV, 0, BOOTY_LIFT_BONUS_CAP)
+		cut = BOOTY_BASE + bonus
 	else:
 		@warning_ignore("integer_division")
-		var scraps : int = clampi(PlayerState.last_loft_lift / BOOTY_LOSS_DIV, 0, BOOTY_LOSS_CAP)
-		if scraps > 0:
-			PlayerState.add_coins(scraps)
-			_say("They slipped our grapple and ran — but we scraped %d gold from the drift. Take the plank and we'll limp home." % scraps)
-		else:
-			_say("They slipped our grapple and ran, and the drift gave up nothing this run. Take the plank and we'll limp home.")
+		cut = clampi(lift / BOOTY_LOSS_DIV, 0, BOOTY_LOSS_CAP)
+	if cut > 0:
+		PlayerState.add_coins(cut)
+	# Log this stop's job report (drives the voyage chart), then sail on or arrive.
+	PlayerState.pillage_log.append({"leg": PlayerState.pillage_leg, "won": won, "lift": lift, "gold": cut})
+	if PlayerState.pillage_leg >= PlayerState.pillage_legs_total - 1:
+		_arrive(won, cut)
+	else:
+		_advance_leg(won, cut)
+
+
+# A stop cleared with more route to run: roll on — the Loft goes live again for the next leg.
+func _advance_leg(won: bool, cut: int) -> void:
+
+	PlayerState.pillage_leg += 1
+	PlayerState.pillage_phase = 0
+	var outcome : String = ("We sent 'em running — %d gold for the cut!" % cut) if won \
+		else ("They slipped our grapple — %d gold salvaged." % cut)
+	_say("%s Next stretch toward %s — man the Loft, hand." % [outcome, _destination()])
+
+
+# Last stop done — the destination island is in sight. A maiden voyage completed (First
+# Voyage trophy). Take the plank to disembark THERE (not home).
+func _arrive(won: bool, cut: int) -> void:
+
+	PlayerState.frontier_unlocked = true
+	var outcome : String = ("We sent 'em running — %d gold!" % cut) if won \
+		else ("They slipped us — %d gold salvaged." % cut)
+	_say("%s %s dead ahead — voyage's end! Total haul: %d gold. Take the plank to make port." % [
+		outcome, _destination(), _voyage_total_gold()])
+
+
+func _voyage_total_gold() -> int:
+
+	var t : int = 0
+	for r in PlayerState.pillage_log:
+		t += int(r.get("gold", 0))
+	return t
+
+
+# This stop's logged report, or {} if it hasn't been run yet.
+func _leg_report(leg_i: int) -> Dictionary:
+
+	for r in PlayerState.pillage_log:
+		if int(r.get("leg", -1)) == leg_i:
+			return r
+	return {}
+
+
+func _destination() -> String:
+
+	return PlayerState.pillage_destination if not PlayerState.pillage_destination.is_empty() else "the lanes"
 
 
 # --- Interactions (self-contained: proximity + E) --------------------
@@ -221,10 +272,16 @@ func _board_brigand() -> void:
 func _disembark() -> void:
 
 	PlayerState.pillage_phase = 0
-	var home : String = PlayerState.voyage_home_scene
-	if home.is_empty():
-		home = FALLBACK_HOME
-	get_tree().change_scene_to_file(home)
+	# Finished the route → step off at the DESTINATION island; bailed mid-voyage → back home.
+	var arrived : bool = PlayerState.pillage_log.size() >= PlayerState.pillage_legs_total
+	var target : String = ""
+	if arrived and not PlayerState.pillage_destination_scene.is_empty():
+		target = PlayerState.pillage_destination_scene
+	else:
+		target = PlayerState.voyage_home_scene
+	if target.is_empty():
+		target = FALLBACK_HOME
+	get_tree().change_scene_to_file(target)
 
 
 # --- UI (captain line + the E prompt) --------------------------------
@@ -277,11 +334,85 @@ func _build_ui() -> void:
 	_prompt.visible = false
 	layer.add_child(_prompt)
 
+	# Voyage CHART (top-left): where we're bound, stop progress, and a per-stop job-report log.
+	var chart_panel : PanelContainer = PanelContainer.new()
+	var cs : StyleBoxFlat = StyleBoxFlat.new()
+	cs.bg_color = Color(0.07, 0.10, 0.17, 0.88)
+	cs.border_color = Color(0.50, 0.62, 0.85, 0.92)
+	cs.set_border_width_all(2)
+	cs.set_corner_radius_all(10)
+	cs.set_content_margin_all(12)
+	chart_panel.add_theme_stylebox_override("panel", cs)
+	chart_panel.offset_left = 16.0
+	chart_panel.offset_top = 16.0
+	chart_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(chart_panel)
+	_chart_box = VBoxContainer.new()
+	_chart_box.add_theme_constant_override("separation", 3)
+	chart_panel.add_child(_chart_box)
+	_refresh_chart()
+
 
 func _say(line: String) -> void:
 
 	if _captain_label != null:
 		_captain_label.text = "Cap'n %s:  \"%s\"" % [_captain_name(), line]
+
+
+# Repaint the voyage chart from the live route + job log.
+func _refresh_chart() -> void:
+
+	if _chart_box == null:
+		return
+	for c in _chart_box.get_children():
+		c.queue_free()
+	var total : int = maxi(1, PlayerState.pillage_legs_total)
+	var done : int = PlayerState.pillage_log.size()
+	var arrived : bool = done >= total
+	_chart_box.add_child(_chart_label("VOYAGE   bound for %s" % _destination(), 16, Color(0.86, 0.92, 1.0, 1.0)))
+	var head : String = ("ARRIVED   %s" % _progress_bar(done, total)) if arrived \
+		else ("Stop %d of %d   %s" % [done + 1, total, _progress_bar(done, total)])
+	_chart_box.add_child(_chart_label(head, 14, Color(0.92, 0.90, 0.70, 1.0)))
+	for i in total:
+		var rep : Dictionary = _leg_report(i)
+		var line : String
+		var col : Color
+		if not rep.is_empty():
+			if bool(rep.get("won", false)):
+				line = "   Stop %d:  beat 'em   +%d gold" % [i + 1, int(rep.get("gold", 0))]
+				col = Color(0.72, 1.0, 0.74, 1.0)
+			else:
+				line = "   Stop %d:  they fled   +%d gold" % [i + 1, int(rep.get("gold", 0))]
+				col = Color(1.0, 0.82, 0.70, 1.0)
+		elif i == done and not arrived:
+			line = " > Stop %d:  underway..." % (i + 1)
+			col = Color(0.98, 0.92, 0.58, 1.0)
+		else:
+			line = "   Stop %d:  ahead" % (i + 1)
+			col = Color(0.64, 0.70, 0.80, 1.0)
+		_chart_box.add_child(_chart_label(line, 13, col))
+	_chart_box.add_child(_chart_label("Haul so far:  %d gold" % _voyage_total_gold(), 13, Color(0.96, 0.86, 0.46, 1.0)))
+
+
+# A bracketed ASCII progress bar — done legs filled, the rest empty. Font-safe.
+func _progress_bar(filled: int, total: int) -> String:
+
+	var bar : String = ""
+	for i in total:
+		bar += "#" if i < filled else "-"
+	return "[%s]" % bar
+
+
+func _chart_label(text: String, size: int, color: Color) -> Label:
+
+	var l : Label = Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_color", color)
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	l.add_theme_constant_override("outline_size", 2)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return l
 
 
 # The captain you jobbed onto at the [VoyagesBoard] (falls back to Jericho when
