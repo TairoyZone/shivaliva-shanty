@@ -191,6 +191,7 @@ func _on_accept(crew: Dictionary) -> void:
 	PlayerState.pillage_leg = 0
 	PlayerState.pillage_log = []
 	PlayerState.pillage_phase = 0
+	PlayerState.voyage_active = true
 	if get_tree() != null:
 		get_tree().paused = false
 	get_tree().change_scene_to_file(SHIP_DECK_SCENE)

@@ -41,16 +41,49 @@ var _encounters : Array = []
 var _haul : int = 0
 var _ship_t : float = 0.0        # animated 0..1 along the track (origin → destination)
 var _tw : Tween
+var _bg : StyleBoxFlat            # self-drawn panel backing (so any scene can drop us in bare)
+
+const SIZE : Vector2 = Vector2(326.0, 116.0)
 
 
 func _ready() -> void:
 
-	custom_minimum_size = Vector2(326.0, 116.0)
+	custom_minimum_size = SIZE
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip_contents = true
-	# Repaint when the container finishes laying us out (matches the codebase's other
-	# size-dependent _draw Controls) — avoids a degenerate first frame at size (0,0).
+	_bg = StyleBoxFlat.new()
+	_bg.bg_color = Color(0.07, 0.10, 0.17, 0.92)
+	_bg.border_color = Color(0.50, 0.62, 0.85, 0.92)
+	_bg.set_border_width_all(2)
+	_bg.set_corner_radius_all(10)
+	# Repaint when the layout resolves our size (matches the codebase's other size-dependent
+	# _draw Controls) — avoids a degenerate first frame at size (0,0).
 	resized.connect(queue_redraw)
+
+
+# Pin to a screen corner on a CanvasLayer (no wrapping panel needed — we draw our own bg).
+func place_at(parent: CanvasLayer, top: bool) -> void:
+
+	anchor_left = 0.0
+	anchor_right = 0.0
+	anchor_top = 0.0 if top else 1.0
+	anchor_bottom = 0.0 if top else 1.0
+	offset_left = 16.0
+	offset_right = 16.0 + SIZE.x
+	offset_top = 16.0 if top else -(16.0 + SIZE.y)
+	offset_bottom = (16.0 + SIZE.y) if top else -16.0
+	parent.add_child(self)
+
+
+# Pull the live route straight from PlayerState (so callers don't duplicate the read).
+func refresh_from_state(animate: bool) -> void:
+
+	var dest : String = PlayerState.pillage_destination if not PlayerState.pillage_destination.is_empty() else "the lanes"
+	var haul : int = 0
+	for r in PlayerState.pillage_log:
+		haul += int(r.get("gold", 0))
+	set_route(dest, PlayerState.pillage_legs_total, PlayerState.pillage_log.size(),
+		PlayerState.pillage_log, PlayerState.pillage_encounters, haul, animate)
 
 
 # Feed the live route. `animate` slides the sloop from the previous stop to `done`
@@ -103,6 +136,8 @@ func _draw() -> void:
 
 	if size.x < LM + RM + 8.0:
 		return   # not laid out yet — skip a degenerate (negative-span) frame
+	if _bg != null:
+		draw_style_box(_bg, Rect2(Vector2.ZERO, size))
 	var font : Font = get_theme_default_font()
 	var x0 : float = LM
 	var ship_x : float = LM + (size.x - LM - RM) * _ship_t
@@ -158,8 +193,14 @@ func _is_encounter(leg_i: int) -> bool:
 
 func _draw_swords(c: Vector2, col: Color) -> void:
 
-	draw_line(c + Vector2(-5.0, -5.0), c + Vector2(5.0, 5.0), col, 2.0)
-	draw_line(c + Vector2(5.0, -5.0), c + Vector2(-5.0, 5.0), col, 2.0)
+	# Two CROSSED SWORDS — blades crossing, hilts (pommel + guard) at the lower ends — so it
+	# reads as "a fight on this leg", not a plain X.
+	draw_line(c + Vector2(-5.0, 6.0), c + Vector2(5.0, -6.0), col, 2.0)    # blade ↗
+	draw_line(c + Vector2(5.0, 6.0), c + Vector2(-5.0, -6.0), col, 2.0)    # blade ↖
+	draw_line(c + Vector2(-7.0, 3.5), c + Vector2(-2.5, 5.5), col, 1.6)    # left crossguard
+	draw_line(c + Vector2(7.0, 3.5), c + Vector2(2.5, 5.5), col, 1.6)      # right crossguard
+	draw_circle(c + Vector2(-5.0, 6.0), 1.7, col)                          # left pommel
+	draw_circle(c + Vector2(5.0, 6.0), 1.7, col)                           # right pommel
 
 
 func _draw_island(c: Vector2, base: Color, peak_col: Color) -> void:

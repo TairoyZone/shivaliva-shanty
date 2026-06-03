@@ -64,6 +64,13 @@ func _build_ui() -> void:
 		+ "• Clear stones to climb away from THE STARDUST rising below; dawdle on weak clears and it creeps up to swallow her.\n"
 		+ "• A heavy BALLAST drifts in from above — you can't swap or match it, but clear BENEATH it to sink it into THE STARDUST (or let the Stardust rise to it) and it sloughs for big LIFT.")
 
+	# Manning the Loft mid-pillage? Keep the voyage chart in view (top-left, clear of the
+	# centre gauge bar and the Leave/? buttons) so you can see where the ship's bound.
+	if PlayerState.voyage_active:
+		var chart : VoyageChart = VoyageChart.new()
+		chart.place_at(_ui, true)
+		chart.refresh_from_state(false)
+
 
 func _make_label(text: String, color: Color) -> Label:
 

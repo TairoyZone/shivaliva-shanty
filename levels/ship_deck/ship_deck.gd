@@ -121,6 +121,7 @@ func _seed_demo_route_if_unset() -> void:
 	PlayerState.pillage_leg = 0
 	PlayerState.pillage_log = []
 	PlayerState.pillage_encounters = ["", "a marine cutter", ""]
+	PlayerState.voyage_active = true
 
 
 # --- Pillage phase ----------------------------------------------------
@@ -324,6 +325,7 @@ func _board_brigand() -> void:
 func _disembark() -> void:
 
 	PlayerState.pillage_phase = 0
+	PlayerState.voyage_active = false   # off the ship — the voyage chart stops following you
 	# Finished the route → step off at the DESTINATION island; bailed mid-voyage → back home.
 	var arrived : bool = _arrived()
 	var target : String = ""
@@ -386,30 +388,10 @@ func _build_ui() -> void:
 	_prompt.visible = false
 	layer.add_child(_prompt)
 
-	# Voyage CHART (top-left): where we're bound, stop progress, and a per-stop job-report log.
-	var chart_panel : PanelContainer = PanelContainer.new()
-	var cs : StyleBoxFlat = StyleBoxFlat.new()
-	cs.bg_color = Color(0.07, 0.10, 0.17, 0.88)
-	cs.border_color = Color(0.50, 0.62, 0.85, 0.92)
-	cs.set_border_width_all(2)
-	cs.set_corner_radius_all(10)
-	cs.set_content_margin_all(12)
-	chart_panel.add_theme_stylebox_override("panel", cs)
-	# Pin to the BOTTOM-LEFT, clear of the captain banner (top) and the [E] prompt
-	# (bottom-centre). Auto-sizes to content, growing up/right from the corner.
-	chart_panel.anchor_left = 0.0
-	chart_panel.anchor_right = 0.0
-	chart_panel.anchor_top = 1.0
-	chart_panel.anchor_bottom = 1.0
-	chart_panel.grow_horizontal = Control.GROW_DIRECTION_END
-	chart_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	chart_panel.offset_left = 16.0
-	chart_panel.offset_bottom = -16.0
-	chart_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layer.add_child(chart_panel)
+	# Voyage CHART (self-contained, BOTTOM-LEFT — clear of the captain banner up top and the
+	# [E] prompt bottom-centre). Populated by _setup_phase → _refresh_chart right after this.
 	_chart = VoyageChart.new()
-	chart_panel.add_child(_chart)
-	# (populated by _setup_phase → _refresh_chart, which runs right after _build_ui)
+	_chart.place_at(layer, false)
 
 
 func _say(line: String) -> void:
@@ -424,8 +406,7 @@ func _refresh_chart() -> void:
 
 	if _chart == null:
 		return
-	_chart.set_route(_destination(), PlayerState.pillage_legs_total, PlayerState.pillage_log.size(),
-		PlayerState.pillage_log, PlayerState.pillage_encounters, _voyage_total_gold(), _advanced_this_load)
+	_chart.refresh_from_state(_advanced_this_load)
 
 
 # The captain you jobbed onto at the [VoyagesBoard] (falls back to Jericho when

@@ -258,6 +258,9 @@ var pillage_log : Array = []   # entries: {leg:int, type:"fight"|"calm", won:boo
 ## a non-empty FOE name (e.g. "a marine cutter") = an ENCOUNTER that triggers the boarding
 ## Skirmish. So fights happen only when you MEET a ship, never on every stop.
 var pillage_encounters : Array = []
+## True from boarding a crew (Accept) until you disembark — lets the voyage stations (e.g.
+## the Loft) know they're being played AS PART of a pillage, so they can show the chart.
+var voyage_active : bool = false
 
 ## Transient: the chosen Skirmish-duel opponent's NPC resource path. Set by the
 ## Spar post's challenge picker; consumed (and cleared) by SkirmishDuel on load.
