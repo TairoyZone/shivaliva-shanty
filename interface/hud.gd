@@ -61,12 +61,6 @@ var _shake_tween : Tween
 ## finishing while invisible.
 var _pending_total : int = -1
 
-## The always-visible OBJECTIVE BANNER (top-centre) + its label — the at-a-glance goal the
-## intro promises. Auto-derived from PlayerState.current_objective(); the Journal (J) keeps
-## the full quest detail.
-var _objective_banner : PanelContainer
-var _objective_label : Label
-
 func _ready() -> void:
 
 	_displayed = PlayerState.total_coins
@@ -88,14 +82,6 @@ func _ready() -> void:
 	PlayerState.ships_changed.connect(_refresh_journal)
 	PlayerState.lumber_stock_changed.connect(_refresh_journal)
 	_refresh_journal()
-	# Objective BANNER — the always-on top-of-screen goal the intro promises ("the banner
-	# up top always shows what to aim for"). Auto-derives from current_objective(); refreshes
-	# on the same progress signals as the journal.
-	_build_objective_banner()
-	PlayerState.objective_changed.connect(_refresh_objective_banner)
-	PlayerState.coins_changed.connect(_refresh_objective_banner)
-	PlayerState.ships_changed.connect(_refresh_objective_banner)
-	PlayerState.lumber_stock_changed.connect(_refresh_objective_banner)
 	# Quick-access menu — a YPP-style right-side button column under the
 	# journal that opens the backpack straight to each page, so Bag / Hearts /
 	# Profile are discoverable, not hidden behind hotkeys.
@@ -128,60 +114,6 @@ func _refresh_journal(_unused = null) -> void:
 			else Color(0.72, 0.72, 0.72, 0.8))
 	if is_instance_valid(_journal_panel):
 		_journal_panel.refresh_if_open()
-
-
-# --- Objective banner (top-centre, always visible) -------------------
-
-# The at-a-glance goal the intro promises. Code-built top-centre pill; auto-derives from
-# PlayerState.current_objective(). The Journal (J) holds the full quest list.
-func _build_objective_banner() -> void:
-
-	var panel : PanelContainer = PanelContainer.new()
-	panel.name = "ObjectiveBanner"
-	panel.anchor_left = 0.5
-	panel.anchor_right = 0.5
-	# Sit BELOW the top-centre location-name banner some scenes show (~y16-64) and clear of
-	# the top-right purse, so the two never overlap.
-	panel.offset_top = 70.0
-	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var sb : StyleBoxFlat = StyleBoxFlat.new()
-	sb.bg_color = Color(0.12, 0.09, 0.05, 0.86)
-	sb.border_color = Color(0.78, 0.58, 0.24, 0.9)
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(10)
-	sb.content_margin_left = 18
-	sb.content_margin_right = 18
-	sb.content_margin_top = 7
-	sb.content_margin_bottom = 7
-	sb.shadow_color = Color(0, 0, 0, 0.4)
-	sb.shadow_size = 5
-	panel.add_theme_stylebox_override("panel", sb)
-	var lbl : Label = Label.new()
-	lbl.add_theme_font_size_override("font_size", 16)
-	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	lbl.add_theme_constant_override("outline_size", 3)
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(lbl)
-	add_child(panel)
-	# Draw it BENEATH the inventory/journal overlays so an open panel's dim covers it.
-	move_child(panel, _inventory_panel.get_index())
-	_objective_banner = panel
-	_objective_label = lbl
-	_refresh_objective_banner()
-
-
-# Re-derive the headline goal + paint it (green once done). The optional arg lets
-# coins_changed / lumber_stock_changed (which pass an int) bind to this directly.
-func _refresh_objective_banner(_unused = null) -> void:
-
-	if not is_instance_valid(_objective_label):
-		return
-	var obj : Dictionary = PlayerState.current_objective()
-	_objective_label.text = "✦  " + String(obj.get("text", ""))
-	_objective_label.add_theme_color_override("font_color",
-		Color(0.66, 1.0, 0.66, 1.0) if obj.get("done", false) else Color(0.98, 0.90, 0.58, 1.0))
 
 
 # Open / close the Journal. Won't stack over the open backpack, and is

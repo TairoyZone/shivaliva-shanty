@@ -20,8 +20,8 @@ const BODY_TEXT : String = (
 	+ "among the brigands will win you the gold for your very first one.\n\n"
 	+ "Fancy warming up first? Cogwise Godfrey's Workshop and Cinder Troy's Forge always "
 	+ "need hands, and there's coin at the Inn's parlor tables.\n\n"
-	+ "Step outside when you're ready — the banner up top always shows what to aim for "
-	+ "next.")
+	+ "Step outside when you're ready — and check your OBJECTIVES any time via the ! button "
+	+ "up top (or press J) to see what to aim for next.")
 
 
 func _ready() -> void:
