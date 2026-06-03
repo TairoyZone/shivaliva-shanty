@@ -18,6 +18,28 @@ const LEGS_MAX : int = 4
 ## Direct paid passage to the nearest island (skips the pillage) — the "fare" alternative to
 ## jobbing a crew. Cheap: it's just a ride, where pillaging EARNS gold.
 const FARE_GOLD : int = 20
+## Sky-foes you might MEET en route. A pillage only fights when you ENCOUNTER a ship — most
+## stretches are calm sailing — so the encounters are pre-rolled here per offer (~half the
+## legs, always at least one) and shown on the deck's voyage chart.
+const FOES : Array = ["a sky-brigand sloop", "a marine cutter", "a band of sky-marauders", "a corsair brig"]
+const ENCOUNTER_CHANCE : float = 0.5
+
+
+# Roll which legs hold an encounter: "" = calm, a foe name = a fight. At least one fight
+# per voyage (else the run has no boarding at all).
+func _roll_encounters(legs: int) -> Array:
+
+	var enc : Array = []
+	var any : bool = false
+	for i in legs:
+		if randf() < ENCOUNTER_CHANCE:
+			enc.append(FOES[randi() % FOES.size()])
+			any = true
+		else:
+			enc.append("")
+	if not any and legs > 0:
+		enc[legs - 1] = FOES[randi() % FOES.size()]
+	return enc
 
 
 # The nearest OTHER island from where the player launched (the helm stored that in
@@ -138,10 +160,16 @@ func _show_invite(crew: Dictionary) -> void:
 		crew["destination"] = dest["name"]
 		crew["dest_scene"] = dest["scene"]
 		crew["legs"] = LEGS_MIN + randi() % (LEGS_MAX - LEGS_MIN + 1)
+		crew["encounters"] = _roll_encounters(int(crew["legs"]))
+	var fights : int = 0
+	for e in crew["encounters"]:
+		if String(e) != "":
+			fights += 1
 	_content.add_child(_make_title("JOBBING INVITE"))
 	_content.add_child(_make_caption(
-		"%s has offered ye a temporary jobbing position with '%s' aboard the %s — a run to %s (%d stops) for a %d%% cut of the booty." % [
-		crew["captain"], crew["crew"], crew["ship"], String(crew["destination"]), int(crew["legs"]), int(crew["cut"])]))
+		"%s has offered ye a temporary jobbing position with '%s' aboard the %s — a run to %s (%d stops, ~%d likely scrap%s) for a %d%% cut of the booty." % [
+		crew["captain"], crew["crew"], crew["ship"], String(crew["destination"]),
+		int(crew["legs"]), fights, "" if fights == 1 else "s", int(crew["cut"])]))
 	var accept : Button = _make_button("Accept — board the ship", Color(0.80, 1.0, 0.66, 1.0))
 	accept.pressed.connect(_on_accept.bind(crew))
 	_content.add_child(accept)
@@ -159,6 +187,7 @@ func _on_accept(crew: Dictionary) -> void:
 	PlayerState.pillage_destination = String(crew.get("destination", "Driftspar"))
 	PlayerState.pillage_destination_scene = String(crew.get("dest_scene", ""))
 	PlayerState.pillage_legs_total = int(crew.get("legs", 3))
+	PlayerState.pillage_encounters = crew.get("encounters", [])
 	PlayerState.pillage_leg = 0
 	PlayerState.pillage_log = []
 	PlayerState.pillage_phase = 0

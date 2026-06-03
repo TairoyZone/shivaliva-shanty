@@ -253,7 +253,11 @@ var pillage_destination : String = ""
 var pillage_destination_scene : String = ""
 var pillage_legs_total : int = 1
 var pillage_leg : int = 0
-var pillage_log : Array = []   # entries: {leg:int, won:bool, lift:int, gold:int}
+var pillage_log : Array = []   # entries: {leg:int, type:"fight"|"calm", won:bool, lift:int, gold:int}
+## One entry PER LEG, pre-rolled on Accept: "" = a calm sailing stretch (salvage only),
+## a non-empty FOE name (e.g. "a marine cutter") = an ENCOUNTER that triggers the boarding
+## Skirmish. So fights happen only when you MEET a ship, never on every stop.
+var pillage_encounters : Array = []
 
 ## Transient: the chosen Skirmish-duel opponent's NPC resource path. Set by the
 ## Spar post's challenge picker; consumed (and cleared) by SkirmishDuel on load.

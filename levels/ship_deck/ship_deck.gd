@@ -32,6 +32,11 @@ const SEED_PER_LIFT_DIV : int = 150
 const BOOTY_LOSS_DIV : int = 14
 const BOOTY_LOSS_CAP : int = 24
 const SEED_CAP : int = 3
+## A CALM stretch (no ship met) pays only modest SALVAGE, scaled to how well you flew the
+## Loft — so calm legs still reward good sailing, but a fight is worth far more.
+const SALVAGE_PER_LIFT_DIV : int = 10
+const SALVAGE_MIN : int = 8
+const SALVAGE_CAP : int = 40
 
 ## Iso deck grid (tiles) + tile size (2:1, matching the iso Player). Big, so the
 ## Player is a small figure on a roomy deck (stations don't overlap).
@@ -78,7 +83,8 @@ const STATION_IDLE : Color = Color(0.60, 0.64, 0.76, 1.0)
 var _active : String = ""
 var _prompt : Label
 var _captain_label : Label
-var _chart_box : VBoxContainer   # the voyage chart's content (rebuilt by _refresh_chart)
+var _chart : VoyageChart         # the drawn voyage progress ribbon
+var _advanced_this_load : bool = false   # set when a leg resolves this load → animate the chart hop
 
 
 # Iso projection, centred so the deck middle sits on the world origin.
@@ -92,6 +98,7 @@ func _iso(gx: float, gy: float) -> Vector2:
 func _ready() -> void:
 
 	pirate_spawn_position = _iso(SPAWN_G.x, SPAWN_G.y)
+	_seed_demo_route_if_unset()
 	super._ready()                 # spawns the Player under YSortNode2D (normal camera)
 	_add_hull_collision()
 	_add_crew()
@@ -100,13 +107,34 @@ func _ready() -> void:
 	queue_redraw()
 
 
+# Entered standalone (running ship_deck.tscn directly, with no route laid in at the
+# Voyages board)? Lay in a representative demo route so the chart + encounters still
+# show their real selves. A real jobbed voyage always arrives with legs_total >= 2.
+func _seed_demo_route_if_unset() -> void:
+
+	if PlayerState.pillage_legs_total > 1 or not PlayerState.pillage_destination.is_empty() \
+			or not PlayerState.pillage_log.is_empty():
+		return
+	PlayerState.pillage_destination = "Driftspar"
+	PlayerState.pillage_destination_scene = "res://levels/frontier_isle/frontier_isle.tscn"
+	PlayerState.pillage_legs_total = 3
+	PlayerState.pillage_leg = 0
+	PlayerState.pillage_log = []
+	PlayerState.pillage_encounters = ["", "a marine cutter", ""]
+
+
 # --- Pillage phase ----------------------------------------------------
 
 func _setup_phase() -> void:
 
 	match PlayerState.pillage_phase:
 		1:
-			_say("Brigand off the bow! To arms — get to the helm and board 'em!")
+			# Back from the Loft. If a ship's out there, sound the boarding; if the skies
+			# are clear, this was just a calm stretch — bank the salvage and sail on.
+			if _is_encounter_leg(PlayerState.pillage_leg):
+				_say("Sail ho — %s off the bow! Get to the helm and board 'em!" % _foe_name(PlayerState.pillage_leg))
+			else:
+				_resolve_calm()
 		2:
 			_resolve_boarding()
 		_:
@@ -117,6 +145,7 @@ func _setup_phase() -> void:
 	_refresh_chart()
 
 
+# Back from the boarding Skirmish on an encounter leg → tally booty + report it.
 func _resolve_boarding() -> void:
 
 	var won : bool = PlayerState.last_skirmish_won
@@ -131,33 +160,37 @@ func _resolve_boarding() -> void:
 		cut = clampi(lift / BOOTY_LOSS_DIV, 0, BOOTY_LOSS_CAP)
 	if cut > 0:
 		PlayerState.add_coins(cut)
-	# Log this stop's job report (drives the voyage chart), then sail on or arrive.
-	PlayerState.pillage_log.append({"leg": PlayerState.pillage_leg, "won": won, "lift": lift, "gold": cut})
-	if PlayerState.pillage_leg >= PlayerState.pillage_legs_total - 1:
-		_arrive(won, cut)
-	else:
-		_advance_leg(won, cut)
-
-
-# A stop cleared with more route to run: roll on — the Loft goes live again for the next leg.
-func _advance_leg(won: bool, cut: int) -> void:
-
-	PlayerState.pillage_leg += 1
-	PlayerState.pillage_phase = 0
-	var outcome : String = ("We sent 'em running — %d gold for the cut!" % cut) if won \
+	var line : String = ("We sent 'em running — %d gold for the cut!" % cut) if won \
 		else ("They slipped our grapple — %d gold salvaged." % cut)
-	_say("%s Next stretch toward %s — man the Loft, hand." % [outcome, _destination()])
+	_finish_leg({"leg": PlayerState.pillage_leg, "type": "fight", "won": won, "lift": lift, "gold": cut}, line)
 
 
-# Last stop done — the destination island is in sight. A maiden voyage completed (First
-# Voyage trophy). Take the plank to disembark THERE (not home).
-func _arrive(won: bool, cut: int) -> void:
+# A calm stretch (no ship met) — bank modest salvage scaled to how well the Loft was flown.
+func _resolve_calm() -> void:
 
-	PlayerState.frontier_unlocked = true
-	var outcome : String = ("We sent 'em running — %d gold!" % cut) if won \
-		else ("They slipped us — %d gold salvaged." % cut)
-	_say("%s %s dead ahead — voyage's end! Total haul: %d gold. Take the plank to make port." % [
-		outcome, _destination(), _voyage_total_gold()])
+	var lift : int = PlayerState.last_loft_lift
+	@warning_ignore("integer_division")
+	var cut : int = clampi(lift / SALVAGE_PER_LIFT_DIV, SALVAGE_MIN, SALVAGE_CAP)
+	if cut > 0:
+		PlayerState.add_coins(cut)
+	_finish_leg({"leg": PlayerState.pillage_leg, "type": "calm", "won": true, "lift": lift, "gold": cut},
+		"Clear skies — a fair stretch. %d gold in salvage." % cut)
+
+
+# Log this stop's report (drives the chart), then either sail on to the next leg or, if this
+# was the last stop, arrive at the destination island (a completed voyage → First Voyage).
+func _finish_leg(entry: Dictionary, outcome_line: String) -> void:
+
+	PlayerState.pillage_log.append(entry)
+	_advanced_this_load = true   # the chart should SHOW the sloop hop on this load
+	if PlayerState.pillage_leg >= PlayerState.pillage_legs_total - 1:
+		PlayerState.frontier_unlocked = true
+		_say("%s  %s dead ahead — voyage's end! Total haul: %d gold. Take the plank to make port." % [
+			outcome_line, _destination(), _voyage_total_gold()])
+	else:
+		PlayerState.pillage_leg += 1
+		PlayerState.pillage_phase = 0
+		_say("%s  Next stretch toward %s — man the Loft, hand." % [outcome_line, _destination()])
 
 
 func _voyage_total_gold() -> int:
@@ -168,18 +201,32 @@ func _voyage_total_gold() -> int:
 	return t
 
 
-# This stop's logged report, or {} if it hasn't been run yet.
-func _leg_report(leg_i: int) -> Dictionary:
+# The whole route is run — the destination island is reached; only the plank remains.
+func _arrived() -> bool:
 
-	for r in PlayerState.pillage_log:
-		if int(r.get("leg", -1)) == leg_i:
-			return r
-	return {}
+	return PlayerState.pillage_log.size() >= PlayerState.pillage_legs_total
 
 
 func _destination() -> String:
 
 	return PlayerState.pillage_destination if not PlayerState.pillage_destination.is_empty() else "the lanes"
+
+
+# Does this leg hold an encounter (a ship to board)? "" in the pre-rolled list = calm sailing.
+func _is_encounter_leg(leg_i: int) -> bool:
+
+	var enc : Array = PlayerState.pillage_encounters
+	if leg_i >= 0 and leg_i < enc.size():
+		return String(enc[leg_i]) != ""
+	return false   # no roll (shouldn't happen on a real voyage) → treat as calm
+
+
+func _foe_name(leg_i: int) -> String:
+
+	var enc : Array = PlayerState.pillage_encounters
+	if leg_i >= 0 and leg_i < enc.size() and String(enc[leg_i]) != "":
+		return String(enc[leg_i])
+	return "a sky-brigand"
 
 
 # --- Interactions (self-contained: proximity + E) --------------------
@@ -228,9 +275,14 @@ func _stations_for_phase() -> Array:
 
 	# The plank (disembark) is ALWAYS available — you can leave the ship any time.
 	var plank : Array = ["plank", _iso(PLANK_G.x, PLANK_G.y)]
+	if _arrived():
+		return [plank]   # voyage's end — the plank is all that's left
 	match PlayerState.pillage_phase:
 		1:
-			return [["board", _iso(HELM_G.x, HELM_G.y)], plank]
+			# Only an encounter leg parks here with a ship to board (calm legs auto-resolve).
+			if _is_encounter_leg(PlayerState.pillage_leg):
+				return [["board", _iso(HELM_G.x, HELM_G.y)], plank]
+			return [plank]
 		2:
 			return [plank]
 		_:
@@ -273,7 +325,7 @@ func _disembark() -> void:
 
 	PlayerState.pillage_phase = 0
 	# Finished the route → step off at the DESTINATION island; bailed mid-voyage → back home.
-	var arrived : bool = PlayerState.pillage_log.size() >= PlayerState.pillage_legs_total
+	var arrived : bool = _arrived()
 	var target : String = ""
 	if arrived and not PlayerState.pillage_destination_scene.is_empty():
 		target = PlayerState.pillage_destination_scene
@@ -343,14 +395,21 @@ func _build_ui() -> void:
 	cs.set_corner_radius_all(10)
 	cs.set_content_margin_all(12)
 	chart_panel.add_theme_stylebox_override("panel", cs)
+	# Pin to the BOTTOM-LEFT, clear of the captain banner (top) and the [E] prompt
+	# (bottom-centre). Auto-sizes to content, growing up/right from the corner.
+	chart_panel.anchor_left = 0.0
+	chart_panel.anchor_right = 0.0
+	chart_panel.anchor_top = 1.0
+	chart_panel.anchor_bottom = 1.0
+	chart_panel.grow_horizontal = Control.GROW_DIRECTION_END
+	chart_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	chart_panel.offset_left = 16.0
-	chart_panel.offset_top = 16.0
+	chart_panel.offset_bottom = -16.0
 	chart_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(chart_panel)
-	_chart_box = VBoxContainer.new()
-	_chart_box.add_theme_constant_override("separation", 3)
-	chart_panel.add_child(_chart_box)
-	_refresh_chart()
+	_chart = VoyageChart.new()
+	chart_panel.add_child(_chart)
+	# (populated by _setup_phase → _refresh_chart, which runs right after _build_ui)
 
 
 func _say(line: String) -> void:
@@ -359,60 +418,14 @@ func _say(line: String) -> void:
 		_captain_label.text = "Cap'n %s:  \"%s\"" % [_captain_name(), line]
 
 
-# Repaint the voyage chart from the live route + job log.
+# Feed the live route into the drawn chart. Animates the sloop hop only when a leg just
+# resolved this load (_advanced_this_load) — a fresh board / man-the-Loft return sits still.
 func _refresh_chart() -> void:
 
-	if _chart_box == null:
+	if _chart == null:
 		return
-	for c in _chart_box.get_children():
-		c.queue_free()
-	var total : int = maxi(1, PlayerState.pillage_legs_total)
-	var done : int = PlayerState.pillage_log.size()
-	var arrived : bool = done >= total
-	_chart_box.add_child(_chart_label("VOYAGE   bound for %s" % _destination(), 16, Color(0.86, 0.92, 1.0, 1.0)))
-	var head : String = ("ARRIVED   %s" % _progress_bar(done, total)) if arrived \
-		else ("Stop %d of %d   %s" % [done + 1, total, _progress_bar(done, total)])
-	_chart_box.add_child(_chart_label(head, 14, Color(0.92, 0.90, 0.70, 1.0)))
-	for i in total:
-		var rep : Dictionary = _leg_report(i)
-		var line : String
-		var col : Color
-		if not rep.is_empty():
-			if bool(rep.get("won", false)):
-				line = "   Stop %d:  beat 'em   +%d gold" % [i + 1, int(rep.get("gold", 0))]
-				col = Color(0.72, 1.0, 0.74, 1.0)
-			else:
-				line = "   Stop %d:  they fled   +%d gold" % [i + 1, int(rep.get("gold", 0))]
-				col = Color(1.0, 0.82, 0.70, 1.0)
-		elif i == done and not arrived:
-			line = " > Stop %d:  underway..." % (i + 1)
-			col = Color(0.98, 0.92, 0.58, 1.0)
-		else:
-			line = "   Stop %d:  ahead" % (i + 1)
-			col = Color(0.64, 0.70, 0.80, 1.0)
-		_chart_box.add_child(_chart_label(line, 13, col))
-	_chart_box.add_child(_chart_label("Haul so far:  %d gold" % _voyage_total_gold(), 13, Color(0.96, 0.86, 0.46, 1.0)))
-
-
-# A bracketed ASCII progress bar — done legs filled, the rest empty. Font-safe.
-func _progress_bar(filled: int, total: int) -> String:
-
-	var bar : String = ""
-	for i in total:
-		bar += "#" if i < filled else "-"
-	return "[%s]" % bar
-
-
-func _chart_label(text: String, size: int, color: Color) -> Label:
-
-	var l : Label = Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", size)
-	l.add_theme_color_override("font_color", color)
-	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
-	l.add_theme_constant_override("outline_size", 2)
-	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return l
+	_chart.set_route(_destination(), PlayerState.pillage_legs_total, PlayerState.pillage_log.size(),
+		PlayerState.pillage_log, PlayerState.pillage_encounters, _voyage_total_gold(), _advanced_this_load)
 
 
 # The captain you jobbed onto at the [VoyagesBoard] (falls back to Jericho when
@@ -486,6 +499,8 @@ func _draw() -> void:
 # World position of the station active this phase (the one that glows).
 func _active_world_pos() -> Vector2:
 
+	if _arrived():
+		return _iso(PLANK_G.x, PLANK_G.y)   # glow the plank on arrival, however the last leg ended
 	match PlayerState.pillage_phase:
 		1:
 			return _iso(HELM_G.x, HELM_G.y)
