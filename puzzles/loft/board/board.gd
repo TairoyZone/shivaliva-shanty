@@ -66,6 +66,14 @@ const STARDUST_LIFT_PER_PIECE : float = 0.16
 const STARDUST_DANGER : float = 8.0
 const STARDUST_BITE_MULT : float = 2.0
 const SINK_LEVEL : float = 10.0
+## In a VOYAGE the per-move rise is hole-scaled: RISE_BASE + HOLE_RISE_PER_HOLE × the ship's open
+## holes (0 holes ⇒ barely creeps; a leaky hull floods fast). The Loft scene computes it from ship
+## condition and pushes it in via [method set_effective_rise] — the board stays PlayerState-free.
+const RISE_BASE : float = 0.06
+const HOLE_RISE_PER_HOLE : float = 0.12
+## Live per-move ambient rise — STARDUST_RISE_PER_MOVE when standalone, or the hole-scaled voyage
+## value the Loft pushes in. Only mutated via [method set_effective_rise].
+var _effective_rise_per_move : float = STARDUST_RISE_PER_MOVE
 
 ## BALLAST (the bilging "crab" reskin): a heavy dross-stone that DRIFTS IN from the top
 ## and FALLS like any stone (Troy: it must budge down, not float) — but you can't SWAP or
@@ -303,7 +311,7 @@ func _do_swap() -> void:
 	# move's clears lifted DOWN — eased into view by _process (no per-swap jitter).
 	# The Stardust's BITE: above the danger line the ambient rise SURGES (it's gaining on
 	# you). Clears still pull it down — you escape only by clearing hard.
-	var rise : float = STARDUST_RISE_PER_MOVE
+	var rise : float = _effective_rise_per_move
 	if _stardust >= STARDUST_DANGER:
 		rise *= STARDUST_BITE_MULT
 	var net : float = rise - float(_pieces_this_move) * STARDUST_LIFT_PER_PIECE
@@ -746,6 +754,23 @@ func set_voyage_mode(on: bool) -> void:
 	_voyage_mode = on
 	if on:
 		moves_changed.emit(_swaps_made, -1)
+
+
+## Push the hole-scaled per-move rise (the Loft computes it from ship condition; the board stays
+## PlayerState-free). Composes UNDER the danger bite — a leaky hull in danger floods doubly fast.
+func set_effective_rise(rise: float) -> void:
+
+	_effective_rise_per_move = rise
+
+
+## Seed the Stardust at embark from ship condition (a perfect hull starts at the baseline / aloft; a
+## battered one higher). Snaps BOTH the logical level AND the eased display so the gauge doesn't drift
+## from the old seed (mirrors reset_round's snap).
+func set_stardust_start(level: float) -> void:
+
+	_stardust = clampf(level, STARDUST_BASELINE, float(ROWS))
+	_stardust_display = _stardust
+	stardust_changed.emit(_stardust)
 
 
 ## Hard-lock (or release) board input while a voyage event plays over it (the boarding cry).

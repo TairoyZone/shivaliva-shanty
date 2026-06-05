@@ -42,6 +42,8 @@ func _ready() -> void:
 	_build_ui()
 	if PlayerState.voyage_active:
 		_board.set_voyage_mode(true)   # one CONTINUOUS station for the whole crossing
+		# Couple the Loft to the ACTIVE ship's condition: more open holes ⇒ faster Stardust rise.
+		_board.set_effective_rise(LoftBoard.RISE_BASE + LoftBoard.HOLE_RISE_PER_HOLE * float(PlayerState.ship_open_holes()))
 		if PlayerState.pillage_phase == 2:
 			# Back from a boarding → RESTORE the same board + sail on to the node, where this fight
 			# leg resolves (the outcome folds in there). Mark the fight DONE + restore PENDING now
@@ -51,7 +53,9 @@ func _ready() -> void:
 			_restore_pending = true
 			call_deferred("_resume_after_fight")
 		else:
-			# First time at the Loft this voyage (a fresh board) → open this leg's measurement window.
+			# First time at the Loft this voyage (a fresh board) → seed the starting Stardust from the
+			# ship's condition (perfect hull = baseline/aloft), then open this leg's measurement window.
+			_board.set_stardust_start(PlayerState.ship_stardust_start())
 			PlayerState.voyage_leg_lift0 = 0
 			PlayerState.voyage_leg_swaps0 = 0
 

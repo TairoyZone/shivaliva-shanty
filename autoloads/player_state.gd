@@ -75,6 +75,14 @@ const STARTING_GOLD : int = 0
 const FIRST_SHIP_NAME : String = "Driftpod"
 const FIRST_SHIP_GOLD : int = 750
 const FIRST_SHIP_LUMBER : int = 0   # MVP: the first ship (Driftpod) is GOLD-ONLY (Troy 2026-06-03)
+## Max simultaneous HULL HOLES per ship class (keyed by the stored lowercase ship id) — the sink
+## ceiling + the Patchworks cap. Bigger ships scale up later; an unlisted id defaults to 4.
+const SHIP_MAX_HOLES : Dictionary = {"driftpod": 4}
+const SHIP_MAX_HOLES_DEFAULT : int = 4
+## A perfect hull starts the Loft at this Stardust (= the Loft's BASELINE, trivially aloft); each
+## open hole raises the embark level a touch (a battered hull begins closer to the bite).
+const STARDUST_BASE_START : float = 3.0
+const STARDUST_START_PER_HOLE : float = 0.6
 ## Gold paid per wood delivered at the Workshop drop-off. 1:1 is
 ## intentional — Gem Drop tops out at +10 per match, a clean Lumberjacking
 ## session yields ~10-30 wood, so 1:1 puts wages in the same earning band
@@ -174,6 +182,11 @@ var total_ore : int :
 ## sailing arc that uses them is far future); persisted. See
 ## [method buy_ship] / [method owns_ship].
 var owned_ships : Array = []
+
+## Persistent per-ship CONDITION, keyed by ship id → {"open_holes": int}. The ACTIVE ship's holes
+## drive the Loft's Stardust rise (more holes ⇒ floods faster) + the sink; the Patchworks seals them.
+## Round-trips in the save. See [[ship-condition-research]] / [[patchworks-spec]].
+var ship_condition : Dictionary = {}
 
 ## The player's Skirmish weapons. You start with just FISTS (brawl); the rest are bought
 ## at Cinder Troy's forge ([WeaponShop]) → appended here. The EQUIPPED one is the attack
@@ -808,6 +821,70 @@ func buy_ship(ship_id: String, gold_cost: int) -> bool:
 	return true
 
 
+# --- Ship condition (holes → Stardust; the sinkable-ship coupling) -----
+# See [[ship-condition-research]]. Holes are persistent hull damage on the ACTIVE ship; combat opens
+# them (fight legs), the Patchworks seals them, and they drive how fast the Loft's Stardust floods in.
+
+## The ship a voyage uses right now. MVP: the first (only) owned ship. "" if none owned.
+func active_ship_id() -> String:
+
+	return String(owned_ships[0]) if not owned_ships.is_empty() else ""
+
+
+## Max hull holes for a ship id (its sink ceiling + Patchworks cap).
+func ship_max_holes(ship_id: String) -> int:
+
+	return int(SHIP_MAX_HOLES.get(ship_id, SHIP_MAX_HOLES_DEFAULT))
+
+
+## Open holes on the ACTIVE ship (0 with no ship / no damage yet).
+func ship_open_holes() -> int:
+
+	var id : String = active_ship_id()
+	if id.is_empty():
+		return 0
+	return int((ship_condition.get(id, {}) as Dictionary).get("open_holes", 0))
+
+
+## Add `n` holes to the active ship (clamped to its max). Persisted. Combat calls this on fight legs.
+func add_hole(n: int = 1) -> void:
+
+	_set_open_holes(ship_open_holes() + n)
+
+
+## Seal `n` holes on the active ship (clamped to 0). Persisted. The Patchworks calls this.
+func close_hole(n: int = 1) -> void:
+
+	_set_open_holes(ship_open_holes() - n)
+
+
+## Wreck the active ship — set it to MAX holes (the sink consequence). Persisted.
+func wreck_active_ship() -> void:
+
+	var id : String = active_ship_id()
+	if not id.is_empty():
+		_set_open_holes(ship_max_holes(id))
+
+
+## The Stardust level the Loft should START at for the active ship: a perfect hull starts at the
+## baseline (trivially aloft); a battered hull starts higher (closer to the bite). Read on embark.
+func ship_stardust_start() -> float:
+
+	return STARDUST_BASE_START + float(ship_open_holes()) * STARDUST_START_PER_HOLE
+
+
+# Write the active ship's open-hole count (clamped 0..max), then persist.
+func _set_open_holes(value: int) -> void:
+
+	var id : String = active_ship_id()
+	if id.is_empty():
+		return
+	var cond : Dictionary = ship_condition.get(id, {})
+	cond["open_holes"] = clampi(value, 0, ship_max_holes(id))
+	ship_condition[id] = cond
+	_save()
+
+
 # --- Skirmish weapons --------------------------------------------------
 
 ## Equip a Skirmish weapon you OWN (no-op if unowned). What your boarding/duel attacks
@@ -1261,6 +1338,7 @@ func clear_save() -> void:
 	puzzle_mastery = {}
 	trophies_seen = []
 	owned_ships = []
+	ship_condition = {}
 	owned_weapons = ["brawl"]
 	equipped_weapon = "brawl"
 	npc_affinity = {}
@@ -1301,6 +1379,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "puzzle_mastery", puzzle_mastery)
 	config.set_value(SAVE_SECTION, "trophies_seen", trophies_seen)
 	config.set_value(SAVE_SECTION, "owned_ships", owned_ships)
+	config.set_value(SAVE_SECTION, "ship_condition", ship_condition)
 	config.set_value(SAVE_SECTION, "owned_weapons", owned_weapons)
 	config.set_value(SAVE_SECTION, "equipped_weapon", equipped_weapon)
 	config.set_value(SAVE_SECTION, "npc_affinity", npc_affinity)
@@ -1335,6 +1414,7 @@ func _load() -> void:
 	puzzle_mastery = config.get_value(SAVE_SECTION, "puzzle_mastery", {})
 	trophies_seen = config.get_value(SAVE_SECTION, "trophies_seen", [])
 	owned_ships = config.get_value(SAVE_SECTION, "owned_ships", [])
+	ship_condition = config.get_value(SAVE_SECTION, "ship_condition", {})
 	owned_weapons = config.get_value(SAVE_SECTION, "owned_weapons", ["brawl"])
 	equipped_weapon = String(config.get_value(SAVE_SECTION, "equipped_weapon", "brawl"))
 	npc_affinity = config.get_value(SAVE_SECTION, "npc_affinity", {})
