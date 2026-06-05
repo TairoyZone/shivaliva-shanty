@@ -331,6 +331,9 @@ func resolve_voyage_leg(is_fight: bool, won: bool, lift: int, swaps: int) -> Dic
 	var cut : int = 0
 	if is_fight:
 		cut = BATTLE_CUT_WON if won else BATTLE_CUT_LOST
+		# Enemy fire opens hull HOLES this fight — a loss takes more than a win. Persists on the active
+		# ship + drives the Loft's Stardust rise on later legs (more holes ⇒ floods faster). [[ship-condition-research]]
+		add_hole(2 if not won else 1)
 
 	# This leg's duty rating is a RATE — lift banked per swap THIS stretch (the caller passes the
 	# per-leg delta on a continuous crossing). Both lift + swaps are logged so the end divvy can
@@ -343,6 +346,18 @@ func resolve_voyage_leg(is_fight: bool, won: bool, lift: int, swaps: int) -> Dic
 	record_puzzle_result("loft", lift)
 	pillage_log.append({"leg": pillage_leg, "type": ("fight" if is_fight else "calm"),
 		"won": won, "lift": lift, "swaps": swaps, "gold": cut})
+
+	# Live event feed: the plunder this fight (the pool grows — your cut is the end divvy) + any hull
+	# holes the enemy opened, or a calm stretch. The booty itself pays out at voyage's end, pooled.
+	if is_fight:
+		log_event("Plundered %d booty — pool now %d" % [cut, voyage_total_gold()], Color(0.85, 1.0, 0.7))
+		# Only narrate hull damage when there's actually an owned ship to damage — a shipless jobbing
+		# voyage takes no holes (add_hole no-ops), so don't claim damage that never happened.
+		if not active_ship_id().is_empty():
+			var holed : int = 2 if not won else 1
+			log_event("Enemy fire opened %d hole%s in the hull" % [holed, "" if holed == 1 else "s"], Color(1.0, 0.6, 0.5))
+	else:
+		log_event("A calm stretch — no plunder, but she's aloft", Color(0.78, 0.85, 0.95))
 
 	var outcome : String
 	if is_fight:
@@ -417,8 +432,27 @@ func cash_out_voyage() -> int:
 
 	var total : int = voyage_final_cut()
 	if total > 0:
-		add_coins(total)
+		add_coins(total, "Voyage's cut  (×%.1f duty)" % voyage_duty_multiplier())
 	return total
+
+
+## Gold toll to be towed home + dry-docked after a sinking (on top of forfeiting the whole booty pool).
+const SINK_REPAIR_TOLL : int = 80
+
+## The ship SANK on a fight leg — LOST IN THE STARDUST. Forfeit the un-cashed booty pool (we DON'T
+## cash out), charge a gold tow/repair toll, and clear the voyage — which mends the hull on disembark
+## (S3a), so she limps home patched, no death spiral. The owned-ship DEED is KEPT (earn-and-keep).
+## Returns {forfeited, toll, home} so the Loft can show the loss + relocate. See [[ship-condition-research]].
+func sink_voyage() -> Dictionary:
+
+	var forfeited : int = voyage_final_cut()   # the cut you WOULD have banked — now lost in the Stardust
+	var toll : int = mini(SINK_REPAIR_TOLL, total_coins)   # can't drive the purse negative
+	if toll > 0:
+		add_coins(-toll, "Towed home from the Stardust")
+	log_event("LOST IN THE STARDUST — she went under", Color(1.0, 0.5, 0.5))
+	var home : String = voyage_home_scene if not voyage_home_scene.is_empty() else "res://levels/shore/shore.tscn"
+	clear_voyage()   # forfeits the pool (no cash-out) + mends the hull
+	return {"forfeited": forfeited, "toll": toll, "home": home}
 
 
 # Wipe all transient voyage/pillage scaffolding — called when a voyage ENDS (disembark, whether
@@ -442,6 +476,11 @@ func clear_voyage() -> void:
 	loft_board_state = {}
 	voyage_leg_lift0 = 0
 	voyage_leg_swaps0 = 0
+	voyage_boarding_seed = 0   # don't bleed a stale footing seed into the next (maybe friendly) Skirmish
+	# Generous PORT REPAIR (MVP): the active ship is mended on disembark, so holes escalate WITHIN a
+	# voyage but a fresh one starts clean — no death spiral. S6 turns this into a real repair (a
+	# Patchworks job / gold cost) + true cross-voyage persistence. See [[ship-condition-research]].
+	_set_open_holes(0)
 
 ## Transient: the chosen Skirmish-duel opponent's NPC resource path. Set by the
 ## Spar post's challenge picker; consumed (and cleared) by SkirmishDuel on load.
@@ -588,7 +627,20 @@ func _notification(what: int) -> void:
 		save_session()
 
 
-func add_coins(amount: int) -> void:
+## Emitted for the running EVENT LOG (the [EventFeed] overlay): a one-line record of something
+## noteworthy — a coin change with its reason, a plunder, a hull hole. A tint colour comes with it.
+signal event_logged(text: String, color: Color)
+
+
+## Push a line to the event feed (the always-on log overlay). Gold-neutral tint by default.
+func log_event(text: String, color: Color = Color(1.0, 0.92, 0.55)) -> void:
+
+	event_logged.emit(text, color)
+
+
+## Credit (or debit, if negative) gold. Pass a `reason` to ALSO log it to the event feed
+## ("+60  Plundered the foe") — omit it for the noisy per-match trickles (the purse animation suffices).
+func add_coins(amount: int, reason: String = "") -> void:
 
 	# Track lifetime earnings (monotonic) BEFORE the total_coins setter fires
 	# _save(), so the new lifetime value lands in the same write.
@@ -596,6 +648,9 @@ func add_coins(amount: int) -> void:
 		lifetime_coins_earned += amount
 	total_coins += amount
 	check_new_trophies()   # Full Purse + a periodic sweep for any newly-earned trophy
+	if not reason.is_empty() and amount != 0:
+		log_event("%s%d  %s" % ["+" if amount >= 0 else "", amount, reason],
+			Color(0.55, 1.0, 0.55) if amount >= 0 else Color(1.0, 0.55, 0.55))
 
 
 # --- Inventory ---------------------------------------------------------
@@ -754,7 +809,7 @@ func deliver_wood(amount: int) -> int:
 		return 0
 	godfrey_lumber_stock += removed
 	var payout : int = int(round(removed * WOOD_TO_GOLD_RATE))
-	add_coins(payout)
+	add_coins(payout, "Lumber delivered")
 	return payout
 
 
@@ -780,7 +835,7 @@ func deliver_ore(amount: int) -> int:
 		return 0
 	cinder_ore_stock += removed
 	var payout : int = int(round(removed * ORE_TO_GOLD_RATE))
-	add_coins(payout)
+	add_coins(payout, "Ore delivered")
 	return payout
 
 
@@ -813,7 +868,7 @@ func buy_ship(ship_id: String, gold_cost: int) -> bool:
 
 	if not can_buy_ship(ship_id, gold_cost):
 		return false
-	add_coins(-gold_cost)
+	add_coins(-gold_cost, "Bought the %s" % ship_id.capitalize())
 	owned_ships.append(ship_id)
 	ships_changed.emit()
 	objective_changed.emit()
@@ -914,7 +969,7 @@ func buy_weapon(weapon_id: String, gold_cost: int) -> bool:
 
 	if not can_buy_weapon(weapon_id, gold_cost):
 		return false
-	add_coins(-gold_cost)
+	add_coins(-gold_cost, "Bought the %s" % weapon_id.capitalize())
 	owned_weapons.append(weapon_id)
 	weapons_changed.emit()
 	_save()

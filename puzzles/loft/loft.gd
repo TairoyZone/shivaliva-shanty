@@ -43,7 +43,7 @@ func _ready() -> void:
 	if PlayerState.voyage_active:
 		_board.set_voyage_mode(true)   # one CONTINUOUS station for the whole crossing
 		# Couple the Loft to the ACTIVE ship's condition: more open holes ⇒ faster Stardust rise.
-		_board.set_effective_rise(LoftBoard.RISE_BASE + LoftBoard.HOLE_RISE_PER_HOLE * float(PlayerState.ship_open_holes()))
+		_push_effective_rise()
 		if PlayerState.pillage_phase == 2:
 			# Back from a boarding → RESTORE the same board + sail on to the node, where this fight
 			# leg resolves (the outcome folds in there). Mark the fight DONE + restore PENDING now
@@ -56,6 +56,7 @@ func _ready() -> void:
 			# First time at the Loft this voyage (a fresh board) → seed the starting Stardust from the
 			# ship's condition (perfect hull = baseline/aloft), then open this leg's measurement window.
 			_board.set_stardust_start(PlayerState.ship_stardust_start())
+			_board.set_can_sink(_is_voyage_fight_leg())   # only a FIGHT leg can sink her
 			PlayerState.voyage_leg_lift0 = 0
 			PlayerState.voyage_leg_swaps0 = 0
 
@@ -216,6 +217,9 @@ func _on_Board_session_ended(total_lift: int, sank: bool) -> void:
 	# Mid-pillage the Loft round running out (or a sink) just ends THIS leg — resolve it here.
 	if PlayerState.voyage_active:
 		_current_lift = total_lift
+		if sank:
+			_on_voyage_sunk()   # the Stardust took her on a fight leg → LOST IN THE STARDUST
+			return
 		_on_voyage_reached_stop()
 		return
 	# Standalone: report the lift, record mastery, show the result. A SINK ends early → lower lift.
@@ -259,6 +263,14 @@ func _is_voyage_fight_leg() -> bool:
 	return i >= 0 and i < enc.size() and String(enc[i]) != ""
 
 
+# Push the hole-scaled per-move rise into the board from the ACTIVE ship's CURRENT holes. Called at
+# embark AND at each new leg so a fight's fresh holes bite the very next leg (not a leg late, since
+# holes are only opened when the leg resolves — after _ready already ran). See [[ship-condition-research]].
+func _push_effective_rise() -> void:
+
+	_board.set_effective_rise(LoftBoard.RISE_BASE + LoftBoard.HOLE_RISE_PER_HOLE * float(PlayerState.ship_open_holes()))
+
+
 # This leg's lift / swaps — the DELTA off the leg's start baseline (the board's running totals are
 # cumulative across the whole continuous crossing, so each leg rates only ITS own stretch).
 func _leg_lift() -> int:
@@ -284,6 +296,7 @@ func _resume_after_fight() -> void:
 		_voyage_chart.mark_encounter_fired()   # don't let the resumed chart re-signal this fought leg
 	_restore_pending = false
 	_voyage_busy = false
+	_board.set_can_sink(false)   # the fight's done — sailing on to the resolve node can't sink her
 	# If the boarding fired AT the node (the swords-missed fallback), the chart is already at its goal
 	# and reached_stop won't re-fire — resolve the leg right now (mirrors the deck's zero-distance guard).
 	if _voyage_chart != null and not _voyage_chart.needs_sail():
@@ -322,11 +335,30 @@ func _on_report_closed(arrived: bool) -> void:
 func _begin_next_leg() -> void:
 
 	_fight_done_this_leg = false
+	_board.set_can_sink(_is_voyage_fight_leg())      # arm the sink only if the NEW leg is a fight
+	_push_effective_rise()                           # refresh the rise — the last fight may have opened holes
 	PlayerState.voyage_leg_lift0 = _current_lift     # this leg's baseline (cumulative so far)
 	PlayerState.voyage_leg_swaps0 = _current_swaps
 	if _voyage_chart != null:
 		_voyage_chart.refresh_from_state(true)       # sail on toward the next stop
 	_voyage_busy = false
+
+
+# The Stardust took her on a fight leg — LOST IN THE STARDUST. Apply the consequence (forfeit the
+# booty pool + tow toll + mend the hull, keep the deed), show the card, then limp home on dismiss.
+func _on_voyage_sunk() -> void:
+
+	_voyage_busy = true   # OWN the transition — block any concurrent reached_stop / boarding from firing too
+	var r : Dictionary = PlayerState.sink_voyage()
+	var card : VoyageSinkCard = VoyageSinkCard.create(int(r["forfeited"]), int(r["toll"]))
+	card.closed.connect(_on_sunk_card_closed.bind(String(r["home"])))
+	add_child(card)
+
+
+func _on_sunk_card_closed(home: String) -> void:
+
+	if get_tree() != null:
+		get_tree().change_scene_to_file(home)
 
 
 func _on_haul_card_closed() -> void:
@@ -360,6 +392,11 @@ func _trigger_voyage_skirmish() -> void:
 		if not is_instance_valid(self) or not is_inside_tree():
 			return
 		guard += 1
+	# A cascade that settled during the wait may have SUNK her (fight leg + Stardust hit SINK_LEVEL) →
+	# _on_voyage_sunk already cleared the voyage and owns the transition. Abort the boarding so we don't
+	# double-fire a scene change over the sink card.
+	if not PlayerState.voyage_active:
+		return
 	PlayerState.loft_board_state = _board.serialize()
 	# Footing = how well you flew INTO the fight (this leg's form so far); banked for the deck path too.
 	PlayerState.last_loft_lift = _leg_lift()
@@ -373,7 +410,7 @@ func _trigger_voyage_skirmish() -> void:
 	# after it (slow resolve already outlasted it → the tween is done → await returns at once).
 	if cry != null and cry.is_valid():
 		await cry.finished
-	if not is_instance_valid(self) or not is_inside_tree():
+	if not is_instance_valid(self) or not is_inside_tree() or not PlayerState.voyage_active:
 		return
 	get_tree().change_scene_to_file(SKIRMISH_SCENE)
 

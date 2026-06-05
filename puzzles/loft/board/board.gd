@@ -74,6 +74,9 @@ const HOLE_RISE_PER_HOLE : float = 0.12
 ## Live per-move ambient rise — STARDUST_RISE_PER_MOVE when standalone, or the hole-scaled voyage
 ## value the Loft pushes in. Only mutated via [method set_effective_rise].
 var _effective_rise_per_move : float = STARDUST_RISE_PER_MOVE
+## True only while flying a FIGHT leg (set by the Loft via [method set_can_sink]) — lets the Stardust
+## SINK the ship at SINK_LEVEL. Calm legs never sink, even at high Stardust.
+var _can_sink : bool = false
 
 ## BALLAST (the bilging "crab" reskin): a heavy dross-stone that DRIFTS IN from the top
 ## and FALLS like any stone (Troy: it must budge down, not float) — but you can't SWAP or
@@ -326,6 +329,11 @@ func _do_swap() -> void:
 	# Voyage mode is CONTINUOUS — the chart's ARRIVAL ends the crossing, not moves or a sink (a high
 	# Stardust just costs you rating + footing, never a hard restart). Standalone ends on sink/moves.
 	if _voyage_mode:
+		# Continuous crossing — ARRIVAL ends it, not moves. But on a FIGHT leg the Stardust CAN swallow
+		# her: reaching SINK_LEVEL ends the session SUNK and the voyage handles the consequence (LOST IN
+		# THE STARDUST). Calm legs never sink — _can_sink stays false there.
+		if _can_sink and _stardust >= SINK_LEVEL:
+			_end_session(true)
 		return
 	if _stardust >= SINK_LEVEL:
 		_end_session(true)     # the Stardust swallowed her — SUNK, round over
@@ -771,6 +779,13 @@ func set_stardust_start(level: float) -> void:
 	_stardust = clampf(level, STARDUST_BASELINE, float(ROWS))
 	_stardust_display = _stardust
 	stardust_changed.emit(_stardust)
+
+
+## Arm/disarm the SINK for this leg — the Loft sets it true only while flying a FIGHT leg (false on
+## calm legs + once the fight's done), so calm stretches never sink even at high Stardust.
+func set_can_sink(on: bool) -> void:
+
+	_can_sink = on
 
 
 ## Hard-lock (or release) board input while a voyage event plays over it (the boarding cry).

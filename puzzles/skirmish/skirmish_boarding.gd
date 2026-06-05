@@ -147,22 +147,29 @@ func _ready() -> void:
 	_apply_voyage_footing()
 
 
-# Voyage "arrival footing": a strong Loft run pre-buries the brigand crew. The deck
-# seeds PlayerState.voyage_boarding_seed (capped) from your lift; we spread that many
-# garbage clumps across the foes. Harmless standalone (the seed is 0).
+# Voyage "arrival footing", two-sided: a strong Loft run pre-buries the brigand CREW (your reward),
+# while a HOLED hull pre-buries your OWN board (the YPP damaged-ship penalty). The deck seeds
+# PlayerState.voyage_boarding_seed (capped) from your lift; ship condition is read straight here.
+# Harmless standalone (seed is 0 and condition is read only on a voyage).
 func _apply_voyage_footing() -> void:
 
 	var clumps : int = PlayerState.voyage_boarding_seed
 	PlayerState.voyage_boarding_seed = 0
-	if clumps <= 0:
-		return
-	var foes : Array = _alive(true)
-	if foes.is_empty():
-		return
-	for i in clumps:
-		var foe : Combatant = foes[i % foes.size()]
-		var atk : Dictionary = SkirmishWeapon.make_attack("brawl", 4, foe.board)
-		foe.board.receive_attack(atk["shape"], atk["col"], atk["color"])
+	var atk : Dictionary
+	# Your Loft LIFT pre-buries the FOES — the reward for flying the crossing well.
+	if clumps > 0:
+		var foes : Array = _alive(true)
+		if not foes.is_empty():
+			for i in clumps:
+				var foe : Combatant = foes[i % foes.size()]
+				atk = SkirmishWeapon.make_attack("brawl", 4, foe.board)
+				foe.board.receive_attack(atk["shape"], atk["col"], atk["color"])
+	# ...but a HOLED hull handicaps YOU — each open hole pre-buries your OWN board. Voyage fights only;
+	# a standalone boarding never reads ship condition. See [[ship-condition-research]].
+	if PlayerState.voyage_active and _player != null:
+		for _h in PlayerState.ship_open_holes():
+			atk = SkirmishWeapon.make_attack("brawl", 4, _player.board)
+			_player.board.receive_attack(atk["shape"], atk["col"], atk["color"])
 
 
 # --- Setup -------------------------------------------------------------
@@ -921,7 +928,7 @@ func _show_results(player_won: bool, is_new_best: bool) -> void:
 	else:
 		_add_result_label(vbox, "REPELLED", 44, Color(0.95, 0.55, 0.55, 1.0))
 		_add_result_label(vbox, "The enemy crew held the deck.", 22, Color(0.92, 0.84, 0.6, 1.0))
-	_add_result_label(vbox, "Garbage sent:  %d" % _player.sent, 18, Color(0.85, 0.9, 1.0, 1.0))
+	_add_result_label(vbox, "Attack sent:  %d" % _player.sent, 18, Color(0.85, 0.9, 1.0, 1.0))
 	if is_new_best:
 		_add_result_label(vbox, "A new best!", 17, Color(0.7, 1.0, 0.7, 1.0))
 	_add_result_label(vbox, "Click anywhere to head back", 15, Color(0.6, 0.66, 0.78, 1.0))

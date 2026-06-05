@@ -211,7 +211,7 @@ func _on_player_cleared(count: int) -> void:
 	_opponent_board.receive_attack(attack["shape"], attack["col"], attack["color"], attack["decay"])
 	_lines_sent += h
 	if _you_lines_label != null:
-		_you_lines_label.text = "Garbage sent:  %d" % _lines_sent
+		_you_lines_label.text = "Attack sent:  %d" % _lines_sent
 
 
 func _on_opponent_cleared(count: int) -> void:
@@ -229,7 +229,7 @@ func _on_opponent_cleared(count: int) -> void:
 	_player_board.receive_attack(attack["shape"], attack["col"], attack["color"], attack["decay"])
 	_opp_lines_sent += h
 	if _opp_lines_label != null:
-		_opp_lines_label.text = "Garbage sent:  %d" % _opp_lines_sent
+		_opp_lines_label.text = "Attack sent:  %d" % _opp_lines_sent
 
 
 # --- KO / result -------------------------------------------------------
@@ -305,7 +305,7 @@ func _add_board_header(ui: CanvasLayer, board: SkirmishBoard, who: String, color
 	name_label.add_theme_constant_override("outline_size", 4)
 	box.add_child(name_label)
 	var sent : Label = Label.new()
-	sent.text = "Garbage sent:  0"
+	sent.text = "Attack sent:  0"
 	sent.add_theme_font_size_override("font_size", 14)
 	sent.add_theme_color_override("font_color", Color(0.74, 0.78, 0.9, 0.95))
 	box.add_child(sent)
@@ -342,7 +342,7 @@ func _show_results(player_won: bool, is_new_best: bool) -> void:
 	else:
 		_add_result_label(vbox, "DEFEATED", 44, Color(0.95, 0.55, 0.55, 1.0))
 		_add_result_label(vbox, "%s topped you out." % _opponent_name, 22, Color(0.92, 0.84, 0.6, 1.0))
-	_add_result_label(vbox, "Garbage sent:  %d" % _lines_sent, 18, Color(0.85, 0.9, 1.0, 1.0))
+	_add_result_label(vbox, "Attack sent:  %d" % _lines_sent, 18, Color(0.85, 0.9, 1.0, 1.0))
 	if is_new_best:
 		_add_result_label(vbox, "A new best!", 17, Color(0.7, 1.0, 0.7, 1.0))
 	_add_result_label(vbox, "Click anywhere to head back", 15, Color(0.6, 0.66, 0.78, 1.0))
