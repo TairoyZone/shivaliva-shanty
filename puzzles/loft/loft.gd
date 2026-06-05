@@ -346,22 +346,11 @@ func _on_report_closed(arrived: bool) -> void:
 		card.closed.connect(_on_haul_card_closed)
 		add_child(card)
 	else:
-		_begin_next_leg()   # in-place — no reload, the chart keeps sailing (no black flash)
-
-
-# Open the NEXT leg WITHOUT touching the board — CONTINUOUS crossing: the stones, lift + Stardust
-# carry straight through; we just start a fresh measurement window and sail the chart on. (The
-# chart signals are wired once in _build_ui and stay connected the whole voyage.)
-func _begin_next_leg() -> void:
-
-	_fight_done_this_leg = false
-	_board.set_can_sink(_is_voyage_fight_leg())      # arm the sink only if the NEW leg is a fight
-	_push_effective_rise()                           # refresh the rise — the last fight may have opened holes
-	PlayerState.voyage_leg_lift0 = _current_lift     # this leg's baseline (cumulative so far)
-	PlayerState.voyage_leg_swaps0 = _current_swaps
-	if _voyage_chart != null:
-		_voyage_chart.refresh_from_state(true)       # sail on toward the next stop
-	_voyage_busy = false
+		# Leg done → back to the DECK to pick the next station (man the Loft again, or the PATCHWORKS to
+		# patch the hull before the next stretch — the YPP man-the-stations rhythm). resolve_voyage_leg
+		# already advanced the leg + set pillage_phase 0; the deck re-mans. Holes carry on the SHIP, so a
+		# Patchworks visit between legs actually lowers next leg's flood.
+		get_tree().change_scene_to_file(SHIP_DECK_SCENE)
 
 
 # The Stardust took her on a fight leg — LOST IN THE STARDUST. Apply the consequence (forfeit the
