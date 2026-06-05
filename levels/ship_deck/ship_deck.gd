@@ -15,6 +15,7 @@ extends BaseLocation
 
 
 const LOFT_SCENE : String = "res://puzzles/loft/loft.tscn"
+const PATCHWORKS_SCENE : String = "res://puzzles/patchworks/patchworks_scene.tscn"
 ## Boarding the brigand = the crew-vs-crew [SkirmishBoarding] team fight (you + AI
 ## mates vs the brigand crew). The 1v1 skirmish_duel stays the Spar's friendly match.
 const SKIRMISH_SCENE : String = "res://puzzles/skirmish/skirmish_boarding.tscn"
@@ -36,6 +37,7 @@ const INTERACT_RANGE : float = 95.0
 
 ## Functional station grid cells (well spread out).
 const LOFT_G : Vector2 = Vector2(2.6, 7.0)     # the playable Loft
+const PATCHWORKS_G : Vector2 = Vector2(5.4, 10.6)  # the playable hull-repair station (the Patchworks)
 const HELM_G : Vector2 = Vector2(4.0, 3.2)     # captain's post + the navigation prop
 const PLANK_G : Vector2 = Vector2(4.0, 15.2)   # the gangplank (disembark)
 const SPAWN_G : Vector2 = Vector2(4.0, 13.0)
@@ -45,7 +47,6 @@ const SPAWN_G : Vector2 = Vector2(4.0, 13.0)
 const FLAVOUR_STATIONS : Array = [
 	[Vector2(6.0, 8.6), "sailing"],
 	[Vector2(2.0, 11.4), "gunnery"],
-	[Vector2(6.0, 12.4), "carpentry"],
 ]
 ## Ship hull outline in grid coords (pointed bow at high gy, flat stern at low gy).
 const OUTLINE : Array = [
@@ -274,6 +275,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	match _active:
 		"loft":
 			_man_loft()
+		"patchworks":
+			_man_patchworks()
 		"plank":
 			_disembark()
 
@@ -301,7 +304,8 @@ func _stations_for_phase() -> Array:
 		1, 2:
 			return [plank]   # crossing — watch her make way (the boarding fires itself at the swords)
 		_:
-			return [["loft", _iso(LOFT_G.x, LOFT_G.y)], plank]
+			return [["loft", _iso(LOFT_G.x, LOFT_G.y)],
+				["patchworks", _iso(PATCHWORKS_G.x, PATCHWORKS_G.y)], plank]
 
 
 func _action_label(id: String) -> String:
@@ -309,6 +313,8 @@ func _action_label(id: String) -> String:
 	match id:
 		"loft":
 			return "Man the Loft"
+		"patchworks":
+			return "Man the Patchworks" if PlayerState.ship_open_holes() > 0 else "Patchworks  (hull sound)"
 		"plank":
 			return "Disembark"
 	return ""
@@ -321,6 +327,15 @@ func _man_loft() -> void:
 	PlayerState.pillage_phase = 1
 	PlayerState.puzzle_return_scene = SELF_SCENE
 	get_tree().change_scene_to_file(LOFT_SCENE)
+
+
+# Man the PATCHWORKS — the YPP-carpentry reskin: a core voyage station that MENDS this ship's hull
+# (every ~3 cleared lines seals a hole), so she floods slower at the Loft. A side station, NOT a leg:
+# it does NOT advance the voyage (no pillage_phase change) — repair, then return to the deck.
+func _man_patchworks() -> void:
+
+	PlayerState.puzzle_return_scene = SELF_SCENE
+	get_tree().change_scene_to_file(PATCHWORKS_SCENE)
 
 
 func _board_brigand() -> void:
@@ -511,8 +526,12 @@ func _draw() -> void:
 	# crossing there's nothing to man — you just watch her make way — so no glow.
 	if not _crossing:
 		_draw_glow(_active_world_pos())
+		# A second halo on the Patchworks when the hull's holed — "mend her here, hand".
+		if not _arrived() and PlayerState.ship_open_holes() > 0:
+			_draw_glow(_iso(PATCHWORKS_G.x, PATCHWORKS_G.y))
 	# Clean station props (no labels): playable Loft + helm + the flavour props + plank.
 	_draw_prop(_iso(LOFT_G.x, LOFT_G.y), "loft")
+	_draw_prop(_iso(PATCHWORKS_G.x, PATCHWORKS_G.y), "patchworks")
 	_draw_prop(_iso(HELM_G.x, HELM_G.y), "navigation")
 	for st in FLAVOUR_STATIONS:
 		_draw_prop(_iso(st[0].x, st[0].y), st[1])
@@ -563,6 +582,16 @@ func _draw_prop(pos: Vector2, kind: String) -> void:
 			draw_arc(pos, 9.0, 0.0, TAU, 20, Color(0.70, 0.60, 0.38, 1.0), 4.0)
 		"gunnery":
 			_draw_cannon(pos)
+		"patchworks":
+			# A repair workbench with a half-planked hull panel on top (echoes the Skydock post).
+			draw_rect(Rect2(pos.x - 18.0, pos.y - 6.0, 36.0, 7.0), Color(0.50, 0.34, 0.18, 1.0))
+			draw_line(pos + Vector2(-13.0, -2.0), pos + Vector2(-6.0, 14.0), DECK_DARK, 3.0)
+			draw_line(pos + Vector2(13.0, -2.0), pos + Vector2(6.0, 14.0), DECK_DARK, 3.0)
+			var ppr : Rect2 = Rect2(pos.x - 13.0, pos.y - 24.0, 26.0, 16.0)
+			draw_rect(ppr, Color(0.10, 0.09, 0.18, 1.0))
+			draw_rect(Rect2(ppr.position.x, ppr.position.y, 26.0, 5.0), Color(0.62, 0.46, 0.27, 1.0))
+			draw_rect(Rect2(ppr.position.x, ppr.position.y + 10.0, 26.0, 5.0), Color(0.62, 0.46, 0.27, 1.0))
+			draw_rect(ppr, STATION_IDLE, false, 1.5)
 		"carpentry":
 			draw_rect(Rect2(pos.x - 16.0, pos.y - 8.0, 32.0, 6.0), Color(0.55, 0.40, 0.22, 1.0))
 			draw_line(pos + Vector2(-12.0, -4.0), pos + Vector2(-4.0, 12.0), DECK_DARK, 3.0)

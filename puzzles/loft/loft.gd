@@ -103,10 +103,9 @@ func _build_ui() -> void:
 	# gauge bar and the Leave/? buttons) — and let her SAIL in real time while you work, in sync
 	# with the deck (both charts share PlayerState.voyage_ship_t). Manning a station = a crossing.
 	if PlayerState.voyage_active:
-		# A HULL readout beside the gauges — shows WHY the Stardust floods fast (the damaged-ship coupling).
-		if PlayerState.has_ship():
-			_hull_label = _make_label("HULL  SOUND", Color(0.7, 0.95, 0.75, 1.0))
-			bar.add_child(_wrap(_hull_label))
+		# A HULL readout beside the gauges — the PILLAGE ship's holes (shows WHY the Stardust floods fast).
+		_hull_label = _make_label("HULL  SOUND", Color(0.7, 0.95, 0.75, 1.0))
+		bar.add_child(_wrap(_hull_label))
 		_voyage_chart = VoyageChart.new()
 		_voyage_chart.place_at(_ui, true)
 		_voyage_chart.refresh_from_state(true)   # manning a station IS a crossing — she sails

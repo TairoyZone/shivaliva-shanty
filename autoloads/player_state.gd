@@ -79,6 +79,8 @@ const FIRST_SHIP_LUMBER : int = 0   # MVP: the first ship (Driftpod) is GOLD-ONL
 ## ceiling + the Patchworks cap. Bigger ships scale up later; an unlisted id defaults to 4.
 const SHIP_MAX_HOLES : Dictionary = {"driftpod": 4}
 const SHIP_MAX_HOLES_DEFAULT : int = 4
+## Max holes the CURRENT pillage ship can take before she founders (the voyage-ship cap).
+const VOYAGE_MAX_HOLES : int = 4
 ## A perfect hull starts the Loft at this Stardust (= the Loft's BASELINE, trivially aloft); each
 ## open hole raises the embark level a touch (a battered hull begins closer to the bite).
 const STARDUST_BASE_START : float = 3.0
@@ -188,6 +190,12 @@ var owned_ships : Array = []
 ## drive the Loft's Stardust rise (more holes ⇒ floods faster) + the sink; the Patchworks seals them.
 ## Round-trips in the save. See [[ship-condition-research]] / [[patchworks-spec]].
 var ship_condition : Dictionary = {}
+
+## TRANSIENT: holes on the SHIP YOU'RE CURRENTLY SAILING (the pillage ship — jobbed crew OR your own).
+## During a voyage the condition helpers (ship_open_holes / add_hole / close_hole / wreck) operate on
+## THIS, not the persisted owned-ship `ship_condition`, so the Loft / the Patchworks station / the sink
+## all act on the ship you're actually crewing (YPP-style). Reset when a voyage ends. See [[ship-condition-research]].
+var voyage_open_holes : int = 0
 
 ## The player's Skirmish weapons. You start with just FISTS (brawl); the rest are bought
 ## at Cinder Troy's forge ([WeaponShop]) → appended here. The EQUIPPED one is the attack
@@ -352,11 +360,9 @@ func resolve_voyage_leg(is_fight: bool, won: bool, lift: int, swaps: int) -> Dic
 	# holes the enemy opened, or a calm stretch. The booty itself pays out at voyage's end, pooled.
 	if is_fight:
 		log_event("Plundered %d booty — pool now %d" % [cut, voyage_total_gold()], Color(0.85, 1.0, 0.7))
-		# Only narrate hull damage when there's actually an owned ship to damage — a shipless jobbing
-		# voyage takes no holes (add_hole no-ops), so don't claim damage that never happened.
-		if not active_ship_id().is_empty():
-			var holed : int = 2 if not won else 1
-			log_event("Enemy fire opened %d hole%s in the hull" % [holed, "" if holed == 1 else "s"], Color(1.0, 0.6, 0.5))
+		# The pillage ship took hull damage this fight (voyage_open_holes) — narrate it.
+		var holed : int = 2 if not won else 1
+		log_event("Enemy fire opened %d hole%s in the hull" % [holed, "" if holed == 1 else "s"], Color(1.0, 0.6, 0.5))
 	else:
 		log_event("A calm stretch — no plunder, but she's aloft", Color(0.78, 0.85, 0.95))
 
@@ -479,8 +485,9 @@ func clear_voyage() -> void:
 	voyage_leg_lift0 = 0
 	voyage_leg_swaps0 = 0
 	voyage_boarding_seed = 0   # don't bleed a stale footing seed into the next (maybe friendly) Skirmish
-	# Holes now PERSIST across voyages (S6) — NO free disembark mend. The player repairs at the
-	# Skydock's Patchworks post (the "Mend the Hull" station). See [[ship-condition-research]].
+	voyage_open_holes = 0      # the pillage SHIP's holes are transient — the next voyage's ship starts fresh
+	# (Your OWNED ship's persisted condition (`ship_condition`) is separate + survives, repaired at the
+	# Skydock's Patchworks post. The in-voyage Patchworks station mends the CURRENT pillage ship.)
 
 ## Transient: the chosen Skirmish-duel opponent's NPC resource path. Set by the
 ## Spar post's challenge picker; consumed (and cleared) by SkirmishDuel on load.
@@ -897,6 +904,8 @@ func ship_max_holes(ship_id: String) -> int:
 ## Open holes on the ACTIVE ship (0 with no ship / no damage yet).
 func ship_open_holes() -> int:
 
+	if voyage_active:
+		return voyage_open_holes   # the pillage ship you're crewing
 	var id : String = active_ship_id()
 	if id.is_empty():
 		return 0
@@ -922,6 +931,9 @@ func close_hole(n: int = 1) -> void:
 ## Wreck the active ship — set it to MAX holes (the sink consequence). Persisted.
 func wreck_active_ship() -> void:
 
+	if voyage_active:
+		_set_open_holes(VOYAGE_MAX_HOLES)
+		return
 	var id : String = active_ship_id()
 	if not id.is_empty():
 		_set_open_holes(ship_max_holes(id))
@@ -937,6 +949,9 @@ func ship_stardust_start() -> float:
 # Write the active ship's open-hole count (clamped 0..max), then persist.
 func _set_open_holes(value: int) -> void:
 
+	if voyage_active:
+		voyage_open_holes = clampi(value, 0, VOYAGE_MAX_HOLES)   # the pillage ship (transient, not saved)
+		return
 	var id : String = active_ship_id()
 	if id.is_empty():
 		return
