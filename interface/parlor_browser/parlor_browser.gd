@@ -519,9 +519,13 @@ func _on_cycle_timer() -> void:
 
 func _on_create_sit() -> void:
 
-	var opponents : Array[NpcPersonality] = NpcRegistry.pick_for_lobby(
-		_create_seats - 1, PlayerState.get_affinity,
-		NpcRegistry.profiles_from_paths(PlayerState.last_lobby_seated_paths))
+	# Poker now seats AT THE FELT (pick a chair + invite folk) — launch with NO opponents. Other games
+	# still auto-seat their AI here.
+	var opponents : Array[NpcPersonality] = []
+	if not _is_poker():
+		opponents = NpcRegistry.pick_for_lobby(
+			_create_seats - 1, PlayerState.get_affinity,
+			NpcRegistry.profiles_from_paths(PlayerState.last_lobby_seated_paths))
 	_launch(_active, _paths_of(opponents), _create_free, _create_poker_config())
 
 

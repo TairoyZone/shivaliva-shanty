@@ -99,9 +99,6 @@ signal animation_done
 ## Set from the lobby on entry. A FREE table plays for rapport only — no
 ## buy-in was charged and chips are NOT cashed out to gold on exit.
 var _free_table : bool = false
-## The opponents the lobby seated (loaded from their profile paths). Empty
-## ⇒ launched without a lobby, so [method _seat_players] rolls a fresh set.
-var _lobby_opponents : Array[NpcPersonality] = []
 ## The table config from the browser: {structure, min_bet, seats, turn_time}. Defaults to a No-Limit
 ## lowest-stake table so a standalone launch still plays. See [PokerConfig].
 var _config : Dictionary = PokerConfig.make_default()
@@ -110,6 +107,18 @@ var _human_buy_in : int = 0
 ## True once the player actually SAT (bought in, or a free table seated them). Guards the exit side
 ## effects (affinity + mastery) so cancelling the buy-in dialog can't farm rapport / record a score.
 var _sat_down : bool = false
+
+# --- In-scene seating: the YPP create → PICK A SEAT → INVITE flow ------------------------------------
+## The table starts EMPTY; board players are added as they SIT (the human FIRST, on Sit Here + buy-in,
+## so they're always board player 0; each guest on Invite). The board player index is the source of
+## truth — these map it onto the felt's ring seats:
+var _table_seats : int = 2                 # the table's capacity (open chairs)
+var _display_of_player : Array[int] = []   # board player i sits at ring seat _display_of_player[i]
+var _occupant : Array[int] = []            # ring seat k holds board player _occupant[k] (-1 = open)
+var _human_seated : bool = false
+var _seating : bool = true                 # true until Deal starts the first hand
+var _seat_layer : CanvasLayer              # holds the open-seat Sit Here / Invite + Deal buttons
+var _pending_seat : int = -1               # the seat being bought into (held across the buy-in dialog)
 
 
 func _ready() -> void:
@@ -123,23 +132,16 @@ func _ready() -> void:
 		+ "• Bust and you forfeit your buy-in. Free tables risk no gold (rapport only)")
 	var setup : Dictionary = PlayerState.consume_lobby_setup()
 	_free_table = bool(setup.get("free", false))
-	_lobby_opponents = NpcRegistry.profiles_from_paths(setup.get("seated_paths", []))
 	_config = PokerConfig.normalize(setup.get("table_config", _config))
+	_table_seats = clampi(int(_config["seats"]), 2, 10)
+	_occupant.resize(_table_seats)
+	_occupant.fill(-1)
 	_stamp_board_config()
-	_seat_players()
-	_build_seat_widgets()
 	_wire_signals()
 	_action_panel.visible = false
 	_result_panel.visible = false
-	# Sit down (YPP-style: the cast are already in their chairs; YOUR seat sits OPEN until you take it),
-	# then buy in. A free table seats you straight away.
-	if _free_table:
-		_human_buy_in = PokerConfig.buy_in_max(int(_config["min_bet"]))
-		_board.players[0].chips = _human_buy_in
-		_sat_down = true
-		_board.start_new_hand()
-	else:
-		_show_sit_prompt()
+	# OPEN SEATING (YPP): the table starts EMPTY — take a chair (buy in), invite folk into the rest, Deal.
+	_begin_seating()
 
 
 # The OVAL (racetrack) poker table — a stadium shape (a central rectangle capped by a semicircle at
@@ -165,28 +167,184 @@ func _draw_stadium(c: Vector2, sz: Vector2, color: Color) -> void:
 	draw_circle(Vector2(c.x + mid, c.y), r, color)
 
 
-# --- Setup -------------------------------------------------------------
+# --- Setup: open seating (pick a chair → invite folk → deal) -----------
 
-func _seat_players() -> void:
+func _begin_seating() -> void:
 
-	var min_bet : int = int(_config["min_bet"])
-	# Seat 0 — the human (chips set at Buy-In; a free table fills them in _ready).
-	var human : PokerPlayer = PokerPlayer.new("You", 0, true)
+	_seating = true
+	_seat_layer = CanvasLayer.new()
+	_seat_layer.layer = 4
+	add_child(_seat_layer)
+	_refresh_seating()
+
+
+# Rebuild the OPEN-seat buttons (Sit Here before you sit · + Invite after) + the Deal control. Occupied
+# chairs already carry their PokerSeat widget (built when that player sat), so we leave those alone.
+func _refresh_seating() -> void:
+
+	if _seat_layer == null:
+		return
+	for c in _seat_layer.get_children():
+		c.queue_free()
+	if not _seating:
+		return
+	for k in _table_seats:
+		if _occupant[k] >= 0:
+			continue
+		var pos : Vector2 = _seat_position(k, _table_seats)
+		if not _human_seated:
+			_seat_layer.add_child(_seat_button("✦  Sit Here", Color(0.82, 1.0, 0.6, 1.0), pos, _on_sit_here.bind(k)))
+		else:
+			_seat_layer.add_child(_seat_button("+  Invite", Color(0.86, 0.92, 1.0, 1.0), pos, _on_invite.bind(k)))
+	# Deal lights up once you + at least one guest are seated; open chairs stay invite-able till then.
+	if _human_seated and _board.players.size() >= 2:
+		var deal : Button = _seat_button("Deal  ▸", Color(0.99, 0.88, 0.5, 1.0), Vector2(TABLE_CENTER.x, 432.0), _on_deal)
+		deal.add_theme_font_size_override("font_size", 24)
+		_seat_layer.add_child(deal)
+
+
+func _seat_button(text: String, color: Color, center: Vector2, cb: Callable) -> Button:
+
+	var b : Button = _dlg_button(text, color)
+	var sz : Vector2 = Vector2(152.0, 50.0)
+	b.size = sz
+	b.position = center - sz * 0.5
+	b.pressed.connect(cb)
+	return b
+
+
+# Take an open chair → buy in (a free table seats you straight away).
+func _on_sit_here(k: int) -> void:
+
+	_pending_seat = k
+	if _free_table:
+		_seat_human(k, PokerConfig.buy_in_max(int(_config["min_bet"])))
+	else:
+		_show_buy_in_dialog()
+
+
+func _seat_human(k: int, chips: int) -> void:
+
+	var human : PokerPlayer = PokerPlayer.new("You", chips, true)
 	human.portrait_color = HUMAN_SEAT_COLOR
-	_board.add_player(human)
-	# Opponents — the NPCs the lobby seated (affinity-weighted), capped to the table size (seats − 1,
-	# at most the 8-member cast); each AI buys in for a random amount in the stake's range. A bigger
-	# table than the available cast just leaves the extra seats open (the "empty seats OK" rule).
-	var want : int = clampi(int(_config["seats"]) - 1, 1, 8)
-	var opponents : Array[NpcPersonality] = _lobby_opponents
-	if opponents.is_empty():
-		opponents = NpcRegistry.pick_for_lobby(want, PlayerState.get_affinity)
-	for i in mini(want, opponents.size()):
-		var profile : NpcPersonality = opponents[i]
-		var ai : PokerPlayer = PokerPlayer.new(profile.npc_name, _roll_buy_in(min_bet), false)
-		ai.portrait_color = profile.portrait_color
-		ai.personality = profile
-		_board.add_player(ai)
+	_board.add_player(human)             # the human is ALWAYS board player 0 (sits before any guest)
+	_display_of_player.append(k)
+	_occupant[k] = 0
+	_human_seated = true
+	_sat_down = true
+	_human_buy_in = chips
+	_make_seat_widget(0)
+	_refresh_seating()
+
+
+# Click an open chair (after you've sat) → pick a guest from the cast to fill it.
+func _on_invite(k: int) -> void:
+
+	_show_npc_picker(k)
+
+
+func _seat_npc(k: int, profile: NpcPersonality) -> void:
+
+	var ai : PokerPlayer = PokerPlayer.new(profile.npc_name, _roll_buy_in(int(_config["min_bet"])), false)
+	ai.portrait_color = profile.portrait_color
+	ai.personality = profile
+	_board.add_player(ai)
+	var m : int = _board.players.size() - 1
+	_display_of_player.append(k)
+	_occupant[k] = m
+	_make_seat_widget(m)
+	_refresh_seating()
+
+
+# Build the PokerSeat widget for board player `i` at the ring seat they took. _seats stays index-aligned
+# to the board players (added in order), so the deal/turn/toast code keeps using _seats[i] unchanged.
+func _make_seat_widget(i: int) -> void:
+
+	var seat : PokerSeat = SEAT_SCENE.instantiate()
+	$Table.add_child(seat)
+	var s : float = _seat_scale(_table_seats)
+	seat.scale = Vector2(s, s)
+	seat.position = _seat_position(_display_of_player[i], _table_seats)
+	seat.bind_to(_board.players[i])
+	seat.hole_cards_face_up = _board.players[i].is_human
+	_seats.append(seat)
+
+
+# Start the game: lock seating, clear the open-seat buttons, deal the first hand.
+func _on_deal() -> void:
+
+	if _board.players.size() < 2:
+		return
+	_seating = false
+	if _seat_layer != null:
+		_seat_layer.queue_free()
+		_seat_layer = null
+	_board.start_new_hand()
+
+
+# Pick a guest for seat `k` from the cast (those not already at the table) — a small modal of named
+# buttons, like the rest of the parlor chrome.
+func _show_npc_picker(k: int) -> void:
+
+	var seated : Array = []
+	for p in _board.players:
+		if p.personality != null:
+			seated.append(p.personality)
+	var available : Array[NpcPersonality] = []
+	for profile in NpcRegistry.all():
+		if not (profile in seated):
+			available.append(profile)
+	if available.is_empty():
+		return   # the whole cast is already seated
+
+	var layer : CanvasLayer = CanvasLayer.new()
+	layer.layer = 31
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	var dim : ColorRect = ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.anchor_right = 1.0
+	dim.anchor_bottom = 1.0
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	dim.gui_input.connect(_on_picker_dim_input.bind(layer))
+	layer.add_child(dim)
+	var panel : PanelContainer = PanelContainer.new()
+	var sb : StyleBoxFlat = StyleBoxFlat.new()
+	sb.bg_color = Color(0.13, 0.10, 0.05, 0.98)
+	sb.border_color = Color(0.96, 0.78, 0.34, 0.95)
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(14)
+	sb.set_content_margin_all(24)
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.anchor_left = 0.5
+	panel.anchor_top = 0.5
+	panel.anchor_right = 0.5
+	panel.anchor_bottom = 0.5
+	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	layer.add_child(panel)
+	var col : VBoxContainer = VBoxContainer.new()
+	col.add_theme_constant_override("separation", 8)
+	col.custom_minimum_size = Vector2(300.0, 0.0)
+	panel.add_child(col)
+	_dlg_label(col, "Invite to the table", 22, Color(0.98, 0.88, 0.5, 1.0))
+	for profile in available:
+		var b : Button = _dlg_button(profile.npc_name, profile.portrait_color.lightened(0.3))
+		b.pressed.connect(_on_npc_picked.bind(k, profile, layer))
+		col.add_child(b)
+	add_child(layer)
+
+
+func _on_npc_picked(k: int, profile: NpcPersonality, layer: CanvasLayer) -> void:
+
+	if is_instance_valid(layer):
+		layer.queue_free()
+	_seat_npc(k, profile)
+
+
+func _on_picker_dim_input(event: InputEvent, layer: CanvasLayer) -> void:
+
+	if event is InputEventMouseButton and event.pressed and is_instance_valid(layer):
+		layer.queue_free()
 
 
 # A random in-range starting stack for an AI seat (10×..100× the min-bet, à la a real player's buy-in).
@@ -204,22 +362,6 @@ func _stamp_board_config() -> void:
 	_board.small_blind_amount = PokerConfig.small_blind(min_bet)
 	_board.big_blind_amount = PokerConfig.big_blind(min_bet)
 	_board.pot_calculator.rake_fraction = 0.0 if _free_table else PokerConfig.RAKE_FRACTION
-
-
-func _build_seat_widgets() -> void:
-
-	var total : int = _board.players.size()
-	var seat_scale : float = _seat_scale(total)
-	for i in total:
-		var seat : PokerSeat = SEAT_SCENE.instantiate()
-		$Table.add_child(seat)
-		# UNIFORM size — every seat (you + opponents alike) shares ONE scale, shrinking together only
-		# as the table fills so a packed felt never overlaps. Cards/deal honour the scale.
-		seat.scale = Vector2(seat_scale, seat_scale)
-		seat.position = _seat_position(i, total)
-		seat.bind_to(_board.players[i])
-		seat.hole_cards_face_up = _board.players[i].is_human
-		_seats.append(seat)
 
 
 # One UNIFORM scale for EVERY seat — the human is never bigger than the opponents (they're equals).
@@ -246,32 +388,7 @@ func _seat_position(i: int, total: int) -> Vector2:
 	return TABLE_CENTER + Vector2(cos(angle) * SEAT_RX, sin(angle) * SEAT_RY)
 
 
-# --- Sit down + buy-in ------------------------------------------------
-
-# YPP-style sit-down: the cast are already in their chairs; YOUR seat (bottom-centre) sits OPEN with a
-# "Sit Here" button until you take it. Taking it opens the buy-in dialog, which deals you in.
-func _show_sit_prompt() -> void:
-
-	if _seats.is_empty():
-		_show_buy_in_dialog()
-		return
-	_seats[0].visible = false   # your chair is empty until you sit down
-	var btn : Button = _dlg_button("✦  Sit Here", Color(0.82, 1.0, 0.6, 1.0))
-	btn.add_theme_font_size_override("font_size", 20)
-	var sz : Vector2 = Vector2(176.0, 56.0)
-	btn.size = sz
-	btn.position = _seat_position(0, _seats.size()) - sz * 0.5
-	btn.pressed.connect(_on_sit_here.bind(btn))
-	$UI.add_child(btn)
-
-
-func _on_sit_here(btn: Button) -> void:
-
-	btn.queue_free()
-	if not _seats.is_empty():
-		_seats[0].visible = true
-	_show_buy_in_dialog()
-
+# --- Buy-in ------------------------------------------------------------
 
 # Pop the YPP-style "Buy into the game?" dialog before the first deal: a slider over the stake's
 # 10×..100× buy-in range (capped at the gold you actually have). Buy In charges the gold + seats you;
@@ -346,20 +463,16 @@ func _show_buy_in_dialog() -> void:
 
 func _on_buy_in_confirmed(amount: int, dialog: CanvasLayer) -> void:
 
-	_human_buy_in = clampi(amount, PokerConfig.buy_in_min(int(_config["min_bet"])), PlayerState.total_coins)
-	PlayerState.add_coins(-_human_buy_in, "Card-table buy-in")   # charge the chosen buy-in (gold) now
-	_sat_down = true
-	_board.players[0].chips = _human_buy_in
-	if not _seats.is_empty():
-		_seats[0].bind_to(_board.players[0])   # refresh the human seat's chip readout
+	var buy_in : int = clampi(amount, PokerConfig.buy_in_min(int(_config["min_bet"])), PlayerState.total_coins)
+	PlayerState.add_coins(-buy_in, "Card-table buy-in")   # charge the chosen buy-in (gold) now
 	dialog.queue_free()
-	_board.start_new_hand()
+	_seat_human(_pending_seat, buy_in)   # seat you at the chosen chair — Deal (after a guest) starts play
 
 
 func _on_buy_in_cancelled(dialog: CanvasLayer) -> void:
 
 	dialog.queue_free()
-	_return_to_launching_scene()   # left without sitting — no gold charged
+	_pending_seat = -1   # back to picking a chair (the persistent Leave button exits the table)
 
 
 func _dlg_label(parent: VBoxContainer, text: String, size: int, color: Color) -> Label:
@@ -974,9 +1087,9 @@ func _return_to_launching_scene() -> void:
 # right after; the rank still records.
 func _record_poker_mastery() -> void:
 
-	# Only a REAL (cash) session that was actually sat counts — never a cancelled buy-in, and never a
-	# free table (its stack is house chips, which would mint an unearned Standings score).
-	if not _sat_down or _free_table:
+	# Only a REAL (cash) session that was actually PLAYED counts — never a cancelled buy-in, a free table
+	# (house chips → unearned Standings), or a sit left BEFORE Dealing (chips would still equal the buy-in).
+	if not _sat_down or _free_table or _seating:
 		return
 	if _board == null or _board.players.is_empty():
 		return
@@ -991,8 +1104,8 @@ func _record_poker_mastery() -> void:
 # on exit, not per hand, so it can't be farmed by playing single hands.
 func _grant_opponent_affinity() -> void:
 
-	# No rapport for a session you never sat down to (cancelled the buy-in).
-	if not _sat_down:
+	# No rapport for a session you never sat to, or left before Dealing (no hand was actually shared).
+	if not _sat_down or _seating:
 		return
 	if _board == null or _board.players.size() < 2:
 		return
