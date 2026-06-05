@@ -270,6 +270,15 @@ var voyage_active : bool = false
 ## The voyage chart sloop's live position (0..1 along the whole route). Persisted across the
 ## deck↔Loft scene swaps so she keeps sailing CONTINUOUSLY instead of snapping back each load.
 var voyage_ship_t : float = 0.0
+## The Loft is ONE continuous station for the whole crossing. A boarding swaps to the Skirmish scene
+## (freeing the board), so we SNAPSHOT it here (LoftBoard.serialize) and RESTORE it on return — the
+## same stones, lift + Stardust carry through. Empty = no snapshot pending (fresh board).
+var loft_board_state : Dictionary = {}
+## Per-leg measurement baseline: the CUMULATIVE lift + swaps at the current leg's START. The leg's
+## duty rating = (current − this) ÷ swaps-this-leg, so each leg's report rates THAT stretch even
+## though the board (and its running totals) carry straight across legs + boardings.
+var voyage_leg_lift0 : int = 0
+var voyage_leg_swaps0 : int = 0
 ## The voyage crew for the DUTY REPORT (built once on Accept): the captain + real cast hands at
 ## the stations + you at the Loft. Stable for the whole pillage. Entries: {name,duty,skill,tint,
 ## is_player}. The LAST leg's rated snapshot (DutyReport.snapshot): {name,duty,rating_idx,...}.
@@ -277,13 +286,16 @@ var pillage_duty_crew : Array = []
 var last_duty_report : Array = []
 
 ## --- Voyage payout / footing tuning (shared by the Loft + the ship deck) ---
-const BOOTY_BASE : int = 40
-const BOOTY_PER_LIFT_DIV : int = 6
-const BOOTY_LIFT_BONUS_CAP : int = 100
-## A LOST boarding still grabs a little scrap from the scuffle (so a fought leg isn't a flat zero);
-## a CALM leg pays nothing — gold is the cut of PLUNDER from DEFEATING a crew, not a waypoint toll.
-const BOOTY_LOSS_DIV : int = 14
-const BOOTY_LOSS_CAP : int = 24
+## Each WON boarding adds a FLAT cut to the plunder POOL; a LOST one grabs a little scrap (so a
+## fought leg isn't a flat zero); a CALM leg pays nothing (gold is plunder from a crew, not a toll).
+## The WHOLE pool is then scaled at the divvy by your OVERALL duty (voyage_duty_multiplier) — the
+## YPP way: your share of the plunder reflects how well you served the crossing. Two separate knobs:
+## the per-battle cut is FLAT, the END divvy is performance.
+const BATTLE_CUT_WON : int = 60
+const BATTLE_CUT_LOST : int = 15
+## End-of-voyage divvy multiplier per duty rating tier [Booched, Poor, Fine, Good, Excellent,
+## Incredible] — your cut of the whole pool scales with how you flew the Loft across the voyage.
+const DUTY_DIVVY_MULT : Array[float] = [0.5, 0.7, 0.9, 1.2, 1.5, 2.0]
 ## Arrival footing: how much the foe's Skirmish board is pre-buried, from the Loft lift.
 const SEED_PER_LIFT_DIV : int = 150
 const SEED_CAP : int = 3
@@ -300,17 +312,16 @@ const DUTY_RATE_FOR_TOP : float = 12.0
 func resolve_voyage_leg(is_fight: bool, won: bool, lift: int, swaps: int) -> Dictionary:
 
 	# Gold = your CUT OF THE PLUNDER from DEFEATING a crew (pirates / marines), the YPP way — NOT
-	# a payout for reaching a waypoint. A calm stretch is just sailing: no fight, no plunder.
-	# The cut is POOLED in pillage_log and paid as ONE booty divvy at voyage's end (cash_out_voyage).
+	# a payout for reaching a waypoint. A calm stretch is just sailing: no fight, no plunder. Each
+	# fight adds a FLAT cut to the POOL (pillage_log); the WHOLE pool is then scaled by your overall
+	# duty at the divvy (voyage_final_cut / cash_out_voyage) — performance lives at the END, not here.
 	var cut : int = 0
 	if is_fight:
-		if won:
-			@warning_ignore("integer_division")
-			cut = BOOTY_BASE + clampi(lift / BOOTY_PER_LIFT_DIV, 0, BOOTY_LIFT_BONUS_CAP)
-		else:
-			@warning_ignore("integer_division")
-			cut = clampi(lift / BOOTY_LOSS_DIV, 0, BOOTY_LOSS_CAP)   # a little scrap from the scuffle
+		cut = BATTLE_CUT_WON if won else BATTLE_CUT_LOST
 
+	# This leg's duty rating is a RATE — lift banked per swap THIS stretch (the caller passes the
+	# per-leg delta on a continuous crossing). Both lift + swaps are logged so the end divvy can
+	# rate the WHOLE voyage (voyage_duty_score01).
 	var score01 : float = clampf((float(lift) / maxf(1.0, float(swaps))) / DUTY_RATE_FOR_TOP, 0.0, 1.0)
 	if not pillage_duty_crew.is_empty():
 		last_duty_report = DutyReport.snapshot(pillage_duty_crew, score01)
@@ -318,11 +329,11 @@ func resolve_voyage_leg(is_fight: bool, won: bool, lift: int, swaps: int) -> Dic
 	# way to fly the Loft), so it still ranks up. Silent — no mid-voyage toast.
 	record_puzzle_result("loft", lift)
 	pillage_log.append({"leg": pillage_leg, "type": ("fight" if is_fight else "calm"),
-		"won": won, "lift": lift, "gold": cut})
+		"won": won, "lift": lift, "swaps": swaps, "gold": cut})
 
 	var outcome : String
 	if is_fight:
-		outcome = ("We took 'em — %d gold, your cut of the plunder!" % cut) if won \
+		outcome = ("We took 'em — %d gold to the hold!" % cut) if won \
 			else ("They broke off — %d gold from the scrap." % cut)
 	else:
 		outcome = "Clear skies — a fair stretch. No plunder, but she's aloft and on course."
@@ -343,7 +354,8 @@ func voyage_seed_from_lift(lift: int) -> int:
 	return clampi(lift / SEED_PER_LIFT_DIV, 0, SEED_CAP)
 
 
-# Total gold logged across the voyage so far (the chart's "Haul").
+# The pooled plunder logged across the voyage so far — the sum of the per-battle cuts BEFORE the
+# duty divvy (the chart's "Haul" + the haul card's pool line).
 func voyage_total_gold() -> int:
 
 	var t : int = 0
@@ -352,11 +364,45 @@ func voyage_total_gold() -> int:
 	return t
 
 
-# Pay out the whole voyage's POOLED booty as one divvy (YPP-style — your cut of the plunder, paid
-# at voyage's end, not per stop). Returns the total paid. Call ONCE before clear_voyage on disembark.
+# The OVERALL duty score (0..1) across the WHOLE voyage so far — total lift per total swap, the
+# same rate the per-leg report uses but summed end-to-end. Drives the divvy multiplier.
+func voyage_duty_score01() -> float:
+
+	var lift_sum : int = 0
+	var swap_sum : int = 0
+	for r in pillage_log:
+		lift_sum += int(r.get("lift", 0))
+		swap_sum += int(r.get("swaps", 0))
+	if swap_sum <= 0:
+		return 0.0
+	return clampf((float(lift_sum) / float(swap_sum)) / DUTY_RATE_FOR_TOP, 0.0, 1.0)
+
+
+# The voyage's overall duty RATING index (0 Booched .. 5 Incredible) — for the haul card.
+func voyage_duty_rating_index() -> int:
+
+	return DutyReport.rating_index(voyage_duty_score01())
+
+
+# The divvy multiplier your overall duty earns (×0.5 Booched .. ×2.0 Incredible).
+func voyage_duty_multiplier() -> float:
+
+	var idx : int = voyage_duty_rating_index()
+	return DUTY_DIVVY_MULT[clampi(idx, 0, DUTY_DIVVY_MULT.size() - 1)]
+
+
+# Your FINAL cut: the whole pooled plunder scaled by your overall duty multiplier — the YPP divvy
+# (a flat pool from the battles, then your share reflecting how well you flew the whole crossing).
+func voyage_final_cut() -> int:
+
+	return roundi(float(voyage_total_gold()) * voyage_duty_multiplier())
+
+
+# Pay out your FINAL cut — the pooled booty scaled by your overall duty (YPP-style, paid at voyage's
+# end, not per stop). Returns the total paid. Call ONCE before clear_voyage on disembark.
 func cash_out_voyage() -> int:
 
-	var total : int = voyage_total_gold()
+	var total : int = voyage_final_cut()
 	if total > 0:
 		add_coins(total)
 	return total
@@ -380,6 +426,9 @@ func clear_voyage() -> void:
 	pillage_duty_crew = []
 	last_duty_report = []
 	pillage_encounter_pos = []
+	loft_board_state = {}
+	voyage_leg_lift0 = 0
+	voyage_leg_swaps0 = 0
 
 ## Transient: the chosen Skirmish-duel opponent's NPC resource path. Set by the
 ## Spar post's challenge picker; consumed (and cleared) by SkirmishDuel on load.
@@ -484,7 +533,7 @@ var last_position : Vector2 = Vector2.ZERO
 var puzzle_return_scene : String = ""
 
 # --- Parlor lobby (transient, in-memory only) -------------------------
-## Resource paths of the NPC profiles a [LobbyModal] seated for the parlor
+## Resource paths of the NPC profiles the [ParlorBrowser] seated for the parlor
 ## game about to launch. The parlor scene loads these so its opponents
 ## match the faces the player just watched fill the table. Consumed
 ## (cleared) by [method consume_lobby_setup] on the scene's _ready.
@@ -493,6 +542,9 @@ var lobby_seated_paths : Array = []
 ## lost, just rapport. The parlor scene reads this to suppress every gold
 ## change while still granting affinity. Consumed with the above.
 var free_table : bool = false
+## Per-table config the browser chose (poker: {structure, min_bet, seats, turn_time}; empty for
+## simple games like Gem Drop). The poker scene reads it via [method consume_lobby_setup]. Transient.
+var lobby_table_config : Dictionary = {}
 ## The table seated last time (any parlor game), kept in-memory so the
 ## next lobby can EXCLUDE those faces and avoid back-to-back repeats. Not
 ## consumed — it's the cross-session memory, reset only on a game restart.
@@ -733,26 +785,22 @@ func has_ship() -> bool:
 	return not owned_ships.is_empty()
 
 
-## Can the player afford + is eligible to buy [param ship_id]? Needs the
-## gold AND enough of Godfrey's delivered lumber stock, and must not
-## already own it.
-func can_buy_ship(ship_id: String, gold_cost: int, lumber_cost: int) -> bool:
+## Can the player afford + is eligible to buy [param ship_id]? GOLD ONLY (the single earned
+## currency, earn-and-keep), and must not already own it.
+func can_buy_ship(ship_id: String, gold_cost: int) -> bool:
 
 	if owns_ship(ship_id):
 		return false
-	return total_coins >= gold_cost and godfrey_lumber_stock >= lumber_cost
+	return total_coins >= gold_cost
 
 
-## Buy [param ship_id]: spends gold + consumes that much of Godfrey's
-## lumber stock (he builds it from the wood you delivered — closing the
-## Lumberjacking loop). Returns true on success. No-ops if unaffordable or
+## Buy [param ship_id]: spends gold only. Returns true on success. No-ops if unaffordable or
 ## already owned.
-func buy_ship(ship_id: String, gold_cost: int, lumber_cost: int) -> bool:
+func buy_ship(ship_id: String, gold_cost: int) -> bool:
 
-	if not can_buy_ship(ship_id, gold_cost, lumber_cost):
+	if not can_buy_ship(ship_id, gold_cost):
 		return false
 	add_coins(-gold_cost)
-	godfrey_lumber_stock -= lumber_cost   # setter emits lumber_stock_changed + saves
 	owned_ships.append(ship_id)
 	ships_changed.emit()
 	objective_changed.emit()
@@ -800,8 +848,8 @@ func buy_weapon(weapon_id: String, gold_cost: int) -> bool:
 
 ## The player's current driving goal, as {text, done}. Derived purely from
 ## existing progress flags so it auto-updates — no separate quest state.
-## Drives the HUD objective banner. The arc: get hired → earn gold +
-## deliver lumber to Godfrey → buy your first spacecraft.
+## Drives the objective readout. The arc: get hired → earn gold (puzzle-work /
+## jobbing voyages) → buy your first spacecraft (gold only).
 func current_objective() -> Dictionary:
 
 	if not owned_ships.is_empty():
@@ -1033,17 +1081,19 @@ func reputation() -> int:
 	return total
 
 
-## One-shot read of a [LobbyModal]'s choices for the parlor scene that is
-## loading. Returns {"seated_paths": Array, "free": bool} and RESETS both
-## transients so a later non-lobby launch can't inherit stale settings.
+## One-shot read of the [ParlorBrowser]'s choices for the parlor scene that is loading. Returns
+## {"seated_paths": Array, "free": bool, "table_config": Dictionary} and RESETS all three transients
+## so a later non-lobby launch can't inherit stale settings.
 func consume_lobby_setup() -> Dictionary:
 
 	var setup : Dictionary = {
 		"seated_paths": lobby_seated_paths.duplicate(),
 		"free": free_table,
+		"table_config": lobby_table_config.duplicate(true),
 	}
 	lobby_seated_paths = []
 	free_table = false
+	lobby_table_config = {}
 	return setup
 
 

@@ -107,12 +107,22 @@ var grid : Array = []
 
 var _resolving : bool = false
 var _session_over : bool = false
+## Hard input lock (independent of _resolving) — held while a voyage EVENT plays over the board (the
+## boarding cry) so no stray swap sneaks in before the board is snapshotted.
+var _input_locked : bool = false
 ## Bumped each time a fresh round begins (reset_round). An in-flight swap/cascade captures this at
 ## its start + bails after any await if it changed — so a stale leg's resolution can never corrupt
 ## the freshly re-dealt board (the [[await-after-free-gotcha]] guard, extended to mid-leg re-deals).
 var _round_gen : int = 0
+## VOYAGE (continuous) mode: the board is ONE unbroken session for the whole crossing — no per-leg
+## swap cap, no moves-end, no sink-end (the chart's ARRIVAL ends it, the Stardust is just pressure).
+## Standalone keeps the moves-limited round. Set by the Loft when it's flown AS a voyage.
+var _voyage_mode : bool = false
 var _total_lift : int = 0
 var _moves_left : int = MOVES_PER_ROUND
+## Running count of swaps made (the rate's denominator) — drives the duty rating in voyage mode,
+## where there's no cap to count DOWN from.
+var _swaps_made : int = 0
 ## Logical Stardust level; _stardust_display eases toward it (the smooth shown glide).
 var _stardust : float = STARDUST_START
 var _stardust_display : float = STARDUST_START
@@ -186,7 +196,7 @@ func paint_overlay(ov: LoftOverlay) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 
-	if _resolving or _session_over:
+	if _resolving or _session_over or _input_locked:
 		return
 	if event is InputEventMouseMotion:
 		_set_cursor_from_mouse()
@@ -210,7 +220,7 @@ func _process(delta: float) -> void:
 			_stardust_display = _stardust
 		if _overlay != null:
 			_overlay.queue_redraw()
-	if _resolving or _session_over:
+	if _resolving or _session_over or _input_locked:
 		return
 	var dir : Vector2i = Vector2i.ZERO
 	if Input.is_action_pressed("ui_left"):
@@ -273,8 +283,12 @@ func _do_swap() -> void:
 		return
 	_resolving = true
 	var gen : int = _round_gen   # if a fresh round (reset_round) begins mid-cascade, bail after awaits
-	_moves_left -= 1
-	moves_changed.emit(_moves_left, MOVES_PER_ROUND)
+	_swaps_made += 1
+	if _voyage_mode:
+		moves_changed.emit(_swaps_made, -1)   # continuous: report swaps MADE, no cap (total = -1)
+	else:
+		_moves_left -= 1
+		moves_changed.emit(_moves_left, MOVES_PER_ROUND)
 	_pieces_this_move = 0
 	_moves_since_crab += 1
 	_crab_spawned_this_move = false
@@ -301,6 +315,10 @@ func _do_swap() -> void:
 	if not is_inside_tree() or gen != _round_gen:
 		return
 	_resolving = false
+	# Voyage mode is CONTINUOUS — the chart's ARRIVAL ends the crossing, not moves or a sink (a high
+	# Stardust just costs you rating + footing, never a hard restart). Standalone ends on sink/moves.
+	if _voyage_mode:
+		return
 	if _stardust >= SINK_LEVEL:
 		_end_session(true)     # the Stardust swallowed her — SUNK, round over
 	elif _moves_left <= 0:
@@ -717,6 +735,118 @@ func reset_round() -> void:
 	queue_redraw()
 	if _overlay != null:
 		_overlay.queue_redraw()
+
+
+# --- Voyage (continuous) mode: one unbroken session for the whole crossing -----------
+
+## Flip the board into the voyage's CONTINUOUS mode (no swap cap / no moves-or-sink end — the chart
+## drives leg ends + arrival). Re-emits the swap count in the no-cap form so the HUD reads right.
+func set_voyage_mode(on: bool) -> void:
+
+	_voyage_mode = on
+	if on:
+		moves_changed.emit(_swaps_made, -1)
+
+
+## Hard-lock (or release) board input while a voyage event plays over it (the boarding cry).
+func lock_input(on: bool) -> void:
+
+	_input_locked = on
+
+
+## Is a swap/cascade currently resolving? (The Loft waits for this to clear before snapshotting the
+## board to carry across a boarding, so it captures a STABLE grid.)
+func is_resolving() -> bool:
+
+	return _resolving
+
+
+## Snapshot the live board to a plain Dictionary so the SAME station can be restored after a boarding
+## (the skirmish is a separate scene, so the node is freed — we rebuild from this). Cells: a hue 0..4,
+## -1 = ballast, -2 = empty.
+func serialize() -> Dictionary:
+
+	var cells : Array = []
+	for r in ROWS:
+		var row : Array = []
+		for c in COLS:
+			var s : Variant = grid[r][c]
+			if s == null:
+				row.append(-2)
+			elif _is_ballast(s):
+				row.append(-1)
+			else:
+				row.append(int((s as LoftStone).hue))
+		cells.append(row)
+	return {
+		"cells": cells,
+		"stardust": _stardust,
+		"lift": _total_lift,
+		"swaps_made": _swaps_made,
+		"moves_since_crab": _moves_since_crab,
+	}
+
+
+## Rebuild the board from a serialize() snapshot (continue the SAME station after a boarding) — clears
+## the freshly-dealt grid, repopulates from the saved cells, restores lift/Stardust/swaps. Bumps
+## _round_gen so any in-flight swap bails. No re-deal animation (it's a CONTINUATION, not a new round).
+func restore(state: Dictionary) -> void:
+
+	_round_gen += 1
+	for r in ROWS:
+		for c in COLS:
+			if is_instance_valid(grid[r][c]):
+				grid[r][c].queue_free()
+	_populate_from(state.get("cells", []))
+	# Defensive: a normal snapshot is gap-free, but if one ever caught a mid-cascade board, settle the
+	# columns + snap the stones to rest so nothing floats (it's a continuation — no fall animation).
+	if _settle_logical():
+		for r in ROWS:
+			for c in COLS:
+				if grid[r][c] != null:
+					grid[r][c].position = _cell_pos(r, c)
+	_stardust = float(state.get("stardust", STARDUST_START))
+	_stardust_display = _stardust
+	_total_lift = int(state.get("lift", 0))
+	_swaps_made = int(state.get("swaps_made", 0))
+	_moves_since_crab = int(state.get("moves_since_crab", 0))
+	_crab_spawned_this_move = false
+	_pieces_this_move = 0
+	_resolving = false
+	_session_over = false
+	_move_dir = Vector2i.ZERO
+	_das_timer = 0.0
+	@warning_ignore("integer_division")
+	_cursor = Vector2i(ROWS / 2, (COLS - 2) / 2)
+	queue_redraw()
+	if _overlay != null:
+		_overlay.queue_redraw()
+	lift_changed.emit(_total_lift)
+	stardust_changed.emit(_stardust)
+	if _voyage_mode:
+		moves_changed.emit(_swaps_made, -1)
+
+
+# Build the grid from saved cell codes (hue 0..4 / -1 ballast / -2 empty), placing stones at rest.
+func _populate_from(cells: Array) -> void:
+
+	grid = []
+	for r in ROWS:
+		var row : Array = []
+		for c in COLS:
+			row.append(null)
+		grid.append(row)
+	for r in ROWS:
+		for c in COLS:
+			var code : int = -2
+			if r < cells.size() and c < int((cells[r] as Array).size()):
+				code = int(cells[r][c])
+			if code == -2:
+				continue
+			var s : LoftStone = _make_ballast() if code == -1 else _make_stone(code)
+			s.position = _cell_pos(r, c)
+			add_child(s)
+			grid[r][c] = s
 
 
 func _make_stone(hue: int) -> LoftStone:

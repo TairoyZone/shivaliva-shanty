@@ -40,7 +40,7 @@ func _style_title() -> void:
 	_title.add_theme_constant_override("shadow_offset_x", 0)
 	_title.add_theme_constant_override("shadow_offset_y", 5)
 
-	_subtitle.text = "Pirate or marine — make your name among the floating isles"
+	_subtitle.text = "Sail the Stardust, sing your shanty, make your name."
 	_subtitle.add_theme_font_size_override("font_size", 21)
 	_subtitle.add_theme_color_override("font_color", Color(0.74, 0.82, 0.96, 0.95))
 	_subtitle.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.7))

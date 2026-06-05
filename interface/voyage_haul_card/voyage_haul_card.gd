@@ -8,16 +8,14 @@ extends CanvasLayer
 
 signal closed
 
-static func create(destination: String, total_gold: int) -> VoyageHaulCard:
+static func create(destination: String) -> VoyageHaulCard:
 
 	var c : VoyageHaulCard = VoyageHaulCard.new()
 	c._dest = destination
-	c._total = total_gold
 	return c
 
 
 var _dest : String = ""
-var _total : int = 0
 var _closed : bool = false
 
 
@@ -57,13 +55,24 @@ func _ready() -> void:
 	col.add_theme_constant_override("separation", 8)
 	panel.add_child(col)
 
+	# The divvy: a flat pool from the battles, then YOUR share scaled by how you flew the crossing.
+	var pool : int = PlayerState.voyage_total_gold()
+	var rating_idx : int = PlayerState.voyage_duty_rating_index()
+	var mult : float = PlayerState.voyage_duty_multiplier()
+	var final_cut : int = PlayerState.voyage_final_cut()
+
 	_add(col, "VOYAGE'S END", 30, Color(0.98, 0.90, 0.55, 1.0), 3)
 	if not _dest.is_empty():
 		_add(col, "Made port at %s" % _dest, 17, Color(0.80, 0.88, 0.98, 1.0), 2)
 	col.add_child(_spacer(10))
 	_add(col, "BOOTY DIVVY", 14, Color(0.70, 0.78, 0.92, 1.0), 2)
-	_add(col, "%d gold" % _total, 40, Color(0.99, 0.84, 0.36, 1.0), 4)
-	_add(col, "your cut of the plunder" if _total > 0 else "no plunder this run", 14,
+	if pool > 0:
+		_add(col, "Plunder pool:  %d gold" % pool, 15, Color(0.80, 0.84, 0.92, 1.0), 2)
+		_add(col, "Crew duty:  %s   ×%.1f" % [DutyReport.rating_name(rating_idx), mult], 16,
+			DutyReport.rating_color(rating_idx), 2)
+		col.add_child(_spacer(4))
+	_add(col, "%d gold" % final_cut, 40, Color(0.99, 0.84, 0.36, 1.0), 4)
+	_add(col, "your cut of the plunder" if final_cut > 0 else "no plunder this run", 14,
 		Color(0.74, 0.80, 0.92, 1.0), 2)
 	col.add_child(_spacer(12))
 

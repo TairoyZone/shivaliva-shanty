@@ -125,8 +125,8 @@ func _setup_phase() -> void:
 
 	if _arrived():
 		# Voyage's end. Also guards a redundant re-load so the last leg is never re-banked.
-		_say("%s dead ahead — voyage's end! Total haul: %d gold. Take the plank to make port." % [
-			_destination(), PlayerState.voyage_total_gold()])
+		_say("%s dead ahead — voyage's end! Your cut: %d gold. Take the plank to make port." % [
+			_destination(), PlayerState.voyage_final_cut()])
 		_refresh_chart(false)
 		return
 	match PlayerState.pillage_phase:
@@ -216,8 +216,8 @@ func _resolve_calm() -> void:
 func _after_resolve(r: Dictionary) -> void:
 
 	if bool(r["arrived"]):
-		_say("%s  %s dead ahead — voyage's end! Total haul: %d gold. Take the plank to make port." % [
-			String(r["outcome_line"]), _destination(), PlayerState.voyage_total_gold()])
+		_say("%s  %s dead ahead — voyage's end! Your cut: %d gold. Take the plank to make port." % [
+			String(r["outcome_line"]), _destination(), PlayerState.voyage_final_cut()])
 	else:
 		_say("%s  Waypoint made — man the Loft for the next stretch toward %s." % [
 			String(r["outcome_line"]), _destination()])

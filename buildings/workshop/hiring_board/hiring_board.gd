@@ -131,7 +131,7 @@ func _show_modal() -> void:
 			+ "Bring the wood back here and drop it at the lumber pile. "
 			+ "Wages: 1 gold per wood delivered.")
 	else:
-		body.text = ("Cogwise Godfrey needs lumber for a spacecraft hull.\n\n"
+		body.text = ("Cogwise Godfrey's always after good timber for the Workshop.\n\n"
 			+ "Apply to take the job. Wages: 1 gold per wood delivered. "
 			+ "Chop at the Grove east of here, then bring the lumber back "
 			+ "to the drop-off in this shop.")

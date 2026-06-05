@@ -23,9 +23,11 @@ var _gauge_label : Label
 var _ui : CanvasLayer
 
 var _voyage_chart : VoyageChart   # the in-sync voyage ribbon while manning the Loft mid-pillage
-var _current_lift : int = 0       # live lift so far — banks for this leg's booty/footing/rating
-var _current_swaps : int = 0      # swaps spent so far — with lift gives the per-swap RATE we rate you on
+var _current_lift : int = 0       # live CUMULATIVE lift (the whole crossing in continuous mode)
+var _current_swaps : int = 0      # live CUMULATIVE swaps — per-leg deltas come off the leg baseline
 var _voyage_busy : bool = false   # a voyage transition (stop/fight/report/bail) underway — fire once
+var _fight_done_this_leg : bool = false   # this fight leg's boarding is fought — resolve at the node, don't re-board
+var _restore_pending : bool = false   # post-fight board restore not done yet — hold leg resolution until it is
 
 
 func _ready() -> void:
@@ -38,11 +40,20 @@ func _ready() -> void:
 	_board.session_ended.connect(_on_Board_session_ended)
 	_center_board()
 	_build_ui()
-	# Returned from a boarding fight at this stop → resolve it + post the report OVER the board
-	# (don't play this round — it's the post-fight beat). Deferred so the UI is fully built.
-	if PlayerState.voyage_active and PlayerState.pillage_phase == 2:
-		call_deferred("_resolve_and_report", true, PlayerState.last_skirmish_won,
-			PlayerState.last_loft_lift, PlayerState.last_loft_swaps)
+	if PlayerState.voyage_active:
+		_board.set_voyage_mode(true)   # one CONTINUOUS station for the whole crossing
+		if PlayerState.pillage_phase == 2:
+			# Back from a boarding → RESTORE the same board + sail on to the node, where this fight
+			# leg resolves (the outcome folds in there). Mark the fight DONE + restore PENDING now
+			# (synchronously) so a stray reached_stop can't re-board OR resolve a 0/0 leg before the
+			# restore runs; the restore itself is deferred (UI/board built).
+			_fight_done_this_leg = true
+			_restore_pending = true
+			call_deferred("_resume_after_fight")
+		else:
+			# First time at the Loft this voyage (a fresh board) → open this leg's measurement window.
+			PlayerState.voyage_leg_lift0 = 0
+			PlayerState.voyage_leg_swaps0 = 0
 
 
 func _center_board() -> void:
@@ -89,12 +100,10 @@ func _build_ui() -> void:
 		_voyage_chart = VoyageChart.new()
 		_voyage_chart.place_at(_ui, true)
 		_voyage_chart.refresh_from_state(true)   # manning a station IS a crossing — she sails
-		# When she makes the next stop mid-puzzle, the leg ENDS right here over the board. (On a
-		# POST-FIGHT reload (phase 2) we DON'T listen — _ready drives that resolve itself, and a
-		# stray reached_stop must not re-enter the fight.)
-		if PlayerState.pillage_phase != 2:
-			_voyage_chart.reached_stop.connect(_on_voyage_reached_stop)
-			_voyage_chart.reached_encounter.connect(_on_voyage_reached_encounter)
+		# Each stop/encounter she makes advances the leg right here over the board. Connected ALWAYS
+		# — a post-fight Loft sails ON to the node too, where the fought leg resolves.
+		_voyage_chart.reached_stop.connect(_on_voyage_reached_stop)
+		_voyage_chart.reached_encounter.connect(_on_voyage_reached_encounter)
 
 
 func _make_label(text: String, color: Color) -> Label:
@@ -136,9 +145,11 @@ func _on_Board_lift_changed(total_lift: int) -> void:
 
 func _on_Board_moves_changed(remaining: int, total: int) -> void:
 
-	_current_swaps = total - remaining
+	# Standalone: (remaining, cap) — counts DOWN. Voyage continuous: (swaps MADE, -1) — counts UP, no
+	# cap. Label them distinctly so "SWAPS 7" can't mean both "7 left" and "7 spent".
+	_current_swaps = remaining if total < 0 else (total - remaining)
 	if _moves_label != null:
-		_moves_label.text = "SWAPS  %d" % remaining
+		_moves_label.text = ("SWAPS USED  %d" % remaining) if total < 0 else ("SWAPS  %d" % remaining)
 
 
 # The LIFT gauge reads the Stardust: low = aloft (clear sky), mid = steady, high = sinking.
@@ -214,20 +225,26 @@ func _on_Board_session_ended(total_lift: int, sank: bool) -> void:
 
 # --- Voyage cockpit: the crossing ENDS over the board, never out on the deck ----------
 
-# The ship made the next stop while you worked the Loft (chart reached_stop, or the round ran
-# out) — END the leg HERE: a fight stop boards 'em, a calm stop posts the duty report.
+# The sloop made this leg's NODE — resolve the leg HERE (over the board) + post the duty report:
+# a calm leg just reports; a fight leg reports with the boarding outcome folded in (we fought it
+# mid-leg). If a fight leg reached the node WITHOUT meeting the foe (no swords), board 'em now.
 func _on_voyage_reached_stop() -> void:
 
+	if _restore_pending:
+		return   # post-fight board not restored yet — _resume_after_fight will drive the resolve
 	if _is_voyage_fight_leg():
-		_trigger_voyage_skirmish()   # fallback (e.g. round ran out before the swords) — board 'em
+		if _fight_done_this_leg:
+			_resolve_and_report(true, PlayerState.last_skirmish_won, _leg_lift(), _leg_swaps())
+		else:
+			_trigger_voyage_skirmish()
 	else:
-		_resolve_and_report(false, true, _current_lift, _current_swaps)
+		_resolve_and_report(false, true, _leg_lift(), _leg_swaps())
 
 
 # The sloop reached this leg's swords (the random mid-leg spot) — board 'em right there.
 func _on_voyage_reached_encounter() -> void:
 
-	if _is_voyage_fight_leg():
+	if _is_voyage_fight_leg() and not _fight_done_this_leg:
 		_trigger_voyage_skirmish()
 
 
@@ -238,15 +255,46 @@ func _is_voyage_fight_leg() -> bool:
 	return i >= 0 and i < enc.size() and String(enc[i]) != ""
 
 
+# This leg's lift / swaps — the DELTA off the leg's start baseline (the board's running totals are
+# cumulative across the whole continuous crossing, so each leg rates only ITS own stretch).
+func _leg_lift() -> int:
+
+	return maxi(0, _current_lift - PlayerState.voyage_leg_lift0)
+
+
+func _leg_swaps() -> int:
+
+	return maxi(0, _current_swaps - PlayerState.voyage_leg_swaps0)
+
+
+# Back from a boarding → RESTORE the same board (continue the station) and sail on to the node, where
+# this fight leg resolves with the remembered outcome. No re-deal, no re-fight.
+func _resume_after_fight() -> void:
+
+	if not is_inside_tree():
+		return
+	if not PlayerState.loft_board_state.is_empty():
+		_board.restore(PlayerState.loft_board_state)
+		PlayerState.loft_board_state = {}
+	if _voyage_chart != null:
+		_voyage_chart.mark_encounter_fired()   # don't let the resumed chart re-signal this fought leg
+	_restore_pending = false
+	_voyage_busy = false
+	# If the boarding fired AT the node (the swords-missed fallback), the chart is already at its goal
+	# and reached_stop won't re-fire — resolve the leg right now (mirrors the deck's zero-distance guard).
+	if _voyage_chart != null and not _voyage_chart.needs_sail():
+		_on_voyage_reached_stop()
+
+
 # Resolve the leg via the shared logic + show the DUTY REPORT as an overlay OVER the board (you
-# stay at your station). On dismiss: sail on to the next leg (fresh board) or disembark.
+# stay at your station, the board keeps its state). On dismiss: open the next leg or disembark.
 func _resolve_and_report(is_fight: bool, won: bool, lift: int, swaps: int) -> void:
 
 	if _voyage_busy:
 		return
 	_voyage_busy = true
 	if _voyage_chart != null:
-		_voyage_chart.snap_to_goal()   # park her AT the stop (handles finishing the station early)
+		_voyage_chart.snap_to_goal()   # she's at the node — pin her there for the report
 	var r : Dictionary = PlayerState.resolve_voyage_leg(is_fight, won, lift, swaps)
 	var panel : DutyReportPanel = DutyReportPanel.create(PlayerState.last_duty_report)
 	panel.closed.connect(_on_report_closed.bind(bool(r["arrived"])))
@@ -256,36 +304,24 @@ func _resolve_and_report(is_fight: bool, won: bool, lift: int, swaps: int) -> vo
 func _on_report_closed(arrived: bool) -> void:
 
 	if arrived:
-		# Voyage's end → the booty DIVVY (your cut of the whole POOLED haul), then step ashore.
-		var card : VoyageHaulCard = VoyageHaulCard.create(
-			PlayerState.pillage_destination, PlayerState.voyage_total_gold())
+		# Voyage's end → the booty DIVVY (pool × your overall duty), then step ashore.
+		var card : VoyageHaulCard = VoyageHaulCard.create(PlayerState.pillage_destination)
 		card.closed.connect(_on_haul_card_closed)
 		add_child(card)
 	else:
 		_begin_next_leg()   # in-place — no reload, the chart keeps sailing (no black flash)
 
 
-# Resume the crossing for the NEXT leg WITHOUT a scene reload (kills the between-leg black flash):
-# re-deal the board in place + sail the chart on. resolve_voyage_leg already advanced pillage_leg
-# + reset the phase. A POST-FIGHT Loft skipped wiring the chart signals (phase was 2) — wire them
-# now so the next stop/encounter fires.
+# Open the NEXT leg WITHOUT touching the board — CONTINUOUS crossing: the stones, lift + Stardust
+# carry straight through; we just start a fresh measurement window and sail the chart on. (The
+# chart signals are wired once in _build_ui and stay connected the whole voyage.)
 func _begin_next_leg() -> void:
 
-	_current_lift = 0
-	_current_swaps = 0
-	# Get her underway FIRST (the chart sails immediately while the board re-deals), re-wiring the
-	# stop/encounter signals a POST-FIGHT Loft skipped (it was phase 2 in _build_ui).
+	_fight_done_this_leg = false
+	PlayerState.voyage_leg_lift0 = _current_lift     # this leg's baseline (cumulative so far)
+	PlayerState.voyage_leg_swaps0 = _current_swaps
 	if _voyage_chart != null:
-		if not _voyage_chart.reached_stop.is_connected(_on_voyage_reached_stop):
-			_voyage_chart.reached_stop.connect(_on_voyage_reached_stop)
-		if not _voyage_chart.reached_encounter.is_connected(_on_voyage_reached_encounter):
-			_voyage_chart.reached_encounter.connect(_on_voyage_reached_encounter)
-		_voyage_chart.refresh_from_state(true)
-	# Stay "busy" until the fresh board is fully dealt, so the next stop can never resolve onto a
-	# half-dealt board (belt-and-suspenders with the board's _round_gen guard).
-	await _board.reset_round()
-	if not is_instance_valid(self) or not is_inside_tree():
-		return
+		_voyage_chart.refresh_from_state(true)       # sail on toward the next stop
 	_voyage_busy = false
 
 
@@ -299,33 +335,48 @@ func _on_haul_card_closed() -> void:
 	get_tree().change_scene_to_file(dest)
 
 
-# A ship at this stop — bank the lift (for the fight footing), then board 'em. The Skirmish
-# returns HERE (puzzle_return_scene = the Loft), where _ready resolves it + posts the report.
+# Met the foe mid-leg → park at the swords, SNAPSHOT the board (to carry across the boarding), then
+# board 'em. The Skirmish returns to a fresh Loft (_resume_after_fight restores this board + sails
+# ON to the node, where the leg resolves). The fight footing is seeded from THIS leg's form so far.
 func _trigger_voyage_skirmish() -> void:
 
 	if _voyage_busy:
 		return
 	_voyage_busy = true
-	PlayerState.last_loft_lift = _current_lift
-	PlayerState.last_loft_swaps = _current_swaps
 	if _voyage_chart != null:
-		PlayerState.voyage_ship_t = _voyage_chart.goal_t()
+		_voyage_chart.freeze()   # PARK her at the swords for the boarding — don't sail on to the node
+	_board.lock_input(true)      # no stray swap during the cry / before we snapshot
+	# A "Sail ho!" beat so the boarding never reads as a teleport (animate-everything).
+	var cry : Tween = _flash_alarm("Sail ho!   Board 'em!")
+	# Let the current swap's cascade settle so we snapshot a STABLE board, then carry it across the
+	# boarding. Cap the wait so a stuck resolve can't hang the cry.
+	var guard : int = 0
+	while _board.is_resolving() and guard < 120:
+		await get_tree().process_frame
+		if not is_instance_valid(self) or not is_inside_tree():
+			return
+		guard += 1
+	PlayerState.loft_board_state = _board.serialize()
+	# Footing = how well you flew INTO the fight (this leg's form so far); banked for the deck path too.
+	PlayerState.last_loft_lift = _leg_lift()
+	PlayerState.last_loft_swaps = _leg_swaps()
 	PlayerState.last_skirmish_won = false
-	PlayerState.voyage_boarding_seed = PlayerState.voyage_seed_from_lift(_current_lift)
+	PlayerState.voyage_boarding_seed = PlayerState.voyage_seed_from_lift(_leg_lift())
 	PlayerState.skirmish_opponent = ""
 	PlayerState.pillage_phase = 2
 	PlayerState.puzzle_return_scene = SELF_SCENE
-	# A "Sail ho!" beat (she charges the foe while the chart sails the last bit) so the boarding
-	# never reads as a teleport (animate-everything).
-	_flash_alarm("Sail ho!   Board 'em!")
-	await get_tree().create_timer(0.95).timeout
+	# Swap right as the cry ENDS — never cut it off (fast resolve) nor leave a dead locked frame
+	# after it (slow resolve already outlasted it → the tween is done → await returns at once).
+	if cry != null and cry.is_valid():
+		await cry.finished
 	if not is_instance_valid(self) or not is_inside_tree():
 		return
 	get_tree().change_scene_to_file(SKIRMISH_SCENE)
 
 
-# A big centred cry over the board (reused for the boarding alarm).
-func _flash_alarm(text: String) -> void:
+# A big centred cry over the board (reused for the boarding alarm). Returns its Tween so the caller
+# can await the cry finishing before swapping scenes.
+func _flash_alarm(text: String) -> Tween:
 
 	var label : Label = Label.new()
 	label.text = text
@@ -348,18 +399,21 @@ func _flash_alarm(text: String) -> void:
 	tw.chain().tween_interval(0.5)
 	tw.chain().tween_property(label, "modulate:a", 0.0, 0.3)
 	tw.chain().tween_callback(layer.queue_free)
+	return tw
 
 
-# The persistent Leave button → bail back to the deck, banking the lift earned so far (the deck
-# resumes the crossing on its side). Standalone Lofts use the base behaviour.
+# The persistent Leave button → bail back to the deck, banking this leg's form (the deck resumes the
+# crossing on its side). Bailing ABANDONS the continuous station — drop the snapshot so nothing
+# stale restores. Standalone Lofts use the base behaviour.
 func _return_to_launching_scene() -> void:
 
 	if PlayerState.voyage_active:
 		if _voyage_busy:
 			return
 		_voyage_busy = true
-		PlayerState.last_loft_lift = _current_lift
-		PlayerState.last_loft_swaps = _current_swaps
+		PlayerState.last_loft_lift = _leg_lift()
+		PlayerState.last_loft_swaps = _leg_swaps()
+		PlayerState.loft_board_state = {}
 		get_tree().change_scene_to_file(SHIP_DECK_SCENE)
 		return
 	super._return_to_launching_scene()

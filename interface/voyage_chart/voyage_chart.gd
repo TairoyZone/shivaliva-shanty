@@ -197,6 +197,13 @@ func snap_to_goal() -> void:
 	queue_redraw()
 
 
+# Mark THIS leg's encounter as already met (a post-fight chart re-armed it in refresh_from_state) —
+# so the resumed crossing never re-signals a foe you've already boarded. Next leg re-arms it.
+func mark_encounter_fired() -> void:
+
+	_enc_fired = true
+
+
 # This leg's logged report (or {} if not run yet).
 func _report(leg_i: int) -> Dictionary:
 
@@ -275,7 +282,7 @@ func _draw() -> void:
 			else "Stop %d of %d" % [mini(_done + 1, _total), _total]
 		draw_string(font, Vector2(LM - 6.0, size.y - 8.0), stop_txt,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 14, TEXT_STOP)
-		var haul_txt : String = "Haul: %d gold" % _haul
+		var haul_txt : String = "Pool: %d gold" % _haul   # the PRE-divvy plunder pool (your cut scales by duty at the end)
 		draw_string(font, Vector2(0.0, size.y - 8.0), haul_txt,
 			HORIZONTAL_ALIGNMENT_RIGHT, size.x - RM + 8.0, 14, TEXT_HAUL)
 

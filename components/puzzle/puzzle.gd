@@ -52,10 +52,9 @@ func interact() -> void:
 
 
 ## Launch the puzzle scene, optionally charging [member play_cost] first.
-## Split out of [method interact] so a parlor [LobbyModal] can launch a
-## FREE table (charge_cost = false) down the same return-anchor + scene-
-## change path. Returns silently if the scene is unset or the player can't
-## afford a charged launch.
+## Split out of [method interact] so [method ParlorTable.launch_table] (driven by the
+## [ParlorBrowser]) can launch a FREE table (charge_cost = false) down the same return-anchor +
+## scene-change path. Returns silently if the scene is unset or the player can't afford a charged launch.
 func _launch_puzzle(charge_cost: bool) -> void:
 
 	if puzzle_scene.is_empty():
