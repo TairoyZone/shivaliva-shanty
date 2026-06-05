@@ -171,10 +171,9 @@ func _render() -> void:
 	if _games.is_empty():
 		_body.add_child(_make_caption("No parlor tables here."))
 		return
-	if _creating:
-		_build_create_panel()
-	else:
-		_build_table_list()
+	# No more browsing a list of NPC-hosted tables (it read as a cluttered mess) — the lobby opens
+	# straight to setting up YOUR OWN table; you pick a seat + invite folk at the felt. See [[parlor-social-system]].
+	_build_create_panel()
 
 
 func _render_tabs() -> void:
@@ -397,7 +396,7 @@ func _build_create_panel() -> void:
 			"buy-in %d–%dg · blinds %d/%d" % [PokerConfig.buy_in_min(_create_min_bet),
 				PokerConfig.buy_in_max(_create_min_bet), PokerConfig.small_blind(_create_min_bet),
 				PokerConfig.big_blind(_create_min_bet)], _on_cycle_stake))
-		_body.add_child(_make_cycler("Turn time", "%ds" % _create_turn_time, _on_cycle_timer))
+		# (Turn-time cycler dropped — it was wired into the config but never enforced anywhere.)
 
 	var free_check : CheckButton = CheckButton.new()
 	free_check.text = "Free table (just for fun)"
@@ -428,9 +427,6 @@ func _build_create_panel() -> void:
 	var sit : Button = _make_button("Sit down  ▸", Color(0.78, 1.0, 0.62, 1.0))
 	sit.pressed.connect(_on_create_sit)
 	btn_row.add_child(sit)
-	var back : Button = _make_button("Back", Color(0.95, 0.84, 0.56, 1.0))
-	back.pressed.connect(_on_create_back)
-	btn_row.add_child(back)
 
 
 # Default the create panel to a full table at the chosen game's stake (forced free if you can't
