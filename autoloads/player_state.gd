@@ -733,6 +733,8 @@ func add_item(item_id: String, count: int) -> int:
 			remaining -= add
 	if remaining != count:
 		_on_inventory_mutated(item_id)
+		var iname : String = String((ITEM_DEFS.get(item_id, {}) as Dictionary).get("name", item_id.capitalize()))
+		log_event("+%d %s" % [count - remaining, iname], Color(0.78, 0.92, 0.7))
 	return remaining
 
 
@@ -910,7 +912,11 @@ func add_hole(n: int = 1) -> void:
 ## Seal `n` holes on the active ship (clamped to 0). Persisted. The Patchworks calls this.
 func close_hole(n: int = 1) -> void:
 
-	_set_open_holes(ship_open_holes() - n)
+	var before : int = ship_open_holes()
+	_set_open_holes(before - n)
+	var sealed : int = before - ship_open_holes()
+	if sealed > 0:
+		log_event("Sealed %d hull hole%s" % [sealed, "" if sealed == 1 else "s"], Color(0.7, 0.9, 0.78))
 
 
 ## Wreck the active ship — set it to MAX holes (the sink consequence). Persisted.
@@ -1251,6 +1257,8 @@ func record_puzzle_result(puzzle_id: String, score: int) -> Dictionary:
 	var ranked_up : bool = new_tier > old_tier
 	if ranked_up:
 		mastery_ranked_up.emit(puzzle_id, new_tier, MASTERY_TIERS[new_tier])
+		var pname : String = String((MASTERY_PUZZLES.get(puzzle_id, {}) as Dictionary).get("name", puzzle_id))
+		log_event("Ranked up: %s — %s" % [pname, MASTERY_TIERS[new_tier]], Color(0.98, 0.86, 0.5))
 	check_new_trophies()
 	return {"best": best, "tier_index": new_tier, "tier_name": MASTERY_TIERS[new_tier],
 		"is_new_best": is_new_best, "ranked_up": ranked_up}
