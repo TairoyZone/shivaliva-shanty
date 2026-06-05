@@ -117,8 +117,10 @@ var _display_of_player : Array[int] = []   # board player i sits at ring seat _d
 var _occupant : Array[int] = []            # ring seat k holds board player _occupant[k] (-1 = open)
 var _human_seated : bool = false
 var _seating : bool = true                 # true until Deal starts the first hand
+var _between_hands : bool = false          # a hand just ended — open chairs are invite-able again
 var _seat_layer : CanvasLayer              # holds the open-seat Sit Here / Invite + Deal buttons
 var _pending_seat : int = -1               # the seat being bought into (held across the buy-in dialog)
+var _returning : bool = false              # leaving the table — pay out / record mastery ONCE
 
 
 func _ready() -> void:
@@ -187,25 +189,26 @@ func _refresh_seating() -> void:
 		return
 	for c in _seat_layer.get_children():
 		c.queue_free()
-	if not _seating:
+	# Open chairs take a Sit Here / Invite button — while SEATING (before Deal) and again BETWEEN HANDS
+	# (folk can pull up a stool as the game goes). Guests come from the 8-member cast (one each).
+	if not _seating and not _between_hands:
 		return
-	# Guests come from the 8-member cast (one each) — once they're all seated, an open chair can't be
-	# filled, so show a dead "full" chip instead of a live Invite that would do nothing.
 	var guests_left : int = NpcRegistry.all().size() - maxi(_board.players.size() - 1, 0)
 	for k in _table_seats:
 		if _occupant[k] >= 0:
 			continue
 		var pos : Vector2 = _seat_position(k, _table_seats)
-		if not _human_seated:
+		if _seating and not _human_seated:
 			_seat_layer.add_child(_seat_button("✦  Sit Here", Color(0.82, 1.0, 0.6, 1.0), pos, _on_sit_here.bind(k)))
 		elif guests_left > 0:
 			_seat_layer.add_child(_seat_button("+  Invite", Color(0.86, 0.92, 1.0, 1.0), pos, _on_invite.bind(k)))
-		else:
+		elif _seating:
+			# Whole cast already seated — a dead "full" chip (only worth showing while setting up).
 			var full : Button = _seat_button("✕  full", Color(0.62, 0.56, 0.46, 1.0), pos, Callable())
 			full.disabled = true
 			_seat_layer.add_child(full)
-	# Deal lights up once you + at least one guest are seated; open chairs stay invite-able till then.
-	if _human_seated and _board.players.size() >= 2:
+	# Deal lights up once you + at least one guest are seated (seating only).
+	if _seating and _human_seated and _board.players.size() >= 2:
 		var deal : Button = _seat_button("Deal  ▸", Color(0.99, 0.88, 0.5, 1.0), Vector2(TABLE_CENTER.x, 432.0), _on_deal)
 		deal.add_theme_font_size_override("font_size", 24)
 		_seat_layer.add_child(deal)
@@ -285,9 +288,7 @@ func _on_deal() -> void:
 	if _board.players.size() < 2:
 		return
 	_seating = false
-	if _seat_layer != null:
-		_seat_layer.queue_free()
-		_seat_layer = null
+	_refresh_seating()   # clears the seating buttons; the layer PERSISTS for between-hands invites
 	_board.start_new_hand()
 
 
@@ -1006,6 +1007,8 @@ func _on_hand_complete(awards: Array) -> void:
 	_result_panel.visible = true
 	_result_panel_shown_at_ms = Time.get_ticks_msec()
 	_hand_pending = true
+	_between_hands = not busted   # open chairs are invite-able between hands (not after a bust-out)
+	_refresh_seating()
 	if busted:
 		return  # no auto-advance — player must click out manually
 	await get_tree().create_timer(BETWEEN_HAND_DELAY).timeout
@@ -1045,6 +1048,8 @@ func _advance_or_leave() -> void:
 
 	_hand_pending = false
 	_result_panel.visible = false
+	_between_hands = false   # the next hand begins — no inviting mid-hand
+	_refresh_seating()
 	# Clear winner halos, loser dims, showdown card highlights, and hand
 	# labels before the next deal.
 	for seat in _seats:
@@ -1096,6 +1101,9 @@ const WINNING_SESSION_BONUS : int = 1
 # PuzzleScene._unhandled_input).
 func _return_to_launching_scene() -> void:
 
+	if _returning:
+		return   # Leave + the result button can fire the same frame — pay out / record only once
+	_returning = true
 	_grant_opponent_affinity()
 	_record_poker_mastery()
 	_payout_chips()

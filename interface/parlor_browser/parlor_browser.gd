@@ -398,7 +398,7 @@ func _build_create_panel() -> void:
 		_body.add_child(_make_dropdown("Stake", stake_items, maxi(stake_idx, 0), _on_pick_stake))
 
 	var free_check : CheckButton = CheckButton.new()
-	free_check.text = "Free table (just for fun)"
+	free_check.text = "Free table — learn the ropes (no gold at stake)"
 	free_check.button_pressed = _create_free
 	free_check.disabled = _create_locked_free
 	free_check.focus_mode = Control.FOCUS_NONE
