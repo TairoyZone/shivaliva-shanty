@@ -1,46 +1,24 @@
-## SKIRMISH BOARDING — the CREW-vs-CREW team fight ([[seabattle-research]]): your
-## side (YOU + AI mates) versus an enemy crew, every combatant on their own
-## [SkirmishBoard]. You play YOUR full-size board in the CENTRE and SEE the rest as
-## thumbnails — your crew down the LEFT, the foes down the RIGHT. Clearing lines mails
-## garbage to the foe you've TARGETED (click a foe board, or [A]/[D]). The boarding
-## ends when one whole side is topped out — last crew standing wins. Reuses the duel's
-## engine (board / [SkirmishAI] / [SkirmishWeapon]) unchanged.
+## SKIRMISH BOARDING — the VIEW onto the live crew-vs-crew melee ([[seabattle-research]]). The fight
+## itself (your side YOU + AI mates vs an enemy crew, each on a [SkirmishBoard]) lives in the persistent
+## [BoardingMelee] autoload so it keeps running whether or not you're watching — this scene just RENDERS
+## it (your full board centred, the crews as windowed thumbnail columns down each side), forwards your
+## input to the sim, and shows the result. You play YOUR board; clearing lines mails garbage to the foe
+## you've TARGETED (click a board, or [A]/[D]); a whole side topped out ends it. You can STEP AWAY (Leave)
+## and the melee fights on without you — rejoin from the deck. See [[live-melee-boarding]].
 ##
-## Scales to ANY crew sizes: each side is a windowed COLUMN showing up to
-## VISIBLE_PER_COL fighters at an adaptive scale; bigger crews SCROLL (▲/▼ buttons +
-## [A]/[D] moves your target and auto-scrolls it into view) — the YPP roster. Runs
-## standalone (test the .tscn) and as the VOYAGE boarding (the ship deck launches it);
-## the 1v1 skirmish_duel stays the Spar's friendly match. See [[combat-puzzle-direction]].
+## Reuses the engine (board / [SkirmishAI] / [SkirmishWeapon]) via the autoload. Runs standalone (the
+## .tscn starts a fresh melee) and as the VOYAGE boarding; the 1v1 skirmish_duel stays the Spar's match.
 extends PuzzleScene
 
 
 const PORTRAIT_SCENE : PackedScene = preload("res://components/portrait/portrait.tscn")
 
-
-# --- Difficulty / garbage (mirrors the duel; playtest-tunable) ---------
-const THINK_FAST : float = 0.45
-const THINK_SLOW : float = 0.80
-const BASE_BLUNDER : float = 0.30
-const GARBAGE_FOR_LINES : Array[int] = [0, 1, 2, 4, 6]
-## AI garbage is scaled by aggression + capped (no instant-KO spike); the PLAYER's
-## is never scaled — same as the duel.
-const AI_GARBAGE_BASE : float = 0.55
-const MAX_GARBAGE_ROWS : int = 4
-const LINES_SENT_BONUS : int = 50
-const WIN_BONUS : int = 1000
-
-## Default crew sizes (you + ALLY_COUNT mates vs FOE_COUNT foes). Tunable — the layout
-## adapts to any sizes. 3 + 4 = a 4-a-side brawl where the foe column scrolls.
-const ALLY_COUNT : int = 3
-const FOE_COUNT : int = 4
 ## Up to this many thumbnails show per side at once; a bigger crew scrolls.
 const VISIBLE_PER_COL : int = 3
 
-## Column geometry. Every board's TOP aligns at BOARD_TOP_Y and stacks DOWN. Each crew
-## column has a CENTRE line, COL_INSET in from its screen edge (symmetric about centre);
-## boards AND their headers centre on that line, so a long name + dots never runs off
-## the edge. The thumbnail SCALE is derived so VISIBLE_PER_COL fit between the top and
-## COLUMN_BOTTOM (2-a-side look big, a packed roster shrinks). Your centre board is full.
+## Column geometry. Every board's TOP aligns at BOARD_TOP_Y and stacks DOWN. Each crew column has a
+## CENTRE line, COL_INSET in from its screen edge; boards AND headers centre on it. The thumbnail SCALE
+## is derived so VISIBLE_PER_COL fit between the top and COLUMN_BOTTOM. Your centre board is full-size.
 const BOARD_TOP_Y : float = 140.0
 const COLUMN_BOTTOM : float = 706.0
 const COL_INSET : float = 190.0
@@ -56,56 +34,11 @@ const DEFEND_RING : Color = Color(0.55, 1.0, 0.66, 1.0)    # defending a mate (g
 const NAME_ALLY : Color = Color(0.72, 0.95, 0.76, 1.0)
 const NAME_FOE : Color = Color(0.97, 0.70, 0.70, 1.0)
 
-## The enemy crew is GENERIC (sky-brigands / marines you're plundering), NOT the friendly cast —
-## red names + menacing tints make "these are opponents" read instantly (YPP-style). Allies still
-## come from the real cast (they're your jobbed crew).
-const BRIGAND_NAMES : Array = [
-	"Stormy Brigand", "Raging Brigandor", "Grim Marauder", "Black-Hearted Corsair",
-	"Snarling Reaver", "Vile Cutthroat", "Rotten Knave", "Wretched Buccaneer",
-	"Iron-Fanged Marine", "Bristling Privateer", "Scarred Rogue", "Ill-Tempered Swab",
-]
-const FOE_TINTS : Array = [
-	Color(0.62, 0.20, 0.20, 1.0),   # blood red
-	Color(0.45, 0.16, 0.22, 1.0),   # dark maroon
-	Color(0.34, 0.30, 0.34, 1.0),   # ashen grey
-	Color(0.30, 0.36, 0.24, 1.0),   # sickly olive
-	Color(0.50, 0.28, 0.14, 1.0),   # rust
-	Color(0.26, 0.22, 0.34, 1.0),   # bruise purple
-]
-const FOE_WEAPONS : Array = ["brawl", "sword", "long_range"]
 
-
-## One fighter in the boarding: a board + its identity/AI state + who it attacks.
-## (An inner class with no `extends` defaults to RefCounted.)
-class Combatant:
-	var board : SkirmishBoard
-	var cname : String = "?"
-	var weapon : String = "brawl"
-	var color : Color = Color(0.92, 0.44, 0.40, 1.0)  # weapon colour (opaque)
-	var portrait : Color = Color(0.6, 0.6, 0.65, 1.0)
-	var skill : float = 0.5
-	var aggr : float = 0.5
-	var is_player : bool = false
-	var enemy : bool = false           # true = the opposing crew
-	var alive : bool = true
-	var think_t : float = -1.0         # AI piece-place countdown (-1 = idle)
-	var sent : int = 0
-	var target : Combatant = null      # who this fighter mails garbage to
-	# UI refs (built in _build_header, positioned in _layout)
-	var header : Control
-	var name_label : Label
-	var dots_box : HBoxContainer
-	var dot_count : int = 0            # live attacker dots (for centring the header)
-	var move_tween : Tween            # active slide (defeated-shuffle); killed before a new one
-
-
+## The combatants are OWNED by the BoardingMelee autoload — these are just our local handles to them.
 var _combatants : Array = []
-var _player : Combatant
-var _over : bool = false
+var _player : BoardingCombatant
 var _ui : CanvasLayer
-## This fight's shuffled generic foe names + the next-foe index (so a boarding never repeats one).
-var _foe_names : Array = []
-var _foe_i : int = 0
 
 ## Window top index per side (which member is first-shown). Bigger crews scroll.
 var _scroll_ally : int = 0
@@ -125,110 +58,43 @@ var _das_charged : bool = false
 func _ready() -> void:
 
 	super._ready()
-	_build_combatants()
+	# Start a FRESH melee only if none is running; otherwise we're RE-ATTACHING to a fight that's been
+	# going on without us (rejoin). The sim owns the boards; we just reveal + position them here.
+	var fresh : bool = not BoardingMelee.has_active()
+	if fresh:
+		BoardingMelee.start()
+	_combatants = BoardingMelee.combatants()
+	_player = BoardingMelee.player_combatant()
 	for c in _combatants:
-		add_child(c.board)
+		if is_instance_valid(c.board):
+			c.board.visible = true
 	_build_ui()
 	_layout()
-	for c in _combatants:
-		c.board.lines_cleared.connect(_on_cleared.bind(c))
-		c.board.game_over.connect(_on_ko.bind(c))
-		if not c.is_player:
-			c.board.piece_spawned.connect(_on_ai_spawned.bind(c))
-	_init_targets()
+	BoardingMelee.combatant_defeated.connect(_on_combatant_defeated)
+	BoardingMelee.targets_changed.connect(_on_targets_changed)
+	BoardingMelee.melee_resolved.connect(_on_melee_resolved)
 	_update_highlight()
 	_refresh_dots()
 	_update_scroll_ui()
-	# Each AI's FIRST piece spawned during its board's _ready (before we connected
-	# piece_spawned), so wake the bots for it now — same as the duel.
-	for c in _combatants:
-		if not c.is_player:
-			_on_ai_spawned(c)
-	_apply_voyage_footing()
-	# A "READY? → GO!" beat that freezes every board + shows the controls before the melee runs.
-	add_child(ReadyOverlay.new())
+	BoardingMelee.set_player_present(true)
+	if fresh:
+		# A "READY? → GO!" beat that freezes every board + shows the controls before a NEW melee runs —
+		# never on a rejoin (you're dropping back into a fight already in motion).
+		add_child(ReadyOverlay.new())
+	elif BoardingMelee.is_resolved():
+		# Rejoined a melee that already finished while we were away → straight to the result.
+		_on_melee_resolved(BoardingMelee.player_won())
 
 
-# Voyage "arrival footing", two-sided: a strong Loft run pre-buries the brigand CREW (your reward),
-# while a HOLED hull pre-buries your OWN board (the YPP damaged-ship penalty). The deck seeds
-# PlayerState.voyage_boarding_seed (capped) from your lift; ship condition is read straight here.
-# Harmless standalone (seed is 0 and condition is read only on a voyage).
-func _apply_voyage_footing() -> void:
+# Leaving the scene: hand the player off + hide the boards (they stay under the autoload, ticking, so
+# the melee survives this scene being freed). set_player_present(false) makes the undefended board fall.
+func _exit_tree() -> void:
 
-	var clumps : int = PlayerState.voyage_boarding_seed
-	PlayerState.voyage_boarding_seed = 0
-	var atk : Dictionary
-	# Your Loft LIFT pre-buries the FOES — the reward for flying the crossing well.
-	if clumps > 0:
-		var foes : Array = _alive(true)
-		if not foes.is_empty():
-			for i in clumps:
-				var foe : Combatant = foes[i % foes.size()]
-				atk = SkirmishWeapon.make_attack("brawl", 4, foe.board)
-				foe.board.receive_attack(atk["shape"], atk["col"], atk["color"])
-	# ...but a HOLED hull handicaps YOU — each open hole pre-buries your OWN board. Voyage fights only;
-	# a standalone boarding never reads ship condition. See [[ship-condition-research]].
-	if PlayerState.voyage_active and _player != null:
-		for _h in PlayerState.ship_open_holes():
-			atk = SkirmishWeapon.make_attack("brawl", 4, _player.board)
-			_player.board.receive_attack(atk["shape"], atk["col"], atk["color"])
-
-
-# --- Setup -------------------------------------------------------------
-
-func _build_combatants() -> void:
-
-	_combatants = []
-	_player = Combatant.new()
-	_player.board = SkirmishBoard.new()
-	_player.is_player = true
-	_player.cname = "You"
-	_player.portrait = Color(0.95, 0.78, 0.34, 1.0)
-	_player.weapon = PlayerState.equipped_weapon   # what you've equipped in the inventory
-	_player.color = SkirmishWeapon.color_for(_player.weapon)
-	_combatants.append(_player)
-
-	# ALLIES = your jobbed crew, from the real cast. FOES = generic sky-brigands / marines.
-	var cast : Array = NpcRegistry.all().duplicate()
-	cast.shuffle()
-	_foe_names = BRIGAND_NAMES.duplicate()
-	_foe_names.shuffle()
-	_foe_i = 0
-	var ci : int = 0
-	for _a in ALLY_COUNT:
-		_combatants.append(_make_ai(cast[ci] if ci < cast.size() else null, false))
-		ci += 1
-	for _f in FOE_COUNT:
-		_combatants.append(_make_ai(null, true))   # generic brigands — NOT the friendly cast
-
-
-func _make_ai(profile: NpcPersonality, enemy: bool) -> Combatant:
-
-	var c : Combatant = Combatant.new()
-	c.board = SkirmishBoard.new()
-	c.enemy = enemy
-	if enemy:
-		# A GENERIC opponent (red name via NAME_FOE) — a sky-brigand or marine, not the cast.
-		c.cname = String(_foe_names[_foe_i % _foe_names.size()]) if not _foe_names.is_empty() else "Brigand"
-		c.portrait = FOE_TINTS[_foe_i % FOE_TINTS.size()]
-		c.skill = randf_range(0.30, 0.70)
-		c.aggr = randf_range(0.45, 0.80)
-		c.weapon = String(FOE_WEAPONS[randi() % FOE_WEAPONS.size()])
-		_foe_i += 1
-	elif profile != null:
-		c.cname = profile.npc_name
-		c.portrait = profile.portrait_color
-		# search_depth 1..5 → skill 0..1 (cast runs 2..4); aggression drives garbage.
-		c.skill = clampf(float(profile.search_depth - 1) / 4.0, 0.0, 1.0)
-		c.aggr = clampf(profile.aggression, 0.0, 1.0)
-		var w : String = profile.skirmish_weapon
-		c.weapon = w if not w.is_empty() else "brawl"
-	else:
-		c.cname = "Mate"
-	c.color = SkirmishWeapon.color_for(c.weapon)
-	c.board.set_ai_controlled(true, c.skill)
-	c.board.set_show_preview(false)   # thumbnails drop the next-piece box (cleaner/narrower)
-	return c
+	if is_instance_valid(BoardingMelee):
+		for c in BoardingMelee.combatants():
+			if is_instance_valid(c.board):
+				c.board.visible = false
+		BoardingMelee.set_player_present(false)
 
 
 # --- Layout: player centre, windowed crew columns ---------------------
@@ -237,14 +103,11 @@ func _layout() -> void:
 
 	var vp : Vector2 = get_viewport().get_visible_rect().size
 	var field_w : float = float(SkirmishBoard.COLS * SkirmishBoard.CELL)
-	# Centre the player's whole BLOCK (field + next-piece box) so the crew columns,
-	# placed at equal side margins, leave equal gaps on both sides of you.
 	var preview_w : float = 4.0 * float(SkirmishBoard.CELL) * 0.82 + 24.0
 	var block_w : float = field_w + 22.0 + preview_w
 	_player.board.scale = Vector2.ONE
 	_player.board.position = Vector2(round((vp.x - block_w) * 0.5), BOARD_TOP_Y)
 	_thumb_scale = _compute_thumb_scale()
-	# Scroll-control rows, centred above each column's centre line.
 	var ctrl_y : float = BOARD_TOP_Y - THUMB_HEADER_H - CTRL_ROW_H - 6.0
 	if _ally_ctrl != null:
 		_ally_ctrl.position = Vector2(COL_INSET - 52.0, ctrl_y)
@@ -254,8 +117,7 @@ func _layout() -> void:
 	_position_header(_player)
 
 
-# One scale so VISIBLE_PER_COL thumbnails (of the larger crew) fill a column top-to-
-# bottom — fewer fighters ⇒ bigger boards; a packed roster ⇒ smaller, scrollable ones.
+# One scale so VISIBLE_PER_COL thumbnails (of the larger crew) fill a column top-to-bottom.
 func _compute_thumb_scale() -> float:
 
 	var field_h : float = float(SkirmishBoard.ROWS * SkirmishBoard.CELL)
@@ -269,15 +131,12 @@ func _compute_thumb_scale() -> float:
 func _relayout_columns(animate: bool = false) -> void:
 
 	var vp : Vector2 = get_viewport().get_visible_rect().size
-	# Board x = column centre − half a board, so boards (and their centred headers)
-	# sit on the column centre line.
 	var half : float = float(SkirmishBoard.COLS * SkirmishBoard.CELL) * _thumb_scale * 0.5
 	_layout_column(_members(false), COL_INSET - half, _scroll_ally, animate)
 	_layout_column(_members(true), vp.x - COL_INSET - half, _scroll_foe, animate)
 
 
-# The non-player fighters on a side, ALIVE-FIRST then dead — so a downed fighter drops
-# to the bottom of its column and the living crew stays at the top (in the window).
+# The non-player fighters on a side, ALIVE-FIRST then dead — a downed fighter drops to the bottom.
 func _members(enemy: bool) -> Array:
 
 	var live : Array = []
@@ -291,16 +150,14 @@ func _members(enemy: bool) -> Array:
 	return live + dead
 
 
-# Position the visible WINDOW [offset, offset+VISIBLE) of a column's thumbnails, TOP-
-# aligned at BOARD_TOP_Y (so they line up with the player board); others are hidden.
-# When [param animate], boards that stay visible SLIDE to their new slots (the
-# defeated-shuffle); visibility changes + the initial layout snap.
+# Position the visible WINDOW [offset, offset+VISIBLE) of a column's thumbnails, TOP-aligned at
+# BOARD_TOP_Y; others are hidden. When [param animate], boards that stay visible SLIDE to their slots.
 func _layout_column(members: Array, x: float, offset: int, animate: bool = false) -> void:
 
 	var board_h : float = float(SkirmishBoard.ROWS * SkirmishBoard.CELL) * _thumb_scale
 	var slot : float = THUMB_HEADER_H + board_h + THUMB_GAP
 	for i in members.size():
-		var c : Combatant = members[i]
+		var c : BoardingCombatant = members[i]
 		var in_window : bool = i >= offset and i < offset + VISIBLE_PER_COL
 		var was_visible : bool = c.board.visible
 		if not in_window:
@@ -323,7 +180,7 @@ func _layout_column(members: Array, x: float, offset: int, animate: bool = false
 
 
 # Slide a fighter's board + header from where they are to their new slot.
-func _tween_member(c: Combatant, board_target: Vector2, hdr_target: Vector2) -> void:
+func _tween_member(c: BoardingCombatant, board_target: Vector2, hdr_target: Vector2) -> void:
 
 	if c.move_tween != null and c.move_tween.is_valid():
 		c.move_tween.kill()
@@ -335,56 +192,34 @@ func _tween_member(c: Combatant, board_target: Vector2, hdr_target: Vector2) -> 
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
-# Centre a fighter's header over its board, so a long name + dots extends both ways and
-# never runs off-screen (the right-column clip Troy caught).
-func _position_header(c: Combatant) -> void:
+# Centre a fighter's header over its board (a long name + dots extends both ways, never off-screen).
+func _position_header(c: BoardingCombatant) -> void:
 
 	if c.header == null:
 		return
 	c.header.position = _header_target(c, c.board.position)
 
 
-# Where the header sits if the board were at [param board_pos] — centred on the board.
-func _header_target(c: Combatant, board_pos: Vector2) -> Vector2:
+func _header_target(c: BoardingCombatant, board_pos: Vector2) -> Vector2:
 
 	var bw : float = float(SkirmishBoard.COLS * SkirmishBoard.CELL) * c.board.scale.x
 	var cx : float = board_pos.x + bw * 0.5
 	return Vector2(round(cx - _header_width(c) * 0.5), board_pos.y - THUMB_HEADER_H)
 
 
-# Rough header width (avatar + weapon swatch + name + live target dots) for centring.
-func _header_width(c: Combatant) -> float:
+func _header_width(c: BoardingCombatant) -> float:
 
 	return 36.0 + float(c.cname.length()) * 8.5 + float(c.dot_count) * 12.0
 
 
-func _init_targets() -> void:
-
-	# Assign in order so each pick SEES the ones before it — spreads targets out instead
-	# of the whole crew ganging the first opponent (Troy).
-	for c in _combatants:
-		c.target = _pick_target_for(c)
-
-
-# --- Per-frame: drive the AI boards + the player's input ---------------
+# --- Per-frame: forward the player's input to the sim (the AI is driven in the autoload) ----
 
 func _process(delta: float) -> void:
 
-	if _over:
+	if not BoardingMelee.player_alive():
+		_das_dir = 0
 		return
-	# AI fighters: think-then-place, each on its own randomized clock.
-	for c in _combatants:
-		if c.is_player or not c.alive:
-			continue
-		if c.think_t >= 0.0:
-			c.think_t -= delta
-			if c.think_t <= 0.0:
-				c.think_t = -1.0
-				_ai_act(c)
-	# Player input (only while your own board is live).
-	if not _player.alive or _player.board.is_over():
-		return
-	_player.board.set_soft_drop(
+	BoardingMelee.player_soft_drop(
 		Input.is_action_pressed("ui_down") or Input.is_action_pressed("ui_accept"))
 	var dir : int = 0
 	if Input.is_action_pressed("ui_right"):
@@ -398,56 +233,49 @@ func _process(delta: float) -> void:
 		_das_dir = dir
 		_das_timer = 0.0
 		_das_charged = false
-		_player.board.move(dir)
+		BoardingMelee.player_move(dir)
 		return
 	_das_timer += delta
 	if not _das_charged:
 		if _das_timer >= DAS_DELAY:
 			_das_charged = true
 			_das_timer = 0.0
-			_player.board.move(dir)
+			BoardingMelee.player_move(dir)
 	else:
 		while _das_timer >= DAS_REPEAT:
 			_das_timer -= DAS_REPEAT
-			_player.board.move(dir)
+			BoardingMelee.player_move(dir)
 
 
 func _unhandled_input(event: InputEvent) -> void:
 
-	if not _over and _player.alive and not _player.board.is_over():
+	if BoardingMelee.player_alive():
 		if event.is_action_pressed("ui_up"):
-			_player.board.rotate_cw()
+			BoardingMelee.player_rotate()
 			get_viewport().set_input_as_handled()
 			return
 	# [A]/[D] cycle your target up/down the foe roster (auto-scrolling it into view).
-	if not _over and event is InputEventKey and event.pressed and not event.echo:
+	if not BoardingMelee.is_resolved() and event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_A:
-			_cycle_target(-1)
+			BoardingMelee.cycle_player_target(-1)
 			get_viewport().set_input_as_handled()
 			return
 		if event.keycode == KEY_D:
-			_cycle_target(1)
+			BoardingMelee.cycle_player_target(1)
 			get_viewport().set_input_as_handled()
 			return
 	# Click a VISIBLE board: a FOE to attack it, an ALLY to DEFEND them.
-	if not _over and event is InputEventMouseButton and event.pressed \
+	if not BoardingMelee.is_resolved() and event is InputEventMouseButton and event.pressed \
 			and event.button_index == MOUSE_BUTTON_LEFT:
 		for c in _combatants:
 			if c.is_player or not c.alive or not c.board.visible:
 				continue
 			if _board_rect(c.board).has_point(event.position):
-				_set_player_target(c)
+				BoardingMelee.set_player_target(c)
 				get_viewport().set_input_as_handled()
 				return
 	# Otherwise defer to PuzzleScene (click-to-dismiss after the boarding ends).
 	super._unhandled_input(event)
-
-
-func _set_player_target(t: Combatant) -> void:
-
-	_player.target = t
-	_update_highlight()
-	_refresh_dots()
 
 
 # The on-screen field rect of a board (accounts for its thumbnail scale).
@@ -458,20 +286,10 @@ func _board_rect(board: SkirmishBoard) -> Rect2:
 	return Rect2(board.position, size)
 
 
-# --- Targeting + scrolling --------------------------------------------
+# --- Targeting + scrolling (view-side: the sim picks the target, we scroll/ring it) ---
 
-# Move the player's target to the prev/next ALIVE foe and scroll it into view.
-func _cycle_target(dir: int) -> void:
+func _on_targets_changed() -> void:
 
-	var live : Array = _alive(true)
-	if live.is_empty():
-		return
-	var idx : int = live.find(_player.target)
-	if idx < 0:
-		idx = 0
-	else:
-		idx = (idx + dir + live.size()) % live.size()
-	_player.target = live[idx]
 	_ensure_target_visible()
 	_update_highlight()
 	_refresh_dots()
@@ -515,147 +333,41 @@ func _scroll_column(enemy: bool, dir: int) -> void:
 	_update_scroll_ui()
 
 
-# --- AI placement ------------------------------------------------------
+# --- Sim signals: a fighter fell / the fight resolved -----------------
 
-func _on_ai_spawned(c: Combatant) -> void:
+func _on_combatant_defeated(c: BoardingCombatant) -> void:
 
-	if _over or not c.alive or c.board.is_over():
-		return
-	c.think_t = _ai_think_time(c.skill)
-
-
-func _ai_think_time(skill: float) -> float:
-
-	var base : float = THINK_FAST + (1.0 - skill) * (THINK_SLOW - THINK_FAST)
-	var spread : float = lerpf(0.25, 0.70, 1.0 - skill)
-	return base * randf_range(1.0 - spread, 1.0 + spread)
-
-
-func _ai_act(c: Combatant) -> void:
-
-	if _over or c.board.is_over() or c.board.piece_type() < 0:
-		return
-	var grid : Array = c.board.grid_rows()
-	var piece : int = c.board.piece_type()
-	var pl : Dictionary
-	if randf() < BASE_BLUNDER * (1.0 - c.skill):
-		pl = SkirmishAI.random_placement(grid, piece)
-	else:
-		pl = SkirmishAI.best_placement(grid, piece, c.skill)
-	c.board.ai_place(int(pl["rot"]), int(pl["px"]))
-
-
-# --- Garbage routing ---------------------------------------------------
-
-func _on_cleared(count: int, src: Combatant) -> void:
-
-	if _over or not src.alive:
-		return
-	var base : int = GARBAGE_FOR_LINES[clampi(count, 0, GARBAGE_FOR_LINES.size() - 1)]
-	if base <= 0:
-		return
-	var h : int = base
-	if not src.is_player:
-		# AI garbage scales with aggression + is capped, so a soft foe barely
-		# pressures you and no single hit is an instant KO (comeback-friendly).
-		var sc : float = AI_GARBAGE_BASE + (1.0 - AI_GARBAGE_BASE) * src.aggr
-		h = clampi(roundi(float(base) * sc), 0, MAX_GARBAGE_ROWS)
-	if h <= 0:
-		return
-	# Re-pick only if our target is gone — a SAME-SIDE target is a deliberate DEFEND
-	# (player-only; the AI's _pick_target_for always returns a cross-side foe).
-	if src.target == null or not src.target.alive:
-		src.target = _pick_target_for(src)
-	if src.target == null:
-		return
-	if src.target.enemy == src.enemy:
-		# Defending a crewmate: spend the budget un-burying THEM instead of attacking.
-		src.target.board.relieve(h)
-	else:
-		var atk : Dictionary = SkirmishWeapon.make_attack(src.weapon, h, src.target.board, count)
-		src.target.board.receive_attack(atk["shape"], atk["col"], atk["color"], atk["decay"])
-		src.sent += h
-
-
-# Pick an opponent, strongly favouring the LEAST-targeted one so attackers SPREAD OUT
-# (Troy: don't all gang the first foe). Mild secondary leans only break near-ties: foes
-# lean toward the player, mates toward the tallest stack; jitter scatters the rest.
-func _pick_target_for(src: Combatant) -> Combatant:
-
-	var opp : Array = _alive(not src.enemy)
-	if opp.is_empty():
-		return null
-	var best : Combatant = opp[0]
-	var best_score : float = -INF
-	for o in opp:
-		var score : float = -1000.0 * float(_attacker_count(o)) + randf() * 20.0
-		if src.enemy:
-			if o.is_player:
-				score += 8.0
-		else:
-			score += float(_stack_height(o.board))
-		if score > best_score:
-			best_score = score
-			best = o
-	return best
-
-
-# How many living fighters currently aim at [param target].
-func _attacker_count(target: Combatant) -> int:
-
-	var n : int = 0
-	for a in _combatants:
-		if a.alive and a != target and a.target == target:
-			n += 1
-	return n
-
-
-func _stack_height(board: SkirmishBoard) -> int:
-
-	var g : Array = board.grid_rows()
-	for r in g.size():
-		for c in g[r].size():
-			if int(g[r][c]) >= 0:
-				return g.size() - r
-	return 0
-
-
-# --- KO / win ----------------------------------------------------------
-
-func _on_ko(_score: int, c: Combatant) -> void:
-
-	if not c.alive:
-		return
-	c.alive = false
-	c.board.defeat()   # freeze + flood the whole stack red so it reads as down
-	c.board.set_highlight(Color(0, 0, 0, 0))
 	_refresh_header(c)
 	_announce_defeat(c)
-	# Anyone aiming at the fallen fighter re-picks a live target.
-	for o in _combatants:
-		if o.alive and o.target == c:
-			o.target = _pick_target_for(o)
-	# If the player's target fell, swing to another live foe.
-	if _player.target == c:
-		var live : Array = _alive(true)
-		_player.target = live[0] if not live.is_empty() else null
-	# The downed fighter drops to the bottom; keep your target on-screen; refresh dots
-	# (header widths) BEFORE the slide, then animate everyone to their new slots.
+	# The downed fighter drops to the bottom; keep your target on-screen; refresh dots (header widths)
+	# BEFORE the slide, then animate everyone to their new slots.
 	_scroll_to_target_offset()
 	_refresh_dots()
 	_relayout_columns(true)
 	_update_highlight()
 	_update_scroll_ui()
-	# A whole side down ends the boarding.
-	if _alive(true).is_empty():
-		_end_boarding(true)
-	elif _alive(false).is_empty():
-		_end_boarding(false)
 
 
-# A top-centre banner when any fighter falls — a foe down (good, green) or a mate fallen
-# (bad, red) — so you KNOW who just dropped on either crew (Troy).
-func _announce_defeat(c: Combatant) -> void:
+func _on_melee_resolved(player_won: bool) -> void:
+
+	var res : Dictionary = BoardingMelee.last_result()
+	_show_results(player_won, bool(res.get("is_new_best", false)))
+	if res.get("ranked_up", false):
+		add_child(MasteryToast.create(String(res["tier_name"])))
+	_set_awaiting_dismiss(true)
+
+
+# Stage 1: leaving ENDS this melee — clear it so it can't keep running invisibly under the autoload —
+# then return the normal way (the voyage station/deck reads last_skirmish_won to bank the leg). The
+# step-away-and-keep-fighting flow replaces this clear() in a later stage.
+func _return_to_launching_scene() -> void:
+
+	BoardingMelee.clear()
+	super._return_to_launching_scene()
+
+
+# A top-centre banner when any fighter falls — a foe down (good, green) or a mate fallen (bad, red).
+func _announce_defeat(c: BoardingCombatant) -> void:
 
 	if _ui == null:
 		return
@@ -666,7 +378,6 @@ func _announce_defeat(c: Combatant) -> void:
 		text = "%s is down!" % c.cname
 	else:
 		text = "%s has fallen!" % c.cname
-	# Foe down = good (green); a mate (or you) falling = bad (red).
 	var col : Color = Color(0.74, 1.0, 0.74, 1.0) if c.enemy else Color(1.0, 0.55, 0.55, 1.0)
 	var label : Label = Label.new()
 	label.text = text
@@ -689,34 +400,6 @@ func _announce_defeat(c: Combatant) -> void:
 	tw.tween_callback(label.queue_free)
 
 
-func _end_boarding(player_won: bool) -> void:
-
-	if _over:
-		return
-	_over = true
-	PlayerState.last_skirmish_won = player_won
-	for c in _combatants:
-		c.board.stop()
-	var quality : int = (_player.board.score() + _player.sent * LINES_SENT_BONUS
-		+ (WIN_BONUS if player_won else 0))
-	var mastery : Dictionary = PlayerState.record_puzzle_result("skirmish", quality)
-	_show_results(player_won, bool(mastery.get("is_new_best", false)))
-	if mastery.get("ranked_up", false):
-		add_child(MasteryToast.create(String(mastery["tier_name"])))
-	_set_awaiting_dismiss(true)
-
-
-# --- Helpers -----------------------------------------------------------
-
-func _alive(enemy: bool) -> Array:
-
-	var out : Array = []
-	for c in _combatants:
-		if c.alive and c.enemy == enemy:
-			out.append(c)
-	return out
-
-
 # --- UI: title, roster headers, scroll controls, target ring, dots -----
 
 func _build_ui() -> void:
@@ -736,8 +419,6 @@ func _build_ui() -> void:
 
 	for c in _combatants:
 		_build_header(c)
-	# Scroll controls for any side whose crew overflows the window (positioned in
-	# _layout once the column x is known).
 	if _members(false).size() > VISIBLE_PER_COL:
 		_build_scroll_ctrl(false)
 	if _members(true).size() > VISIBLE_PER_COL:
@@ -751,11 +432,12 @@ func _build_ui() -> void:
 		+ "• CLICK a MATE to DEFEND them (green ring) — your clears un-bury THEIR board instead.\n"
 		+ "• Big crews scroll — use the ▲ ▼ by a column ([A]/[D] auto-scrolls your target in).\n"
 		+ "• The dots by each fighter show how many foes are on them.\n"
+		+ "• The fight goes on with or without you — Leave to step away, then rejoin from the deck.\n"
 		+ "• Top out a whole crew to win. Your mates fight on even if you fall.")
 
 
 # A compact one-row header above a board: avatar + weapon swatch + name + target dots.
-func _build_header(c: Combatant) -> void:
+func _build_header(c: BoardingCombatant) -> void:
 
 	var box : HBoxContainer = HBoxContainer.new()
 	box.add_theme_constant_override("separation", 5)
@@ -781,6 +463,8 @@ func _build_header(c: Combatant) -> void:
 	c.header = box
 	c.name_label = name_l
 	c.dots_box = dots
+	# A rejoin rebuilds headers for a fight already in progress — reflect any already-downed fighter.
+	_refresh_header(c)
 
 
 func _build_scroll_ctrl(enemy: bool) -> void:
@@ -850,7 +534,7 @@ func _set_scroll_label(enemy: bool, lbl: Label, off: int) -> void:
 	lbl.text = "%d–%d / %d" % [first, last, n]
 
 
-func _refresh_header(c: Combatant) -> void:
+func _refresh_header(c: BoardingCombatant) -> void:
 
 	if c.header != null:
 		c.header.modulate = Color(1, 1, 1, 0.4) if not c.alive else Color(1, 1, 1, 1.0)
@@ -858,8 +542,8 @@ func _refresh_header(c: Combatant) -> void:
 		c.name_label.text = (c.cname + "  ✕") if not c.alive else c.cname
 
 
-# A row of small dots by each fighter = how many enemies currently target them,
-# each coloured by the attacker's weapon ([[seabattle-research]] target dots).
+# A row of small dots by each fighter = how many enemies currently target them, each coloured by the
+# attacker's weapon ([[seabattle-research]] target dots).
 func _refresh_dots() -> void:
 
 	for c in _combatants:
@@ -869,7 +553,6 @@ func _refresh_dots() -> void:
 			ch.queue_free()
 		var n : int = 0
 		for a in _combatants:
-			# Only ENEMY attackers count as dots — a mate defending you isn't an attack.
 			if a.alive and a != c and a.target == c and a.enemy != c.enemy:
 				var dot : ColorRect = ColorRect.new()
 				dot.custom_minimum_size = Vector2(10.0, 10.0)
@@ -877,7 +560,7 @@ func _refresh_dots() -> void:
 				c.dots_box.add_child(dot)
 				n += 1
 		c.dot_count = n
-		_position_header(c)   # re-centre — the dots changed the header's width
+		_position_header(c)
 
 
 func _update_highlight() -> void:
@@ -885,7 +568,6 @@ func _update_highlight() -> void:
 	for c in _combatants:
 		c.board.set_highlight(Color(0, 0, 0, 0))
 	if _player.target != null and _player.target.alive:
-		# Green ring when DEFENDING a mate (same side), gold when attacking a foe.
 		var ring : Color = DEFEND_RING if _player.target.enemy == _player.enemy else TARGET_RING
 		_player.target.board.set_highlight(ring)
 
@@ -931,7 +613,8 @@ func _show_results(player_won: bool, is_new_best: bool) -> void:
 	else:
 		_add_result_label(vbox, "REPELLED", 44, Color(0.95, 0.55, 0.55, 1.0))
 		_add_result_label(vbox, "The enemy crew held the deck.", 22, Color(0.92, 0.84, 0.6, 1.0))
-	_add_result_label(vbox, "Attack sent:  %d" % _player.sent, 18, Color(0.85, 0.9, 1.0, 1.0))
+	var sent : int = _player.sent if _player != null else 0
+	_add_result_label(vbox, "Attack sent:  %d" % sent, 18, Color(0.85, 0.9, 1.0, 1.0))
 	if is_new_best:
 		_add_result_label(vbox, "A new best!", 17, Color(0.7, 1.0, 0.7, 1.0))
 	_add_result_label(vbox, "Click anywhere to head back", 15, Color(0.6, 0.66, 0.78, 1.0))

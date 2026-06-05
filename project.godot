@@ -18,6 +18,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 PlayerState="*res://autoloads/player_state.gd"
+BoardingMelee="*res://autoloads/boarding_melee.gd"
 HUD="*res://interface/hud.tscn"
 Overlay="*res://interface/overlay.tscn"
 EventFeed="*res://interface/event_feed/event_feed.gd"
