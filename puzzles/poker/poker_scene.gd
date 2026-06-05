@@ -188,14 +188,21 @@ func _refresh_seating() -> void:
 		c.queue_free()
 	if not _seating:
 		return
+	# Guests come from the 8-member cast (one each) — once they're all seated, an open chair can't be
+	# filled, so show a dead "full" chip instead of a live Invite that would do nothing.
+	var guests_left : int = NpcRegistry.all().size() - maxi(_board.players.size() - 1, 0)
 	for k in _table_seats:
 		if _occupant[k] >= 0:
 			continue
 		var pos : Vector2 = _seat_position(k, _table_seats)
 		if not _human_seated:
 			_seat_layer.add_child(_seat_button("✦  Sit Here", Color(0.82, 1.0, 0.6, 1.0), pos, _on_sit_here.bind(k)))
-		else:
+		elif guests_left > 0:
 			_seat_layer.add_child(_seat_button("+  Invite", Color(0.86, 0.92, 1.0, 1.0), pos, _on_invite.bind(k)))
+		else:
+			var full : Button = _seat_button("✕  full", Color(0.62, 0.56, 0.46, 1.0), pos, Callable())
+			full.disabled = true
+			_seat_layer.add_child(full)
 	# Deal lights up once you + at least one guest are seated; open chairs stay invite-able till then.
 	if _human_seated and _board.players.size() >= 2:
 		var deal : Button = _seat_button("Deal  ▸", Color(0.99, 0.88, 0.5, 1.0), Vector2(TABLE_CENTER.x, 432.0), _on_deal)
@@ -209,7 +216,8 @@ func _seat_button(text: String, color: Color, center: Vector2, cb: Callable) -> 
 	var sz : Vector2 = Vector2(152.0, 50.0)
 	b.size = sz
 	b.position = center - sz * 0.5
-	b.pressed.connect(cb)
+	if cb.is_valid():
+		b.pressed.connect(cb)
 	return b
 
 

@@ -369,6 +369,11 @@ func _build_create_panel() -> void:
 
 	var min_s : int = int(g["min_seats"])
 	var max_s : int = int(g["max_seats"])
+	# Poker fills its open chairs by INVITING the cast in-scene, so it can't exceed 1 human + the cast
+	# (= 9) — cap the picker so you can never host a table with a permanently-unfillable chair. (Real
+	# "friends" over multiplayer can fill more, later.)
+	if _is_poker():
+		max_s = mini(max_s, 1 + NpcRegistry.all().size())
 	if max_s > min_s:
 		var seat_items : Array = []
 		for n in range(min_s, max_s + 1):
