@@ -14,6 +14,9 @@ const TRAY_SLOT_W : float = 150.0
 const TRAY_SLOT_H : float = 110.0
 const TRAY_GAP : float = 24.0
 const TRAY_CELL : float = 20.0
+## Every this-many cleared lines seals ONE hull hole on the active ship — the Patchworks→condition
+## coupling (playing it MENDS the ship). No-op standalone / on an undamaged hull. See [[ship-condition-research]].
+const PATCHWORKS_LINES_PER_HOLE : int = 3
 
 const COLOR_HULL : Color = Color(0.30, 0.21, 0.11, 1.0)
 const COLOR_HULL_EDGE : Color = Color(0.16, 0.10, 0.04, 1.0)
@@ -36,6 +39,7 @@ var _flash_rows : Array = []
 var _flash_cols : Array = []
 var _flash_t : float = 0.0
 var _flash_active : bool = false
+var _lines_toward_seal : int = 0   # accumulates cleared lines; every PATCHWORKS_LINES_PER_HOLE seals a hull hole
 
 var _score_label : Label
 var _combo_label : Label
@@ -341,12 +345,27 @@ func _on_score_changed(s: int) -> void:
 	_score_label.text = str(s)
 
 
+# Leaving the station → bank the run as Patchworks mastery (a rank-up narrates itself via the event
+# feed). Holes were sealed live as you cleared lines. record_puzzle_result is high-water-mark, so the
+# idempotent leave path is safe.
+func _return_to_launching_scene() -> void:
+
+	PlayerState.record_puzzle_result("patchworks", _board.score)
+	super._return_to_launching_scene()
+
+
 func _on_lines_cleared(rows: Array, cols: Array, combo: int) -> void:
 
 	_flash_rows = rows
 	_flash_cols = cols
 	_flash_t = 1.0
 	var n : int = rows.size() + cols.size()
+	# Coupling: cleared lines MEND the active ship — every PATCHWORKS_LINES_PER_HOLE seals one hole
+	# (close_hole no-ops + the feed stays quiet when there's no damaged ship, e.g. standalone play).
+	_lines_toward_seal += n
+	while _lines_toward_seal >= PATCHWORKS_LINES_PER_HOLE:
+		_lines_toward_seal -= PATCHWORKS_LINES_PER_HOLE
+		PlayerState.close_hole(1)
 	_combo_label.text = ("Combo  x%d" % combo) if combo > 1 else ""
 	if combo > 1:
 		_flash_label.text = "Combo  x%d!" % combo

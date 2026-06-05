@@ -112,6 +112,7 @@ const MASTERY_PUZZLES : Dictionary = {
 	"poker": {"name": "Poker", "thresholds": [0, 25, 75, 150, 275, 450]},
 	"skirmish": {"name": "Skirmish", "thresholds": [0, 2500, 5500, 10000, 16000, 24000]},
 	"loft": {"name": "Lofting", "thresholds": [0, 120, 280, 480, 750, 1100]},
+	"patchworks": {"name": "Patchworks", "thresholds": [0, 400, 1200, 2600, 4500, 7000]},
 }
 
 # --- Inventory (Stardew-style slot backpack) -------------------------
