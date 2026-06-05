@@ -140,6 +140,30 @@ func _build_skeleton() -> void:
 	hint.add_theme_color_override("font_color", Color(0.8, 0.68, 0.42, 1.0))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(hint)
+	# Quit to title — the discoverable clean save-and-quit from the overworld (ESC opens this bag, so
+	# this is the way out). PlayerState autosaves on every change, so we just return to the title.
+	var quit_row : HBoxContainer = HBoxContainer.new()
+	quit_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_child(quit_row)
+	var quit_btn : Button = Button.new()
+	quit_btn.text = "⏻  Quit to Title"
+	quit_btn.focus_mode = Control.FOCUS_NONE
+	quit_btn.add_theme_font_size_override("font_size", 15)
+	quit_btn.add_theme_color_override("font_color", Color(0.92, 0.72, 0.52, 1.0))
+	quit_btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	quit_btn.add_theme_constant_override("outline_size", 3)
+	var qs : StyleBoxFlat = StyleBoxFlat.new()
+	qs.bg_color = Color(0.20, 0.12, 0.07, 0.92)
+	qs.border_color = Color(0.55, 0.38, 0.18, 1.0)
+	qs.set_border_width_all(2)
+	qs.set_corner_radius_all(8)
+	qs.content_margin_left = 16
+	qs.content_margin_right = 16
+	qs.content_margin_top = 7
+	qs.content_margin_bottom = 7
+	quit_btn.add_theme_stylebox_override("normal", qs)
+	quit_btn.pressed.connect(_on_quit_to_title)
+	quit_row.add_child(quit_btn)
 	_update_tab_styles()
 
 
@@ -236,6 +260,17 @@ func toggle() -> void:
 		close()
 	else:
 		open("items")
+
+
+# Return to the title screen. PlayerState autosaves on every change + records last_scene, so main.tscn
+# resumes the player right back here on next launch — a clean save-and-quit.
+func _on_quit_to_title() -> void:
+
+	close()
+	if get_tree() == null:
+		return
+	get_tree().paused = false
+	get_tree().change_scene_to_file("res://main.tscn")
 
 
 func current_tab() -> String:
