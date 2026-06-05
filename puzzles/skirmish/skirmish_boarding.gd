@@ -12,6 +12,7 @@ extends PuzzleScene
 
 
 const PORTRAIT_SCENE : PackedScene = preload("res://components/portrait/portrait.tscn")
+const SHIP_DECK_SCENE : String = "res://levels/ship_deck/ship_deck.tscn"
 
 ## Up to this many thumbnails show per side at once; a bigger crew scrolls.
 const VISIBLE_PER_COL : int = 3
@@ -357,11 +358,15 @@ func _on_melee_resolved(player_won: bool) -> void:
 	_set_awaiting_dismiss(true)
 
 
-# Stage 1: leaving ENDS this melee — clear it so it can't keep running invisibly under the autoload —
-# then return the normal way (the voyage station/deck reads last_skirmish_won to bank the leg). The
-# step-away-and-keep-fighting flow replaces this clear() in a later stage.
+# Leave during a STILL-RAGING voyage boarding = STEP AWAY: duck back to the deck and let the melee fight
+# on without you (rejoin from the helm). _exit_tree hides the boards + marks you absent, so your board
+# buries itself meanwhile. A RESOLVED melee, or a standalone boarding, ENDS here → clear it + return the
+# normal way (the station/deck reads last_skirmish_won, set by the sim at the side-wipe, to bank the leg).
 func _return_to_launching_scene() -> void:
 
+	if PlayerState.voyage_active and BoardingMelee.has_active() and not BoardingMelee.is_resolved():
+		get_tree().change_scene_to_file(SHIP_DECK_SCENE)
+		return
 	BoardingMelee.clear()
 	super._return_to_launching_scene()
 

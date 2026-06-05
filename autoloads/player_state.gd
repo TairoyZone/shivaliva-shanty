@@ -489,6 +489,8 @@ func clear_voyage() -> void:
 	voyage_open_holes = 0      # the pillage SHIP's holes are transient — the next voyage's ship starts fresh
 	# (Your OWNED ship's persisted condition (`ship_condition`) is separate + survives, repaired at the
 	# Skydock's Patchworks post. The in-voyage Patchworks station mends the CURRENT pillage ship.)
+	# A boarding melee still in flight (you stepped away, never rejoined, then bailed) is abandoned too.
+	BoardingMelee.clear()
 
 ## Transient: the chosen Skirmish-duel opponent's NPC resource path. Set by the
 ## Spar post's challenge picker; consumed (and cleared) by SkirmishDuel on load.

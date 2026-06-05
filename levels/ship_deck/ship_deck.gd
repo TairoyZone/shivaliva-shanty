@@ -134,6 +134,15 @@ func _setup_phase() -> void:
 			_destination(), PlayerState.voyage_final_cut()])
 		_refresh_chart(false)
 		return
+	if BoardingMelee.has_active():
+		# You stepped away from a boarding — it's still being decided (or just was). Get back in the fight;
+		# no station is mountable mid-boarding. The chart holds parked at the swords until the melee's done.
+		if BoardingMelee.is_resolved():
+			_say("The boarding's decided, hand — get to the helm to see how yer crew fared.")
+		else:
+			_say("The boarding still rages — get to the helm and rejoin the fight!")
+		_refresh_chart(false)
+		return
 	match PlayerState.pillage_phase:
 		1:
 			_say("Underway toward %s — hold fast, hand." % _destination())
@@ -281,6 +290,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_man_loft()
 		"patchworks":
 			_man_patchworks()
+		"rejoin":
+			_rejoin_boarding()
 		"plank":
 			_disembark()
 
@@ -304,6 +315,9 @@ func _stations_for_phase() -> Array:
 	var plank : Array = ["plank", _iso(PLANK_G.x, PLANK_G.y)]
 	if _arrived():
 		return [plank]   # voyage's end — the plank is all that's left
+	if BoardingMelee.has_active():
+		# Mid-boarding: no station is mountable (the LOCKED rule) — only rejoin the fight (or walk the plank).
+		return [["rejoin", _iso(HELM_G.x, HELM_G.y)], plank]
 	match PlayerState.pillage_phase:
 		1, 2:
 			return [plank]   # crossing — watch her make way (the boarding fires itself at the swords)
@@ -319,6 +333,8 @@ func _action_label(id: String) -> String:
 			return "Man the Loft"
 		"patchworks":
 			return "Man the Patchworks" if PlayerState.ship_open_holes() > 0 else "Mend at the Patchworks"
+		"rejoin":
+			return "Rejoin the boarding"
 		"plank":
 			return "Disembark"
 	return ""
@@ -353,6 +369,14 @@ func _board_brigand() -> void:
 	PlayerState.voyage_boarding_seed = PlayerState.voyage_seed_from_lift(PlayerState.last_loft_lift)
 	PlayerState.skirmish_opponent = ""
 	PlayerState.puzzle_return_scene = SELF_SCENE
+	get_tree().change_scene_to_file(SKIRMISH_SCENE)
+
+
+# Back into the live melee (it kept fighting while you were here on the deck). The boarding RE-ATTACHES to
+# the still-running — or already-finished — sim; puzzle_return_scene is untouched, so dismissing it banks
+# the leg the usual way (the station or the deck reads last_skirmish_won).
+func _rejoin_boarding() -> void:
+
 	get_tree().change_scene_to_file(SKIRMISH_SCENE)
 
 
@@ -534,8 +558,9 @@ func _draw() -> void:
 	# crossing there's nothing to man — you just watch her make way — so no glow.
 	if not _crossing:
 		_draw_glow(_active_world_pos())
-		# A second halo on the Patchworks when the hull's holed — "mend her here, hand".
-		if not _arrived() and PlayerState.ship_open_holes() > 0:
+		# A second halo on the Patchworks when the hull's holed — "mend her here, hand". Suppressed mid-
+		# boarding (the only glow then is the helm, to rejoin).
+		if not _arrived() and not BoardingMelee.has_active() and PlayerState.ship_open_holes() > 0:
 			_draw_glow(_iso(PATCHWORKS_G.x, PATCHWORKS_G.y))
 	# Clean station props (no labels): playable Loft + helm + the flavour props + plank.
 	_draw_prop(_iso(LOFT_G.x, LOFT_G.y), "loft")
@@ -553,6 +578,8 @@ func _active_world_pos() -> Vector2:
 
 	if _arrived():
 		return _iso(PLANK_G.x, PLANK_G.y)
+	if BoardingMelee.has_active():
+		return _iso(HELM_G.x, HELM_G.y)   # rejoin the boarding from the helm
 	return _iso(LOFT_G.x, LOFT_G.y)
 
 

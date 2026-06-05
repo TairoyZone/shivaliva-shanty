@@ -270,6 +270,7 @@ func _on_quit_to_title() -> void:
 	if get_tree() == null:
 		return
 	get_tree().paused = false
+	BoardingMelee.clear()   # don't leave a stepped-away boarding melee ticking on the title
 	get_tree().change_scene_to_file("res://main.tscn")
 
 
