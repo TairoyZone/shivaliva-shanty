@@ -101,3 +101,34 @@ static func pick_for_lobby(count: int, affinity_of: Callable, exclude: Array[Npc
 				break
 			chosen.append(profile)
 	return chosen
+
+
+## Load NPC profiles from a list of resource-path strings (round-trips with
+## [member NpcPersonality.resource_path]). Used by the parlor scenes (seating from the lobby
+## handoff) AND the parlor browser (exclude lists). Skips unloadable paths. (Relocated here from
+## the retired LobbyModal so both live games keep working.)
+static func profiles_from_paths(paths: Array) -> Array[NpcPersonality]:
+
+	var out : Array[NpcPersonality] = []
+	for p in paths:
+		var prof : NpcPersonality = load(String(p)) as NpcPersonality
+		if prof != null:
+			out.append(prof)
+	return out
+
+
+## A DERIVED per-game parlor STANDING for an NPC, as a mastery-tier index (0 Greenhorn .. 5 Legend).
+## NPCs store no real rating, so this synthesizes one from their AI knobs — letting a table row show
+## a rank YPP-style ("Master Cutepo"). Deterministic per NPC + game (stable across browser opens);
+## pure flavor, never persisted. [param game_id] = "poker" / "gem_drop".
+static func parlor_tier(profile: NpcPersonality, game_id: String) -> int:
+
+	if profile == null:
+		return 0
+	var strength : float
+	if game_id == "gem_drop":
+		var depth01 : float = float(profile.search_depth - 1) / 4.0   # search_depth 1..5 -> 0..1
+		strength = 0.60 * depth01 + 0.25 * profile.perception + 0.15 * profile.aggression
+	else:   # poker (and any future card game)
+		strength = 0.50 * profile.perception + 0.30 * profile.pfr_target + 0.20 * profile.aggression
+	return clampi(int(round(clampf(strength, 0.0, 1.0) * 5.0)), 0, 5)

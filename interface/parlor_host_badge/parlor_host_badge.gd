@@ -2,7 +2,7 @@
 ## hosting a game there: the host's name + "open seat", tinted in their
 ## colour, with a small coloured pip per seated patron. Purely cosmetic —
 ## it's what makes the parlor read as alive before you walk up. The join
-## flow lives in [LobbyModal] (mode "join"). See [[parlor-social-system]].
+## flow lives in [ParlorBrowser] (the table rows). See [[parlor-social-system]].
 class_name ParlorHostBadge
 extends Node2D
 

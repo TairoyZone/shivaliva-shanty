@@ -60,7 +60,7 @@ func _ready() -> void:
 	# handed to the board so the minimax eval reads from it.
 	var setup : Dictionary = PlayerState.consume_lobby_setup()
 	_free_table = bool(setup.get("free", false))
-	var seated : Array[NpcPersonality] = LobbyModal.profiles_from_paths(setup.get("seated_paths", []))
+	var seated : Array[NpcPersonality] = NpcRegistry.profiles_from_paths(setup.get("seated_paths", []))
 	_opponent = seated[0] if not seated.is_empty() else NpcRegistry.pick_one()
 	if _opponent != null:
 		_board.ai_personality = _opponent
@@ -173,6 +173,12 @@ func _on_game_complete(winner: int, human_rounds: int, ai_rounds: int) -> void:
 		_round_label.text = "Match settled in sudden death"
 	else:
 		_round_label.text = "All four rounds complete"
+	# Mastery — your high-water-mark is your TOTAL points scored this match (win or lose), so
+	# the Profile/Standings tier rises with skill. (Was missing — Gem Drop never ranked up.)
+	var mastery : Dictionary = PlayerState.record_puzzle_result(
+		"gem_drop", int(_board.total_scores[GemDropBoard.HUMAN_PLAYER]))
+	if mastery["ranked_up"]:
+		add_child(MasteryToast.create(String(mastery["tier_name"])))
 	_set_awaiting_dismiss(true)
 
 

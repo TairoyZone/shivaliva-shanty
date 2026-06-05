@@ -20,8 +20,12 @@ const HOST_CHANCE : float = 0.5
 ## low-rapport player is never blocked from playing (tunable).
 const JOIN_AFFINITY_MIN : int = 10
 
-## Open guard — the live [LobbyModal], or null.
-var _lobby : LobbyModal = null
+## Every live parlor table joins this group, so the browser (opened from any one prop) can list
+## every game's tables and launch each through its own prop.
+const GROUP_PARLOR : String = "parlor_tables"
+
+## Open guard — the live [ParlorBrowser], or null.
+var _browser : CanvasLayer = null
 ## NPC-hosted state, rolled once on scene load.
 var _hosted : bool = false
 var _host_profile : NpcPersonality = null
@@ -33,6 +37,7 @@ func _ready() -> void:
 	super._ready()
 	if Engine.is_editor_hint():
 		return
+	add_to_group(GROUP_PARLOR)
 	_roll_hosting()
 
 
@@ -45,7 +50,7 @@ func _roll_hosting() -> void:
 	var seats : int = randi_range(_min_seats(), _max_seats())
 	var here : Array[NpcPersonality] = NpcRegistry.pick_for_lobby(
 		seats - 1, PlayerState.get_affinity,
-		LobbyModal.profiles_from_paths(PlayerState.last_lobby_seated_paths))
+		NpcRegistry.profiles_from_paths(PlayerState.last_lobby_seated_paths))
 	if here.is_empty():
 		return
 	_hosted = true
@@ -58,78 +63,63 @@ func _roll_hosting() -> void:
 		_host_profile.npc_name, _host_profile.portrait_color, pip_colors, _badge_y()))
 
 
-# Route: JOIN an NPC's game if one's hosted here, else HOST your own.
+# Press E at a parlor table → open the TABLE BROWSER for THIS game only (poker table = poker tables,
+# gem-drop table = gem-drop tables). A live list of active tables for the one game, with Join +
+# Create. (The browser also supports multiple games, so a future "Parlor games!" hub could pass the
+# whole GROUP_PARLOR — but a specific table only ever shows its own game.)
 func interact() -> void:
 
 	if Engine.is_editor_hint():
 		return
 	if puzzle_scene.is_empty():
 		return
-	if is_instance_valid(_lobby):
+	if is_instance_valid(_browser):
 		return
-	if _hosted and _host_profile != null:
-		_open_join_lobby()
-	else:
-		_open_host_lobby()
+	_browser = ParlorBrowser.create([self], _game_id())
+	_browser.cancelled.connect(_on_browser_cancelled)
+	add_child(_browser)
 
 
-func _open_host_lobby() -> void:
+func _on_browser_cancelled() -> void:
 
-	_lobby = LobbyModal.create({
-		"game_name": _game_name(),
-		"min_seats": _min_seats(),
-		"max_seats": _max_seats(),
-		"default_seats": _max_seats(),
-		"affinity_of": PlayerState.get_affinity,
-		"cash_cost": _cash_cost(),
-		"cash_note": _cash_note(),
-		"exclude": LobbyModal.profiles_from_paths(PlayerState.last_lobby_seated_paths),
-	})
-	_wire_lobby()
+	_browser = null
 
 
-func _open_join_lobby() -> void:
+# Seat the chosen opponents + stake into the handoff, then launch THIS game. Cash tables charge the
+# buy-in; free tables and exit-billed games (Gem Drop) charge nothing here. Called by the browser on
+# Join / Create (it's the same stash+launch the old lobby did, now driven by the browser's choice).
+func launch_table(seated_paths: Array, free: bool, config: Dictionary = {}) -> void:
 
-	var can_join : bool = PlayerState.get_affinity(_host_profile.npc_name) >= JOIN_AFFINITY_MIN
-	_lobby = LobbyModal.create({
-		"mode": "join",
-		"game_name": _game_name(),
-		"host_name": _host_profile.npc_name,
-		"host_color": _host_profile.portrait_color,
-		"join_profiles": _patron_profiles,
-		"can_join": can_join,
-		"cash_cost": _cash_cost(),
-		"cash_note": _cash_note(),
-		"min_seats": _min_seats(),
-		"max_seats": _max_seats(),
-		"default_seats": _max_seats(),
-		"affinity_of": PlayerState.get_affinity,
-		"exclude": LobbyModal.profiles_from_paths(PlayerState.last_lobby_seated_paths),
-	})
-	_wire_lobby()
-
-
-func _wire_lobby() -> void:
-
-	_lobby.confirmed.connect(_on_lobby_confirmed)
-	_lobby.cancelled.connect(_on_lobby_cancelled)
-	add_child(_lobby)
-
-
-func _on_lobby_confirmed(seated_paths: Array, free: bool) -> void:
-
-	_lobby = null
 	PlayerState.lobby_seated_paths = seated_paths
 	PlayerState.free_table = free
+	PlayerState.lobby_table_config = config   # poker: {structure, min_bet, seats, turn_time}; else {}
 	PlayerState.last_lobby_seated_paths = seated_paths
-	# Cash tables charge the buy-in (if this game has one); free tables and
-	# games that bill at exit (Gem Drop) charge nothing here.
 	_launch_puzzle(_charges_buy_in() and not free)
 
 
-func _on_lobby_cancelled() -> void:
+# --- Read surface for the browser -------------------------------------
 
-	_lobby = null
+# The per-game metadata the browser renders a tab + its rows + stakes from.
+func parlor_config() -> Dictionary:
+
+	return {
+		"id": _game_id(),
+		"name": _game_name(),
+		"min_seats": _min_seats(),
+		"max_seats": _max_seats(),
+		"cash_cost": _cash_cost(),
+		"cash_note": _cash_note(),
+		"charges_buy_in": _charges_buy_in(),
+	}
+
+
+# The NPC-hosted table rolled for THIS prop on load (so the browser's first row matches the floating
+# ParlorHostBadge in the world), or {} if none. `seated` = host + patrons (one open seat is yours).
+func hosted_table() -> Dictionary:
+
+	if not _hosted or _host_profile == null:
+		return {}
+	return {"seated": _patron_profiles}
 
 
 # Parlor tables DON'T show a "gold to play" / "Need N gold" tooltip — the
@@ -145,6 +135,10 @@ func _refresh_tooltip_text() -> void:
 
 
 # --- Per-game config (overridden by concrete tables) ------------------
+
+# Stable id matching the mastery key ("poker" / "gem_drop") — the browser tabs + standings key on it.
+func _game_id() -> String:
+	return ""
 
 func _game_name() -> String:
 	return "Game"

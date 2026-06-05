@@ -14,6 +14,9 @@ extends ParlorTable
 # is billed at puzzle EXIT (a clean -5 toast), and a FREE table suppresses
 # it entirely inside [GemDropScene]. So it charges nothing at launch.
 
+func _game_id() -> String:
+	return "gem_drop"
+
 func _game_name() -> String:
 	return "Gem Drop"
 
