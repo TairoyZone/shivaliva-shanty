@@ -253,6 +253,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_J:
 		_toggle_journal()
 		get_viewport().set_input_as_handled()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_I:
+		_toggle_inventory()   # the backpack key the docs have always promised (alongside ESC)
+		get_viewport().set_input_as_handled()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:
 		_open_hearts()
 		get_viewport().set_input_as_handled()

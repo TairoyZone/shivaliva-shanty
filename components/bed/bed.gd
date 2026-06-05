@@ -10,6 +10,18 @@ class_name Bed
 extends Interactable
 
 
+# E on the bed surfaces its message (the authored interact_message, else a default) via the lore overlay
+# — so the first thing a new player tries E on (their cot) actually responds instead of doing nothing.
+func interact() -> void:
+
+	super.interact()
+	if Engine.is_editor_hint():
+		return
+	var msg : String = interact_message if not interact_message.is_empty() \
+		else "Your cot. You'll be able to sleep here to save your game, once resting's in."
+	Overlay.show_lore("Your cot", msg)
+
+
 func _draw() -> void:
 
 	# Iso bed per Troy's sketch: thick rectangular box on four stubby
