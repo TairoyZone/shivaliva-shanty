@@ -7,10 +7,12 @@
 extends PuzzleScene
 
 
-## When manning the Loft AS a voyage leg, the crossing plays out HERE (the cockpit): the ship
-## sails the chart, and her arrival at a stop ends the leg right over the board — a fight boards
-## 'em, a calm stop posts the duty report — so you never get yanked out to the deck. See
-## [[voyage-loop-research]].
+## When manning the Loft AS a voyage leg, ONE leg plays out here (the cockpit): the ship sails the
+## chart, and her arrival at the stop resolves the leg right over the board — a fight boards 'em, a
+## calm stop posts the duty report. Then (non-arrival) you RETURN TO THE SHIP DECK to pick the next
+## station — man the Loft again, or man the Patchworks to patch the hull (the YPP man-the-stations
+## rhythm). The only over-the-board resolutions that STAY in the Loft are arrival (the haul card) and
+## a sink (LOST IN THE STARDUST). See [[voyage-loop-research]].
 const SELF_SCENE : String = "res://puzzles/loft/loft.tscn"
 const SKIRMISH_SCENE : String = "res://puzzles/skirmish/skirmish_boarding.tscn"
 const SHIP_DECK_SCENE : String = "res://levels/ship_deck/ship_deck.tscn"
