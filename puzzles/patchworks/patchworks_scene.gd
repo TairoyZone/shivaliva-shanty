@@ -365,12 +365,19 @@ func _return_to_launching_scene() -> void:
 
 # --- Voyage station hooks (the shared leg flow lives in [VoyageStationScene]) ----------
 
-# A Patchworks LEG rates on how well you PATCHED — the board score this leg (lines + combos, minus
-# tosses) over a fixed divisor. Clear nothing → score 0 → Booched. (The repair ALSO carries: holes
-# sealed lower the next Loft leg's flood.) lift doubles as the boarding footing (a well-run ship arrives strong).
+# A Patchworks LEG rates on how well you PATCHED it — the board score gained THIS leg (the board carries
+# across the continuous crossing, so we take the delta off the leg baseline) / a fixed divisor. Clear
+# nothing this leg → Booched. lift doubles as the boarding footing (a well-run ship arrives strong).
 func _leg_performance() -> Dictionary:
 
-	return {"lift": _board.score, "swaps": PATCHWORKS_DUTY_DIVISOR}
+	return {"lift": maxi(0, _board.score - PlayerState.voyage_leg_lift0), "swaps": PATCHWORKS_DUTY_DIVISOR}
+
+
+# Continue the crossing (the hull grid + score carry through): re-baseline the score so the next leg
+# rates only ITS own patching.
+func _open_next_leg() -> void:
+
+	PlayerState.voyage_leg_lift0 = _board.score
 
 
 # A patch leg ranks up PATCHWORKS mastery (by board score), not Lofting.

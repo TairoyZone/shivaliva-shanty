@@ -1,8 +1,10 @@
 ## Base for a PUZZLE manned as a VOYAGE STATION during a pillage — the Loft, the Patchworks, and any
 ## future station. Holds the SHARED leg flow so every station stands on ONE foundation: build + SAIL
 ## the voyage chart, board on an encounter (snapshot the station's board → Skirmish → restore on
-## return), resolve the leg at the node (the duty report), then return to the deck — arrival shows the
-## haul card, a sink the LOST-IN-THE-STARDUST card. Subclasses build their own board + HUD, then call
+## return), resolve the leg at the node (the duty report), then open the NEXT leg RIGHT HERE — a
+## CONTINUOUS crossing: you man ONE station for the whole pillage and the board carries straight
+## through (no dismount to the deck). Arrival shows the haul card, a sink the LOST-IN-THE-STARDUST
+## card. Subclasses build their own board + HUD, then call
 ## [method _enter_voyage_station]; they supply the minigame + a few HOOKS (performance, snapshot/restore,
 ## sink, chart placement, input-lock). See [[voyage-loop-research]] / [[patchworks-spec]] / [[loft-spec]].
 class_name VoyageStationScene
@@ -134,13 +136,21 @@ func _on_report_closed(arrived: bool) -> void:
 		card.closed.connect(_on_haul_card_closed)
 		add_child(card)
 	else:
-		# Leg done → back to the DECK to pick the next station (man the Loft again, or the PATCHWORKS to
-		# patch the hull — the YPP man-the-stations rhythm). resolve_voyage_leg already advanced the leg +
-		# set pillage_phase 0; the deck re-mans. The ship's holes carry, so a patch lowers next leg's flood.
-		# The duty report PAUSED the tree; make ABSOLUTELY sure we hand the deck back UNPAUSED — a deck
-		# loaded while paused freezes the player (no E to man a station) AND the chart (she stops sailing).
-		get_tree().paused = false
-		get_tree().change_scene_to_file(SHIP_DECK_SCENE)
+		# CONTINUOUS crossing — the next leg opens RIGHT HERE over the same board (no dismount to the deck,
+		# no dead stop): you man ONE station for the whole pillage. The board + its state carry straight
+		# through; we just open a fresh measurement window and sail the chart on.
+		_begin_next_leg()
+
+
+# Open the NEXT leg in place (continuous): the board + its state carry through; reset the per-leg
+# measurement baseline + re-arm the station (via the hook), then sail the chart on toward the next node.
+func _begin_next_leg() -> void:
+
+	_fight_done_this_leg = false
+	_open_next_leg()
+	if _voyage_chart != null:
+		_voyage_chart.refresh_from_state(true)
+	_voyage_busy = false
 
 
 # The Stardust took her on a fight leg — LOST IN THE STARDUST (only a station that _voyage_can_sink can
@@ -275,6 +285,12 @@ func _leg_performance() -> Dictionary:
 ## leg's lift (score -1 = use the lift). The Patchworks records its own ("patchworks", board score).
 func _leg_mastery() -> Dictionary:
 	return {"id": "loft", "score": -1}
+
+## Open the next leg of a CONTINUOUS crossing: reset the per-leg measurement baseline + re-arm the
+## station for the new leg (the board CARRIES across legs). Loft: re-baseline lift/swaps + re-arm sink +
+## re-push the hole rise. Patchworks: re-baseline its score. Override per station.
+func _open_next_leg() -> void:
+	pass
 
 ## Snapshot the station's board to carry across a boarding (default: nothing).
 func _snapshot_voyage_state() -> Dictionary:

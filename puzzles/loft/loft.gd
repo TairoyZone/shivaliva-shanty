@@ -7,12 +7,11 @@
 extends VoyageStationScene
 
 
-## When manning the Loft AS a voyage leg, ONE leg plays out here (the cockpit): the ship sails the
-## chart, and her arrival at the stop resolves the leg right over the board — a fight boards 'em, a
-## calm stop posts the duty report. Then (non-arrival) you RETURN TO THE SHIP DECK to pick the next
-## station — man the Loft again, or man the Patchworks to patch the hull (the YPP man-the-stations
-## rhythm). The only over-the-board resolutions that STAY in the Loft are arrival (the haul card) and
-## a sink (LOST IN THE STARDUST). See [[voyage-loop-research]].
+## When manning the Loft AS a voyage station, the WHOLE crossing plays out here (the cockpit, CONTINUOUS):
+## the ship sails the chart, each stop resolves a leg over the board (a fight boards 'em, then the duty
+## report posts), and the NEXT leg opens right here — the Stardust + stones + lift carry straight through,
+## no dismount to the deck. You man ONE station per pillage (the Loft to fly, or the Patchworks to patch);
+## the AI crew covers the rest. Arrival → the haul card; a sink → LOST IN THE STARDUST. See [[voyage-loop-research]].
 const SELF_SCENE : String = "res://puzzles/loft/loft.tscn"   # SKIRMISH/SHIP_DECK scenes live in the base
 
 @onready var _board : LoftBoard = $Board
@@ -220,6 +219,16 @@ func _setup_fresh_voyage_leg() -> void:
 
 	_board.set_stardust_start(PlayerState.ship_stardust_start())
 	_board.set_can_sink(_is_voyage_fight_leg())
+
+
+# Continue the crossing (the board carries — Stardust + stones + lift roll through): re-baseline the
+# leg's lift/swaps to the cumulative so far, re-arm the sink for the new leg, re-push the hole rise.
+func _open_next_leg() -> void:
+
+	PlayerState.voyage_leg_lift0 = _current_lift
+	PlayerState.voyage_leg_swaps0 = _current_swaps
+	_board.set_can_sink(_is_voyage_fight_leg())
+	_push_effective_rise()
 
 
 # This leg's lift / swaps — the DELTA off the leg baseline (the board's running totals are cumulative).
