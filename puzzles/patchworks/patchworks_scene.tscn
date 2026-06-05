@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://83kxh06115ih"]
+
+[ext_resource type="Script" uid="uid://binbhopmd4xo1" path="res://puzzles/patchworks/patchworks_scene.gd" id="1"]
+[ext_resource type="Script" uid="uid://dbg2jox0u0wh7" path="res://puzzles/patchworks/patchworks_board.gd" id="2"]
+
+[node name="Patchworks" type="Node2D" unique_id=536711209]
+script = ExtResource("1")
+
+[node name="Board" type="Node" parent="." unique_id=1760981772]
+script = ExtResource("2")
