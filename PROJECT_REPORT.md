@@ -38,10 +38,13 @@ onboarding, not new content.
 
 ## The headline meta-system: the voyage (pillage)
 The endgame loop, reskinned from YPP pillaging. You job onto a crew at the Skydock → board an isometric
-**ship deck** → man **one station** for the whole crossing:
-- **Man the Loft** (fly her / keep aloft) **or the Patchworks** (mend the hull).
-- The ship **sails a chart** at the crew's pace; at an encounter it triggers a **boarding** (crew-vs-crew
-  Skirmish team fight); you arrive at Driftspar for your cut.
+**ship deck** → give the captain the word at the **helm** to **set sail**:
+- The **deck then sails the whole route on its own** (set-sail-once — each leg's duty report flows
+  straight into the next) at the crew's pace.
+- **Man the Loft** (fly her / keep aloft) **or the Patchworks** (mend the hull) **any time while she
+  sails**; leave a station and you're back on the still-sailing deck (re-man, switch, or just watch).
+- At an encounter she triggers a **boarding** (crew-vs-crew Skirmish team fight); you arrive at Driftspar
+  for your cut.
 - The ship is **sinkable**: damage → hull holes → the Stardust floods faster in the Loft → sink on a fight
   leg = "Lost in the Stardust."
 
@@ -72,7 +75,7 @@ finished). Adversarially reviewed (3 bugs fixed) + several playtest fixes alread
 - **Inheritance over duplication; scene-per-component.**
 - Build proactively, flag only big design forks; commit freely; **never push without an explicit ask.**
 
-## Recent work (2026-06-05, all committed)
+## Recent work (2026-06-05 → 06, all committed)
 1. **Demo readiness:** all 6 demo blockers + the entire readiness-sweep polish tail (Patchworks
    results-celebration + blast animation, HUD backpack bag-bump, the `I`-key, the bed responds to E,
    Skirmish "READY?" lead-in + garbage explained + duel weapon swatch, Loft voyage help, voyages-board
@@ -80,15 +83,40 @@ finished). Adversarially reviewed (3 bugs fixed) + several playtest fixes alread
    stakes-on-felt, dead-code removal).
 2. **Parlor redesign:** lobby opens straight to create-a-table → pick a seat → buy in → invite NPCs
    (between hands too) → dropdowns for config → adversarially reviewed.
-3. **Live-melee boarding:** the big refactor above + a 5-dimension adversarial review (3 bugs fixed) +
-   playtest fixes (chart stays parked at the swords on step-away; leaving a station drops you back at the
-   node to re-man instead of a locked deck-crossing; Loft voyage HUD layout fix).
+3. **Live-melee boarding:** the big refactor above (persistent `BoardingMelee` autoload) + a 5-dimension
+   adversarial review (3 bugs fixed) + playtest fixes (chart parks at the swords on step-away; Loft voyage
+   HUD layout fix).
+4. **Voyage flow → "captain sets sail" (2026-06-06):** the deck now drives the crossing — set sail at the
+   helm, she sails the whole route, man stations freely while sailing, and leaving a station keeps you on
+   the still-sailing deck (no snap-back to the island).
 
 ## What's next
-- **Playtesting** the full voyage loop (man → leave → re-man → step-away → rejoin) — holding together well.
-- **Tuning:** the brigand-crew fight (crew sizes, AI pace, garbage rates) is first-pass.
+- **Playtesting** the new set-sail voyage flow (set sail → sail → man/leave stations → boarding step-away/rejoin → arrive).
+- **Tuning:** the brigand-crew fight (crew sizes, AI pace, garbage) + the deck-sail pace are first-pass.
+- **Troy's TODO** (bottom of this file): a backlog of next-up / post-demo ideas (Stardust shader, NPC
+  click-interaction + a YPP-style chatbox, a 10th NPC "Geneva" for 10 poker seats, crew-hiring, ship/island
+  location persistence, …).
 - **Post-demo (deferred):** co-op netcode, parlor tournaments, filling Driftspar, music (a known gap).
 
 ---
 _This report is a living snapshot — regenerate it as the project moves. Deeper design history + locked
 decisions live in the auto-memory (`…/memory/MEMORY.md`); the code map lives in `CLAUDE.md`._
+
+# TROY's TODO #
+# = Shader the looks like Stardusts sparkling for 
+#   the Loft puzzle board.
+# = Get or learn patterns/principles/foundations/feautures from
+#   godot-4-new-features-main, perhaps analyze thoroughly all
+#   the demos, looking for what we can borrow or just learn from.
+# = For the Hearties tab in player's tab. Never show any NPC unless
+#   they are friends with the player. We need redesign our NPC
+#   interaction
+# = Remove the interaction mechanics where the player has to go nearby an NPC to interact with them by pressing "E".
+#   Instead, just like YPP(Might need extensive research and audit on this one) just left-click or right-click to them to show a bunch of options of how to interact with this NPC.
+# = "E" is now opening player's panel like the backpack and other tabs.
+# = Add a chatbox like YPP. This is where events are announced and logs are stored like in YPP(audit to make sure)
+# = Add 1 last NPC in the island. Named Geneva (you add an appropriate NPC first name for her) and she is the wife of Brian, this is so that i can have 10 poker game seat finally.
+# = Implement poker table seat to be 10 again max cap
+# = players can chat with NPC. Use API for this one to respond intelligently
+# = Player should be able to start a crew, and hire crew members and assign their ranks
+# = need player location persistance on the ship and even island,    like the player after a pillage should land on the docks naturally
