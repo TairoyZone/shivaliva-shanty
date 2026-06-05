@@ -78,6 +78,9 @@ func _ready() -> void:
 	# connected to piece_spawned), so wake the bot for it now.
 	_on_opponent_spawned()
 	_apply_voyage_footing()
+	# A "READY? → GO!" beat that freezes both boards + shows the controls before the match runs (so a
+	# first-timer isn't dropped into falling blocks with the clock already going).
+	add_child(ReadyOverlay.new())
 
 
 # A Voyage boarding fight seeds the foe's board from the player's Loft run (the

@@ -145,6 +145,8 @@ func _ready() -> void:
 		if not c.is_player:
 			_on_ai_spawned(c)
 	_apply_voyage_footing()
+	# A "READY? → GO!" beat that freezes every board + shows the controls before the melee runs.
+	add_child(ReadyOverlay.new())
 
 
 # Voyage "arrival footing", two-sided: a strong Loft run pre-buries the brigand CREW (your reward),
