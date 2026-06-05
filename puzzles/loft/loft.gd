@@ -261,7 +261,11 @@ func _disarm_sink() -> void:
 
 func _voyage_chart_placement(layer: CanvasLayer) -> void:
 
-	_voyage_chart.place_at(layer, true)   # top-left, as before
+	_voyage_chart.place_at(layer, true)
+	# Nudge DOWN clear of the centred gauge bar: the voyage bar is FOUR pills (BANKED / SWAPS / LIFT /
+	# HULL), wide enough that its left edge slid under this top-left chart and hid BANKED. Drop it below.
+	_voyage_chart.offset_top += 80.0
+	_voyage_chart.offset_bottom += 80.0
 
 
 func _self_scene() -> String:
