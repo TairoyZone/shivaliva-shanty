@@ -18,6 +18,11 @@ const SPRITESHEET : Texture2D = preload("res://puzzles/poker/assets/cards.png")
 
 const CELL_W : float = 48.0
 const CELL_H : float = 64.0
+## The source cells are a tiny 48×64 — render the card BIGGER so rank/suit read clearly at the table.
+## Tunable: bump it for chunkier cards, drop it toward 1.0 for the original size.
+const DRAW_SCALE : float = 1.45
+const DRAW_W : float = CELL_W * DRAW_SCALE
+const DRAW_H : float = CELL_H * DRAW_SCALE
 ## Y-coord of the top of each suit row, indexed by [enum Card.Suit].
 const SUIT_ROW_Y : Array[float] = [0.0, 64.0, 128.0, 192.0]
 const BACKS_ROW_Y : float = 256.0
@@ -62,12 +67,12 @@ func _draw_face() -> void:
 
 	if card == null:
 		return
-	var lift : float = -6.0 if highlighted else 0.0
+	var lift : float = -8.0 if highlighted else 0.0
 	var src : Rect2 = Rect2(
 		(card.rank - 1) * CELL_W,
 		SUIT_ROW_Y[card.suit],
 		CELL_W, CELL_H)
-	var dst : Rect2 = Rect2(-CELL_W * 0.5, -CELL_H * 0.5 + lift, CELL_W, CELL_H)
+	var dst : Rect2 = Rect2(-DRAW_W * 0.5, -DRAW_H * 0.5 + lift, DRAW_W, DRAW_H)
 	draw_texture_rect_region(SPRITESHEET, dst, src)
 	if highlighted:
 		# Brass glow border around the lifted card.
@@ -81,7 +86,7 @@ func _draw_back() -> void:
 		back_design * CELL_W,
 		BACKS_ROW_Y,
 		CELL_W, CELL_H)
-	var dst : Rect2 = Rect2(-CELL_W * 0.5, -CELL_H * 0.5, CELL_W, CELL_H)
+	var dst : Rect2 = Rect2(-DRAW_W * 0.5, -DRAW_H * 0.5, DRAW_W, DRAW_H)
 	draw_texture_rect_region(SPRITESHEET, dst, src)
 
 

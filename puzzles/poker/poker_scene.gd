@@ -27,9 +27,9 @@ const CARD_SCENE : PackedScene = preload("res://puzzles/poker/card_sprite.tscn")
 const DECK_POSITION : Vector2 = Vector2(640.0, 360.0)
 ## The oval table's centre + the seat ring (an ellipse on the rim). Every seat is placed symmetrically
 ## around this — seat 0 (you) at bottom-centre, the rest spaced evenly all the way around. See _seat_position.
-const TABLE_CENTER : Vector2 = Vector2(640.0, 348.0)
+const TABLE_CENTER : Vector2 = Vector2(640.0, 336.0)
 const SEAT_RX : float = 488.0
-const SEAT_RY : float = 230.0
+const SEAT_RY : float = 226.0
 ## Delay between consecutive hole cards during the deal.
 const HOLE_DEAL_STAGGER : float = 0.07
 ## How long one hole card takes to slide from deck to its seat.
@@ -174,24 +174,16 @@ func _seat_players() -> void:
 	var human : PokerPlayer = PokerPlayer.new("You", 0, true)
 	human.portrait_color = HUMAN_SEAT_COLOR
 	_board.add_player(human)
-	# Opponents — the NPCs the lobby seated (affinity-weighted); each AI buys in for a random amount in
-	# the stake's range. The cast tops out at 8, so a 9–10-handed table DUPLICATES from the cast (cycling
-	# through whoever we have) to PACK the felt — so a full 10-max ring actually shows 10 seats. Duplicated
-	# seats get a numeral ("Spritely Mia (2)") so they read distinct.
-	var want : int = clampi(int(_config["seats"]) - 1, 1, 9)
+	# Opponents — the NPCs the lobby seated (affinity-weighted), capped to the table size (seats − 1,
+	# at most the 8-member cast); each AI buys in for a random amount in the stake's range. A bigger
+	# table than the available cast just leaves the extra seats open (the "empty seats OK" rule).
+	var want : int = clampi(int(_config["seats"]) - 1, 1, 8)
 	var opponents : Array[NpcPersonality] = _lobby_opponents
 	if opponents.is_empty():
-		opponents = NpcRegistry.pick_for_lobby(mini(want, 8), PlayerState.get_affinity)
-	if opponents.is_empty():
-		return
-	var seen : Dictionary = {}
-	for i in want:
-		var profile : NpcPersonality = opponents[i % opponents.size()]
-		var nm : String = profile.npc_name
-		seen[nm] = int(seen.get(nm, 0)) + 1
-		if seen[nm] > 1:
-			nm += " (%d)" % int(seen[nm])
-		var ai : PokerPlayer = PokerPlayer.new(nm, _roll_buy_in(min_bet), false)
+		opponents = NpcRegistry.pick_for_lobby(want, PlayerState.get_affinity)
+	for i in mini(want, opponents.size()):
+		var profile : NpcPersonality = opponents[i]
+		var ai : PokerPlayer = PokerPlayer.new(profile.npc_name, _roll_buy_in(min_bet), false)
 		ai.portrait_color = profile.portrait_color
 		ai.personality = profile
 		_board.add_player(ai)

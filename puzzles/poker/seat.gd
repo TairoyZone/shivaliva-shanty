@@ -23,8 +23,8 @@ const CARD_SCENE : PackedScene = preload("res://puzzles/poker/card_sprite.tscn")
 const PANEL_W : float = 220.0
 const PANEL_H : float = 108.0
 const PORTRAIT_RADIUS : float = 24.0
-const HOLE_CARD_Y : float = 92.0            # distance below panel center
-const HOLE_CARD_SPACING : float = 30.0      # half-distance between the two card centers
+const HOLE_CARD_Y : float = 102.0           # distance below panel center (room for the bigger cards)
+const HOLE_CARD_SPACING : float = 40.0      # half-distance between the two card centers
 const DEALER_BADGE_RADIUS : float = 11.0
 # Chip icon drawn next to the chip count. Pulled from the same atlas
 # the pot uses (chips.png, yellow variant 0) so the seat and pot share

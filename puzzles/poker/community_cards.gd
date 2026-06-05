@@ -16,7 +16,7 @@ const CARD_SCENE : PackedScene = preload("res://puzzles/poker/card_sprite.tscn")
 
 ## Pixel pitch between card centers — slightly wider than a card so the
 ## row reads as separated cards, not a stacked deck.
-@export var card_spacing : float = 56.0
+@export var card_spacing : float = 80.0
 ## Where new community cards slide IN from, in this node's local coords.
 ## Default sits BELOW this row, at the felt's geometric center — matches
 ## the scene's table-center dealer position (so flop/turn/river cards
