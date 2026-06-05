@@ -38,7 +38,7 @@ func _resolve_match() -> void:
 		# The final.
 		if won:
 			PlayerState.tournament_outcome = PlayerState.TournamentOutcome.CHAMPION
-			PlayerState.add_coins(PlayerState.tournament_pot)
+			PlayerState.add_coins(PlayerState.tournament_pot, "Tournament winnings")
 			PlayerState.record_tournament_win()
 		else:
 			PlayerState.tournament_outcome = PlayerState.TournamentOutcome.KNOCKED_OUT

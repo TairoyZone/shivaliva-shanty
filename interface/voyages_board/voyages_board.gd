@@ -245,7 +245,7 @@ func _on_fare(dest: Dictionary) -> void:
 
 	if PlayerState.total_coins < FARE_GOLD:
 		return
-	PlayerState.add_coins(-FARE_GOLD)
+	PlayerState.add_coins(-FARE_GOLD, "Straight-fare ride")
 	PlayerState.clear_voyage()   # a straight ride — no pillage state on the far side
 	if get_tree() != null:
 		get_tree().paused = false

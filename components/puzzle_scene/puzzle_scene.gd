@@ -187,11 +187,11 @@ func _set_awaiting_dismiss(value: bool) -> void:
 
 # Credit the player with winnings. Concrete puzzles call this from
 # their game-complete handler.
-func award_winnings(amount: int) -> void:
+func award_winnings(amount: int, reason: String = "") -> void:
 
 	if amount <= 0:
 		return
-	PlayerState.add_coins(amount)
+	PlayerState.add_coins(amount, reason)
 
 
 # Returns to the scene that launched the puzzle. BaseLocation wrote

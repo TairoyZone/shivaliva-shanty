@@ -159,7 +159,7 @@ func _on_game_complete(winner: int, human_rounds: int, ai_rounds: int) -> void:
 	if winner == GemDropBoard.HUMAN_PLAYER:
 		_rounds_label.text = "YOU WIN!   %d rounds to %d   ·   click anywhere or ESC to return" % [human_rounds, ai_rounds]
 		if not _free_table:
-			award_winnings(WINNINGS_ON_VICTORY)
+			award_winnings(WINNINGS_ON_VICTORY, "Gem Drop winnings")
 		_human_won_match = true
 	else:
 		_rounds_label.text = "%s WINS!   %d rounds to %d   ·   click anywhere or ESC to return" % [_opponent_full_name(), ai_rounds, human_rounds]
@@ -194,5 +194,5 @@ func _return_to_launching_scene() -> void:
 	# (a tournament bracket reads it to advance).
 	PlayerState.last_gem_drop_won = _human_won_match
 	if not _human_won_match and not _free_table and PLAY_COST_ON_EXIT > 0:
-		PlayerState.add_coins(-PLAY_COST_ON_EXIT)
+		PlayerState.add_coins(-PLAY_COST_ON_EXIT, "Gem Drop stake")
 	super._return_to_launching_scene()

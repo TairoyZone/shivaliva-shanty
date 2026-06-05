@@ -62,7 +62,7 @@ func _launch_puzzle(charge_cost: bool) -> void:
 	if charge_cost and play_cost > 0:
 		if PlayerState.total_coins < play_cost:
 			return
-		PlayerState.add_coins(-play_cost)
+		PlayerState.add_coins(-play_cost, ("%s entry" % marker_label) if not marker_label.is_empty() else "Game entry")
 	# When the puzzle exits, the destination scene's BaseLocation will
 	# find a node by our name and use its position + spawn_offset, so
 	# the player lands right next to this prop.

@@ -316,7 +316,7 @@ func _show_buy_in_dialog() -> void:
 func _on_buy_in_confirmed(amount: int, dialog: CanvasLayer) -> void:
 
 	_human_buy_in = clampi(amount, PokerConfig.buy_in_min(int(_config["min_bet"])), PlayerState.total_coins)
-	PlayerState.add_coins(-_human_buy_in)   # charge the chosen buy-in (gold) now
+	PlayerState.add_coins(-_human_buy_in, "Card-table buy-in")   # charge the chosen buy-in (gold) now
 	_sat_down = true
 	_board.players[0].chips = _human_buy_in
 	if not _seats.is_empty():
@@ -983,7 +983,7 @@ func _payout_chips() -> void:
 		return
 	var gold : int = _board.players[0].chips
 	if gold > 0:
-		award_winnings(gold)
+		award_winnings(gold, "Card-table winnings")
 
 
 # Spawn a small flock of chip sprites that arc from a seat into the

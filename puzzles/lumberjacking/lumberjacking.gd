@@ -106,7 +106,7 @@ func _on_session_ended(final_score: int, final_wood: int) -> void:
 	else:
 		_refresh_yield_label()
 	if SESSION_BASE_GOLD > 0:
-		award_winnings(SESSION_BASE_GOLD)
+		award_winnings(SESSION_BASE_GOLD, "Lumberjacking pay")
 	# Mastery is keyed on SCORE (the combo/skill metric), NOT the wood haul —
 	# combos determine your rank. Pop the flourish on a tier-up (the
 	# high-water-mark ladder updates itself).

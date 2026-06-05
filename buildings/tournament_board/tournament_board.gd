@@ -143,7 +143,7 @@ func _on_enter_pressed() -> void:
 
 	if PlayerState.total_coins < ENTRY_FEE:
 		return
-	PlayerState.add_coins(-ENTRY_FEE)
+	PlayerState.add_coins(-ENTRY_FEE, "Tournament entry")
 	var field_paths : Array = []
 	for prof in NpcRegistry.pick_random(FIELD_SIZE):
 		field_paths.append(prof.resource_path)
