@@ -20,6 +20,7 @@ const SHIP_DECK_SCENE : String = "res://levels/ship_deck/ship_deck.tscn"
 var _banked_label : Label
 var _moves_label : Label
 var _gauge_label : Label
+var _hull_label : Label
 var _ui : CanvasLayer
 
 var _voyage_chart : VoyageChart   # the in-sync voyage ribbon while manning the Loft mid-pillage
@@ -102,6 +103,10 @@ func _build_ui() -> void:
 	# gauge bar and the Leave/? buttons) — and let her SAIL in real time while you work, in sync
 	# with the deck (both charts share PlayerState.voyage_ship_t). Manning a station = a crossing.
 	if PlayerState.voyage_active:
+		# A HULL readout beside the gauges — shows WHY the Stardust floods fast (the damaged-ship coupling).
+		if PlayerState.has_ship():
+			_hull_label = _make_label("HULL  SOUND", Color(0.7, 0.95, 0.75, 1.0))
+			bar.add_child(_wrap(_hull_label))
 		_voyage_chart = VoyageChart.new()
 		_voyage_chart.place_at(_ui, true)
 		_voyage_chart.refresh_from_state(true)   # manning a station IS a crossing — she sails
@@ -269,6 +274,22 @@ func _is_voyage_fight_leg() -> bool:
 func _push_effective_rise() -> void:
 
 	_board.set_effective_rise(LoftBoard.RISE_BASE + LoftBoard.HOLE_RISE_PER_HOLE * float(PlayerState.ship_open_holes()))
+	_update_hull_label()
+
+
+# Refresh the voyage HULL readout from the active ship's open holes (green sound → amber → red).
+func _update_hull_label() -> void:
+
+	if _hull_label == null:
+		return
+	var holes : int = PlayerState.ship_open_holes()
+	if holes <= 0:
+		_hull_label.text = "HULL  SOUND"
+		_hull_label.add_theme_color_override("font_color", Color(0.7, 0.95, 0.75, 1.0))
+	else:
+		_hull_label.text = "HULL  %d hole%s" % [holes, "" if holes == 1 else "s"]
+		_hull_label.add_theme_color_override("font_color",
+			Color(0.98, 0.82, 0.5) if holes <= 2 else Color(1.0, 0.55, 0.5))
 
 
 # This leg's lift / swaps — the DELTA off the leg's start baseline (the board's running totals are
