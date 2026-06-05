@@ -180,9 +180,11 @@ func _on_haul_card_closed() -> void:
 	get_tree().change_scene_to_file(dest)
 
 
-# The Leave button → BAIL to the deck mid-voyage, banking this leg's form so the deck can resume on its
-# side; drop the snapshot (bailing abandons the station). Standalone (non-voyage) → the base PuzzleScene.
-# Subclasses that override this MUST call super() to keep the voyage-bail.
+# The Leave button → step off the station back to the deck AT THIS LEG'S NODE (pillage_phase 0), so you
+# can man a station again (the same one or the other) — NOT strand the player watching the deck auto-sail
+# the leg without them. Rewind the chart to the node + drop the board snapshot so the re-manned leg starts
+# clean (board + chart both fresh). Standalone (non-voyage) → the base PuzzleScene. Subclasses that
+# override this MUST call super() to keep the bail.
 func _return_to_launching_scene() -> void:
 
 	if PlayerState.voyage_active:
@@ -193,6 +195,10 @@ func _return_to_launching_scene() -> void:
 		PlayerState.last_loft_lift = int(perf["lift"])
 		PlayerState.last_loft_swaps = int(perf["swaps"])
 		PlayerState.voyage_station_state = {}
+		PlayerState.pillage_phase = 0   # back AT the node — the deck offers the Loft/Patchworks again
+		# Rewind the shared chart position to this leg's start node, so the deck shows her parked there and
+		# the re-manned leg sails fresh from the node (no half-leg ghost progress / no node-clamp snap).
+		PlayerState.voyage_ship_t = float(PlayerState.pillage_log.size()) / float(maxi(1, PlayerState.pillage_legs_total))
 		get_tree().change_scene_to_file(SHIP_DECK_SCENE)
 		return
 	super._return_to_launching_scene()
