@@ -75,7 +75,7 @@ func _build() -> void:
 		btn.pressed.connect(_on_pick.bind(profile))
 		list.add_child(btn)
 
-	vbox.add_child(_make_caption("Tougher foes think harder. New to sparring? Start with a Novice."))
+	vbox.add_child(_make_caption("Tougher foes think harder. New to sparring? Spritely Mia is the gentlest start."))
 	var back : Button = _make_walnut_button("Never mind", Color(0.95, 0.84, 0.56, 1.0))
 	back.pressed.connect(_on_cancel)
 	vbox.add_child(back)

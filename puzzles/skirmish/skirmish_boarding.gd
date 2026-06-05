@@ -746,6 +746,7 @@ func _build_ui() -> void:
 	set_help_text("SKIRMISH — boarding (crew vs crew).\n\n"
 		+ "• ←  → :  move    ↑ :  rotate    ↓ / SPACE :  soft drop\n"
 		+ "• Clear lines to mail GARBAGE to the foe you've TARGETED (gold ring).\n"
+		+ "• Incoming attacks land as grey X-blocks — they clog your stack + can't clear until they ripen.\n"
 		+ "• CLICK a foe, or press [A] / [D], to switch your target.\n"
 		+ "• CLICK a MATE to DEFEND them (green ring) — your clears un-bury THEIR board instead.\n"
 		+ "• Big crews scroll — use the ▲ ▼ by a column ([A]/[D] auto-scrolls your target in).\n"

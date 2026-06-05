@@ -282,7 +282,9 @@ func _build_ui() -> void:
 		+ "• ←  → :  move the piece\n"
 		+ "• ↑ :  rotate\n"
 		+ "• ↓  /  SPACE :  soft drop\n\n"
-		+ "Clear lines to send GARBAGE to your opponent. Fill their board to the top to win.")
+		+ "Clear lines to send GARBAGE to your opponent. Fill their board to the top to win.\n\n"
+		+ "Incoming attacks land as grey X-blocks that clog your stack — they can't be cleared until\n"
+		+ "they RIPEN into coloured tiles (after a couple of your drops).")
 
 
 # A PORTRAIT + name header + a "garbage sent" line above a board. [param tint] colours the

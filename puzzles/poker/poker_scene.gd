@@ -137,6 +137,7 @@ func _ready() -> void:
 	_occupant.resize(_table_seats)
 	_occupant.fill(-1)
 	_stamp_board_config()
+	_set_stake_banner()
 	_wire_signals()
 	_action_panel.visible = false
 	_result_panel.visible = false
@@ -370,6 +371,17 @@ func _stamp_board_config() -> void:
 	_board.small_blind_amount = PokerConfig.small_blind(min_bet)
 	_board.big_blind_amount = PokerConfig.big_blind(min_bet)
 	_board.pot_calculator.rake_fraction = 0.0 if _free_table else PokerConfig.RAKE_FRACTION
+
+
+# Show the structure + blinds in the top banner so the stakes aren't a mystery once you're seated.
+func _set_stake_banner() -> void:
+
+	var min_bet : int = int(_config["min_bet"])
+	var banner : Label = $UI/TopBanner/TitleLabel
+	banner.text = "Hold 'em  ·  %s  ·  blinds %d/%d" % [
+		PokerConfig.structure_name(int(_config["structure"])),
+		PokerConfig.small_blind(min_bet), PokerConfig.big_blind(min_bet)]
+	($UI/TopBanner as Control).offset_right = 400.0   # widen the fixed banner to fit the stake line
 
 
 # One UNIFORM scale for EVERY seat — the human is never bigger than the opponents (they're equals).
