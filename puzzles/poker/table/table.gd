@@ -5,11 +5,9 @@
 ## anchoring); this script only owns the per-game config + the visual — a
 ## flat iso table with a green felt top, brass rim, and a few chip stacks.
 ##
-## Economy: the buy-in ([member Puzzle.play_cost]) is deducted on
-## interact. [PokerScene] hands the player STARTING_CHIPS at the
-## table and converts whatever they leave with back to gold at
-## the [PokerScene.CHIPS_PER_GOLD] ratio on exit. Bust = no
-## refund.
+## Economy: nothing is charged on launch — the player chooses a VARIABLE buy-in at the table (the
+## scene's "Buy into the game?" dialog), within the stake's 10×–100× range. The stack IS gold (1:1):
+## cash out your final stack on exit, à la YPP's PoE. Bust = no refund. See [PokerConfig].
 @tool
 class_name PokerTable
 extends ParlorTable
@@ -34,17 +32,25 @@ const COLOR_CHIP_CREAM : Color = Color(0.95, 0.93, 0.86, 1.0)
 
 
 # --- Parlor config (see [ParlorTable]) --------------------------------
-# Poker: 2-4 players, a CASH buy-in (play_cost) charged at entry; default
-# min_seats/cash_cost/charges_buy_in from ParlorTable are correct.
+# Poker: 2-10 players; a VARIABLE buy-in chosen at the felt (the scene's "Buy into the game?"
+# dialog), so nothing is charged on launch.
+
+func _game_id() -> String:
+	return "poker"
 
 func _game_name() -> String:
 	return "Poker"
 
 func _max_seats() -> int:
-	return 4
+	return 10   # YPP-style: up to 10 at the table (empty seats are fine — only the cast fills in)
 
 func _cash_note() -> String:
-	return "%dg buy-in, cash out your chips after" % play_cost
+	return "Texas Hold'em — pick a stake, buy in, cash out your stack"
+
+# The buy-in is now VARIABLE and chosen at the table (the scene's "Buy into the game?" dialog), so
+# nothing is charged on launch — unlike the old fixed play_cost. (Cf. Gem Drop, which bills at exit.)
+func _charges_buy_in() -> bool:
+	return false
 
 func _badge_y() -> float:
 	return -96.0

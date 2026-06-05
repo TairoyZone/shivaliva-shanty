@@ -150,35 +150,40 @@ static func risk_bonus(p: NpcPersonality) -> float:
 
 # --- Internals ---------------------------------------------------------
 
-# Builds either a RAISE or a BET depending on whether there's already a
-# bet to raise. Clamps to the player's stack — going all-in if needed.
+# Builds either a RAISE or a BET, CLAMPED to the active bet structure's legal bounds (the board
+# exposes them structure-aware: Fixed = a single fixed size, Pot = up to the pot, No Limit = up to
+# the stack). This is the one chokepoint that keeps the AI from proposing an illegal size that
+# apply_action would reject — which would silently HANG the AI's turn (it never retries).
 static func _make_raise_or_bet(board: PokerBoard, player: PokerPlayer, target_total: int) -> Dictionary:
 
-	var stack_total : int = player.current_bet + player.chips  # max possible total bet
-	# Can't raise above your stack.
-	target_total = mini(target_total, stack_total)
-	if board.current_bet == 0:
-		# No bet yet — this is a BET, amount is the chip amount put in.
-		var bet_amount : int = target_total - player.current_bet
-		# Bet must be at least the BB.
-		bet_amount = maxi(bet_amount, board.big_blind_amount)
-		bet_amount = mini(bet_amount, player.chips)
-		if bet_amount == player.chips:
-			return {"action": PokerBoard.Action.ALL_IN, "amount": 0}
-		return {"action": PokerBoard.Action.BET, "amount": bet_amount}
-	# RAISE — `amount` is the new total bet.
-	# If we can't make a full min-raise, just shove all-in (legal).
-	if target_total < board.current_bet + board.min_raise:
+	var stack_total : int = player.current_bet + player.chips  # max possible total bet (a shove)
+	# Facing a bet but the structure forbids raising (Fixed-Limit raise cap) → just call/check.
+	if board.current_bet > 0 and not board.can_raise():
+		if board.get_amount_to_call() > 0:
+			return {"action": PokerBoard.Action.CALL, "amount": 0}
+		return {"action": PokerBoard.Action.CHECK, "amount": 0}
+	var legal_min : int = board.get_min_raise_to()
+	var legal_max : int = board.get_max_raise_to()
+	# Can't afford even the minimum legal bet/raise → shove all-in (always legal in every structure).
+	if legal_max < legal_min:
 		return {"action": PokerBoard.Action.ALL_IN, "amount": 0}
-	if target_total == stack_total and player.chips > 0:
+	target_total = clampi(target_total, legal_min, legal_max)
+	if board.current_bet == 0:
+		# No bet yet — this is an opening BET (player.current_bet is 0, so amount == target_total).
+		if target_total >= player.chips:
+			return {"action": PokerBoard.Action.ALL_IN, "amount": 0}
+		return {"action": PokerBoard.Action.BET, "amount": target_total}
+	# RAISE — `amount` is the new total bet. A raise-to that commits the whole stack is a shove.
+	if target_total >= stack_total and player.chips > 0:
 		return {"action": PokerBoard.Action.ALL_IN, "amount": 0}
 	return {"action": PokerBoard.Action.RAISE, "amount": target_total}
 
 
-# A pot-sized raise: aim for total bet ≈ current_bet + pot. Capped at stack.
+# A pot-sized raise: current bet + (pot + the call) — the true full-pot size, which equals the legal
+# max in Pot Limit. The caller clamps this to the structure's bounds, so it's safe in every format.
 static func _pot_sized_raise(board: PokerBoard) -> int:
 
-	return board.current_bet + maxi(board.big_blind_amount, board.get_total_pot())
+	return board.current_bet + maxi(board.big_blind_amount, board.get_total_pot() + board.get_amount_to_call())
 
 
 static func _estimate_strength(player: PokerPlayer, community: Array[Card]) -> float:

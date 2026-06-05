@@ -19,6 +19,12 @@ class_name PokerPot
 extends RefCounted
 
 
+## Fraction skimmed off each CONTESTED pot as house RAKE before payout (a gold sink). 0 = none —
+## the default, so free tables and the chip-conservation tests are unaffected. Set from the table
+## config (cash tables = PokerConfig.RAKE_FRACTION). "No flop, no drop": uncontested pots aren't raked.
+var rake_fraction : float = 0.0
+
+
 ## Sum of every chip every player has staked in the current hand.
 ## Includes folded players' dead money. Useful for the headline pot
 ## display before showdown.
@@ -98,8 +104,17 @@ func award(players: Array[PokerPlayer], hand_evals: Dictionary) -> Array[Diction
 					winners = [p]
 				elif HandEval.compare(ev, best_eval) == 0:
 					winners.append(p)
-		var per : int = pot["amount"] / winners.size()
-		var remainder : int = pot["amount"] - per * winners.size()
+		# House rake: skim a fraction off CONTESTED pots (a real showdown, >1 eligible) before the
+		# split — "no flop, no drop" exempts uncontested / fold-out pots. The raked gold is a pure
+		# sink (never paid back out). rake_fraction defaults to 0, so this is a no-op unless enabled.
+		var amount : int = int(pot["amount"])
+		var rake : int = 0
+		if rake_fraction > 0.0 and eligible.size() > 1:
+			rake = floori(float(amount) * rake_fraction)
+			amount -= rake
+		@warning_ignore("integer_division")
+		var per : int = amount / winners.size()
+		var remainder : int = amount - per * winners.size()
 		for w in winners:
 			w.receive(per)
 		# Drop the odd-chip remainder on the first winner.
@@ -110,5 +125,6 @@ func award(players: Array[PokerPlayer], hand_evals: Dictionary) -> Array[Diction
 			"winners": winners,
 			"per_winner": per,
 			"remainder": remainder,
+			"rake": rake,
 		})
 	return awards

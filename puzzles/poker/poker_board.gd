@@ -81,6 +81,13 @@ var current_bet : int = 0
 ## Minimum legal raise increment over [member current_bet]. Updated to
 ## the size of the last full raise.
 var min_raise : int = 0
+## Bet structure ([enum PokerConfig.BetStructure]) — NO_LIMIT is the engine's native mode. Fixed /
+## Pot Limit add an UPPER bound on bets/raises, enforced in [method apply_action] via
+## [method get_max_raise_to] + [method can_raise]. Set from the table config before the first hand.
+var bet_structure : int = PokerConfig.BetStructure.NO_LIMIT
+## Voluntary RAISEs made this betting round — drives the Fixed-Limit cap (3 raises after the
+## opening bet/blind). Reset each street.
+var _raises_this_round : int = 0
 
 # --- Player profile tracking (for AI "perception") ----------------------
 # Per-session stats for the human (player index 0). AI opponents read
@@ -154,6 +161,7 @@ func start_new_hand() -> void:
 	players[bb_index].has_acted_this_round = false
 	current_bet = big_blind_amount
 	min_raise = big_blind_amount
+	_raises_this_round = 0   # the BB is the opening bet, not a raise — voluntary raises start fresh
 	# Preflop first to act: heads-up → SB (dealer). Otherwise → UTG (left of BB).
 	if _seats_with_chips() == 2:
 		current_player_index = sb_index
@@ -191,29 +199,45 @@ func apply_action(action: Action, amount: int = 0) -> bool:
 			if current_bet > 0:
 				push_warning("Cannot bet — already a bet on the table; use RAISE")
 				return false
-			if amount < big_blind_amount:
-				push_warning("Bet must be at least the big blind")
+			# Opening bet, bounded by the structure (Fixed = the fixed size, Pot = up to the pot,
+			# No Limit = up to the stack). Shoves go through ALL_IN.
+			if amount < get_min_raise_to() or amount > get_max_raise_to():
+				push_warning("Bet %d out of range [%d, %d]" % [amount, get_min_raise_to(), get_max_raise_to()])
 				return false
 			actual = player.stake(amount)
 			current_bet = player.current_bet
 			min_raise = player.current_bet
 			_reset_others_acted()
 		Action.RAISE:
-			# `amount` is the new TOTAL bet (raise-to), not the delta.
-			if amount < current_bet + min_raise:
-				push_warning("Raise to %d, minimum is %d" % [amount, current_bet + min_raise])
+			# `amount` is the new TOTAL bet (raise-to), not the delta. Bounded by the structure;
+			# Fixed Limit also caps the NUMBER of raises per street (can_raise).
+			if not can_raise():
+				push_warning("No more raises this street (Fixed-Limit cap)")
+				return false
+			# A raise must strictly RAISE. Edge: a short stack whose structured raise-to is stack-capped
+			# BELOW the standing bet — they shove via ALL_IN instead, never a "raise" that lowers it.
+			if amount <= current_bet:
+				push_warning("A raise must exceed the current bet (%d)" % current_bet)
+				return false
+			if amount < get_min_raise_to() or amount > get_max_raise_to():
+				push_warning("Raise to %d out of range [%d, %d]" % [amount, get_min_raise_to(), get_max_raise_to()])
 				return false
 			actual = player.stake(amount - player.current_bet)
-			min_raise = player.current_bet - current_bet
+			# An incomplete (all-in-for-less) raise doesn't reopen betting (same rule as ALL_IN).
+			if player.current_bet - current_bet >= min_raise:
+				min_raise = player.current_bet - current_bet
 			current_bet = player.current_bet
+			_raises_this_round += 1
 			_reset_others_acted()
 		Action.ALL_IN:
 			actual = player.stake(player.chips)
-			# An all-in that puts the player above the current bet acts as a raise.
+			# An all-in that puts the player above the current bet acts as a raise (legal in every
+			# structure even past a Fixed/Pot cap — the cap bounds VOLUNTARY raises, not shoves).
 			if player.current_bet > current_bet:
 				if player.current_bet - current_bet >= min_raise:
 					min_raise = player.current_bet - current_bet
 				current_bet = player.current_bet
+				_raises_this_round += 1
 				_reset_others_acted()
 	player.has_acted_this_round = true
 	# Profile observation — only track seat 0 (the human). Voluntary
@@ -305,10 +329,51 @@ func get_amount_to_call() -> int:
 	return maxi(0, current_bet - p.current_bet)
 
 
-## Smallest legal "raise-to" amount for the current player.
+## Smallest legal "raise-to" for the current player. In FIXED LIMIT the raise size is FIXED, so the
+## min equals the max (a single legal value); in No/Pot Limit it's the last full raise over the bet.
 func get_min_raise_to() -> int:
 
+	if bet_structure == PokerConfig.BetStructure.FIXED_LIMIT:
+		return _structured_raise_to()
 	return current_bet + min_raise
+
+
+## Largest legal "raise-to" for the current player, per the bet structure (always capped at their
+## whole stack; a bigger commit goes through ALL_IN, which is legal in every structure). No Limit =
+## the whole stack; Pot Limit = current bet + (pot + the call); Fixed Limit = the single fixed size.
+func get_max_raise_to() -> int:
+
+	var p : PokerPlayer = get_current_player()
+	if p == null:
+		return current_bet
+	var stack_to : int = p.current_bet + p.chips
+	match bet_structure:
+		PokerConfig.BetStructure.FIXED_LIMIT:
+			return mini(stack_to, _structured_raise_to())
+		PokerConfig.BetStructure.POT_LIMIT:
+			var to_call : int = maxi(0, current_bet - p.current_bet)
+			return mini(stack_to, current_bet + get_total_pot() + to_call)
+		_:
+			return stack_to
+
+
+# Fixed-Limit raise-to = current bet + the street's fixed increment (small bet = the big blind on
+# preflop/flop, big bet = 2× on turn/river), capped at the acting player's stack.
+func _structured_raise_to() -> int:
+
+	var inc : int = big_blind_amount if (phase == Phase.PREFLOP or phase == Phase.FLOP) else big_blind_amount * 2
+	var p : PokerPlayer = get_current_player()
+	var stack_to : int = (p.current_bet + p.chips) if p != null else current_bet + inc
+	return mini(stack_to, current_bet + inc)
+
+
+## Can the current player RAISE at all? Fixed Limit caps voluntary raises at 3 per street (1 opening
+## bet/blind + 3 raises = the classic 4-bet cap). An ALL_IN shove is still allowed when capped.
+func can_raise() -> bool:
+
+	if bet_structure == PokerConfig.BetStructure.FIXED_LIMIT and _raises_this_round >= 3:
+		return false
+	return true
 
 
 ## Sum of every chip everybody has put in this hand. Pre-side-pot.
@@ -372,6 +437,7 @@ func _advance_phase() -> void:
 		p.reset_for_new_round()
 	current_bet = 0
 	min_raise = big_blind_amount
+	_raises_this_round = 0
 	match phase:
 		Phase.PREFLOP:
 			community_cards.append_array(deck.deal(3))

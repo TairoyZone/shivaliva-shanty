@@ -1,11 +1,13 @@
 ## The playable Hold 'em Poker scene. Inherits ESC-return + HUD hiding +
 ## click-dismiss from [PuzzleScene]; owns the [PokerBoard] state
-## machine plus the four [PokerSeat]s, the central [PotDisplay], the
-## row of [CommunityCards], and the bottom-right [PokerActionPanel].
+## machine plus the 2..10 [PokerSeat]s (placed on a ring), the central
+## [PotDisplay], the row of [CommunityCards], and the bottom-right
+## [PokerActionPanel].
 ##
 ## Flow:
-##   • _ready() seats 4 players (you + 3 NPCs), connects every board
-##     signal to a UI updater, and deals the first hand.
+##   • _ready() reads the table [PokerConfig] (stake / structure / seats), seats you (index 0) +
+##     up to 8 cast NPCs, then a "Buy into the game?" dialog takes your variable buy-in and deals
+##     the first hand (a free table skips the dialog). Connects every board signal to a UI updater.
 ##   • On AI turns the scene waits AI_THINK_TIME then asks [PokerAI]
 ##     for a decision and feeds it back into the board.
 ##   • On the human's turn the action panel becomes visible and
@@ -28,12 +30,6 @@ const HOLE_DEAL_STAGGER : float = 0.07
 ## How long one hole card takes to slide from deck to its seat.
 const HOLE_DEAL_DURATION : float = 0.38
 
-const STARTING_CHIPS : int = 1000
-## Chip:gold conversion rate used on exit. The matching buy-in
-## (deducted by [PokerTable.play_cost]) should be `STARTING_CHIPS /
-## CHIPS_PER_GOLD` so that leaving with the same stack you sat
-## down with is a break-even — not a free profit and not a loss.
-const CHIPS_PER_GOLD : int = 10
 ## Seconds the AI "thinks" before acting. Just dramatic pacing.
 const AI_THINK_TIME : float = 1.1
 ## Seconds the camera holds on the showdown (cards revealed + winner
@@ -61,20 +57,10 @@ const TOAST_RISE : float = 36.0
 ## Total seconds the toast is on-screen.
 const TOAST_LIFETIME : float = 2.0
 
-# Where each seat lives on screen. Index 0 = the human; 1-3 = NPCs
-# arranged counter-clockwise around the table from the human's left.
-const SEAT_POSITIONS : Array[Vector2] = [
-	Vector2(640, 560),   # You — bottom center
-	Vector2(220, 380),   # AI seat 1 — left
-	Vector2(640, 140),   # AI seat 2 — top (raised so cards clear the community row)
-	Vector2(1060, 380),  # AI seat 3 — right
-]
-
-# The human seat is fixed (always seat 0). The three AI seats are
-# picked at session start from [NpcRegistry] — every visit to the
-# Inn's poker table draws three random Cradle Rock NPCs from the
-# eight-member cast, and each plays per their [NpcPersonality]
-# resource (aggression, VPIP, PFR, etc).
+# The human seat is fixed at index 0 (bottom-centre). The other seats are filled by the cast the
+# lobby seated — up to the table size (2..10), drawn from the eight-member Cradle Rock cast — each
+# playing per their [NpcPersonality] (aggression, VPIP, PFR, …). Seat screen positions are generated
+# in a ring by [method _seat_position] so any 2..10-seat table fits the felt.
 const HUMAN_SEAT_COLOR : Color = Color(0.95, 0.78, 0.34, 1.0)
 
 
@@ -111,6 +97,14 @@ var _free_table : bool = false
 ## The opponents the lobby seated (loaded from their profile paths). Empty
 ## ⇒ launched without a lobby, so [method _seat_players] rolls a fresh set.
 var _lobby_opponents : Array[NpcPersonality] = []
+## The table config from the browser: {structure, min_bet, seats, turn_time}. Defaults to a No-Limit
+## lowest-stake table so a standalone launch still plays. See [PokerConfig].
+var _config : Dictionary = PokerConfig.make_default()
+## The human's chosen buy-in (gold) this session — charged on Buy-In; cash-out + mastery key off it.
+var _human_buy_in : int = 0
+## True once the player actually SAT (bought in, or a free table seated them). Guards the exit side
+## effects (affinity + mastery) so cancelling the buy-in dialog can't farm rapport / record a score.
+var _sat_down : bool = false
 
 
 func _ready() -> void:
@@ -122,13 +116,22 @@ func _ready() -> void:
 		+ "• Best 5-card hand from your 2 hole cards + 5 community cards wins")
 	var setup : Dictionary = PlayerState.consume_lobby_setup()
 	_free_table = bool(setup.get("free", false))
-	_lobby_opponents = LobbyModal.profiles_from_paths(setup.get("seated_paths", []))
+	_lobby_opponents = NpcRegistry.profiles_from_paths(setup.get("seated_paths", []))
+	_config = PokerConfig.normalize(setup.get("table_config", _config))
+	_stamp_board_config()
 	_seat_players()
 	_build_seat_widgets()
 	_wire_signals()
 	_action_panel.visible = false
 	_result_panel.visible = false
-	_board.start_new_hand()
+	# Sit down + buy in (YPP-style) BEFORE the first deal. A free table just hands out chips.
+	if _free_table:
+		_human_buy_in = PokerConfig.buy_in_max(int(_config["min_bet"]))
+		_board.players[0].chips = _human_buy_in
+		_sat_down = true
+		_board.start_new_hand()
+	else:
+		_show_buy_in_dialog()
 
 
 # Brass-rim green felt covering the table area. Drawn here so we don't
@@ -154,32 +157,210 @@ func _draw() -> void:
 
 func _seat_players() -> void:
 
-	# Seat 0 — the human.
-	var human : PokerPlayer = PokerPlayer.new("You", STARTING_CHIPS, true)
+	var min_bet : int = int(_config["min_bet"])
+	# Seat 0 — the human (chips set at Buy-In; a free table fills them in _ready).
+	var human : PokerPlayer = PokerPlayer.new("You", 0, true)
 	human.portrait_color = HUMAN_SEAT_COLOR
 	_board.add_player(human)
-	# Seats 1-3 — the NPCs the lobby seated (affinity-weighted), each
-	# carrying their personality resource so the AI plays per their
-	# identity. Fallback to a fresh roll if launched without a lobby.
+	# Opponents — the NPCs the lobby seated (affinity-weighted), capped to the table size (seats − 1,
+	# at most the 8-member cast); each AI buys in for a random amount in the stake's range. A bigger
+	# table than the available cast just leaves the extra seats open (the "empty seats OK" rule).
+	var want : int = clampi(int(_config["seats"]) - 1, 1, 8)
 	var opponents : Array[NpcPersonality] = _lobby_opponents
 	if opponents.is_empty():
-		opponents = NpcRegistry.pick_for_lobby(3, PlayerState.get_affinity)
-	for profile in opponents:
-		var ai : PokerPlayer = PokerPlayer.new(profile.npc_name, STARTING_CHIPS, false)
+		opponents = NpcRegistry.pick_for_lobby(want, PlayerState.get_affinity)
+	for i in mini(want, opponents.size()):
+		var profile : NpcPersonality = opponents[i]
+		var ai : PokerPlayer = PokerPlayer.new(profile.npc_name, _roll_buy_in(min_bet), false)
 		ai.portrait_color = profile.portrait_color
 		ai.personality = profile
 		_board.add_player(ai)
 
 
+# A random in-range starting stack for an AI seat (10×..100× the min-bet, à la a real player's buy-in).
+func _roll_buy_in(min_bet: int) -> int:
+
+	return randi_range(PokerConfig.buy_in_min(min_bet), PokerConfig.buy_in_max(min_bet))
+
+
+# Stamp the chosen stake + structure onto the board before the first hand: blinds from the min-bet,
+# the bet structure, and the house rake (cash tables only — free tables and the default take none).
+func _stamp_board_config() -> void:
+
+	var min_bet : int = int(_config["min_bet"])
+	_board.bet_structure = int(_config["structure"])
+	_board.small_blind_amount = PokerConfig.small_blind(min_bet)
+	_board.big_blind_amount = PokerConfig.big_blind(min_bet)
+	_board.pot_calculator.rake_fraction = 0.0 if _free_table else PokerConfig.RAKE_FRACTION
+
+
 func _build_seat_widgets() -> void:
 
-	for i in _board.players.size():
+	var total : int = _board.players.size()
+	var opp_scale : float = _opponent_scale(total)
+	for i in total:
 		var seat : PokerSeat = SEAT_SCENE.instantiate()
 		$Table.add_child(seat)
-		seat.position = SEAT_POSITIONS[i]
+		# The human (seat 0) stays full-size so their hand is always readable; opponents shrink as the
+		# table fills so the (large) panel+cards footprints never collide. Cards/deal honour the scale.
+		seat.scale = Vector2.ONE if i == 0 else Vector2(opp_scale, opp_scale)
+		seat.position = _seat_position(i, total)
 		seat.bind_to(_board.players[i])
 		seat.hole_cards_face_up = _board.players[i].is_human
 		_seats.append(seat)
+
+
+# Opponent seats shrink as the table fills so even a packed felt never overlaps. The schedule is
+# tuned (verified collision-free for 2..10 seats against the real 220×184 panel+card footprint) so
+# the human stays 1.0 and opponents only shrink once 7+ are seated. See _seat_position.
+func _opponent_scale(total: int) -> float:
+
+	if total <= 6:
+		return 1.0
+	if total == 7:
+		return 0.88
+	if total == 8:
+		return 0.78
+	if total == 9:
+		return 0.66
+	return 0.55   # 10 (only reachable with future filler NPCs — the 8-cast tops out at 9)
+
+
+# Place seat `i` of `total` around the felt. Seat 0 (the human) sits bottom-centre; the opponents arc
+# across the TOP on a wide ellipse, skipping a gap around the bottom so the lower-right corner stays
+# clear of the human's action/result panel. Constants verified collision-free for 2..10 seats.
+func _seat_position(i: int, total: int) -> Vector2:
+
+	if i == 0 or total <= 1:
+		return Vector2(640.0, 575.0)   # human, bottom-centre (left of the action panel at x≥800)
+	const BOTTOM_GAP : float = 1.35   # radians kept clear on each side of bottom-centre
+	var span : float = TAU - 2.0 * BOTTOM_GAP
+	var slot : float = (float(i - 1) + 0.5) / float(maxi(total - 1, 1))
+	var angle : float = (PI * 0.5 + BOTTOM_GAP) + span * slot
+	return Vector2(640.0, 360.0) + Vector2(cos(angle) * 530.0, sin(angle) * 300.0)
+
+
+# --- Buy-in (sit down) ------------------------------------------------
+
+# Pop the YPP-style "Buy into the game?" dialog before the first deal: a slider over the stake's
+# 10×..100× buy-in range (capped at the gold you actually have). Buy In charges the gold + seats you;
+# Cancel / leaving the table charges nothing.
+func _show_buy_in_dialog() -> void:
+
+	var min_bet : int = int(_config["min_bet"])
+	var lo : int = PokerConfig.buy_in_min(min_bet)
+	var hi : int = mini(PokerConfig.buy_in_max(min_bet), PlayerState.total_coins)
+	if PlayerState.total_coins < lo:
+		_return_to_launching_scene()   # can't cover the min buy-in (the browser should have gated this)
+		return
+
+	var layer : CanvasLayer = CanvasLayer.new()
+	layer.layer = 30   # above the help "?" (21) + Leave button so it's a true modal
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	var dim : ColorRect = ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.anchor_right = 1.0
+	dim.anchor_bottom = 1.0
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	layer.add_child(dim)
+
+	var panel : PanelContainer = PanelContainer.new()
+	var sb : StyleBoxFlat = StyleBoxFlat.new()
+	sb.bg_color = Color(0.13, 0.10, 0.05, 0.98)
+	sb.border_color = Color(0.96, 0.78, 0.34, 0.95)
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(14)
+	sb.set_content_margin_all(28)
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.anchor_left = 0.5
+	panel.anchor_top = 0.5
+	panel.anchor_right = 0.5
+	panel.anchor_bottom = 0.5
+	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	layer.add_child(panel)
+	var col : VBoxContainer = VBoxContainer.new()
+	col.add_theme_constant_override("separation", 12)
+	col.custom_minimum_size = Vector2(420.0, 0.0)
+	panel.add_child(col)
+
+	_dlg_label(col, "Buy into the game?", 26, Color(0.98, 0.88, 0.5, 1.0))
+	_dlg_label(col, "%s  ·  %d–%d gold" % [
+		PokerConfig.structure_name(int(_config["structure"])), lo, hi], 15, Color(0.80, 0.84, 0.92, 1.0))
+	var amount_lbl : Label = _dlg_label(col, "%d gold" % hi, 30, Color(0.99, 0.84, 0.36, 1.0))
+	var slider : HSlider = HSlider.new()
+	slider.min_value = lo
+	slider.max_value = maxi(hi, lo)
+	slider.step = 1
+	slider.value = hi
+	slider.custom_minimum_size = Vector2(360.0, 18.0)
+	slider.editable = hi > lo
+	slider.value_changed.connect(func(v: float) -> void: amount_lbl.text = "%d gold" % int(v))
+	col.add_child(slider)
+	_dlg_label(col, "You have %d gold" % PlayerState.total_coins, 14, Color(0.74, 0.80, 0.92, 1.0))
+
+	var row : HBoxContainer = HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 16)
+	col.add_child(row)
+	var buy : Button = _dlg_button("Buy In", Color(0.80, 1.0, 0.62, 1.0))
+	buy.pressed.connect(func() -> void: _on_buy_in_confirmed(int(slider.value), layer))
+	row.add_child(buy)
+	var cancel : Button = _dlg_button("Cancel", Color(0.95, 0.84, 0.56, 1.0))
+	cancel.pressed.connect(func() -> void: _on_buy_in_cancelled(layer))
+	row.add_child(cancel)
+
+	add_child(layer)
+
+
+func _on_buy_in_confirmed(amount: int, dialog: CanvasLayer) -> void:
+
+	_human_buy_in = clampi(amount, PokerConfig.buy_in_min(int(_config["min_bet"])), PlayerState.total_coins)
+	PlayerState.add_coins(-_human_buy_in)   # charge the chosen buy-in (gold) now
+	_sat_down = true
+	_board.players[0].chips = _human_buy_in
+	if not _seats.is_empty():
+		_seats[0].bind_to(_board.players[0])   # refresh the human seat's chip readout
+	dialog.queue_free()
+	_board.start_new_hand()
+
+
+func _on_buy_in_cancelled(dialog: CanvasLayer) -> void:
+
+	dialog.queue_free()
+	_return_to_launching_scene()   # left without sitting — no gold charged
+
+
+func _dlg_label(parent: VBoxContainer, text: String, size: int, color: Color) -> Label:
+
+	var l : Label = Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_color", color)
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	l.add_theme_constant_override("outline_size", 3)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	parent.add_child(l)
+	return l
+
+
+func _dlg_button(text: String, color: Color) -> Button:
+
+	var b : Button = Button.new()
+	b.text = text
+	b.focus_mode = Control.FOCUS_NONE
+	b.add_theme_font_size_override("font_size", 18)
+	b.add_theme_color_override("font_color", color)
+	b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	b.add_theme_constant_override("outline_size", 3)
+	var s : StyleBoxFlat = StyleBoxFlat.new()
+	s.bg_color = Color(0.22, 0.14, 0.08, 0.95)
+	s.border_color = Color(0.78, 0.58, 0.24, 1.0)
+	s.set_border_width_all(2)
+	s.set_corner_radius_all(8)
+	s.set_content_margin_all(10)
+	b.add_theme_stylebox_override("normal", s)
+	return b
 
 
 func _wire_signals() -> void:
@@ -277,6 +458,7 @@ func _animate_deal_hole_cards() -> void:
 		var temp : CardSprite = CARD_SCENE.instantiate()
 		$Table.add_child(temp)
 		temp.position = DECK_POSITION
+		temp.scale = _seats[seat_idx].scale   # land matching the (possibly shrunk) destination seat
 		temp.face_up = false
 		temp.set_card(card, false)
 		temps.append(temp)
@@ -751,8 +933,25 @@ const WINNING_SESSION_BONUS : int = 1
 func _return_to_launching_scene() -> void:
 
 	_grant_opponent_affinity()
+	_record_poker_mastery()
 	_payout_chips()
 	super._return_to_launching_scene()
+
+
+# Mastery — high-water-mark is your final stack in GOLD (1:1), matching the "poker" thresholds, so
+# Standings rise with how well you played. No toast: we're leaving the table, so the scene changes
+# right after; the rank still records.
+func _record_poker_mastery() -> void:
+
+	# Only a REAL (cash) session that was actually sat counts — never a cancelled buy-in, and never a
+	# free table (its stack is house chips, which would mint an unearned Standings score).
+	if not _sat_down or _free_table:
+		return
+	if _board == null or _board.players.is_empty():
+		return
+	var human : PokerPlayer = _board.players[0]
+	# Stacks ARE gold now (1:1), so the mastery score is the final stack directly.
+	PlayerState.record_puzzle_result("poker", human.chips)
 
 
 # Credit rapport to every NPC the player sat with this session. Sharing
@@ -761,18 +960,20 @@ func _return_to_launching_scene() -> void:
 # on exit, not per hand, so it can't be farmed by playing single hands.
 func _grant_opponent_affinity() -> void:
 
+	# No rapport for a session you never sat down to (cancelled the buy-in).
+	if not _sat_down:
+		return
 	if _board == null or _board.players.size() < 2:
 		return
 	var human : PokerPlayer = _board.players[0]
-	var won_session : bool = human.chips > STARTING_CHIPS
+	var won_session : bool = human.chips > _human_buy_in
 	var gain : int = PLAY_AFFINITY + (WINNING_SESSION_BONUS if won_session else 0)
 	for i in range(1, _board.players.size()):
 		PlayerState.add_affinity(_board.players[i].player_name, gain)
 
 
-# Convert the human seat's chip stack into gold at the configured
-# ratio and credit PlayerState. Truncates (10 chips = 1 gold, 9
-# chips = 0 gold) — small remainders are absorbed by the house.
+# Cash out the human's chip stack as gold (1:1 — your stack IS gold, à la YPP's PoE). The buy-in was
+# already charged at the buy-in dialog, so handing back the full stack nets you (final − buy-in).
 func _payout_chips() -> void:
 
 	# Free table — nothing was bought in, nothing cashes out.
@@ -780,11 +981,7 @@ func _payout_chips() -> void:
 		return
 	if _board == null or _board.players.is_empty():
 		return
-	var human : PokerPlayer = _board.players[0]
-	# Integer truncation is intentional — remainder under one
-	# gold's worth of chips is house edge.
-	@warning_ignore("integer_division")
-	var gold : int = human.chips / CHIPS_PER_GOLD
+	var gold : int = _board.players[0].chips
 	if gold > 0:
 		award_winnings(gold)
 

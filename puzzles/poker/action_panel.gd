@@ -53,7 +53,7 @@ func refresh(board: PokerBoard, player: PokerPlayer) -> void:
 	var to_call : int = board.get_amount_to_call()
 	var can_check : bool = board.can_check()
 	var min_raise_to : int = board.get_min_raise_to()
-	var max_total_bet : int = player.current_bet + player.chips
+	var max_raise_to : int = board.get_max_raise_to()   # structure-aware cap (Fixed/Pot/No Limit)
 
 	# Fold — always legal unless the player can simply check for free,
 	# but enabling it anyway is harmless and matches YPP's UX.
@@ -70,17 +70,20 @@ func refresh(board: PokerBoard, player: PokerPlayer) -> void:
 		_check_call_btn.text = "Call %d" % afford_call
 		_check_call_btn.disabled = player.chips == 0
 
-	# Bet vs Raise. Only legal if the player can cover at least the
-	# full minimum raise / minimum bet. If they can't, the button
-	# disables — All-In is the only "raise" they can make and the
-	# dedicated All-In button handles the raise-for-less rule.
+	# Bet vs Raise — bounds come from the board structure-aware: FIXED LIMIT collapses min==max to a
+	# single fixed size (the slider locks), POT LIMIT caps at the pot, NO LIMIT goes to the stack.
+	# board.can_raise() also enforces the Fixed-Limit per-street raise cap. If the player can't cover
+	# the minimum (or is capped), the button disables and All-In handles any raise-for-less.
 	_is_raise_context = board.current_bet > 0
-	var raise_floor : int = min_raise_to if _is_raise_context else board.big_blind_amount
-	if max_total_bet >= raise_floor:
+	var raise_floor : int = min_raise_to
+	# A raise must strictly exceed the standing bet. If the structured raise-to is stack-capped at or
+	# below the current bet (a short stack), there's no legal raise — only All-In makes the shove.
+	var can_structured_raise : bool = board.current_bet == 0 or min_raise_to > board.current_bet
+	if board.can_raise() and can_structured_raise and max_raise_to >= raise_floor:
 		_bet_min = raise_floor
-		_bet_max = max_total_bet
+		_bet_max = max_raise_to
 		_bet_slider.min_value = _bet_min
-		_bet_slider.max_value = _bet_max
+		_bet_slider.max_value = maxi(_bet_max, _bet_min)
 		_bet_slider.step = 1
 		_bet_slider.value = _bet_min
 		_bet_slider.editable = _bet_max > _bet_min

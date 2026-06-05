@@ -227,7 +227,8 @@ func bind_to(player: PokerPlayer, with_cards: bool = true) -> void:
 func hole_card_world_position(card_slot: int) -> Vector2:
 
 	var dx : float = -HOLE_CARD_SPACING if card_slot == 0 else HOLE_CARD_SPACING
-	return position + Vector2(dx, HOLE_CARD_Y)
+	# Honour this seat's scale — opponents shrink on big tables, so the slot moves in with them.
+	return position + scale * Vector2(dx, HOLE_CARD_Y)
 
 
 ## At showdown, mark each hole card as part of the winning hand
