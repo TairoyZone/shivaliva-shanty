@@ -15,10 +15,15 @@ signal tray_changed()
 ## consecutive clearing moves. The scene flashes those strips (the BLAST).
 signal lines_cleared(rows: Array, cols: Array, combo: int)
 signal score_changed(new_score: int)
+## A piece was tossed (wasted). `penalty` = points actually lost — the scene flashes it.
+signal piece_tossed(penalty: int)
 
 const GRID_W : int = 8
 const GRID_H : int = 8
 const TRAY_SIZE : int = 3
+## Points docked for tossing a piece (a wasted action) — on top of losing the combo streak. No timer
+## anywhere; the stakes are the combo + this cost, not a clock.
+const TOSS_PENALTY : int = 50
 
 # --- State -------------------------------------------------------------
 ## grid[y][x] == true when that hull cell is planked.
@@ -88,7 +93,42 @@ func toss(piece_index: int) -> void:
 		return
 	tray[piece_index] = BlockShape.random_piece()
 	combo = 0
+	# A wasted piece costs real points (clamped at 0) on top of the broken combo.
+	var lost : int = mini(score, TOSS_PENALTY)
+	if lost > 0:
+		score -= lost
+		score_changed.emit(score)
+	piece_tossed.emit(lost)
 	tray_changed.emit()
+
+
+## Preview which rows + columns WOULD blast if `oriented_cells` were placed at `offset` (call only
+## for a legal placement — i.e. when can_place is true). Returns {"rows": Array, "cols": Array}. The
+## scene uses this to TELEGRAPH an incoming clear while the player hovers, before they commit.
+func preview_clears(oriented_cells: Array, offset: Vector2i) -> Dictionary:
+
+	var added : Dictionary = {}
+	for c in oriented_cells:
+		added[c + offset] = true
+	var rows : Array = []
+	for y in GRID_H:
+		var full : bool = true
+		for x in GRID_W:
+			if not grid[y][x] and not added.has(Vector2i(x, y)):
+				full = false
+				break
+		if full:
+			rows.append(y)
+	var cols : Array = []
+	for x in GRID_W:
+		var full : bool = true
+		for y in GRID_H:
+			if not grid[y][x] and not added.has(Vector2i(x, y)):
+				full = false
+				break
+		if full:
+			cols.append(x)
+	return {"rows": rows, "cols": cols}
 
 
 # --- Internals ---------------------------------------------------------

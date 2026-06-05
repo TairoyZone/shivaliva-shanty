@@ -35,6 +35,7 @@ var _hover_cell : Vector2i = Vector2i.ZERO
 var _flash_rows : Array = []
 var _flash_cols : Array = []
 var _flash_t : float = 0.0
+var _flash_active : bool = false
 
 var _score_label : Label
 var _combo_label : Label
@@ -45,22 +46,31 @@ func _ready() -> void:
 
 	super._ready()
 	set_help_text("THE PATCHWORKS — plank the hull\n\n"
-		+ "• Click a piece in the tray to pick it up\n"
-		+ "• Mouse-wheel (or X / C) to rotate · right-click the held piece to flip\n"
+		+ "• Click a piece in the tray to pick it up (click it again, or click off the board, to put it back)\n"
+		+ "• Mouse-wheel or X / C to rotate · F (or right-click the held piece) to flip\n"
 		+ "• Click the grid to lay it down (green = fits, red = won't)\n"
 		+ "• Fill a whole ROW or COLUMN → it BLASTS clear; clear on back-to-back moves for a combo\n"
-		+ "• Right-click a tray piece (or the Toss button) to discard one that won't fit")
+		+ "• Right-click a tray piece (or Toss) to discard one — but a wasted piece costs points + your combo")
 	_build_hud()
 	_board.grid_changed.connect(_on_grid_changed)
 	_board.tray_changed.connect(_on_tray_changed)
 	_board.score_changed.connect(_on_score_changed)
 	_board.lines_cleared.connect(_on_lines_cleared)
+	_board.piece_tossed.connect(_on_piece_tossed)
 	_board.start_session()
 
 
 func _process(_delta: float) -> void:
 
 	if _flash_t > 0.0:
+		_flash_active = true
+		queue_redraw()
+	elif _flash_active:
+		# The fade just finished — clear the spent flash and force ONE last redraw so the highlight
+		# doesn't linger painted on the board.
+		_flash_active = false
+		_flash_rows = []
+		_flash_cols = []
 		queue_redraw()
 
 
@@ -125,14 +135,24 @@ func _draw() -> void:
 			else:
 				draw_rect(r, COLOR_BREACH, true)
 				draw_rect(r, COLOR_GRID_LINE, false, 1.0)
-	# The picked-up piece, ghosted at the hovered cell (green = fits, red = won't).
+	# The picked-up piece, ghosted at the hovered cell (green = fits, red = won't). Draw the WHOLE
+	# piece even where it overhangs the grid — so you can always see what you're dragging, on or off
+	# the board. (It reads red while any cell is off the board, since it won't place there.)
 	if _active_index >= 0:
 		var ok : bool = _board.can_place(_active_cells, _hover_cell)
+		# TELEGRAPH: if dropping here would complete rows/columns, glow them gold so the incoming
+		# BLAST is foreseen (same colour the clear flashes in). Only shown for a legal drop.
+		if ok:
+			var pv : Dictionary = _board.preview_clears(_active_cells, _hover_cell)
+			var tg : Color = Color(COLOR_FLASH.r, COLOR_FLASH.g, COLOR_FLASH.b, 0.34)
+			for ty in pv["rows"]:
+				draw_rect(Rect2(GRID_ORIGIN + Vector2(0.0, float(ty) * CELL), Vector2(GRID_W * CELL, CELL)), tg, true)
+			for tx in pv["cols"]:
+				draw_rect(Rect2(GRID_ORIGIN + Vector2(float(tx) * CELL, 0.0), Vector2(CELL, GRID_H * CELL)), tg, true)
 		var col : Color = COLOR_GHOST_OK if ok else COLOR_GHOST_BAD
 		for c in _active_cells:
 			var cell : Vector2i = c + _hover_cell
-			if cell.x >= 0 and cell.x < GRID_W and cell.y >= 0 and cell.y < GRID_H:
-				draw_rect(_cell_rect(cell.x, cell.y), col, true)
+			draw_rect(_cell_rect(cell.x, cell.y), col, true)
 	# Blast flash over the just-cleared rows / columns.
 	if _flash_t > 0.0:
 		var fc : Color = Color(COLOR_FLASH.r, COLOR_FLASH.g, COLOR_FLASH.b, _flash_t * 0.7)
@@ -171,6 +191,13 @@ func _tray_slot_rect(i: int) -> Rect2:
 	return Rect2(Vector2(start_x + i * (TRAY_SLOT_W + TRAY_GAP), TRAY_Y), Vector2(TRAY_SLOT_W, TRAY_SLOT_H))
 
 
+# The hull frame (the playable board area) — a click inside it tries to place; a click outside it
+# (and outside the tray) returns the held piece to the pile.
+func _board_frame_rect() -> Rect2:
+
+	return Rect2(GRID_ORIGIN - Vector2(9.0, 9.0), Vector2(GRID_W * CELL + 18.0, GRID_H * CELL + 18.0))
+
+
 # --- Input -------------------------------------------------------------
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -195,29 +222,54 @@ func _unhandled_input(event: InputEvent) -> void:
 			_rotate_active(false)
 		elif event.keycode == KEY_C:
 			_rotate_active(true)
+		elif event.keycode == KEY_F:
+			_flip_active()
 		elif event.keycode == KEY_T:
 			_on_toss()
 
 
 func _update_hover(mouse: Vector2) -> void:
 
-	_hover_cell = Vector2i(floori((mouse.x - GRID_ORIGIN.x) / CELL), floori((mouse.y - GRID_ORIGIN.y) / CELL))
-	if _active_index >= 0:
-		queue_redraw()
+	if _active_index < 0:
+		return
+	# Centre the held piece's bounding box on the cursor (so the cursor sits in the MIDDLE of the
+	# piece, not at its top-left corner), sized to the piece.
+	var cx : int = 0
+	var cy : int = 0
+	for c in _active_cells:
+		cx = maxi(cx, c.x)
+		cy = maxi(cy, c.y)
+	_hover_cell = Vector2i(
+		roundi((mouse.x - GRID_ORIGIN.x) / CELL - float(cx + 1) * 0.5),
+		roundi((mouse.y - GRID_ORIGIN.y) / CELL - float(cy + 1) * 0.5))
+	queue_redraw()
 
 
 func _on_left_click(mouse: Vector2) -> void:
 
+	# A tray slot: pick it up — or, if it's the piece you're already holding, put it back.
 	for i in _board.tray.size():
 		if _tray_slot_rect(i).has_point(mouse):
-			_pick_up(i)
+			if _active_index == i:
+				_active_index = -1
+				_active_cells = []
+			else:
+				_pick_up(i)
+			queue_redraw()
 			return
-	if _active_index >= 0:
+	if _active_index < 0:
+		return
+	if _board_frame_rect().has_point(mouse):
+		# On the board → lay it down (an illegal spot just keeps it held so you can reposition).
 		_update_hover(mouse)
 		if _board.place(_active_index, _active_cells, _hover_cell):
 			_active_index = -1
 			_active_cells = []
-		queue_redraw()
+	else:
+		# Off the board (and off the tray) → return the piece to the pile, unchanged.
+		_active_index = -1
+		_active_cells = []
+	queue_redraw()
 
 
 func _on_right_click(mouse: Vector2) -> void:
@@ -304,7 +356,20 @@ func _on_lines_cleared(rows: Array, cols: Array, combo: int) -> void:
 		_flash_label.text = "Double!"
 	else:
 		_flash_label.text = "Sealed!"
+	_flash_label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.6))   # gold for a good clear
+	_flash_label.position.y = 40.0
 	_flash_label.modulate.a = 1.0
 	var tw : Tween = create_tween()
 	tw.tween_property(self, "_flash_t", 0.0, 0.4)
 	tw.parallel().tween_property(_flash_label, "modulate:a", 0.0, 0.85)
+
+
+func _on_piece_tossed(penalty: int) -> void:
+
+	_combo_label.text = ""   # the toss broke the combo
+	_flash_label.add_theme_color_override("font_color", Color(1.0, 0.52, 0.42))   # red for a wasted piece
+	_flash_label.text = ("Wasted  -%d" % penalty) if penalty > 0 else "Wasted"
+	_flash_label.position.y = 498.0
+	_flash_label.modulate.a = 1.0
+	var tw : Tween = create_tween()
+	tw.tween_property(_flash_label, "modulate:a", 0.0, 0.9)
