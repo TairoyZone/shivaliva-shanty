@@ -141,12 +141,17 @@ func _setup_phase() -> void:
 		return
 	if BoardingMelee.has_active():
 		# You stepped away from a boarding — it's still being decided (or just was). Get back in the fight;
-		# no station is mountable mid-boarding. The chart holds parked at the swords until the melee's done.
+		# no station is mountable mid-boarding.
 		if BoardingMelee.is_resolved():
 			_say("The boarding's decided, hand — get to the helm to see how yer crew fared.")
 		else:
 			_say("The boarding still rages — get to the helm and rejoin the fight!")
-		_refresh_chart(false)
+		# Show her PARKED AT THE SWORDS (where the boarding fired), not snapped back to the node. Refresh
+		# with sailing=true so her position reads straight from voyage_ship_t (sailing=false would clamp it
+		# back to the node) — then freeze so she holds there instead of sailing on.
+		_refresh_chart(true)
+		if _chart != null:
+			_chart.freeze()
 		return
 	match PlayerState.pillage_phase:
 		1:
