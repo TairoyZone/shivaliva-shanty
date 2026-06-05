@@ -20,8 +20,12 @@ func _ready() -> void:
 	layer = 15   # above gameplay + the hidden HUD (10), below the Leave button / modals (20+)
 	process_mode = Node.PROCESS_MODE_ALWAYS   # keep lines fading even under a tree-pausing modal (the sink card)
 	_box = VBoxContainer.new()
+	# Anchor to the BOTTOM-LEFT corner and grow toward BEGIN so new lines stack UPWARD and the log
+	# tucks into the lower-left like a proper chat feed (was an un-anchored VBox floating mid-left).
+	_box.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_box.offset_left = 18.0
-	_box.offset_top = 332.0
+	_box.offset_bottom = -18.0
 	_box.add_theme_constant_override("separation", 3)
 	_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_box)

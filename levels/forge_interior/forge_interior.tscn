@@ -113,6 +113,8 @@ grow_vertical = 0
 tooltip_text = "The Forge
 
 • Press E near Cinder Troy to talk
+• Press E at the hiring board to take a job
+• Press E at the weapon shop to buy a weapon
 • Walk to the door to step outside"
 focus_mode = 0
 theme_override_font_sizes/font_size = 22

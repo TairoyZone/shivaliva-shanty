@@ -1,6 +1,7 @@
 ## SKIRMISH — the core Tetris board (single-player engine). A standard
 ## falling-block grid: 7 tetrominoes from a 7-bag fall under gravity; you
-## move/rotate/soft-drop/hard-drop them; full rows clear and collapse;
+## move/rotate/soft-drop them (soft-drop-only by design — no hard drop);
+## full rows clear and collapse;
 ## topping out the spawn area ends the run. Pure engine + procedural
 ## [method _draw] rendering — no versus / AI / garbage yet (that's the next
 ## build layer). The scene ([SkirmishScene]) forwards input + reads the
@@ -82,7 +83,6 @@ const KICKS : Array = [[0, 0], [-1, 0], [1, 0], [-2, 0], [2, 0]]
 # Score per simultaneous line clear (×level), and gravity speed per level.
 const LINE_SCORES : Array[int] = [0, 100, 300, 500, 800]
 const SOFT_DROP_POINTS : int = 1
-const HARD_DROP_POINTS : int = 2
 const LINES_PER_LEVEL : int = 10
 ## Soft-drop falls at this FIXED rate (sec/row), independent of level, so holding
 ## down/space is always a smooth, watchable fast-fall — never the near-instant
@@ -371,19 +371,6 @@ func set_soft_drop(on: bool) -> void:
 	if not _soft:
 		_fall_t = 0.0
 	_soft = true
-
-
-func hard_drop() -> void:
-
-	if _over or _piece < 0:
-		return
-	var dropped : int = 0
-	while not _collides(_piece, _rot, _px, _py + 1):
-		_py += 1
-		dropped += 1
-	if dropped > 0:
-		_add_score(dropped * HARD_DROP_POINTS)
-	_lock()
 
 
 # --- Engine ------------------------------------------------------------

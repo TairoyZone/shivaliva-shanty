@@ -73,13 +73,19 @@ func _build_ui() -> void:
 	bar.add_child(_wrap(_moves_label))
 	bar.add_child(_wrap(_gauge_label))
 
-	set_help_text("THE LOFT — keep the falling rock aloft.\n\n"
+	var help : String = ("THE LOFT — keep the falling rock aloft.\n\n"
 		+ "• Move the cursor with the MOUSE or ARROW KEYS.\n"
 		+ "• Aim at the seam between two side-by-side stones and CLICK or press SPACE to swap them.\n"
 		+ "• Line up 3+ of a hue in a row or column to ignite them.\n"
 		+ "• Clear MORE THAN ONE line in a SINGLE swap (a combo: Arrr! / Bingo! / Vegas!) for big LIFT.\n"
 		+ "• Clear stones to climb away from THE STARDUST rising below; dawdle on weak clears and it creeps up to swallow her.\n"
 		+ "• A heavy BALLAST drifts in from above — you can't swap or match it, but clear BENEATH it to sink it into THE STARDUST (or let the Stardust rise to it) and it sloughs for big LIFT.")
+	if PlayerState.voyage_active:
+		help += ("\n\nFLYING A LEG — you're manning the Loft on a pillage. The ship SAILS the chart while you "
+			+ "play; keep her ALOFT to crawl toward the next stop. More open HULL holes flood the Stardust "
+			+ "faster, so a battered hull sinks you sooner. Meet a foe mid-leg and the crossing pauses for a "
+			+ "BOARDING — then you're right back at the Loft for the next leg.")
+	set_help_text(help)
 
 	# Manning the Loft mid-pillage? Keep the voyage chart in view (top-left, clear of the centre
 	# gauge bar and the Leave/? buttons) — and let her SAIL in real time while you work, in sync
@@ -130,11 +136,11 @@ func _on_Board_lift_changed(total_lift: int) -> void:
 
 func _on_Board_moves_changed(remaining: int, total: int) -> void:
 
-	# Standalone: (remaining, cap) — counts DOWN. Voyage continuous: (swaps MADE, -1) — counts UP, no
-	# cap. Label them distinctly so "SWAPS 7" can't mean both "7 left" and "7 spent".
+	# Standalone: (remaining, cap) — counts DOWN ("SWAPS 7" = 7 left). Voyage continuous: (swaps MADE,
+	# -1) — counts UP, no cap; read it as "flown" so it can't be misread as a dwindling limit.
 	_current_swaps = remaining if total < 0 else (total - remaining)
 	if _moves_label != null:
-		_moves_label.text = ("SWAPS USED  %d" % remaining) if total < 0 else ("SWAPS  %d" % remaining)
+		_moves_label.text = ("SWAPS  %d flown" % remaining) if total < 0 else ("SWAPS  %d" % remaining)
 
 
 # The LIFT gauge reads the Stardust: low = aloft (clear sky), mid = steady, high = sinking.

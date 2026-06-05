@@ -60,6 +60,10 @@ var _shake_tween : Tween
 ## + floater all play in front of the player instead of silently
 ## finishing while invisible.
 var _pending_total : int = -1
+## The Backpack quick-menu button + whether the bag took an item in while the HUD was hidden (inside a
+## puzzle) — so the bump replays on return, like the purse's _pending_total. No count, just a bump.
+var _bag_btn : Button
+var _bag_pending : bool = false
 
 func _ready() -> void:
 
@@ -77,6 +81,9 @@ func _ready() -> void:
 	# A trophy earned anywhere (even mid-puzzle, while this HUD is hidden) pops a TrophyToast
 	# on the tree ROOT — not this hideable HUD — so it shows over whatever scene is up.
 	PlayerState.trophy_earned.connect(_on_trophy_earned)
+	# The bag BUMPS when the inventory changes (you picked up wood/ore). If that happened while hidden
+	# (inside a puzzle), replay it on return so the gain isn't silent (see flush_pending_wood_change).
+	PlayerState.inventory_changed.connect(_on_inventory_changed)
 	# Journal button — wire the click and keep its "!" badge in sync with
 	# whether any quest is still open (recompute on every input to a goal).
 	_journal_button.pressed.connect(_toggle_journal)
@@ -176,7 +183,8 @@ func _build_menu() -> void:
 	# Draw the menu beneath the inventory/journal overlays (which come later
 	# in the tree), so opening a panel visually covers the buttons.
 	move_child(menu, _inventory_panel.get_index())
-	menu.add_child(_make_menu_button("Backpack", "items", "Backpack — your items  (Esc)"))
+	_bag_btn = _make_menu_button("Backpack", "items", "Backpack — your items  (Esc)")
+	menu.add_child(_bag_btn)
 	menu.add_child(_make_menu_button("♥  Hearts", "relationships", "Hearties — your bonds with the cast  (R)"))
 	menu.add_child(_make_menu_button("★  Profile", "profile", "Profile — your rank, trophies, and skills"))
 
@@ -272,6 +280,7 @@ func _on_visibility_changed() -> void:
 			_journal_panel.close()
 		return
 	flush_pending_change()
+	flush_pending_wood_change()
 	_refresh_journal()
 
 
@@ -304,6 +313,37 @@ func _on_coins_changed(new_total: int) -> void:
 ## visible again. If coin changes happened while we were hidden,
 ## replays the full count-up + bounce + floater animation so the
 ## player sees the net gain/loss they earned from the puzzle.
+# The bag took an item in — BUMP the Backpack button (no count, just the bounce, per Troy's rule). If
+# the HUD is hidden (inside a puzzle), defer it; flush_pending_wood_change replays it on return.
+func _on_inventory_changed() -> void:
+
+	if visible:
+		_bump_bag()
+	else:
+		_bag_pending = true
+
+
+func _bump_bag() -> void:
+
+	if not is_instance_valid(_bag_btn):
+		return
+	_bag_btn.pivot_offset = _bag_btn.size * 0.5
+	_bag_btn.scale = Vector2.ONE
+	var tw : Tween = create_tween()
+	tw.tween_property(_bag_btn, "scale", Vector2(1.22, 1.22), 0.11).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_bag_btn, "scale", Vector2.ONE, 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+
+
+# Replay a deferred bag bump on the way back to the overworld (a puzzle banked wood/ore while hidden).
+# Called by PuzzleScene._exit_tree + the visibility self-heal — mirrors flush_pending_change for gold.
+func flush_pending_wood_change() -> void:
+
+	if not _bag_pending:
+		return
+	_bag_pending = false
+	_bump_bag()
+
+
 func flush_pending_change() -> void:
 
 	if _pending_total < 0:

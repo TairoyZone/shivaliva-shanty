@@ -105,6 +105,9 @@ func _show_next_line() -> void:
 		_close()
 		return
 	_body_label.text = _pending_lines.pop_front()
+	# On the FINAL line E closes rather than continues — mirror show_lore's "[E] to close" hint.
+	if _pending_lines.is_empty():
+		_hint_label.text = "[E] to close"
 	_panel.visible = true
 
 

@@ -45,6 +45,7 @@ var _flash_t : float = 0.0
 var _flash_active : bool = false
 var _lines_toward_seal : int = 0   # accumulates cleared lines; every PATCHWORKS_LINES_PER_HOLE seals a hull hole
 var _locked : bool = false         # voyage input lock during the boarding "Sail ho!" cry (set by the base)
+var _leaving : bool = false        # standalone leave-celebration in flight — fire once
 
 var _score_label : Label
 var _combo_label : Label
@@ -54,12 +55,18 @@ var _flash_label : Label
 func _ready() -> void:
 
 	super._ready()
-	set_help_text("THE PATCHWORKS — plank the hull\n\n"
+	var help : String = ("THE PATCHWORKS — plank the hull\n\n"
 		+ "• Click a piece in the tray to pick it up (click it again, or click off the board, to put it back)\n"
 		+ "• Mouse-wheel or X / C to rotate · F (or right-click the held piece) to flip\n"
 		+ "• Click the grid to lay it down (green = fits, red = won't)\n"
 		+ "• Fill a whole ROW or COLUMN → it BLASTS clear; clear on back-to-back moves for a combo\n"
-		+ "• Right-click a tray piece (or Toss) to discard one — but a wasted piece costs points + your combo")
+		+ "• Right-click a tray piece (or Toss) to discard one — but a wasted piece costs points + your combo\n\n"
+		+ "Play as long as you like — your best run sets your rank; hit ← Leave when you're done.")
+	if PlayerState.voyage_active:
+		help += ("\n\nMANNING THE PATCHWORKS on a pillage — every line you clear MENDS the hull (fewer holes "
+			+ "means the Loft floods slower next leg). A sound hull's already tidy, but every line still "
+			+ "scores and keeps her that way.")
+	set_help_text(help)
 	_build_hud()
 	_board.grid_changed.connect(_on_grid_changed)
 	_board.tray_changed.connect(_on_tray_changed)
@@ -130,6 +137,18 @@ func _cell_rect(x: int, y: int) -> Rect2:
 	return Rect2(GRID_ORIGIN + Vector2(float(x), float(y)) * CELL + Vector2(2.0, 2.0), Vector2(CELL - 4.0, CELL - 4.0))
 
 
+# One cell of a blasting strip: a bright square that SHRINKS toward its centre as the flash fades, so
+# the cleared plank reads as bursting apart rather than blinking out.
+func _draw_blast_cell(x: int, y: int) -> void:
+
+	var base : Rect2 = _cell_rect(x, y)
+	var s : float = clampf(_flash_t, 0.0, 1.0)
+	var centre : Vector2 = base.position + base.size * 0.5
+	var half : Vector2 = base.size * 0.5 * s
+	var col : Color = Color(COLOR_FLASH.r, COLOR_FLASH.g, COLOR_FLASH.b, clampf(s + 0.25, 0.0, 1.0))
+	draw_rect(Rect2(centre - half, half * 2.0), col, true)
+
+
 func _draw() -> void:
 
 	# Hull frame around the grid.
@@ -164,13 +183,15 @@ func _draw() -> void:
 		for c in _active_cells:
 			var cell : Vector2i = c + _hover_cell
 			draw_rect(_cell_rect(cell.x, cell.y), col, true)
-	# Blast flash over the just-cleared rows / columns.
+	# Blast: the just-cleared cells flash bright + SHRINK away over the flash's life — so the strip is
+	# SEEN to blast clear, not instantly popped to empty (animate-everything).
 	if _flash_t > 0.0:
-		var fc : Color = Color(COLOR_FLASH.r, COLOR_FLASH.g, COLOR_FLASH.b, _flash_t * 0.7)
 		for y in _flash_rows:
-			draw_rect(Rect2(GRID_ORIGIN + Vector2(0.0, float(y) * CELL), Vector2(GRID_W * CELL, CELL)), fc, true)
+			for bx in GRID_W:
+				_draw_blast_cell(bx, y)
 		for x in _flash_cols:
-			draw_rect(Rect2(GRID_ORIGIN + Vector2(float(x) * CELL, 0.0), Vector2(CELL, GRID_H * CELL)), fc, true)
+			for by in GRID_H:
+				_draw_blast_cell(x, by)
 	_draw_tray()
 
 
@@ -359,8 +380,26 @@ func _on_score_changed(s: int) -> void:
 # idempotent leave path is safe.
 func _return_to_launching_scene() -> void:
 
-	PlayerState.record_puzzle_result("patchworks", _board.score)
-	super._return_to_launching_scene()
+	if PlayerState.voyage_active:
+		PlayerState.record_puzzle_result("patchworks", _board.score)
+		super._return_to_launching_scene()
+		return
+	if _leaving:
+		return
+	_leaving = true
+	# Standalone: bank the run + CELEBRATE for a beat (the score + a mastery toast on rank-up) before
+	# heading back — so a Patchworks run pays off like every other puzzle, instead of evaporating.
+	var m : Dictionary = PlayerState.record_puzzle_result("patchworks", _board.score)
+	if _flash_label != null:
+		_flash_label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.6))
+		_flash_label.text = "Hull patched!   %d" % _board.score
+		_flash_label.position.y = 300.0
+		_flash_label.modulate.a = 1.0
+	if m.get("ranked_up", false):
+		add_child(MasteryToast.create(String(m["tier_name"])))
+	await get_tree().create_timer(1.4).timeout
+	if is_instance_valid(self):
+		super._return_to_launching_scene()
 
 
 # --- Voyage station hooks (the shared leg flow lives in [VoyageStationScene]) ----------

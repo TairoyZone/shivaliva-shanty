@@ -89,6 +89,10 @@ func _ready() -> void:
 # as an external entry param. See [[loft-spec]] / [[voyage-loop-research]].
 func _apply_voyage_footing() -> void:
 
+	# Only a real voyage boarding fight seeds footing — a non-voyage Spar duel never
+	# pre-buries a friendly foe with stale voyage state (mirrors skirmish_boarding).
+	if not PlayerState.voyage_active:
+		return
 	var clumps : int = PlayerState.voyage_boarding_seed
 	PlayerState.voyage_boarding_seed = 0
 	for _i in clumps:
@@ -276,8 +280,8 @@ func _build_ui() -> void:
 	ui.layer = 5
 	add_child(ui)
 	var opp_tint : Color = _opponent_profile.portrait_color if _opponent_profile != null else Color(0.85, 0.52, 0.50, 1.0)
-	_you_lines_label = _add_board_header(ui, _player_board, "YOU", Color(0.70, 0.92, 0.74, 1.0), Color(0.95, 0.78, 0.34, 1.0))
-	_opp_lines_label = _add_board_header(ui, _opponent_board, _opponent_name, Color(0.95, 0.74, 0.74, 1.0), opp_tint)
+	_you_lines_label = _add_board_header(ui, _player_board, "YOU", Color(0.70, 0.92, 0.74, 1.0), Color(0.95, 0.78, 0.34, 1.0), _player_weapon)
+	_opp_lines_label = _add_board_header(ui, _opponent_board, _opponent_name, Color(0.95, 0.74, 0.74, 1.0), opp_tint, _opponent_weapon)
 	set_help_text("SKIRMISH — bury your foe in garbage to top them out.\n\n"
 		+ "• ←  → :  move the piece\n"
 		+ "• ↑ :  rotate\n"
@@ -287,9 +291,10 @@ func _build_ui() -> void:
 		+ "they RIPEN into coloured tiles (after a couple of your drops).")
 
 
-# A PORTRAIT + name header + a "garbage sent" line above a board. [param tint] colours the
-# fighter's avatar (their identity hue). Returns the sent label.
-func _add_board_header(ui: CanvasLayer, board: SkirmishBoard, who: String, color: Color, tint: Color) -> Label:
+# A PORTRAIT + weapon swatch + name header + a "garbage sent" line above a board. [param tint]
+# colours the fighter's avatar (their identity hue); [param weapon] tints the small swatch
+# (their equipped weapon, mirroring the boarding header). Returns the sent label.
+func _add_board_header(ui: CanvasLayer, board: SkirmishBoard, who: String, color: Color, tint: Color, weapon: String) -> Label:
 
 	var row : HBoxContainer = HBoxContainer.new()
 	row.position = board.position + Vector2(0.0, -64.0)
@@ -299,6 +304,10 @@ func _add_board_header(ui: CanvasLayer, board: SkirmishBoard, who: String, color
 	face.custom_minimum_size = Vector2(46.0, 46.0)
 	face.setup(who, tint)
 	row.add_child(face)
+	var wpn : ColorRect = ColorRect.new()      # the weapon shown "on" the avatar
+	wpn.custom_minimum_size = Vector2(6.0, 18.0)
+	wpn.color = SkirmishWeapon.color_for(weapon)
+	row.add_child(wpn)
 	var box : VBoxContainer = VBoxContainer.new()
 	box.add_theme_constant_override("separation", 0)
 	row.add_child(box)

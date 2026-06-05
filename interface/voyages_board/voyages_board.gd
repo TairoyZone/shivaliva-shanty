@@ -118,11 +118,12 @@ func _show_list() -> void:
 
 	_clear_content()
 	_content.add_child(_make_title("VOYAGES — PILLAGING WITH A CREW"))
-	_content.add_child(_make_caption("These crews are seeking a hand to pillage the high skies. Sign on for a cut of the booty — or just buy fare for a straight ride."))
-	_content.add_child(_make_fare_row(_destination_island()))
+	_content.add_child(_make_caption("Sign on with a crew for FREE — pillage the high skies for a cut of the booty. Or pay fare below for a straight ride."))
+	# FREE crew rows lead (no gold needed at zero gold); the paid fare ride sits last as the alternative.
 	for crew in CREWS:
 		_content.add_child(_make_crew_row(crew))
 	_content.add_child(_make_caption("You job a single station and fight the boarding; you can't strand yourself."))
+	_content.add_child(_make_fare_row(_destination_island()))
 	var back : Button = _make_button("Never mind", Color(0.95, 0.84, 0.56, 1.0))
 	back.pressed.connect(_on_cancel)
 	_content.add_child(back)
