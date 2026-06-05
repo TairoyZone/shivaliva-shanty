@@ -155,16 +155,18 @@ func _setup_phase() -> void:
 		return
 	match PlayerState.pillage_phase:
 		1:
-			_say("Underway toward %s — hold fast, hand." % _destination())
+			_say("Underway toward %s — man the LOFT or the PATCHWORKS to crew her, or watch her make way." % _destination())
 			_begin_sail()
 		2:
-			_say("Back to the crossing — making way toward %s." % _destination())
+			_say("Back to the crossing toward %s — man a station, or watch her make way." % _destination())
 			_begin_sail()
 		_:
+			# Holding at the node: the captain waits for your WORD to set sail (you set sail first, THEN
+			# crew her on the way — manning a station no longer casts off).
 			if PlayerState.pillage_leg <= 0:
-				_say("Welcome aboard, hand! Man the LOFT to fly her, or the PATCHWORKS to mend the hull — crew her the whole way to %s." % _destination())
+				_say("Welcome aboard, hand! Give the word at the HELM when you're ready to set sail for %s." % _destination())
 			else:
-				_say("Back at the deck — man the LOFT or the PATCHWORKS to crew the rest of the run to %s." % _destination())
+				_say("Holding at the waypoint — give the word at the HELM to set sail on toward %s." % _destination())
 			_refresh_chart(false)
 
 
@@ -205,9 +207,24 @@ func _on_chart_reached_stop() -> void:
 		_resolve_boarding()
 	else:
 		_resolve_calm()
-	_refresh_chart(false)   # update done/haul + hold at the node
+	_refresh_chart(false)   # update done/haul
+	# Post the leg's report; on dismiss she SAILS ON to the next leg (set-sail-once — the deck keeps
+	# crewing the whole route without another captain prompt), or holds at the isle on arrival.
 	if not PlayerState.last_duty_report.is_empty():
-		_show_duty_report()
+		var panel : DutyReportPanel = DutyReportPanel.create(PlayerState.last_duty_report)
+		panel.closed.connect(_on_leg_report_closed)
+		add_child(panel)
+	else:
+		_on_leg_report_closed()
+
+
+# A leg's duty report was dismissed → carry on the crossing (no re-set-sail), or hold at the destination.
+func _on_leg_report_closed() -> void:
+
+	if not _arrived():
+		PlayerState.pillage_phase = 1
+	_setup_phase()   # arrived → "take the plank"; else → "underway" + sail on
+	queue_redraw()
 
 
 # The "Sail ho!" cry + a held beat, then swap to the Skirmish (so the boarding never teleports).
@@ -296,6 +313,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	get_viewport().set_input_as_handled()
 	match _active:
+		"set_sail":
+			_set_sail()
 		"loft":
 			_man_loft()
 		"patchworks":
@@ -330,15 +349,19 @@ func _stations_for_phase() -> Array:
 		return [["rejoin", _iso(HELM_G.x, HELM_G.y)], plank]
 	match PlayerState.pillage_phase:
 		1, 2:
-			return [plank]   # crossing — watch her make way (the boarding fires itself at the swords)
-		_:
+			# Underway — man a station ANY time (or just watch her make way); the plank's always there.
 			return [["loft", _iso(LOFT_G.x, LOFT_G.y)],
 				["patchworks", _iso(PATCHWORKS_G.x, PATCHWORKS_G.y)], plank]
+		_:
+			# Holding at the node — give the word at the helm to set sail (no station until she's underway).
+			return [["set_sail", _iso(HELM_G.x, HELM_G.y)], plank]
 
 
 func _action_label(id: String) -> String:
 
 	match id:
+		"set_sail":
+			return "Set sail!"
 		"loft":
 			return "Man the Loft"
 		"patchworks":
@@ -348,6 +371,16 @@ func _action_label(id: String) -> String:
 		"plank":
 			return "Disembark"
 	return ""
+
+
+# Give the captain the word at the helm — she casts off and sails the route on her OWN from here (the
+# DECK drives the crossing). You man stations as she goes; you don't re-set-sail at each node, she
+# carries on (set-sail-once). The boardings + duty reports fire as she sails.
+func _set_sail() -> void:
+
+	PlayerState.pillage_phase = 1
+	_setup_phase()   # → "underway" + _begin_sail
+	queue_redraw()   # the glow shifts from the helm to the Loft
 
 
 func _man_loft() -> void:
@@ -565,14 +598,15 @@ func _draw() -> void:
 		_draw_cannon(_iso(0.7, gy))
 		_draw_cannon(_iso(float(GW) - 0.7, gy))
 	_draw_chest(_iso(5.4, 5.4))
-	# Glow the ONE station this phase needs (its job is read by the glow, not a tag). While
-	# crossing there's nothing to man — you just watch her make way — so no glow.
-	if not _crossing:
-		_draw_glow(_active_world_pos())
-		# A second halo on the Patchworks when the hull's holed — "mend her here, hand". Suppressed mid-
-		# boarding (the only glow then is the helm, to rejoin).
-		if not _arrived() and not BoardingMelee.has_active() and PlayerState.ship_open_holes() > 0:
-			_draw_glow(_iso(PATCHWORKS_G.x, PATCHWORKS_G.y))
+	# Glow the action this phase needs (read by the glow, not a tag): the helm at a node (set sail /
+	# rejoin), the Loft while underway, the plank on arrival. Shown even while she sails now — you can man
+	# a station any time.
+	_draw_glow(_active_world_pos())
+	# A second halo on the Patchworks when the hull's holed (man it to mend) — but not at the set-sail node
+	# or mid-boarding (where the only glow is the helm).
+	if not _arrived() and not BoardingMelee.has_active() and PlayerState.pillage_phase != 0 \
+			and PlayerState.ship_open_holes() > 0:
+		_draw_glow(_iso(PATCHWORKS_G.x, PATCHWORKS_G.y))
 	# Clean station props (no labels): playable Loft + helm + the flavour props + plank.
 	_draw_prop(_iso(LOFT_G.x, LOFT_G.y), "loft")
 	_draw_prop(_iso(PATCHWORKS_G.x, PATCHWORKS_G.y), "patchworks")
@@ -591,7 +625,9 @@ func _active_world_pos() -> Vector2:
 		return _iso(PLANK_G.x, PLANK_G.y)
 	if BoardingMelee.has_active():
 		return _iso(HELM_G.x, HELM_G.y)   # rejoin the boarding from the helm
-	return _iso(LOFT_G.x, LOFT_G.y)
+	if PlayerState.pillage_phase == 0:
+		return _iso(HELM_G.x, HELM_G.y)   # holding at the node — set sail at the helm
+	return _iso(LOFT_G.x, LOFT_G.y)       # underway — man the Loft
 
 
 # A soft accent halo marking the active station (no text needed).
