@@ -370,33 +370,27 @@ func _build_create_panel() -> void:
 	var min_s : int = int(g["min_seats"])
 	var max_s : int = int(g["max_seats"])
 	if max_s > min_s:
-		var seat_row : HBoxContainer = HBoxContainer.new()
-		seat_row.add_theme_constant_override("separation", 14)
-		seat_row.alignment = BoxContainer.ALIGNMENT_CENTER
-		var minus : Button = _make_button("–", Color(0.95, 0.84, 0.56, 1.0))
-		minus.pressed.connect(_on_create_seats.bind(-1))
-		seat_row.add_child(minus)
-		var lbl : Label = _make_caption("Players:  %d" % _create_seats)
-		lbl.add_theme_font_size_override("font_size", 20)
-		lbl.custom_minimum_size = Vector2(150.0, 0.0)
-		seat_row.add_child(lbl)
-		var plus : Button = _make_button("+", Color(0.95, 0.84, 0.56, 1.0))
-		plus.pressed.connect(_on_create_seats.bind(1))
-		seat_row.add_child(plus)
-		_body.add_child(seat_row)
+		var seat_items : Array = []
+		for n in range(min_s, max_s + 1):
+			seat_items.append("%d players" % n)
+		_body.add_child(_make_dropdown("Players", seat_items, _create_seats - min_s, _on_pick_seats.bind(min_s)))
 	else:
 		_body.add_child(_make_caption("%d players (heads-up)" % min_s))
 
-	# Poker: configure the bet structure, stake (which sets blinds + buy-in range), and turn time —
-	# each a one-click cycler. Other games have no extra config.
+	# Poker: configure the bet structure + stake (which sets blinds + buy-in range), each a DROPDOWN.
+	# Other games have no extra config.
 	if _is_poker():
-		_body.add_child(_make_cycler("Bet structure", PokerConfig.structure_name(_create_structure),
-			_on_cycle_structure))
-		_body.add_child(_make_cycler("Stake  (min bet %d)" % _create_min_bet,
-			"buy-in %d–%dg · blinds %d/%d" % [PokerConfig.buy_in_min(_create_min_bet),
-				PokerConfig.buy_in_max(_create_min_bet), PokerConfig.small_blind(_create_min_bet),
-				PokerConfig.big_blind(_create_min_bet)], _on_cycle_stake))
-		# (Turn-time cycler dropped — it was wired into the config but never enforced anywhere.)
+		var struct_items : Array = []
+		for s in 3:
+			struct_items.append(PokerConfig.structure_name(s))
+		_body.add_child(_make_dropdown("Bet structure", struct_items, _create_structure, _on_pick_structure))
+		var stake_items : Array = []
+		for mb in PokerConfig.STAKE_MIN_BETS:
+			stake_items.append("min %d  ·  blinds %d/%d  ·  buy-in %d–%dg" % [
+				mb, PokerConfig.small_blind(mb), PokerConfig.big_blind(mb),
+				PokerConfig.buy_in_min(mb), PokerConfig.buy_in_max(mb)])
+		var stake_idx : int = PokerConfig.STAKE_MIN_BETS.find(_create_min_bet)
+		_body.add_child(_make_dropdown("Stake", stake_items, maxi(stake_idx, 0), _on_pick_stake))
 
 	var free_check : CheckButton = CheckButton.new()
 	free_check.text = "Free table (just for fun)"
@@ -471,9 +465,9 @@ func _on_create_back() -> void:
 	_render()
 
 
-func _on_create_seats(delta: int) -> void:
+func _on_pick_seats(idx: int, min_s: int) -> void:
 
-	_create_seats = clampi(_create_seats + delta, int(_active["min_seats"]), int(_active["max_seats"]))
+	_create_seats = clampi(min_s + idx, int(_active["min_seats"]), int(_active["max_seats"]))
 	_render()
 
 
@@ -485,35 +479,82 @@ func _on_create_free_toggled(pressed: bool) -> void:
 	_render()
 
 
-# A one-click cycler button "Label:  value  ⟳" for the poker config pickers.
-func _make_cycler(label: String, value: String, cb: Callable) -> Button:
+# A labelled DROPDOWN (OptionButton) for a config picker — a label + a styled selector listing every
+# option at once (no more click-to-cycle). `on_sel` receives the chosen item index.
+func _make_dropdown(label_text: String, items: Array, selected: int, on_sel: Callable) -> Control:
 
-	var btn : Button = _make_button("%s:  %s   ⟳" % [label, value], Color(0.86, 0.92, 1.0, 1.0))
-	btn.pressed.connect(cb)
-	return btn
+	var row : HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var lbl : Label = _make_caption("%s:" % label_text)
+	lbl.add_theme_font_size_override("font_size", 18)
+	lbl.add_theme_color_override("font_color", Color(0.92, 0.86, 0.62, 1.0))
+	row.add_child(lbl)
+	var opt : OptionButton = OptionButton.new()
+	opt.focus_mode = Control.FOCUS_NONE
+	for it in items:
+		opt.add_item(String(it))
+	if items.size() > 0:
+		opt.selected = clampi(selected, 0, items.size() - 1)
+	opt.item_selected.connect(on_sel)
+	_style_option_button(opt)
+	row.add_child(opt)
+	return row
 
 
-func _on_cycle_structure() -> void:
+# Brass/dark theme for an OptionButton + its drop-down popup, to match the parlor panel.
+func _style_option_button(opt: OptionButton) -> void:
 
-	_create_structure = (_create_structure + 1) % 3
+	opt.add_theme_font_size_override("font_size", 17)
+	opt.add_theme_color_override("font_color", Color(0.96, 0.90, 0.66, 1.0))
+	opt.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	opt.add_theme_constant_override("outline_size", 3)
+	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+		var s : StyleBoxFlat = StyleBoxFlat.new()
+		var bg : Color = Color(0.22, 0.14, 0.08, 0.95)
+		if state == "hover":
+			bg = bg.lightened(0.10)
+		elif state == "pressed":
+			bg = bg.darkened(0.12)
+		s.bg_color = bg
+		s.border_color = Color(0.78, 0.58, 0.24, 1.0)
+		s.set_border_width_all(2)
+		s.set_corner_radius_all(8)
+		s.content_margin_left = 16
+		s.content_margin_right = 16
+		s.content_margin_top = 8
+		s.content_margin_bottom = 8
+		opt.add_theme_stylebox_override(state, s)
+	var popup : PopupMenu = opt.get_popup()
+	var panel : StyleBoxFlat = StyleBoxFlat.new()
+	panel.bg_color = Color(0.16, 0.10, 0.05, 0.99)
+	panel.border_color = Color(0.78, 0.58, 0.24, 1.0)
+	panel.set_border_width_all(2)
+	panel.set_corner_radius_all(8)
+	panel.set_content_margin_all(6)
+	popup.add_theme_stylebox_override("panel", panel)
+	popup.add_theme_color_override("font_color", Color(0.90, 0.84, 0.62, 1.0))
+	popup.add_theme_color_override("font_hover_color", Color(1.0, 0.94, 0.6, 1.0))
+	popup.add_theme_font_size_override("font_size", 16)
+	var hov : StyleBoxFlat = StyleBoxFlat.new()
+	hov.bg_color = Color(0.30, 0.20, 0.10, 1.0)
+	hov.set_corner_radius_all(6)
+	popup.add_theme_stylebox_override("hover", hov)
+
+
+func _on_pick_structure(idx: int) -> void:
+
+	_create_structure = clampi(idx, 0, 2)
 	_render()
 
 
-func _on_cycle_stake() -> void:
+func _on_pick_stake(idx: int) -> void:
 
-	var idx : int = PokerConfig.STAKE_MIN_BETS.find(_create_min_bet)
-	_create_min_bet = PokerConfig.STAKE_MIN_BETS[(idx + 1) % PokerConfig.STAKE_MIN_BETS.size()]
+	_create_min_bet = PokerConfig.STAKE_MIN_BETS[clampi(idx, 0, PokerConfig.STAKE_MIN_BETS.size() - 1)]
 	# A higher stake may price you out of a cash buy-in — re-check the force-free lock.
 	_create_locked_free = PlayerState.total_coins < PokerConfig.buy_in_min(_create_min_bet)
 	if _create_locked_free:
 		_create_free = true
-	_render()
-
-
-func _on_cycle_timer() -> void:
-
-	var idx : int = PokerConfig.TURN_TIMES.find(_create_turn_time)
-	_create_turn_time = PokerConfig.TURN_TIMES[(idx + 1) % PokerConfig.TURN_TIMES.size()]
 	_render()
 
 
