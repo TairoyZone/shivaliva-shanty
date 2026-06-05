@@ -364,7 +364,11 @@ func _add_voyage_chart() -> void:
 	layer.layer = 6
 	add_child(layer)
 	var chart : VoyageChart = VoyageChart.new()
-	chart.place_at(layer, false)
+	# Top-left, then nudge DOWN clear of the "The Patchworks" title — the bottom-left corner is taken by
+	# the Leave button and the right by the grid, so the left margin below the title is the clear spot.
+	chart.place_at(layer, true)
+	chart.offset_top += 120.0
+	chart.offset_bottom += 120.0
 	chart.refresh_from_state(false)
 
 
