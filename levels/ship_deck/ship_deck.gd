@@ -85,6 +85,10 @@ func _iso(gx: float, gy: float) -> Vector2:
 
 func _ready() -> void:
 
+	# The deck is the hub every station/fight/report returns to — never inherit a stuck pause from a
+	# panel that ran on the way here, or the player can't move/man and the chart won't sail. Self-heal.
+	if get_tree() != null:
+		get_tree().paused = false
 	pirate_spawn_position = _iso(SPAWN_G.x, SPAWN_G.y)
 	_seed_demo_route_if_unset()
 	super._ready()                 # spawns the Player under YSortNode2D (normal camera)

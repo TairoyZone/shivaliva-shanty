@@ -39,6 +39,11 @@ func _enter_voyage_station() -> void:
 		_setup_fresh_voyage_leg()
 		PlayerState.voyage_leg_lift0 = 0
 		PlayerState.voyage_leg_swaps0 = 0
+		# Zero-distance backstop (mirrors the deck's _begin_sail): if she opens the leg ALREADY at the
+		# node (carried voyage_ship_t >= this leg's goal), reached_stop is edge-triggered + won't re-fire,
+		# and the endless station has no other end condition → resolve now so she can't dead-lock parked.
+		if _voyage_chart != null and not _voyage_chart.needs_sail():
+			call_deferred("_on_voyage_reached_stop")
 
 
 func _build_voyage_chart() -> void:
@@ -132,6 +137,9 @@ func _on_report_closed(arrived: bool) -> void:
 		# Leg done → back to the DECK to pick the next station (man the Loft again, or the PATCHWORKS to
 		# patch the hull — the YPP man-the-stations rhythm). resolve_voyage_leg already advanced the leg +
 		# set pillage_phase 0; the deck re-mans. The ship's holes carry, so a patch lowers next leg's flood.
+		# The duty report PAUSED the tree; make ABSOLUTELY sure we hand the deck back UNPAUSED — a deck
+		# loaded while paused freezes the player (no E to man a station) AND the chart (she stops sailing).
+		get_tree().paused = false
 		get_tree().change_scene_to_file(SHIP_DECK_SCENE)
 
 

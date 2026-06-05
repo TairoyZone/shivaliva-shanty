@@ -18,9 +18,9 @@ const TRAY_CELL : float = 20.0
 ## coupling (playing it MENDS the ship). No-op standalone / on an undamaged hull. See [[ship-condition-research]].
 const PATCHWORKS_LINES_PER_HOLE : int = 3
 const SELF_SCENE : String = "res://puzzles/patchworks/patchworks_scene.tscn"
-## A Patchworks LEG rates on a steady BASELINE duty (the crew flew the Loft while you patched) — the
-## repair's real value is the LOWER flood it buys next leg, not the duty rate. Tunable.
-const PATCHWORKS_BASELINE_SWAPS : int = 8
+## A Patchworks leg's DUTY reflects how well you PATCHED it: the duty RATE = board score / this divisor.
+## Clear nothing this leg → score 0 → Booched; a clean run with combos → Good/Incredible. Tunable.
+const PATCHWORKS_DUTY_DIVISOR : int = 40
 
 const COLOR_HULL : Color = Color(0.30, 0.21, 0.11, 1.0)
 const COLOR_HULL_EDGE : Color = Color(0.16, 0.10, 0.04, 1.0)
@@ -365,12 +365,12 @@ func _return_to_launching_scene() -> void:
 
 # --- Voyage station hooks (the shared leg flow lives in [VoyageStationScene]) ----------
 
-# A Patchworks LEG: the crew flies the Loft at a steady baseline while you patch the hull. The repair's
-# value is the LOWER flood it buys the next Loft leg (holes carry on the ship), not a high duty rate.
+# A Patchworks LEG rates on how well you PATCHED — the board score this leg (lines + combos, minus
+# tosses) over a fixed divisor. Clear nothing → score 0 → Booched. (The repair ALSO carries: holes
+# sealed lower the next Loft leg's flood.) lift doubles as the boarding footing (a well-run ship arrives strong).
 func _leg_performance() -> Dictionary:
 
-	var lift : int = int(PlayerState.DUTY_RATE_FOR_TOP * 0.5 * float(PATCHWORKS_BASELINE_SWAPS))
-	return {"lift": lift, "swaps": PATCHWORKS_BASELINE_SWAPS}
+	return {"lift": _board.score, "swaps": PATCHWORKS_DUTY_DIVISOR}
 
 
 # A patch leg ranks up PATCHWORKS mastery (by board score), not Lofting.
