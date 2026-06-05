@@ -134,14 +134,17 @@ func start(ally_count: int = ALLY_COUNT, foe_count: int = FOE_COUNT) -> void:
 # the resolver after the leg's banked.
 func clear() -> void:
 
+	# Neutralize FIRST (before the deferred queue_free runs): a board that tops out in its last queued
+	# frame would otherwise fire game_over → _on_ko on the emptied roster and drive a spurious resolve.
+	# The handlers all bail on `not _active`, so flip it off up front.
+	_active = false
+	_over = false
+	_player_present = false
 	for c in _combatants:
 		if c != null and is_instance_valid(c.board):
 			c.board.queue_free()
 	_combatants = []
 	_player = null
-	_active = false
-	_over = false
-	_player_present = false
 
 
 # --- Setup -------------------------------------------------------------
@@ -282,7 +285,7 @@ func _ai_act(c: BoardingCombatant) -> void:
 
 func _on_cleared(count: int, src: BoardingCombatant) -> void:
 
-	if _over or not src.alive:
+	if not _active or _over or not src.alive:
 		return
 	var base : int = GARBAGE_FOR_LINES[clampi(count, 0, GARBAGE_FOR_LINES.size() - 1)]
 	if base <= 0:
@@ -352,7 +355,7 @@ func _stack_height(board: SkirmishBoard) -> int:
 
 func _on_ko(_score: int, c: BoardingCombatant) -> void:
 
-	if not c.alive:
+	if not _active or not c.alive:
 		return
 	c.alive = false
 	c.board.defeat()   # freeze + flood the whole stack red so it reads as down
@@ -378,7 +381,7 @@ func _on_ko(_score: int, c: BoardingCombatant) -> void:
 # melee_resolved so whoever's listening (the view if present, else the deck) resolves the voyage leg.
 func _resolve_melee(won: bool) -> void:
 
-	if _over:
+	if not _active or _over:
 		return
 	_over = true
 	_player_won = won

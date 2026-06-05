@@ -1437,6 +1437,7 @@ func clear_save() -> void:
 	ore_stock_changed.emit(0)
 	ships_changed.emit()
 	objective_changed.emit()
+	clear_voyage()   # a New Game wipes any in-flight pillage too (the voyage fields are transient + unsaved)
 	_save()
 
 

@@ -270,7 +270,11 @@ func _on_quit_to_title() -> void:
 	if get_tree() == null:
 		return
 	get_tree().paused = false
-	BoardingMelee.clear()   # don't leave a stepped-away boarding melee ticking on the title
+	# Abandon any in-flight pillage entirely (NOT just the melee): the voyage fields are transient + not
+	# saved, so leaving voyage_active / open_holes / the board snapshot live would bleed into the next run
+	# (a phantom resume on Continue, or a fresh voyage starting already-holed). clear_voyage clears the
+	# boarding melee too.
+	PlayerState.clear_voyage()
 	get_tree().change_scene_to_file("res://main.tscn")
 
 

@@ -73,6 +73,7 @@ var _prompt : Label
 var _captain_label : Label
 var _chart : VoyageChart         # the drawn voyage progress ribbon
 var _crossing : bool = false     # the ship is sailing between stops — stations locked, watch her make way
+var _report_btn : Button         # Duty Report button — hidden mid-boarding (its panel pauses the live melee)
 
 
 # Iso projection, centred so the deck middle sits on the world origin.
@@ -128,6 +129,10 @@ func _seed_demo_route_if_unset() -> void:
 # after the boarding (resume to the node).
 func _setup_phase() -> void:
 
+	# The Duty Report panel PAUSES the tree, which would freeze the live background melee — hide the button
+	# while a boarding's in progress (you can read it again once the leg's banked).
+	if _report_btn != null:
+		_report_btn.visible = not BoardingMelee.has_active()
 	if _arrived():
 		# Voyage's end. Also guards a redundant re-load so the last leg is never re-banked.
 		_say("%s dead ahead — voyage's end! Your cut: %d gold. Take the plank to make port." % [
@@ -467,6 +472,7 @@ func _build_ui() -> void:
 	report_btn.offset_bottom = 52.0
 	report_btn.pressed.connect(_open_duty_report)
 	layer.add_child(report_btn)
+	_report_btn = report_btn
 
 
 func _say(line: String) -> void:
