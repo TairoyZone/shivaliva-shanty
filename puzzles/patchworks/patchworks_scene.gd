@@ -62,6 +62,8 @@ func _ready() -> void:
 	_board.lines_cleared.connect(_on_lines_cleared)
 	_board.piece_tossed.connect(_on_piece_tossed)
 	_board.start_session()
+	if PlayerState.voyage_active:
+		_add_voyage_chart()   # manning the Patchworks AS a voyage station → show the crossing context
 
 
 func _process(_delta: float) -> void:
@@ -352,6 +354,18 @@ func _return_to_launching_scene() -> void:
 
 	PlayerState.record_puzzle_result("patchworks", _board.score)
 	super._return_to_launching_scene()
+
+
+# Manning the Patchworks AS a voyage station → show the voyage CHART (bottom-left, HELD — patching
+# doesn't sail the leg) so it reads as part of the crossing, like the Loft + the deck. See [[voyage-loop-research]].
+func _add_voyage_chart() -> void:
+
+	var layer : CanvasLayer = CanvasLayer.new()
+	layer.layer = 6
+	add_child(layer)
+	var chart : VoyageChart = VoyageChart.new()
+	chart.place_at(layer, false)
+	chart.refresh_from_state(false)
 
 
 func _on_lines_cleared(rows: Array, cols: Array, combo: int) -> void:
