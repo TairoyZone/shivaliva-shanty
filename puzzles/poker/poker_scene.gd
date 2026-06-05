@@ -25,6 +25,11 @@ const CARD_SCENE : PackedScene = preload("res://puzzles/poker/card_sprite.tscn")
 # of the felt, in world coords. Both hole cards and community cards
 # slide outward from this spot so the dealer "lives" at table center.
 const DECK_POSITION : Vector2 = Vector2(640.0, 360.0)
+## The oval table's centre + the seat ring (an ellipse on the rim). Every seat is placed symmetrically
+## around this — seat 0 (you) at bottom-centre, the rest spaced evenly all the way around. See _seat_position.
+const TABLE_CENTER : Vector2 = Vector2(640.0, 348.0)
+const SEAT_RX : float = 488.0
+const SEAT_RY : float = 230.0
 ## Delay between consecutive hole cards during the deal.
 const HOLE_DEAL_STAGGER : float = 0.07
 ## How long one hole card takes to slide from deck to its seat.
@@ -124,33 +129,38 @@ func _ready() -> void:
 	_wire_signals()
 	_action_panel.visible = false
 	_result_panel.visible = false
-	# Sit down + buy in (YPP-style) BEFORE the first deal. A free table just hands out chips.
+	# Sit down (YPP-style: the cast are already in their chairs; YOUR seat sits OPEN until you take it),
+	# then buy in. A free table seats you straight away.
 	if _free_table:
 		_human_buy_in = PokerConfig.buy_in_max(int(_config["min_bet"]))
 		_board.players[0].chips = _human_buy_in
 		_sat_down = true
 		_board.start_new_hand()
 	else:
-		_show_buy_in_dialog()
+		_show_sit_prompt()
 
 
-# Brass-rim green felt covering the table area. Drawn here so we don't
-# need an extra felt-drawer node.
+# The OVAL (racetrack) poker table — a stadium shape (a central rectangle capped by a semicircle at
+# each end), layered walnut rail → brass inlay → green felt → inner shade, so players sit symmetrically
+# around its rim (see _seat_position). Drawn here so we don't need a separate felt node.
 func _draw() -> void:
 
-	var center : Vector2 = Vector2(640.0, 360.0)
-	var size : Vector2 = Vector2(1120.0, 560.0)
-	var outer : Rect2 = Rect2(center - size * 0.5, size)
-	# Walnut frame.
-	draw_rect(outer, Color(0.30, 0.20, 0.10, 1.0), true)
-	# Brass inlay between frame and felt.
-	var brass_inset : Rect2 = outer.grow(-6.0)
-	draw_rect(brass_inset, Color(0.78, 0.58, 0.24, 1.0), true)
-	# Green felt interior.
-	var felt : Rect2 = outer.grow(-14.0)
-	draw_rect(felt, Color(0.14, 0.36, 0.22, 1.0), true)
-	# Crisp outer outline.
-	draw_rect(outer, Color(0.18, 0.10, 0.05, 1.0), false, 2.0)
+	_draw_stadium(TABLE_CENTER, Vector2(1016.0, 482.0), Color(0.30, 0.20, 0.10, 1.0))   # walnut rail
+	_draw_stadium(TABLE_CENTER, Vector2(1000.0, 466.0), Color(0.78, 0.58, 0.24, 1.0))   # brass inlay
+	_draw_stadium(TABLE_CENTER, Vector2(972.0, 438.0), Color(0.14, 0.36, 0.22, 1.0))    # green felt
+	_draw_stadium(TABLE_CENTER, Vector2(872.0, 350.0), Color(0.12, 0.31, 0.19, 1.0))    # inner shade
+
+
+# Draw a filled STADIUM (racetrack) — a central rectangle capped by a semicircle at each end — centred
+# at `c`, overall size `sz` (the caps' radius is sz.y/2). Layered, these compose the oval table.
+func _draw_stadium(c: Vector2, sz: Vector2, color: Color) -> void:
+
+	var r : float = sz.y * 0.5
+	var mid : float = maxf(sz.x * 0.5 - r, 0.0)
+	if mid > 0.0:
+		draw_rect(Rect2(c.x - mid, c.y - r, mid * 2.0, r * 2.0), color, true)
+	draw_circle(Vector2(c.x - mid, c.y), r, color)
+	draw_circle(Vector2(c.x + mid, c.y), r, color)
 
 
 # --- Setup -------------------------------------------------------------
@@ -197,50 +207,69 @@ func _stamp_board_config() -> void:
 func _build_seat_widgets() -> void:
 
 	var total : int = _board.players.size()
-	var opp_scale : float = _opponent_scale(total)
+	var seat_scale : float = _seat_scale(total)
 	for i in total:
 		var seat : PokerSeat = SEAT_SCENE.instantiate()
 		$Table.add_child(seat)
-		# The human (seat 0) stays full-size so their hand is always readable; opponents shrink as the
-		# table fills so the (large) panel+cards footprints never collide. Cards/deal honour the scale.
-		seat.scale = Vector2.ONE if i == 0 else Vector2(opp_scale, opp_scale)
+		# UNIFORM size — every seat (you + opponents alike) shares ONE scale, shrinking together only
+		# as the table fills so a packed felt never overlaps. Cards/deal honour the scale.
+		seat.scale = Vector2(seat_scale, seat_scale)
 		seat.position = _seat_position(i, total)
 		seat.bind_to(_board.players[i])
 		seat.hole_cards_face_up = _board.players[i].is_human
 		_seats.append(seat)
 
 
-# Opponent seats shrink as the table fills so even a packed felt never overlaps. The schedule is
-# tuned (verified collision-free for 2..10 seats against the real 220×184 panel+card footprint) so
-# the human stays 1.0 and opponents only shrink once 7+ are seated. See _seat_position.
-func _opponent_scale(total: int) -> float:
+# One UNIFORM scale for EVERY seat — the human is never bigger than the opponents (they're equals).
+# Full size up to a 6-handed table; past that everyone shrinks TOGETHER so a packed oval never overlaps.
+func _seat_scale(total: int) -> float:
 
 	if total <= 6:
 		return 1.0
 	if total == 7:
-		return 0.88
+		return 0.92
 	if total == 8:
-		return 0.78
+		return 0.85
 	if total == 9:
-		return 0.66
-	return 0.55   # 10 (only reachable with future filler NPCs — the 8-cast tops out at 9)
+		return 0.80
+	return 0.72   # 10 (only reachable with future filler NPCs — the 8-cast tops out at 9)
 
 
-# Place seat `i` of `total` around the felt. Seat 0 (the human) sits bottom-centre; the opponents arc
-# across the TOP on a wide ellipse, skipping a gap around the bottom so the lower-right corner stays
-# clear of the human's action/result panel. Constants verified collision-free for 2..10 seats.
+# Place seat `i` of `total` SYMMETRICALLY around the oval's rim. Seat 0 (the human) sits bottom-centre;
+# the rest are spaced EVENLY all the way around the ellipse (PI/2, screen y-down, is the bottom), so the
+# table reads like a real poker oval with every player seated around it — no top-clustering, no gap.
 func _seat_position(i: int, total: int) -> Vector2:
 
-	if i == 0 or total <= 1:
-		return Vector2(640.0, 575.0)   # human, bottom-centre (left of the action panel at x≥800)
-	const BOTTOM_GAP : float = 1.35   # radians kept clear on each side of bottom-centre
-	var span : float = TAU - 2.0 * BOTTOM_GAP
-	var slot : float = (float(i - 1) + 0.5) / float(maxi(total - 1, 1))
-	var angle : float = (PI * 0.5 + BOTTOM_GAP) + span * slot
-	return Vector2(640.0, 360.0) + Vector2(cos(angle) * 530.0, sin(angle) * 300.0)
+	var angle : float = PI * 0.5 + float(i) / float(maxi(total, 1)) * TAU
+	return TABLE_CENTER + Vector2(cos(angle) * SEAT_RX, sin(angle) * SEAT_RY)
 
 
-# --- Buy-in (sit down) ------------------------------------------------
+# --- Sit down + buy-in ------------------------------------------------
+
+# YPP-style sit-down: the cast are already in their chairs; YOUR seat (bottom-centre) sits OPEN with a
+# "Sit Here" button until you take it. Taking it opens the buy-in dialog, which deals you in.
+func _show_sit_prompt() -> void:
+
+	if _seats.is_empty():
+		_show_buy_in_dialog()
+		return
+	_seats[0].visible = false   # your chair is empty until you sit down
+	var btn : Button = _dlg_button("✦  Sit Here", Color(0.82, 1.0, 0.6, 1.0))
+	btn.add_theme_font_size_override("font_size", 20)
+	var sz : Vector2 = Vector2(176.0, 56.0)
+	btn.size = sz
+	btn.position = _seat_position(0, _seats.size()) - sz * 0.5
+	btn.pressed.connect(_on_sit_here.bind(btn))
+	$UI.add_child(btn)
+
+
+func _on_sit_here(btn: Button) -> void:
+
+	btn.queue_free()
+	if not _seats.is_empty():
+		_seats[0].visible = true
+	_show_buy_in_dialog()
+
 
 # Pop the YPP-style "Buy into the game?" dialog before the first deal: a slider over the stake's
 # 10×..100× buy-in range (capped at the gold you actually have). Buy In charges the gold + seats you;
