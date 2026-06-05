@@ -329,11 +329,15 @@ func _man_loft() -> void:
 	get_tree().change_scene_to_file(LOFT_SCENE)
 
 
-# Man the PATCHWORKS — the YPP-carpentry reskin: a core voyage station that MENDS this ship's hull
-# (every ~3 cleared lines seals a hole), so she floods slower at the Loft. A side station, NOT a leg:
-# it does NOT advance the voyage (no pillage_phase change) — repair, then return to the deck.
+# Man the PATCHWORKS — the YPP-carpentry reskin, a CORE voyage station. Manning it FLIES A LEG (the crew
+# sails the Loft at a steady baseline while YOU mend the hull — ~3 cleared lines seal a hole), so it
+# sails + resolves + returns to the deck exactly like the Loft (pillage_phase=1, the same machinery via
+# VoyageStationScene). Holes carry on the ship, so a patch leg lowers the next Loft leg's flood.
 func _man_patchworks() -> void:
 
+	PlayerState.last_loft_lift = 0
+	PlayerState.last_loft_swaps = 0   # reset the lift/swaps PAIR (the rate's denominator), like _man_loft
+	PlayerState.pillage_phase = 1
 	PlayerState.puzzle_return_scene = SELF_SCENE
 	get_tree().change_scene_to_file(PATCHWORKS_SCENE)
 

@@ -55,6 +55,26 @@ func start_session() -> void:
 	grid_changed.emit()
 
 
+## Snapshot the board to carry across a boarding (the voyage-station restore). Transient (in-memory).
+func serialize() -> Dictionary:
+
+	return {"grid": grid.duplicate(true), "tray": tray.duplicate(true),
+		"score": score, "combo": combo, "lines_sealed": lines_sealed}
+
+
+## Rebuild from a [method serialize] snapshot after a boarding.
+func restore(state: Dictionary) -> void:
+
+	grid = (state.get("grid", []) as Array).duplicate(true)
+	tray = (state.get("tray", []) as Array).duplicate(true)
+	score = int(state.get("score", 0))
+	combo = int(state.get("combo", 0))
+	lines_sealed = int(state.get("lines_sealed", 0))
+	grid_changed.emit()
+	tray_changed.emit()
+	score_changed.emit(score)
+
+
 ## Can `oriented_cells` (already rotated/flipped + normalized) drop at grid `offset` so every cell
 ## lands IN-BOUNDS on an empty hull cell (no spill off the grid, no overlap)?
 func can_place(oriented_cells: Array, offset: Vector2i) -> bool:

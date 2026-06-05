@@ -2,7 +2,7 @@
 ## piece from the tray, rotate/flip it, drop it on the 8×8 hull grid (no overlap); fill a whole ROW or
 ## COLUMN and it BLASTS clear (a sealed strip). Endless; toss a piece that won't fit. Renders the grid
 ## + tray here and drives the logical [PatchworksBoard]. See [[patchworks-spec]].
-extends PuzzleScene
+extends VoyageStationScene
 
 
 const GRID_W : int = 8
@@ -17,6 +17,10 @@ const TRAY_CELL : float = 20.0
 ## Every this-many cleared lines seals ONE hull hole on the active ship — the Patchworks→condition
 ## coupling (playing it MENDS the ship). No-op standalone / on an undamaged hull. See [[ship-condition-research]].
 const PATCHWORKS_LINES_PER_HOLE : int = 3
+const SELF_SCENE : String = "res://puzzles/patchworks/patchworks_scene.tscn"
+## A Patchworks LEG rates on a steady BASELINE duty (the crew flew the Loft while you patched) — the
+## repair's real value is the LOWER flood it buys next leg, not the duty rate. Tunable.
+const PATCHWORKS_BASELINE_SWAPS : int = 8
 
 const COLOR_HULL : Color = Color(0.30, 0.21, 0.11, 1.0)
 const COLOR_HULL_EDGE : Color = Color(0.16, 0.10, 0.04, 1.0)
@@ -40,6 +44,7 @@ var _flash_cols : Array = []
 var _flash_t : float = 0.0
 var _flash_active : bool = false
 var _lines_toward_seal : int = 0   # accumulates cleared lines; every PATCHWORKS_LINES_PER_HOLE seals a hull hole
+var _locked : bool = false         # voyage input lock during the boarding "Sail ho!" cry (set by the base)
 
 var _score_label : Label
 var _combo_label : Label
@@ -63,7 +68,7 @@ func _ready() -> void:
 	_board.piece_tossed.connect(_on_piece_tossed)
 	_board.start_session()
 	if PlayerState.voyage_active:
-		_add_voyage_chart()   # manning the Patchworks AS a voyage station → show the crossing context
+		_enter_voyage_station()   # VoyageStationScene: build + SAIL the chart, then this leg's flow
 
 
 func _process(_delta: float) -> void:
@@ -208,6 +213,8 @@ func _board_frame_rect() -> Rect2:
 
 func _unhandled_input(event: InputEvent) -> void:
 
+	if _locked:
+		return   # input locked during the boarding cry (the base snapshots the grid right after)
 	if _awaiting_dismiss:
 		super._unhandled_input(event)
 		return
@@ -356,20 +363,53 @@ func _return_to_launching_scene() -> void:
 	super._return_to_launching_scene()
 
 
-# Manning the Patchworks AS a voyage station → show the voyage CHART (bottom-left, HELD — patching
-# doesn't sail the leg) so it reads as part of the crossing, like the Loft + the deck. See [[voyage-loop-research]].
-func _add_voyage_chart() -> void:
+# --- Voyage station hooks (the shared leg flow lives in [VoyageStationScene]) ----------
 
-	var layer : CanvasLayer = CanvasLayer.new()
-	layer.layer = 6
-	add_child(layer)
-	var chart : VoyageChart = VoyageChart.new()
-	# Top-left, then nudge DOWN clear of the "The Patchworks" title — the bottom-left corner is taken by
-	# the Leave button and the right by the grid, so the left margin below the title is the clear spot.
-	chart.place_at(layer, true)
-	chart.offset_top += 120.0
-	chart.offset_bottom += 120.0
-	chart.refresh_from_state(false)
+# A Patchworks LEG: the crew flies the Loft at a steady baseline while you patch the hull. The repair's
+# value is the LOWER flood it buys the next Loft leg (holes carry on the ship), not a high duty rate.
+func _leg_performance() -> Dictionary:
+
+	var lift : int = int(PlayerState.DUTY_RATE_FOR_TOP * 0.5 * float(PATCHWORKS_BASELINE_SWAPS))
+	return {"lift": lift, "swaps": PATCHWORKS_BASELINE_SWAPS}
+
+
+# A patch leg ranks up PATCHWORKS mastery (by board score), not Lofting.
+func _leg_mastery() -> Dictionary:
+
+	return {"id": "patchworks", "score": _board.score}
+
+
+func _snapshot_voyage_state() -> Dictionary:
+
+	var d : Dictionary = _board.serialize()
+	d["lines_toward_seal"] = _lines_toward_seal   # carry partial hole-seal progress across the boarding
+	return d
+
+
+func _restore_voyage_state(state: Dictionary) -> void:
+
+	_board.restore(state)
+	_lines_toward_seal = int(state.get("lines_toward_seal", 0))
+	_active_index = -1   # the held piece was freed by the scene swap
+	_active_cells = []
+
+
+# Chart top-left, nudged DOWN clear of the "The Patchworks" title (the Leave button owns bottom-left).
+func _voyage_chart_placement(layer: CanvasLayer) -> void:
+
+	_voyage_chart.place_at(layer, true)
+	_voyage_chart.offset_top += 120.0
+	_voyage_chart.offset_bottom += 120.0
+
+
+func _self_scene() -> String:
+
+	return SELF_SCENE
+
+
+func _lock_station_input(on: bool) -> void:
+
+	_locked = on
 
 
 func _on_lines_cleared(rows: Array, cols: Array, combo: int) -> void:

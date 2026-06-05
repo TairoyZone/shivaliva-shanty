@@ -292,10 +292,11 @@ var voyage_active : bool = false
 ## The voyage chart sloop's live position (0..1 along the whole route). Persisted across the
 ## deck↔Loft scene swaps so she keeps sailing CONTINUOUSLY instead of snapping back each load.
 var voyage_ship_t : float = 0.0
-## The Loft is ONE continuous station for the whole crossing. A boarding swaps to the Skirmish scene
-## (freeing the board), so we SNAPSHOT it here (LoftBoard.serialize) and RESTORE it on return — the
-## same stones, lift + Stardust carry through. Empty = no snapshot pending (fresh board).
-var loft_board_state : Dictionary = {}
+## Snapshot of WHICHEVER voyage station you're manning (the Loft OR the Patchworks), carried across a
+## boarding: a fight swaps to the Skirmish scene (freeing the board), so we serialize the station's
+## board here + restore it on return. Only ONE station is manned per leg, so one shared key never
+## collides. Empty = no snapshot pending (fresh board). See [VoyageStationScene].
+var voyage_station_state : Dictionary = {}
 ## Per-leg measurement baseline: the CUMULATIVE lift + swaps at the current leg's START. The leg's
 ## duty rating = (current − this) ÷ swaps-this-leg, so each leg's report rates THAT stretch even
 ## though the board (and its running totals) carry straight across legs + boardings.
@@ -331,7 +332,7 @@ const DUTY_RATE_FOR_TOP : float = 12.0
 # Resolve one voyage leg (shared by the Loft cockpit and the ship deck): bank the cut, snapshot
 # the duty report (your row rated on lift-per-swap), log the leg, and advance / mark arrival.
 # Returns {arrived:bool, cut:int, outcome_line:String}.
-func resolve_voyage_leg(is_fight: bool, won: bool, lift: int, swaps: int) -> Dictionary:
+func resolve_voyage_leg(is_fight: bool, won: bool, lift: int, swaps: int, mastery_id: String = "loft", mastery_score: int = -1) -> Dictionary:
 
 	# Gold = your CUT OF THE PLUNDER from DEFEATING a crew (pirates / marines), the YPP way — NOT
 	# a payout for reaching a waypoint. A calm stretch is just sailing: no fight, no plunder. Each
@@ -350,9 +351,9 @@ func resolve_voyage_leg(is_fight: bool, won: bool, lift: int, swaps: int) -> Dic
 	var score01 : float = clampf((float(lift) / maxf(1.0, float(swaps))) / DUTY_RATE_FOR_TOP, 0.0, 1.0)
 	if not pillage_duty_crew.is_empty():
 		last_duty_report = DutyReport.snapshot(pillage_duty_crew, score01)
-	# Voyage legs feed the SAME high-water-mark Loft mastery as standalone play (the new primary
-	# way to fly the Loft), so it still ranks up. Silent — no mid-voyage toast.
-	record_puzzle_result("loft", lift)
+	# A leg feeds its STATION's high-water-mark mastery (Loft legs → Lofting by lift; Patchworks legs →
+	# Patchworks by board score). Defaults to Lofting/lift. Silent — no mid-voyage toast.
+	record_puzzle_result(mastery_id, mastery_score if mastery_score >= 0 else lift)
 	pillage_log.append({"leg": pillage_leg, "type": ("fight" if is_fight else "calm"),
 		"won": won, "lift": lift, "swaps": swaps, "gold": cut})
 
@@ -481,7 +482,7 @@ func clear_voyage() -> void:
 	pillage_duty_crew = []
 	last_duty_report = []
 	pillage_encounter_pos = []
-	loft_board_state = {}
+	voyage_station_state = {}
 	voyage_leg_lift0 = 0
 	voyage_leg_swaps0 = 0
 	voyage_boarding_seed = 0   # don't bleed a stale footing seed into the next (maybe friendly) Skirmish
