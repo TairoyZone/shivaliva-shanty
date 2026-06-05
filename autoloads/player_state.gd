@@ -441,8 +441,8 @@ func cash_out_voyage() -> int:
 const SINK_REPAIR_TOLL : int = 80
 
 ## The ship SANK on a fight leg — LOST IN THE STARDUST. Forfeit the un-cashed booty pool (we DON'T
-## cash out), charge a gold tow/repair toll, and clear the voyage — which mends the hull on disembark
-## (S3a), so she limps home patched, no death spiral. The owned-ship DEED is KEPT (earn-and-keep).
+## cash out), charge a gold TOW toll, and WRECK her (max holes) — she limps home and must be mended at
+## the Patchworks before sailing again. The owned-ship DEED is KEPT (earn-and-keep).
 ## Returns {forfeited, toll, home} so the Loft can show the loss + relocate. See [[ship-condition-research]].
 func sink_voyage() -> Dictionary:
 
@@ -450,9 +450,10 @@ func sink_voyage() -> Dictionary:
 	var toll : int = mini(SINK_REPAIR_TOLL, total_coins)   # can't drive the purse negative
 	if toll > 0:
 		add_coins(-toll, "Towed home from the Stardust")
+	wreck_active_ship()   # she arrives home WRECKED (max holes) — mend her at the Patchworks before sailing again
 	log_event("LOST IN THE STARDUST — she went under", Color(1.0, 0.5, 0.5))
 	var home : String = voyage_home_scene if not voyage_home_scene.is_empty() else "res://levels/shore/shore.tscn"
-	clear_voyage()   # forfeits the pool (no cash-out) + mends the hull
+	clear_voyage()   # forfeits the pool (no cash-out); the wreck PERSISTS (no auto-mend)
 	return {"forfeited": forfeited, "toll": toll, "home": home}
 
 
@@ -478,10 +479,8 @@ func clear_voyage() -> void:
 	voyage_leg_lift0 = 0
 	voyage_leg_swaps0 = 0
 	voyage_boarding_seed = 0   # don't bleed a stale footing seed into the next (maybe friendly) Skirmish
-	# Generous PORT REPAIR (MVP): the active ship is mended on disembark, so holes escalate WITHIN a
-	# voyage but a fresh one starts clean — no death spiral. S6 turns this into a real repair (a
-	# Patchworks job / gold cost) + true cross-voyage persistence. See [[ship-condition-research]].
-	_set_open_holes(0)
+	# Holes now PERSIST across voyages (S6) — NO free disembark mend. The player repairs at the
+	# Skydock's Patchworks post (the "Mend the Hull" station). See [[ship-condition-research]].
 
 ## Transient: the chosen Skirmish-duel opponent's NPC resource path. Set by the
 ## Spar post's challenge picker; consumed (and cleared) by SkirmishDuel on load.

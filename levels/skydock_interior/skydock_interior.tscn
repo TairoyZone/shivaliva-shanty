@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://blr4e33qxprt2" path="res://levels/door/door.tscn" id="3_door"]
 [ext_resource type="PackedScene" uid="uid://c84w318i58qgr" path="res://components/npc/npc.tscn" id="4_npc"]
 [ext_resource type="PackedScene" path="res://buildings/skydock/sky_helm/sky_helm.tscn" id="5_helm"]
+[ext_resource type="PackedScene" path="res://buildings/skydock/patchworks_post/patchworks_post.tscn" id="6_patch"]
 
 [sub_resource type="StyleBoxFlat" id="banner_style"]
 content_margin_left = 28.0
@@ -50,6 +51,9 @@ portrait_color = Color(0.5, 0.5, 0.62, 1)
 
 [node name="SkyHelm" parent="YSortNode2D" instance=ExtResource("5_helm")]
 position = Vector2(120, 24)
+
+[node name="PatchworksPost" parent="YSortNode2D" instance=ExtResource("6_patch")]
+position = Vector2(-60, 40)
 
 [node name="DoorOut" parent="YSortNode2D" instance=ExtResource("3_door")]
 position = Vector2(299, 150)
