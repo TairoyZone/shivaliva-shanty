@@ -133,7 +133,7 @@ tooltip_text = "The Inn
 • Press E at a table to find an open seat (Gem Drop · Poker)
 • Press E near any of the folk to talk
 • Walk to the door to step outside
-• ESC — back to Cradle Rock"
+• ESC — open your backpack"
 focus_mode = 0
 theme_override_font_sizes/font_size = 22
 text = "?"

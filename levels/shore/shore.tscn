@@ -74,8 +74,6 @@ position = Vector2(-456, -320)
 target_scene = "res://levels/forest/forest.tscn"
 target_spawn_anchor = "ToShore"
 marker_label = "To the Grove"
-interact_message = ""
-spawn_offset = Vector2(0, 60)
 
 [node name="Trees" type="Node2D" parent="YSortNode2D/ToForest" unique_id=2116011873]
 y_sort_enabled = true
@@ -110,8 +108,6 @@ position = Vector2(456, -320)
 target_scene = "res://levels/mine/mine.tscn"
 target_spawn_anchor = "ToShore"
 marker_label = "To the Mine"
-interact_message = ""
-spawn_offset = Vector2(0, 60)
 
 [node name="Boulders" type="Node2D" parent="YSortNode2D/ToMine" unique_id=1520059860]
 y_sort_enabled = true
@@ -189,8 +185,7 @@ tooltip_text = "Cradle Rock
 
 • WASD / arrow keys — 8-direction iso movement
 • Walk near a door and press E to enter
-• Walls block you; paint the rock in the editor
-• ESC — return to the title screen"
+• ESC — open your backpack"
 focus_mode = 0
 theme_override_font_sizes/font_size = 22
 text = "?"

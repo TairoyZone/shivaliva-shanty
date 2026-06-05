@@ -53,7 +53,13 @@ var _overflow_lost : int = 0
 func _ready() -> void:
 
 	super._ready()
-	set_help_text("← → move    ↑ rotate ccw    ↓ rotate cw    SPACE drop faster (hold)")
+	set_help_text("Lumberjacking — work the felled wood\n\n"
+		+ "• ← → move the falling pair  ·  ↑ rotate ccw  ·  ↓ rotate cw  ·  SPACE drop faster (hold)\n"
+		+ "• Match 3+ of the SAME wood (row, column, or bend) to SHATTER it — that's your score\n"
+		+ "• Pack a 2×2 or bigger square of one wood and it FUSES into planks — that's your wood haul\n"
+		+ "• Chain shatters back-to-back for combo score\n"
+		+ "• Knots are junk — they won't clear, so build around them\n"
+		+ "• Let the pile reach the top and the shift's over")
 	_board.score_changed.connect(_on_score_changed)
 	_board.wood_changed.connect(_on_wood_changed)
 	_board.session_ended.connect(_on_session_ended)

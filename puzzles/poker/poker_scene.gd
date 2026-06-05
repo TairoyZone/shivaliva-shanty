@@ -118,7 +118,9 @@ func _ready() -> void:
 	set_help_text("Hold 'em Poker — Texas Hold'em\n\n"
 		+ "• Click action buttons (Fold / Check / Call / Bet / Raise / All-In)\n"
 		+ "• Slide the bet amount on raises\n"
-		+ "• Best 5-card hand from your 2 hole cards + 5 community cards wins")
+		+ "• Best 5-card hand from your 2 hole cards + 5 community cards wins\n\n"
+		+ "• Your chips ARE gold (1:1) — buy in, then Cash Out your whole stack when you Leave\n"
+		+ "• Bust and you forfeit your buy-in. Free tables risk no gold (rapport only)")
 	var setup : Dictionary = PlayerState.consume_lobby_setup()
 	_free_table = bool(setup.get("free", false))
 	_lobby_opponents = NpcRegistry.profiles_from_paths(setup.get("seated_paths", []))

@@ -143,9 +143,9 @@ func _setup_phase() -> void:
 			_begin_sail()
 		_:
 			if PlayerState.pillage_leg <= 0:
-				_say("Welcome aboard, hand! Man the Loft, then we make for %s." % _destination())
+				_say("Welcome aboard, hand! Man the LOFT to fly her, or the PATCHWORKS to mend the hull — crew her the whole way to %s." % _destination())
 			else:
-				_say("Waypoint made — man the Loft for the next stretch toward %s." % _destination())
+				_say("Back at the deck — man the LOFT or the PATCHWORKS to crew the rest of the run to %s." % _destination())
 			_refresh_chart(false)
 
 
@@ -318,7 +318,7 @@ func _action_label(id: String) -> String:
 		"loft":
 			return "Man the Loft"
 		"patchworks":
-			return "Man the Patchworks" if PlayerState.ship_open_holes() > 0 else "Patchworks  (hull sound)"
+			return "Man the Patchworks" if PlayerState.ship_open_holes() > 0 else "Mend at the Patchworks"
 		"plank":
 			return "Disembark"
 	return ""

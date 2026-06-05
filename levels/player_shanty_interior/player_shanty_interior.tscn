@@ -93,9 +93,10 @@ grow_horizontal = 0
 grow_vertical = 0
 tooltip_text = "Your Shanty
 
+• WASD / arrow keys to move — press E to use things
 • Press E near the bed to interact
 • Walk to the door to step outside
-• ESC — back to Cradle Rock"
+• ESC — open your backpack"
 focus_mode = 0
 theme_override_font_sizes/font_size = 22
 text = "?"

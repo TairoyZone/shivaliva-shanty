@@ -14,14 +14,15 @@ const TITLE_TEXT : String = "WELCOME TO CRADLE ROCK"
 
 const BODY_TEXT : String = (
 	"This little shanty is yours now, newcomer.\n\n"
-	+ "Every job on Cradle Rock is a puzzle, and the folk pay good gold for a hand. Your "
-	+ "quickest road to the skies: head to the SKYDOCK and take the helm — sign onto a "
-	+ "crew and sail a jobbing voyage. No ship of your own needed yet; a few good voyages "
-	+ "among the brigands will win you the gold for your very first one.\n\n"
-	+ "Fancy warming up first? Cogwise Godfrey's Workshop and Cinder Troy's Forge always "
-	+ "need hands, and there's coin at the Inn's parlor tables.\n\n"
-	+ "Step outside when you're ready — and check your OBJECTIVES any time via the ! button "
-	+ "up top (or press J) to see what to aim for next.")
+	+ "Move with WASD or the arrow keys, and press E to open doors, talk to folk, and work any station.\n\n"
+	+ "Every job on Cradle Rock is a puzzle, and the folk pay good gold for a hand. Warm up wherever you "
+	+ "fancy — lend a hand at Cogwise Godfrey's Workshop or Cinder Troy's Forge, or take a seat at the "
+	+ "Inn's parlor tables.\n\n"
+	+ "When you've found your feet, your road to the skies is the SKYDOCK: take the helm, sign onto a "
+	+ "crew, and sail a jobbing voyage. No ship of your own needed yet — a few good voyages among the "
+	+ "brigands will win you the gold for your very first one.\n\n"
+	+ "Step outside when you're ready — and check your OBJECTIVES any time via the ! button up top "
+	+ "(or press J) to see what to aim for next.")
 
 
 func _ready() -> void:
