@@ -71,6 +71,14 @@ const SKY : Color = Color(0.34, 0.50, 0.72, 1.0)
 const STATION_BG : Color = Color(0.18, 0.25, 0.38, 0.92)
 const STATION_LIVE : Color = Color(0.66, 0.90, 1.0, 1.0)
 const STATION_IDLE : Color = Color(0.60, 0.64, 0.76, 1.0)
+## Extra wood/sail tones for the aesthetic pass (procedural, no imported art).
+const HULL_SIDE_DARK : Color = Color(0.27, 0.17, 0.08, 1.0)   # lower hull, in shadow (2-tone depth)
+const DECK_INSET : Color = Color(0.57, 0.41, 0.23, 1.0)       # the inset deck-border ring + post caps
+const PLANK_HILITE : Color = Color(1.0, 1.0, 1.0, 0.05)       # faint grain highlight beside each seam
+const SAIL : Color = Color(0.88, 0.85, 0.76, 0.94)            # canvas sail
+const SAIL_SHADE : Color = Color(0.73, 0.69, 0.59, 0.94)      # the sail's lee-side fold
+const SHADOW : Color = Color(0.0, 0.0, 0.0, 0.18)             # soft ground shadow under props
+const RIGGING : Color = Color(0.20, 0.14, 0.08, 0.7)          # mast stays/rigging lines
 
 var _active : String = ""
 var _hull_label : Label          # HULL condition readout (the ship you're crewing) — top-right
@@ -647,17 +655,27 @@ func _draw() -> void:
 	var deck : PackedVector2Array = PackedVector2Array()
 	for g in OUTLINE:
 		deck.append(_iso(g.x, g.y))
-	# Hull depth (one clean tone; back walls hidden by the deck drawn over them).
+	# Hull depth — a 2-TONE side (upper lit, lower in shadow) so she reads as a solid wooden hull.
 	var down : Vector2 = Vector2(0.0, HULL_H)
+	var mid : Vector2 = Vector2(0.0, HULL_H * 0.42)
 	for i in deck.size():
 		var a : Vector2 = deck[i]
 		var b : Vector2 = deck[(i + 1) % deck.size()]
-		draw_colored_polygon(PackedVector2Array([a, b, b + down, a + down]), HULL_SIDE)
+		draw_colored_polygon(PackedVector2Array([a, b, b + mid, a + mid]), HULL_SIDE)
+		draw_colored_polygon(PackedVector2Array([a + mid, b + mid, b + down, a + down]), HULL_SIDE_DARK)
 	draw_colored_polygon(deck, DECK)
-	# A few subtle plank lines for texture.
-	for gy in range(3, GH - 1, 3):
+	# An inset plank-ring just inside the rail — gives the deck a framed, finished edge.
+	var inset : PackedVector2Array = _inset_outline(0.5)
+	draw_polyline(inset + PackedVector2Array([inset[0]]), DECK_INSET, 3.0)
+	# Planking: denser fore-aft seams (each with a faint grain highlight) + a few cross-seams.
+	for gy in range(2, GH, 2):
 		draw_line(_iso(0.5, float(gy)), _iso(float(GW) - 0.5, float(gy)), PLANK_LINE, 2.0)
+		draw_line(_iso(0.5, float(gy) + 0.07), _iso(float(GW) - 0.5, float(gy) + 0.07), PLANK_HILITE, 1.0)
+	for gx in [2.0, 4.0, 6.0]:
+		draw_line(_iso(gx, 2.0), _iso(gx, float(GH) - 2.0), PLANK_LINE, 1.0)
+	# Gunwale rail + upright posts along it.
 	draw_polyline(deck + PackedVector2Array([deck[0]]), RAIL, 5.0)
+	_draw_rail_posts(deck)
 	# Masts + a few rail cannons (clean, evenly spaced, no labels).
 	_draw_mast(_iso(4.0, 6.0))
 	_draw_mast(_iso(4.0, 11.0))
@@ -704,9 +722,42 @@ func _draw_glow(pos: Vector2) -> void:
 	draw_arc(pos + Vector2(0.0, 4.0), 38.0, 0.0, TAU, 32, Color(c.r, c.g, c.b, 0.85), 2.5)
 
 
+# The hull outline pulled IN toward the deck centre by [param amount] grid units (the inset rail ring).
+func _inset_outline(amount: float) -> PackedVector2Array:
+
+	var center : Vector2 = Vector2(float(GW) * 0.5, float(GH) * 0.5)
+	var pts : PackedVector2Array = PackedVector2Array()
+	for g in OUTLINE:
+		var dir : Vector2 = (center - g).normalized()
+		pts.append(_iso(g.x + dir.x * amount, g.y + dir.y * amount))
+	return pts
+
+
+# Short upright railing posts at each hull vertex + each edge midpoint — a simple gunwale.
+func _draw_rail_posts(deck: PackedVector2Array) -> void:
+
+	for i in deck.size():
+		var a : Vector2 = deck[i]
+		var b : Vector2 = deck[(i + 1) % deck.size()]
+		for t in [0.0, 0.5]:
+			var p : Vector2 = a.lerp(b, t)
+			draw_line(p, p + Vector2(0.0, -10.0), RAIL, 3.0)
+			draw_circle(p + Vector2(0.0, -10.0), 2.0, DECK_INSET)
+
+
+# A grounding base + soft shadow under a deck prop, so it sits ON the deck instead of floating.
+func _draw_pedestal(pos: Vector2) -> void:
+
+	draw_circle(pos + Vector2(0.0, 9.0), 20.0, SHADOW)
+	draw_circle(pos + Vector2(0.0, 5.0), 16.0, DECK_DARK)
+	draw_arc(pos + Vector2(0.0, 5.0), 16.0, 0.0, TAU, 20, DECK_INSET, 1.5)
+
+
 # A clean station prop by kind — no labels.
 func _draw_prop(pos: Vector2, kind: String) -> void:
 
+	if kind != "gunnery":
+		_draw_pedestal(pos)   # a grounding base + shadow under the bench/console props (the cannon has its own)
 	match kind:
 		"loft":
 			# A breath-stone on a pedestal — sing it alight to keep her aloft.
@@ -748,14 +799,33 @@ func _draw_prop(pos: Vector2, kind: String) -> void:
 
 func _draw_mast(pos: Vector2) -> void:
 
-	draw_circle(pos, 15.0, DECK_DARK)
-	draw_circle(pos, 9.0, DECK)
+	# A mast: base ring, a pole up-screen, a cross-yard, and a billowed canvas sail + rigging stays.
+	draw_circle(pos + Vector2(0.0, 6.0), 14.0, SHADOW)
+	draw_circle(pos, 8.0, DECK_DARK)
+	var top : Vector2 = pos + Vector2(0.0, -86.0)
+	draw_line(pos, top, DECK_DARK, 6.0)
+	draw_line(pos, top, Color(0.42, 0.28, 0.14, 1.0), 3.0)
+	var yard_y : float = top.y + 16.0
+	var yl : Vector2 = Vector2(pos.x - 32.0, yard_y)
+	var yr : Vector2 = Vector2(pos.x + 32.0, yard_y)
+	draw_line(yl, yr, DECK_DARK, 4.0)
+	# Sail — hangs from the yard, billowing to a sagged bottom edge (lee-side fold shaded).
+	var bl : Vector2 = Vector2(pos.x - 27.0, pos.y - 30.0)
+	var br : Vector2 = Vector2(pos.x + 27.0, pos.y - 30.0)
+	var belly : Vector2 = Vector2(pos.x, pos.y - 20.0)
+	draw_colored_polygon(PackedVector2Array([yl, yr, br, belly, bl]), SAIL)
+	draw_colored_polygon(PackedVector2Array([yr, br, belly]), SAIL_SHADE)
+	draw_line(yl, pos + Vector2(-16.0, 2.0), RIGGING, 1.0)
+	draw_line(yr, pos + Vector2(16.0, 2.0), RIGGING, 1.0)
 
 
 func _draw_cannon(pos: Vector2) -> void:
 
-	draw_rect(Rect2(pos.x - 9.0, pos.y - 6.0, 20.0, 12.0), Color(0.20, 0.21, 0.24, 1.0))
-	draw_circle(pos + Vector2(-7.0, 4.0), 4.0, Color(0.12, 0.13, 0.15, 1.0))
+	draw_circle(pos + Vector2(0.0, 7.0), 10.0, SHADOW)
+	draw_rect(Rect2(pos.x - 9.0, pos.y - 6.0, 22.0, 11.0), Color(0.20, 0.21, 0.24, 1.0))   # barrel
+	draw_rect(Rect2(pos.x + 9.0, pos.y - 4.0, 6.0, 7.0), Color(0.10, 0.11, 0.13, 1.0))     # muzzle
+	draw_circle(pos + Vector2(-5.0, 6.0), 4.0, Color(0.30, 0.20, 0.10, 1.0))               # carriage wheels
+	draw_circle(pos + Vector2(7.0, 6.0), 4.0, Color(0.30, 0.20, 0.10, 1.0))
 
 
 func _draw_plank(pos: Vector2) -> void:
@@ -769,8 +839,11 @@ func _draw_plank(pos: Vector2) -> void:
 
 func _draw_chest(pos: Vector2) -> void:
 
-	draw_rect(Rect2(pos.x - 16.0, pos.y - 11.0, 32.0, 22.0), Color(0.46, 0.30, 0.14, 1.0))
+	draw_circle(pos + Vector2(0.0, 12.0), 18.0, SHADOW)
+	draw_rect(Rect2(pos.x - 16.0, pos.y - 4.0, 32.0, 15.0), Color(0.46, 0.30, 0.14, 1.0))   # box
+	draw_rect(Rect2(pos.x - 16.0, pos.y - 11.0, 32.0, 8.0), Color(0.55, 0.37, 0.18, 1.0))   # lid
 	draw_rect(Rect2(pos.x - 16.0, pos.y - 11.0, 32.0, 22.0), Color(0.90, 0.74, 0.34, 1.0), false, 2.0)
+	draw_rect(Rect2(pos.x - 3.0, pos.y - 6.0, 6.0, 7.0), Color(0.93, 0.79, 0.40, 1.0))      # clasp
 
 
 # Crew = real [Npc] instances drawn from the DUTY-REPORT roster, so the hands you SEE on the
