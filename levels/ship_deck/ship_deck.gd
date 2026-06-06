@@ -98,6 +98,7 @@ func _ready() -> void:
 	var sky : SkyBackdrop = SkyBackdrop.new()
 	sky.fallback_color = SKY
 	add_child(sky)
+	add_child(DriftFog.make(Color(0.80, 0.84, 0.96, 0.85)))   # drifting cloud wisps between the stars + the deck
 	_add_hull_collision()
 	_add_crew()
 	_build_ui()
