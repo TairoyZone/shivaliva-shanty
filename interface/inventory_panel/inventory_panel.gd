@@ -144,7 +144,28 @@ func _build_skeleton() -> void:
 	# this is the way out). PlayerState autosaves on every change, so we just return to the title.
 	var quit_row : HBoxContainer = HBoxContainer.new()
 	quit_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	quit_row.add_theme_constant_override("separation", 12)
 	vbox.add_child(quit_row)
+	# Options (music / sound toggles) — next to Quit so settings are reachable in-game.
+	var opt_btn : Button = Button.new()
+	opt_btn.text = "⚙  Options"
+	opt_btn.focus_mode = Control.FOCUS_NONE
+	opt_btn.add_theme_font_size_override("font_size", 15)
+	opt_btn.add_theme_color_override("font_color", Color(0.80, 0.86, 0.96, 1.0))
+	opt_btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	opt_btn.add_theme_constant_override("outline_size", 3)
+	var os : StyleBoxFlat = StyleBoxFlat.new()
+	os.bg_color = Color(0.14, 0.13, 0.20, 0.92)
+	os.border_color = Color(0.40, 0.42, 0.58, 1.0)
+	os.set_border_width_all(2)
+	os.set_corner_radius_all(8)
+	os.content_margin_left = 16
+	os.content_margin_right = 16
+	os.content_margin_top = 7
+	os.content_margin_bottom = 7
+	opt_btn.add_theme_stylebox_override("normal", os)
+	opt_btn.pressed.connect(func() -> void: OptionsPanel.open(self))
+	quit_row.add_child(opt_btn)
 	var quit_btn : Button = Button.new()
 	quit_btn.text = "⏻  Quit to Title"
 	quit_btn.focus_mode = Control.FOCUS_NONE

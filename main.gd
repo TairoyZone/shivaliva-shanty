@@ -74,6 +74,10 @@ func _build_menu() -> void:
 	new_game.pressed.connect(_on_new_game)
 	vbox.add_child(new_game)
 
+	var options : Button = _make_button("Options", Color(0.74, 0.82, 0.96, 1.0))
+	options.pressed.connect(func() -> void: OptionsPanel.open(self))
+	vbox.add_child(options)
+
 	var quit : Button = _make_button("Quit", Color(0.92, 0.72, 0.62, 1.0))
 	quit.pressed.connect(_on_quit)
 	vbox.add_child(quit)
