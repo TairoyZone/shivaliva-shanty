@@ -109,6 +109,8 @@ const FRAME_COLOR : Color = Color(0.50, 0.60, 0.82, 0.95)
 const STARDUST_FILL : Color = Color(0.07, 0.05, 0.15, 0.62)
 const STARDUST_LINE : Color = Color(0.52, 0.40, 0.82, 0.85)
 const CURSOR_COLOR : Color = Color(0.98, 0.66, 0.24, 1.0)
+## The Stardust's twinkling glitter layer (a canvas_item shader painted over the abyss fill).
+const STARDUST_SHADER : Shader = preload("res://puzzles/loft/board/stardust_sparkle.gdshader")
 
 const STONE_SCENE : PackedScene = preload("res://puzzles/loft/stone/stone.tscn")
 
@@ -150,6 +152,7 @@ var _move_dir : Vector2i = Vector2i.ZERO
 var _das_timer : float = 0.0
 
 var _overlay : LoftOverlay
+var _stardust_fx : ColorRect   # the sparkle glitter riding over the Stardust fill (driven in paint_overlay)
 var _rng : RandomNumberGenerator = RandomNumberGenerator.new()
 
 
@@ -165,6 +168,16 @@ func _ready() -> void:
 	_overlay.board = self
 	_overlay.z_index = 50
 	add_child(_overlay)
+	# THE STARDUST SPARKLE — a twinkling glitter over the abyss (a canvas_item shader masked to below the
+	# rise line via surface_y, tinted calm→danger). A child of the overlay so it rides at z=50 above the
+	# stones + clips to the board; paint_overlay drives its uniforms.
+	_stardust_fx = ColorRect.new()
+	_stardust_fx.size = Vector2(float(COLS) * CELL, float(ROWS) * CELL)
+	_stardust_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fx_mat : ShaderMaterial = ShaderMaterial.new()
+	fx_mat.shader = STARDUST_SHADER
+	_stardust_fx.material = fx_mat
+	_overlay.add_child(_stardust_fx)
 	queue_redraw()
 	lift_changed.emit(_total_lift)
 	moves_changed.emit(_moves_left, MOVES_PER_ROUND)
@@ -196,6 +209,11 @@ func paint_overlay(ov: LoftOverlay) -> void:
 	var line_col : Color = STARDUST_LINE.lerp(Color(1.0, 0.30, 0.30, 0.95), danger)
 	ov.draw_rect(Rect2(0.0, top_y, w, float(ROWS) * CELL - top_y), fill_col, true)
 	ov.draw_line(Vector2(0.0, top_y), Vector2(w, top_y), line_col, 2.0)
+	# Drive the sparkle layer: mask it to below the rise line + tint it calm→danger.
+	if _stardust_fx != null:
+		var fxm : ShaderMaterial = _stardust_fx.material
+		fxm.set_shader_parameter("surface_y", top_y / (float(ROWS) * CELL))
+		fxm.set_shader_parameter("danger", danger)
 	# The 2-wide swap cursor.
 	if _is_cell(_cursor):
 		var x : float = _cursor.y * CELL
