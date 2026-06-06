@@ -8,12 +8,14 @@ _Effort: **S** small · **M** medium · **L** large. ⚠️ = expands past the M
 
 ---
 
-## 🔊 Audio — the missing spine (silence reads as "unfinished" to playtesters)
-- [ ] **Audio autoload** — `Audio.play_sfx(name)` / `play_music()` + a `const SFX := {…}` preload dict; hook at the spots puzzles already emit signals (`add_coins` → "coin", a clear → "clack"). Mirrors our EventFeed/BoardingMelee autoloads. *(audio_polyphony.gd)* **S**
-- [ ] **`max_polyphony = 6–8`** on the SFX player — a 5-piece cascade plays 5 overlapping clinks, no node pool. **S**
-- [ ] **`AudioStreamRandomizer` / `random_pitch`** — kill repetition fatigue on match/click/coin ticks. **S**
-- [ ] **Import flags** — `loop=true` for music, WAV for SFX / OGG for music (no gap-click on repeat). **S**
-- [ ] **`AudioStreamPlayer2D`** — diegetic world SFX (forge clang louder near Cinder Troy); keep UI/coin/music on the non-positional autoload. **S**
+## 🔊 Audio — ✅ DONE 2026-06-06 (Audio autoload + ~13 call sites + a procedural music bed)
+- [x] **Audio autoload** — `Audio.play_sfx(name)` / `play_music()`, polyphonic SFX bank, `PROCESS_MODE_ALWAYS`. *(autoloads/audio.gd)*
+- [x] **Polyphony** — an `AudioStreamPolyphonic` (12 voices) so cascades layer instead of cutting.
+- [x] **`random_pitch`** — a small per-play pitch jitter kills repetition fatigue.
+- [x] **Looping music** — a seamless procedural ambient pad bed (loop forced on the stream). *(tools/music_gen.gd)*
+- [x] **9 procedural placeholder SFX + 13 call sites** — coin · clears→pop/clack · Lumberjacking shatter/fuse · toss · rank-up chime · duel-loss buzz · Leave click. *(tools/sfx_gen.gd)*
+- [ ] **`AudioStreamPlayer2D`** — diegetic world SFX (forge clang near Cinder Troy) — *deferred*. **S**
+- [ ] **Broader UI clicks** — centralize when we build the SkyButton (UI section). **S**
 
 ## ✨ Visual juice
 - [ ] **`Juice` tween helper** — one static lib: `Juice.pop_in()` (elastic) + `Juice.collect_fly()` (parallel scale/spin/drift/free). Replaces hand-rolled tweens in ~17 files; bakes "animate everything" into two calls. *(tweens/gem.gd)* **S**
