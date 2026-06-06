@@ -7,3 +7,15 @@
 @tool
 class_name Forge
 extends Building
+
+
+func _ready() -> void:
+
+	super._ready()
+	if Engine.is_editor_hint():
+		return
+	# A warm furnace glow — the "glowing furnace window" touch noted above (borrow #6). Tune the
+	# position/radius to the furnace in-editor.
+	var glow : Glow = Glow.make(Color(1.0, 0.5, 0.16, 0.7), 66.0)
+	glow.position = Vector2(0.0, -26.0)
+	add_child(glow)
