@@ -11,7 +11,6 @@ extends Building
 
 func _ready() -> void:
 
-	super._ready()
 	if Engine.is_editor_hint():
 		return
 	# A warm furnace glow — the "glowing furnace window" touch noted above (borrow #6). Tune the
