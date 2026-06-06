@@ -85,6 +85,12 @@ npc_name = "Hollow Ellison"
 dialog_lines = Array[String](["Every island remembers more than its people do.", "I've forgotten more stories than most folk ever hear.", "Sit by the fire. I'll tell you something true. Mostly true."])
 portrait_color = Color(0.62, 0.55, 0.72, 1)
 
+[node name="GenevaNpc" parent="YSortNode2D" instance=ExtResource("6_npc")]
+position = Vector2(300, -150)
+npc_name = "Merry Geneva"
+dialog_lines = Array[String](["Brian pours the drinks — I keep this whole place from falling to bits.", "Married that big-hearted oaf more years ago than I'll admit. Wouldn't trade him.", "Sit, eat, play a hand — mind your manners and there's always a seat for you."])
+portrait_color = Color(0.46, 0.68, 0.6, 1)
+
 [node name="TournamentBoard" parent="YSortNode2D" instance=ExtResource("7_tboard")]
 position = Vector2(360, -60)
 

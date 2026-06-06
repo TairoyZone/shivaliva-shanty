@@ -19,6 +19,7 @@ const PROFILE_PATHS : Array[String] = [
 	"res://components/npc/profiles/spritely_mia.tres",
 	"res://components/npc/profiles/mossy_jade.tres",
 	"res://components/npc/profiles/hollow_ellison.tres",
+	"res://components/npc/profiles/merry_geneva.tres",
 ]
 
 

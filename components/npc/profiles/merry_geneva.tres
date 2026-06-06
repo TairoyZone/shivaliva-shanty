@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="NpcPersonality" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://components/npc/personality.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+npc_name = "Merry Geneva"
+duty_skill = 0.50
+portrait_color = Color(0.46, 0.68, 0.60, 1.0)
+aggression = 0.35
+risk_tolerance = 0.45
+patience = 0.55
+perception = 0.50
+vpip_target = 0.30
+pfr_target = 0.12
+bluff_rate = 0.18
+w_score = 1.0
+w_denial = 0.7
+w_chain = 0.6
+search_depth = 3
