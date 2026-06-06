@@ -10,6 +10,7 @@
 ## Self-contained interactions (no per-station Interactable scenes): a left-CLICK mans the nearest active
 ## station (E opens the backpack now). Phase off [member PlayerState.pillage_phase], re-entered after each
 ## station/fight scene-swap. ⚠️ Procedural PLACEHOLDER art — real skyship sprites later.
+@tool   # paints the procedural deck in the EDITOR (Troy: "i wanna see it") — runtime wiring is guarded off
 class_name ShipDeck
 extends BaseLocation
 
@@ -21,6 +22,9 @@ const PATCHWORKS_SCENE : String = "res://puzzles/patchworks/patchworks_scene.tsc
 const SKIRMISH_SCENE : String = "res://puzzles/skirmish/skirmish_boarding.tscn"
 const SELF_SCENE : String = "res://levels/ship_deck/ship_deck.tscn"
 const FALLBACK_HOME : String = "res://levels/shore/shore.tscn"
+## Where to land after a pillage makes port — the Skydock door anchor in the destination island, so you
+## step off ON THE DOCKS, not the island's default spawn. Islands lacking it fall back to their default.
+const DOCK_ANCHOR : String = "SkydockDoor"
 ## Crew are REAL [Npc] instances (reuse the overworld character), not drawn figures.
 const NPC_SCENE : PackedScene = preload("res://components/npc/npc.tscn")
 # Voyage payout / footing tuning now lives on PlayerState (shared with the Loft cockpit):
@@ -69,6 +73,7 @@ const STATION_LIVE : Color = Color(0.66, 0.90, 1.0, 1.0)
 const STATION_IDLE : Color = Color(0.60, 0.64, 0.76, 1.0)
 
 var _active : String = ""
+var _hull_label : Label          # HULL condition readout (the ship you're crewing) — top-right
 var _prompt : Label
 var _captain_label : Label
 var _chart : VoyageChart         # the drawn voyage progress ribbon
@@ -86,6 +91,11 @@ func _iso(gx: float, gy: float) -> Vector2:
 
 func _ready() -> void:
 
+	# @tool: in the EDITOR just paint the ship so its look is visible while editing — skip all the runtime
+	# spawn / crew / UI / voyage wiring (autoloads + the Player don't exist at edit time).
+	if Engine.is_editor_hint():
+		queue_redraw()
+		return
 	# The deck is the hub every station/fight/report returns to — never inherit a stuck pause from a
 	# panel that ran on the way here, or the player can't move/man and the chart won't sail. Self-heal.
 	if get_tree() != null:
@@ -139,6 +149,7 @@ func _setup_phase() -> void:
 	# while a boarding's in progress (you can read it again once the leg's banked).
 	if _report_btn != null:
 		_report_btn.visible = not BoardingMelee.has_active()
+	_update_hull_label()   # refresh the HULL readout (holes change as legs resolve)
 	if _arrived():
 		# Voyage's end. Also guards a redundant re-load so the last leg is never re-banked.
 		_say("%s dead ahead — voyage's end! Your cut: %d gold. Take the plank to make port." % [
@@ -302,7 +313,7 @@ func _foe_name(leg_i: int) -> String:
 
 func _process(_delta: float) -> void:
 
-	if player == null:
+	if Engine.is_editor_hint() or player == null:
 		return
 	_active = _nearest_active_station()
 	if _prompt != null:
@@ -313,6 +324,8 @@ func _process(_delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 
+	if Engine.is_editor_hint():
+		return
 	# A left-CLICK mans the nearest active station (E opens the backpack now — Troy: click-based world).
 	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
 		return
@@ -457,6 +470,8 @@ func _finish_voyage(target: String) -> void:
 		target = PlayerState.voyage_home_scene
 	if target.is_empty():
 		target = FALLBACK_HOME
+	# Land ON THE DOCKS (the Skydock) in the destination, not its default spawn (Troy 2026-06-07).
+	PlayerState.request_spawn_at_anchor(DOCK_ANCHOR)
 	PlayerState.cash_out_voyage()
 	PlayerState.clear_voyage()
 	get_tree().change_scene_to_file(target)
@@ -533,11 +548,42 @@ func _build_ui() -> void:
 	layer.add_child(report_btn)
 	_report_btn = report_btn
 
+	# HULL condition readout (top-right) — the ship you're crewing. Mirrors the Loft's HULL pill.
+	_hull_label = Label.new()
+	_hull_label.add_theme_font_size_override("font_size", 17)
+	_hull_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	_hull_label.add_theme_constant_override("outline_size", 3)
+	_hull_label.anchor_left = 1.0
+	_hull_label.anchor_right = 1.0
+	_hull_label.offset_left = -210.0
+	_hull_label.offset_right = -16.0
+	_hull_label.offset_top = 18.0
+	_hull_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_hull_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_hull_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(_hull_label)
+	_update_hull_label()
+
 
 func _say(line: String) -> void:
 
 	if _captain_label != null:
 		_captain_label.text = "Cap'n %s:  \"%s\"" % [_captain_name(), line]
+
+
+# The HULL condition readout (the ship you're crewing) — green SOUND → amber → red, mirroring the Loft.
+func _update_hull_label() -> void:
+
+	if _hull_label == null:
+		return
+	var holes : int = PlayerState.ship_open_holes()
+	if holes <= 0:
+		_hull_label.text = "HULL  SOUND"
+		_hull_label.add_theme_color_override("font_color", Color(0.7, 0.95, 0.75, 1.0))
+	else:
+		_hull_label.text = "HULL  %d hole%s" % [holes, "" if holes == 1 else "s"]
+		_hull_label.add_theme_color_override("font_color",
+			Color(0.98, 0.82, 0.5) if holes <= 2 else Color(1.0, 0.55, 0.5))
 
 
 # Open the YPP-style duty report (last leg's per-hand ratings) — one at a time.
@@ -619,15 +665,14 @@ func _draw() -> void:
 		_draw_cannon(_iso(0.7, gy))
 		_draw_cannon(_iso(float(GW) - 0.7, gy))
 	_draw_chest(_iso(5.4, 5.4))
-	# Glow the action this phase needs (read by the glow, not a tag): the helm at a node (set sail /
-	# rejoin), the Loft while underway, the plank on arrival. Shown even while she sails now — you can man
-	# a station any time.
-	_draw_glow(_active_world_pos())
-	# A second halo on the Patchworks when the hull's holed (man it to mend) — but not at the set-sail node
-	# or mid-boarding (where the only glow is the helm).
-	if not _arrived() and not BoardingMelee.has_active() and PlayerState.pillage_phase != 0 \
-			and PlayerState.ship_open_holes() > 0:
-		_draw_glow(_iso(PATCHWORKS_G.x, PATCHWORKS_G.y))
+	# Glow the action this phase needs (runtime only — reads voyage / PlayerState state absent at edit time).
+	if not Engine.is_editor_hint():
+		_draw_glow(_active_world_pos())
+		# A second halo on the Patchworks when the hull's holed (man it to mend) — not at the set-sail node
+		# or mid-boarding (where the only glow is the helm).
+		if not _arrived() and not BoardingMelee.has_active() and PlayerState.pillage_phase != 0 \
+				and PlayerState.ship_open_holes() > 0:
+			_draw_glow(_iso(PATCHWORKS_G.x, PATCHWORKS_G.y))
 	# Clean station props (no labels): playable Loft + helm + the flavour props + plank.
 	_draw_prop(_iso(LOFT_G.x, LOFT_G.y), "loft")
 	_draw_prop(_iso(PATCHWORKS_G.x, PATCHWORKS_G.y), "patchworks")

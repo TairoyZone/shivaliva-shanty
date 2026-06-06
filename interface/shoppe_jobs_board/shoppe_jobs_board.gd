@@ -124,8 +124,10 @@ func _on_dim_input(event: InputEvent) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 
 	if event.is_action_pressed("ui_cancel"):   # Esc closes the board
+		var vp : Viewport = get_viewport()
+		if vp != null:
+			vp.set_input_as_handled()
 		_close()
-		get_viewport().set_input_as_handled()
 
 
 func _close() -> void:

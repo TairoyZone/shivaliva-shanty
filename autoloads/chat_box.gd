@@ -149,7 +149,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and (event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER):
 		if _input != null:
 			_input.grab_focus()
-		get_viewport().set_input_as_handled()
+		var vp : Viewport = get_viewport()
+		if vp != null:
+			vp.set_input_as_handled()
 
 
 # Escape while typing bows out of the bar (without opening the backpack).
@@ -158,7 +160,9 @@ func _on_input_gui(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		if _input != null:
 			_input.release_focus()
-		get_viewport().set_input_as_handled()
+		var vp : Viewport = get_viewport()
+		if vp != null:
+			vp.set_input_as_handled()
 
 
 func _on_submit(text: String) -> void:

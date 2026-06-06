@@ -173,6 +173,8 @@ func _on_sunk_card_closed(home: String) -> void:
 func _on_haul_card_closed() -> void:
 
 	var dest : String = PlayerState.pillage_destination_scene
+	# Land ON THE DOCKS (the Skydock) in the destination, not its default spawn (mirrors ShipDeck).
+	PlayerState.request_spawn_at_anchor("SkydockDoor")
 	PlayerState.cash_out_voyage()   # pay the pooled booty as one cut
 	PlayerState.clear_voyage()
 	if dest.is_empty():
