@@ -164,6 +164,8 @@ func _on_Board_stardust_changed(level: float) -> void:
 func _on_Board_combo_scored(combo_name: String, lift_gained: int) -> void:
 
 	Audio.play_sfx("pop")
+	if lift_gained >= 7:   # a notable combo punches the screen (borrow #5)
+		get_tree().root.add_child(ScreenFlash.make(_combo_color(lift_gained), clampf(float(lift_gained) * 0.02, 0.12, 0.4)))
 	var label : Label = Label.new()
 	label.text = "%s\n+%d" % [combo_name, lift_gained]
 	label.add_theme_font_size_override("font_size", 30 + mini(lift_gained, 40))

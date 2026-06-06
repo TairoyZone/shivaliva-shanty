@@ -244,10 +244,12 @@ func _on_opponent_cleared(count: int) -> void:
 
 func _on_player_ko(_final_score: int) -> void:
 	Audio.play_sfx("buzz")   # you topped out — the loss sting
+	get_tree().root.add_child(ScreenFlash.make(Color(1.0, 0.32, 0.26), 0.4))   # red — you lost (borrow #5)
 	_end_duel(false)
 
 
 func _on_opponent_ko(_final_score: int) -> void:
+	get_tree().root.add_child(ScreenFlash.make(Color(1.0, 0.86, 0.42), 0.42))   # gold — you won (borrow #5)
 	_end_duel(true)
 
 
