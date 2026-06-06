@@ -1,9 +1,52 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://b7y420xb0syj1"]
 
-[ext_resource type="Script" path="res://levels/ship_deck/ship_deck.gd" id="1_deck"]
+[ext_resource type="Script" uid="uid://ccrf1xx8ppd6h" path="res://levels/ship_deck/ship_deck.gd" id="1_deck"]
+[ext_resource type="PackedScene" path="res://components/deck_prop/deck_prop.tscn" id="2_prop"]
 
-[node name="ShipDeck" type="Node2D"]
+[node name="ShipDeck" type="Node2D" unique_id=1851106918]
 script = ExtResource("1_deck")
 
-[node name="YSortNode2D" type="Node2D" parent="."]
+[node name="YSortNode2D" type="Node2D" parent="." unique_id=1856306150]
 y_sort_enabled = true
+
+[node name="LoftProp" parent="YSortNode2D" unique_id=2063159502 instance=ExtResource("2_prop")]
+position = Vector2(-16, -144)
+kind = "loft"
+station_id = "loft"
+marker_label = "Loft"
+
+[node name="PatchworksProp" parent="YSortNode2D" unique_id=333056056 instance=ExtResource("2_prop")]
+position = Vector2(-384, 80)
+kind = "patchworks"
+station_id = "patchworks"
+marker_label = "Patchworks"
+
+[node name="HelmProp" parent="YSortNode2D" unique_id=73332093 instance=ExtResource("2_prop")]
+position = Vector2(324.8, -162.4)
+kind = "navigation"
+station_id = "helm"
+marker_label = "Helm"
+
+[node name="PlankProp" parent="YSortNode2D" unique_id=1469735698 instance=ExtResource("2_prop")]
+position = Vector2(-347.2, 173.6)
+kind = "plank"
+station_id = "plank"
+marker_label = "Gangplank"
+
+[node name="MastFore" parent="YSortNode2D" unique_id=872288829 instance=ExtResource("2_prop")]
+position = Vector2(168, -84)
+
+[node name="MastAft" parent="YSortNode2D" unique_id=100053560 instance=ExtResource("2_prop")]
+position = Vector2(-112, 56)
+
+[node name="Chest" parent="YSortNode2D" unique_id=1513716227 instance=ExtResource("2_prop")]
+position = Vector2(280, -61.6)
+kind = "chest"
+
+[node name="SailingProp" parent="YSortNode2D" unique_id=964396969 instance=ExtResource("2_prop")]
+position = Vector2(134.4, 44.8)
+kind = "sailing"
+
+[node name="GunneryProp" parent="YSortNode2D" unique_id=1922350180 instance=ExtResource("2_prop")]
+position = Vector2(-246.4, 11.2)
+kind = "gunnery"

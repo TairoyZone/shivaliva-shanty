@@ -81,6 +81,7 @@ const SHADOW : Color = Color(0.0, 0.0, 0.0, 0.18)             # soft ground shad
 const RIGGING : Color = Color(0.20, 0.14, 0.08, 0.7)          # mast stays/rigging lines
 
 var _active : String = ""
+var _station_pos : Dictionary = {}   # station_id -> world pos, indexed from the placed DeckProp nodes (else iso const)
 var _hull_label : Label          # HULL condition readout (the ship you're crewing) — top-right
 var _prompt : Label
 var _captain_label : Label
@@ -120,6 +121,7 @@ func _ready() -> void:
 	_add_hull_collision()
 	_add_crew()
 	_build_ui()
+	_index_stations()   # map the placed DeckProp station nodes -> positions (the deck reads these to interact)
 	_setup_phase()
 	queue_redraw()
 
@@ -368,23 +370,52 @@ func _nearest_active_station() -> String:
 	return best
 
 
+# Index the placed DeckProp station nodes (in ship_deck.tscn) by station_id, so the deck reads THEIR
+# positions for interaction + the glow — you drag the props in the editor. Missing ids fall back to the
+# iso consts (so the deck still works if a prop wasn't placed). See [[scene-per-component-principle]].
+func _index_stations() -> void:
+
+	_station_pos.clear()
+	for n in find_children("*", "DeckProp", true, false):
+		var sid : String = String(n.station_id)
+		if not sid.is_empty():
+			_station_pos[sid] = (n as Node2D).global_position
+
+
+# World position of station [param id] — the placed DeckProp if present, else its iso-const default.
+func _station_world(id: String) -> Vector2:
+
+	if _station_pos.has(id):
+		return _station_pos[id]
+	match id:
+		"loft":
+			return _iso(LOFT_G.x, LOFT_G.y)
+		"patchworks":
+			return _iso(PATCHWORKS_G.x, PATCHWORKS_G.y)
+		"helm":
+			return _iso(HELM_G.x, HELM_G.y)
+		"plank":
+			return _iso(PLANK_G.x, PLANK_G.y)
+	return Vector2.ZERO
+
+
 func _stations_for_phase() -> Array:
 
 	# The plank (disembark) is ALWAYS available — you can leave the ship any time.
-	var plank : Array = ["plank", _iso(PLANK_G.x, PLANK_G.y)]
+	var plank : Array = ["plank", _station_world("plank")]
 	if _arrived():
 		return [plank]   # voyage's end — the plank is all that's left
 	if BoardingMelee.has_active():
 		# Mid-boarding: no station is mountable (the LOCKED rule) — only rejoin the fight (or walk the plank).
-		return [["rejoin", _iso(HELM_G.x, HELM_G.y)], plank]
+		return [["rejoin", _station_world("helm")], plank]
 	match PlayerState.pillage_phase:
 		1, 2:
 			# Underway — man a station ANY time (or just watch her make way); the plank's always there.
-			return [["loft", _iso(LOFT_G.x, LOFT_G.y)],
-				["patchworks", _iso(PATCHWORKS_G.x, PATCHWORKS_G.y)], plank]
+			return [["loft", _station_world("loft")],
+				["patchworks", _station_world("patchworks")], plank]
 		_:
 			# Holding at the node — give the word at the helm to set sail (no station until she's underway).
-			return [["set_sail", _iso(HELM_G.x, HELM_G.y)], plank]
+			return [["set_sail", _station_world("helm")], plank]
 
 
 func _action_label(id: String) -> String:
@@ -539,6 +570,8 @@ func _build_ui() -> void:
 	# [Click] prompt bottom-centre). Populated by _setup_phase → _refresh_chart right after this.
 	_chart = VoyageChart.new()
 	_chart.place_at(layer, false)
+	_chart.offset_top -= 50.0       # lift the chart clear of the bottom chat bar (Troy 2026-06-07)
+	_chart.offset_bottom -= 50.0
 	_chart.reached_stop.connect(_on_chart_reached_stop)
 	_chart.reached_encounter.connect(_on_chart_reached_encounter)
 
@@ -561,13 +594,13 @@ func _build_ui() -> void:
 	_hull_label.add_theme_font_size_override("font_size", 17)
 	_hull_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	_hull_label.add_theme_constant_override("outline_size", 3)
-	_hull_label.anchor_left = 1.0
-	_hull_label.anchor_right = 1.0
-	_hull_label.offset_left = -210.0
-	_hull_label.offset_right = -16.0
-	_hull_label.offset_top = 18.0
-	_hull_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_hull_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_hull_label.anchor_left = 0.0
+	_hull_label.anchor_right = 0.0
+	_hull_label.offset_left = 16.0
+	_hull_label.offset_right = 226.0
+	_hull_label.offset_top = 60.0   # top-LEFT under the Duty Report — clear of the HUD gold purse top-right
+	_hull_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_hull_label.grow_horizontal = Control.GROW_DIRECTION_END
 	_hull_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(_hull_label)
 	_update_hull_label()
@@ -676,13 +709,11 @@ func _draw() -> void:
 	# Gunwale rail + upright posts along it.
 	draw_polyline(deck + PackedVector2Array([deck[0]]), RAIL, 5.0)
 	_draw_rail_posts(deck)
-	# Masts + a few rail cannons (clean, evenly spaced, no labels).
-	_draw_mast(_iso(4.0, 6.0))
-	_draw_mast(_iso(4.0, 11.0))
+	# A few rail cannons as fixed edge dressing (symmetric guns). The STATIONS, masts, chest + flavour props
+	# are now PLACEABLE DeckProp scenes in ship_deck.tscn (scene-per-component) — drag them in the editor.
 	for gy in [4.5, 8.0, 11.5]:
 		_draw_cannon(_iso(0.7, gy))
 		_draw_cannon(_iso(float(GW) - 0.7, gy))
-	_draw_chest(_iso(5.4, 5.4))
 	# Glow the action this phase needs (runtime only — reads voyage / PlayerState state absent at edit time).
 	if not Engine.is_editor_hint():
 		_draw_glow(_active_world_pos())
@@ -690,15 +721,8 @@ func _draw() -> void:
 		# or mid-boarding (where the only glow is the helm).
 		if not _arrived() and not BoardingMelee.has_active() and PlayerState.pillage_phase != 0 \
 				and PlayerState.ship_open_holes() > 0:
-			_draw_glow(_iso(PATCHWORKS_G.x, PATCHWORKS_G.y))
-	# Clean station props (no labels): playable Loft + helm + the flavour props + plank.
-	_draw_prop(_iso(LOFT_G.x, LOFT_G.y), "loft")
-	_draw_prop(_iso(PATCHWORKS_G.x, PATCHWORKS_G.y), "patchworks")
-	_draw_prop(_iso(HELM_G.x, HELM_G.y), "navigation")
-	for st in FLAVOUR_STATIONS:
-		_draw_prop(_iso(st[0].x, st[0].y), st[1])
-	_draw_plank(_iso(PLANK_G.x, PLANK_G.y))
-	# (Crew are real Npc instances added in _add_crew — not drawn here.)
+			_draw_glow(_station_world("patchworks"))
+	# (Crew + the station/mast/chest props are real nodes added in _add_crew / placed in the .tscn.)
 
 
 # World position of the station active this phase (the one that glows). Only used outside a
@@ -706,12 +730,12 @@ func _draw() -> void:
 func _active_world_pos() -> Vector2:
 
 	if _arrived():
-		return _iso(PLANK_G.x, PLANK_G.y)
+		return _station_world("plank")
 	if BoardingMelee.has_active():
-		return _iso(HELM_G.x, HELM_G.y)   # rejoin the boarding from the helm
+		return _station_world("helm")   # rejoin the boarding from the helm
 	if PlayerState.pillage_phase == 0:
-		return _iso(HELM_G.x, HELM_G.y)   # holding at the node — set sail at the helm
-	return _iso(LOFT_G.x, LOFT_G.y)       # underway — man the Loft
+		return _station_world("helm")   # holding at the node — set sail at the helm
+	return _station_world("loft")       # underway — man the Loft
 
 
 # A soft accent halo marking the active station (no text needed).
