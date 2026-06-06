@@ -38,32 +38,12 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 	add_to_group(GROUP_PARLOR)
-	_roll_hosting()
+	# NPC-hosted "pretend" tables removed (Troy 2026-06-06): a table is just YOUR entry to the lobby now —
+	# NPCs still auto-fill when you Create. No more 50%-roll fake hosts / "X's table · open seat" badges.
+	# (_hosted stays false, so hosted_table() returns {} and no ParlorHostBadge is floated.)
 
 
-# Roll whether an NPC is already hosting here this visit; if so seat a host
-# + patrons (leaving one open seat for the player) and float a host badge.
-func _roll_hosting() -> void:
-
-	if randf() >= HOST_CHANCE:
-		return
-	var seats : int = randi_range(_min_seats(), _max_seats())
-	var here : Array[NpcPersonality] = NpcRegistry.pick_for_lobby(
-		seats - 1, PlayerState.get_affinity,
-		NpcRegistry.profiles_from_paths(PlayerState.last_lobby_seated_paths))
-	if here.is_empty():
-		return
-	_hosted = true
-	_host_profile = here[0]
-	_patron_profiles = here
-	var pip_colors : Array[Color] = []
-	for p in here:
-		pip_colors.append(p.portrait_color)
-	add_child(ParlorHostBadge.create(
-		_host_profile.npc_name, _host_profile.portrait_color, pip_colors, _badge_y()))
-
-
-# Press E at a parlor table → open the TABLE BROWSER for THIS game only (poker table = poker tables,
+# Click a parlor table → open the TABLE BROWSER for THIS game only (poker table = poker tables,
 # gem-drop table = gem-drop tables). A live list of active tables for the one game, with Join +
 # Create. (The browser also supports multiple games, so a future "Parlor games!" hub could pass the
 # whole GROUP_PARLOR — but a specific table only ever shows its own game.)
