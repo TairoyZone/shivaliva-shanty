@@ -7,8 +7,8 @@
 ##   your CUT → DISEMBARK.
 ##
 ## Normal overworld camera (rides the Player). Iso-styled + ship-shaped so it walks right.
-## Self-contained interactions (no per-station Interactable scenes): only the playable
-## Loft takes E. Phase off [member PlayerState.pillage_phase], re-entered after each
+## Self-contained interactions (no per-station Interactable scenes): a left-CLICK mans the nearest active
+## station (E opens the backpack now). Phase off [member PlayerState.pillage_phase], re-entered after each
 ## station/fight scene-swap. ⚠️ Procedural PLACEHOLDER art — real skyship sprites later.
 class_name ShipDeck
 extends BaseLocation
@@ -308,12 +308,15 @@ func _process(_delta: float) -> void:
 	if _prompt != null:
 		_prompt.visible = not _active.is_empty()
 		if not _active.is_empty():
-			_prompt.text = "[E]  %s" % _action_label(_active)
+			_prompt.text = "[Click]  %s" % _action_label(_active)
 
 
 func _unhandled_input(event: InputEvent) -> void:
 
-	if not event.is_action_pressed("interact") or _active.is_empty():
+	# A left-CLICK mans the nearest active station (E opens the backpack now — Troy: click-based world).
+	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
+		return
+	if _active.is_empty():
 		return
 	if Overlay.is_active or (HUD != null and HUD.is_inventory_open()):
 		return
@@ -510,7 +513,7 @@ func _build_ui() -> void:
 	layer.add_child(_prompt)
 
 	# Voyage CHART (self-contained, BOTTOM-LEFT — clear of the captain banner up top and the
-	# [E] prompt bottom-centre). Populated by _setup_phase → _refresh_chart right after this.
+	# [Click] prompt bottom-centre). Populated by _setup_phase → _refresh_chart right after this.
 	_chart = VoyageChart.new()
 	_chart.place_at(layer, false)
 	_chart.reached_stop.connect(_on_chart_reached_stop)
@@ -589,7 +592,7 @@ func _add_hull_collision() -> void:
 
 
 # --- Procedural ISO ship (clean, stylized placeholder) ---------------
-# NO floating labels anywhere — the only text is the captain banner + the [E] prompt
+# NO floating labels anywhere — the only text is the captain banner + the [Click] prompt
 # (both fixed UI). The ONE station you need this phase GLOWS so it reads without a tag.
 
 func _draw() -> void:
