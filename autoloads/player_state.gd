@@ -656,6 +656,7 @@ func add_coins(amount: int, reason: String = "") -> void:
 	# _save(), so the new lifetime value lands in the same write.
 	if amount > 0:
 		lifetime_coins_earned += amount
+		Audio.play_sfx("coin")   # the gold-earned chime (first audio call site — more to come)
 	total_coins += amount
 	check_new_trophies()   # Full Purse + a periodic sweep for any newly-earned trophy
 	if not reason.is_empty() and amount != 0:

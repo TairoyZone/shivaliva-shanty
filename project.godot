@@ -17,6 +17,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
+Audio="*res://autoloads/audio.gd"
 PlayerState="*res://autoloads/player_state.gd"
 BoardingMelee="*res://autoloads/boarding_melee.gd"
 HUD="*res://interface/hud.tscn"
