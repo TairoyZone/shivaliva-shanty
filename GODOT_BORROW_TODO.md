@@ -18,7 +18,7 @@ _Effort: **S** small · **M** medium · **L** large. ⚠️ = expands past the M
 - [ ] **Broader UI clicks** — centralize when we build the SkyButton (UI section). **S**
 
 ## ✨ Visual juice
-- [ ] **`Juice` tween helper** — one static lib: `Juice.pop_in()` (elastic) + `Juice.collect_fly()` (parallel scale/spin/drift/free). Replaces hand-rolled tweens in ~17 files; bakes "animate everything" into two calls. *(tweens/gem.gd)* **S**
+- [x] **`Juice` tween helper** — ✅ DONE 2026-06-06. `components/juice.gd` (`class_name Juice`): `pop_in` (elastic) · `collect_fly` (parallel scale/spin/drift/free) · `bump` · `pulse` · `fade_in` · `fade_out_free`; each returns the Tween to await/chain. First adoption = the HUD bag-bump. The toasts kept their bespoke slide+hold+fade sequences; broader adoption is incremental + new code uses it from the start. *(tweens/gem.gd)*
 - [ ] **Procedural sky shader** — twinkling-star backdrop (canvas_item, no art) on a `-10` CanvasLayer ColorRect; reskin to the Stardust palette. Overworld + ship deck. *(2d_sky.gdshader)* **S**
 - [ ] **Screen-flash ColorRect** — tween alpha 0→x→0 on a top CanvasLayer for combo/KO punch (Skirmish combo, Loft Skylark). ~10 lines. *(rainy_night.gd)* **S**
 - [ ] **ClearBurst particles** — a reusable `GPUParticles2D` sub-emitter chain (impact→shards→puff), `one_shot`, `.restart()` at a cleared cell. Capture the cell pos as a primitive BEFORE `queue_free`. *(space_scene.tscn)* **M**
