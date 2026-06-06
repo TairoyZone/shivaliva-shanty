@@ -80,6 +80,7 @@ func interact() -> void:
 		return
 	if not target_spawn_anchor.is_empty():
 		PlayerState.request_spawn_at_anchor(target_spawn_anchor)
+	Audio.play_sfx("whoosh")   # the door transition whoosh
 	# Scene change MUST be deferred — Godot disallows removing CollisionObject
 	# nodes during a physics callback, and that's effectively what
 	# change_scene_to_file does to this door.

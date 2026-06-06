@@ -67,6 +67,7 @@ func _launch_puzzle(charge_cost: bool) -> void:
 	# find a node by our name and use its position + spawn_offset, so
 	# the player lands right next to this prop.
 	PlayerState.request_spawn_at_anchor(name)
+	Audio.play_sfx("whoosh")   # entering the puzzle — the transition whoosh
 	get_tree().change_scene_to_file(puzzle_scene)
 
 

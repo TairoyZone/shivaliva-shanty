@@ -744,6 +744,7 @@ func add_item(item_id: String, count: int) -> int:
 			remaining -= add
 	if remaining != count:
 		_on_inventory_mutated(item_id)
+		Audio.play_sfx("thunk")   # something landed in the backpack — central, covers wood/ore/all items
 		var iname : String = String((ITEM_DEFS.get(item_id, {}) as Dictionary).get("name", item_id.capitalize()))
 		log_event("+%d %s" % [count - remaining, iname], Color(0.78, 0.92, 0.7))
 	return remaining
