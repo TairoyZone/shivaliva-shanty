@@ -32,8 +32,6 @@ var _sfx : Dictionary = {
 	"ko": preload("res://audio/sfx/ko.wav"),
 	"pain": preload("res://audio/sfx/pain.wav"),
 	"laser": preload("res://audio/sfx/laser.wav"),
-	"step_grass": preload("res://audio/sfx/step_grass.ogg"),
-	"step_stone": preload("res://audio/sfx/step_stone.ogg"),
 	"whoosh2": preload("res://audio/sfx/whoosh2.ogg"),
 	"explosion": preload("res://audio/sfx/explosion.ogg"),
 }
