@@ -93,6 +93,11 @@ func _ready() -> void:
 	pirate_spawn_position = _iso(SPAWN_G.x, SPAWN_G.y)
 	_seed_demo_route_if_unset()
 	super._ready()                 # spawns the Player under YSortNode2D (normal camera)
+	# A LIVING procedural sky behind the deck — twinkling Stardust starfield (borrow #3) replaces the old
+	# flat SKY fill. Low CanvasLayer, behind the ship; SKY stays the flat fallback if the shader is stripped.
+	var sky : SkyBackdrop = SkyBackdrop.new()
+	sky.fallback_color = SKY
+	add_child(sky)
 	_add_hull_collision()
 	_add_crew()
 	_build_ui()
@@ -588,7 +593,7 @@ func _add_hull_collision() -> void:
 
 func _draw() -> void:
 
-	draw_rect(Rect2(-2000.0, -2000.0, 4000.0, 4000.0), SKY)
+	# The sky is now the procedural SkyBackdrop (added in _ready) on a low CanvasLayer — no flat fill here.
 	var deck : PackedVector2Array = PackedVector2Array()
 	for g in OUTLINE:
 		deck.append(_iso(g.x, g.y))
