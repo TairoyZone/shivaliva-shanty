@@ -19,7 +19,7 @@ _Effort: **S** small · **M** medium · **L** large. ⚠️ = expands past the M
 
 ## ✨ Visual juice
 - [x] **`Juice` tween helper** — ✅ DONE 2026-06-06. `components/juice.gd` (`class_name Juice`): `pop_in` (elastic) · `collect_fly` (parallel scale/spin/drift/free) · `bump` · `pulse` · `fade_in` · `fade_out_free`; each returns the Tween to await/chain. First adoption = the HUD bag-bump. The toasts kept their bespoke slide+hold+fade sequences; broader adoption is incremental + new code uses it from the start. *(tweens/gem.gd)*
-- [ ] **Procedural sky shader** — twinkling-star backdrop (canvas_item, no art) on a `-10` CanvasLayer ColorRect; reskin to the Stardust palette. Overworld + ship deck. *(2d_sky.gdshader)* **S**
+- [x] **Procedural sky shader** — ✅ DONE 2026-06-06. `components/stardust_sky.gdshader` (twilight gradient + two layers of twinkling jewel-tinted stars) + `components/sky_backdrop.gd` (`class_name SkyBackdrop`, drop-in on a -10 CanvasLayer, flat fallback colour). Live on the **ship deck** (replaced the flat SKY fill); the title keeps its `MenuBackdrop`. Overworld opt-in later. *(2d_sky.gdshader)*
 - [ ] **Screen-flash ColorRect** — tween alpha 0→x→0 on a top CanvasLayer for combo/KO punch (Skirmish combo, Loft Skylark). ~10 lines. *(rainy_night.gd)* **S**
 - [ ] **ClearBurst particles** — a reusable `GPUParticles2D` sub-emitter chain (impact→shards→puff), `one_shot`, `.restart()` at a cleared cell. Capture the cell pos as a primitive BEFORE `queue_free`. *(space_scene.tscn)* **M**
 - [ ] **Procedural `PointLight2D` glows** — radial GradientTexture2D, no art. Drop into any scene-per-component `.tscn`: forge glow, Skydock lanterns, piece halos. *(2d_dynamic_lights/gem.tscn)* **S**
