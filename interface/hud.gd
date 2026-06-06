@@ -145,6 +145,15 @@ func _open_hearts() -> void:
 	_open_inventory_tab("relationships")
 
 
+# Open the Shoppe Jobs board (Mining + Woodcutting). It's a pausing modal, so drop chat focus first
+# like the other panel-open paths (no stuck-focus / world-freeze).
+func _open_jobs() -> void:
+
+	ChatBox.drop_focus()
+	if visible:
+		ShoppeJobsBoard.open(self)
+
+
 # Open the backpack straight to [param tab] ("items" / "relationships" /
 # "profile"), or CLOSE it if it's already showing that page (so a button
 # toggles its own page). Shared by the quick-access menu + the R key.
@@ -189,9 +198,10 @@ func _build_menu() -> void:
 	menu.add_child(_bag_btn)
 	menu.add_child(_make_menu_button("♥  Hearts", "relationships", "Hearties — your bonds with the cast  (R)"))
 	menu.add_child(_make_menu_button("★  Profile", "profile", "Profile — your rank, trophies, and skills"))
+	menu.add_child(_make_menu_button("Jobs", "", "Shoppe Jobs — Mining & Woodcutting", _open_jobs))
 
 
-func _make_menu_button(text: String, tab: String, tooltip: String) -> Button:
+func _make_menu_button(text: String, tab: String, tooltip: String, action: Callable = Callable()) -> Button:
 
 	var btn : Button = Button.new()
 	btn.text = text
@@ -204,7 +214,10 @@ func _make_menu_button(text: String, tab: String, tooltip: String) -> Button:
 	btn.add_theme_stylebox_override("normal", _menu_btn_style(0))
 	btn.add_theme_stylebox_override("hover", _menu_btn_style(1))
 	btn.add_theme_stylebox_override("pressed", _menu_btn_style(2))
-	btn.pressed.connect(_open_inventory_tab.bind(tab))
+	if action.is_valid():
+		btn.pressed.connect(action)
+	else:
+		btn.pressed.connect(_open_inventory_tab.bind(tab))
 	return btn
 
 
