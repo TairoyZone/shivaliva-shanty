@@ -194,7 +194,6 @@ func _send(raw: String) -> void:
 	if player != null and player.has_method("speak"):
 		player.speak(bubble)
 	_append_log(line, CHAT_COLOR)
-	Audio.play_sfx("type_key", -6.0)
 	if _input != null:
 		_input.release_focus()   # back to the game so WASD moves again
 
