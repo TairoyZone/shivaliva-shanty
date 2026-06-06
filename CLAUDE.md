@@ -81,14 +81,18 @@ extending BaseLocation + a `Door` back + props.
 
 ### 2. Interactable prop → `extends Interactable` (`components/interactable/interactable.gd`)
 `@tool` `Area2D` on physics layer **Interactable**. The Player's InteractionZone calls
-`set_tooltip_visible()`; **E** calls `interact()` (emits `interacted`). Has `marker_label`,
-`spawn_offset`. Subclasses:
+`set_tooltip_visible()`; a proximity-gated **left-click** calls `interact()` (emits `interacted`) — the
+Player's `_unhandled_input` picks the nearest in-range interactable (the world is **click-based**; **E** now
+opens the backpack). Tooltips read `[Click]`. Has `marker_label`, `spawn_offset`. Subclasses:
 - **`Puzzle`** (`components/puzzle/puzzle.gd`) — adds `@export_file puzzle_scene` + `play_cost`;
   `interact()` charges gold then `request_spawn_at_anchor(name)` + `change_scene_to_file(puzzle_scene)`
   so the player returns next to the prop. **This is how a puzzle is launched from the world.**
-- **`Npc`** (`components/npc/npc.gd`) — permanent name tag, opens `Overlay` dialog, grants affinity;
-  data-driven `NPC_FAVORS` (one-entry edit to give an NPC a favour). Personality/AI tuning lives in
-  `.tres` `NpcPersonality` resources (`components/npc/profiles/*.tres`, indexed by `NpcRegistry`).
+- **`Npc`** (`components/npc/npc.gd`) — permanent name tag; click → a radial **`NpcMenu`**
+  (`interface/npc_menu.gd`, YPP-style) of **Talk / Spar / Favour / Hearts** (NOT a dialogue box). Talk floats
+  a **`SpeechBubble`** line (`components/speech_bubble.gd`); Spar launches a 1v1 Skirmish duel vs that NPC;
+  Favour is tucked in (the old `Overlay` dialog + favour-demand are gone); grants affinity. Data-driven
+  `NPC_FAVORS` (one-entry edit to give an NPC a favour). Personality/AI tuning lives in `.tres`
+  `NpcPersonality` resources (`components/npc/profiles/*.tres`, indexed by `NpcRegistry`).
 - **`Door`**, **`Building`** (solid; add a `StaticBody2D` child for collision).
 
 ### 3. Puzzle → a **Board** + a **Scene** (the most important pattern)
