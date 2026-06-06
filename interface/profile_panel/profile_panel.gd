@@ -176,13 +176,13 @@ func _make_center_column() -> Control:
 	fs.bg_color = Color(0.12, 0.10, 0.07, 1.0)
 	fs.border_color = COLOR_FRAME
 	fs.set_border_width_all(3)
-	fs.set_corner_radius_all(10)
+	fs.set_corner_radius_all(100)   # circular frame ring around the round avatar (clamped to half-size)
 	fs.set_content_margin_all(4)
 	frame.add_theme_stylebox_override("panel", fs)
 	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	# A circular avatar via clip_children masking (borrow) — the procedural bust clipped to a circle.
 	var avatar : ProfileAvatar = ProfileAvatar.new()
-	avatar.custom_minimum_size = Vector2(168, 188)
-	frame.add_child(avatar)
+	frame.add_child(CircleClip.wrap(avatar, 168.0))
 	col.add_child(frame)
 
 	# Trophy COLLECTION — ONLY the trophies you've actually EARNED show here (Troy); the
