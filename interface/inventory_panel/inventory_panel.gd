@@ -381,6 +381,7 @@ func _make_slot(slot: Dictionary) -> Control:
 # equip (what your boarding/duel attacks send). Switched here only, never mid-fight.
 func _make_weapon_slot(weapon_id: String) -> Control:
 
+	var is_default : bool = weapon_id == SkirmishWeapon.DEFAULT_WEAPON   # fists = unarmed → an EMPTY slot
 	var equipped : bool = PlayerState.equipped_weapon == weapon_id
 	var cell : VBoxContainer = VBoxContainer.new()
 	cell.add_theme_constant_override("separation", 3)
@@ -393,24 +394,25 @@ func _make_weapon_slot(weapon_id: String) -> Control:
 	s.set_border_width_all(3 if equipped else 2)
 	s.set_corner_radius_all(6)
 	panel.add_theme_stylebox_override("panel", s)
-	panel.tooltip_text = "%s\n%s" % [
+	panel.tooltip_text = "Unarmed — just your fists" if is_default else "%s\n%s" % [
 		SkirmishWeapon.display_name(weapon_id), String(SkirmishWeapon.DESCRIPTIONS.get(weapon_id, ""))]
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.gui_input.connect(_on_weapon_input.bind(weapon_id))
-	var icon : WeaponIcon = WeaponIcon.new()
-	icon.weapon_id = weapon_id
-	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
-	icon.offset_left = 8.0
-	icon.offset_top = 8.0
-	icon.offset_right = -8.0
-	icon.offset_bottom = -8.0
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(icon)
+	if not is_default:   # the unarmed/fists slot stays EMPTY — no icon
+		var icon : WeaponIcon = WeaponIcon.new()
+		icon.weapon_id = weapon_id
+		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+		icon.offset_left = 8.0
+		icon.offset_top = 8.0
+		icon.offset_right = -8.0
+		icon.offset_bottom = -8.0
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		panel.add_child(icon)
 	cell.add_child(panel)
 	# Name below — gold + ✓ when equipped.
 	var name_l : Label = Label.new()
-	name_l.text = ("✓ %s" % SkirmishWeapon.display_name(weapon_id)) if equipped \
-		else SkirmishWeapon.display_name(weapon_id)
+	name_l.text = "" if is_default else (("✓ %s" % SkirmishWeapon.display_name(weapon_id)) if equipped \
+		else SkirmishWeapon.display_name(weapon_id))
 	name_l.add_theme_font_size_override("font_size", 12)
 	name_l.add_theme_color_override("font_color",
 		COLOR_TITLE if equipped else Color(0.80, 0.72, 0.56, 1.0))
