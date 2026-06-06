@@ -425,17 +425,29 @@ func _rejoin_boarding() -> void:
 
 func _disembark() -> void:
 
-	# Finished the route → step off at the DESTINATION island; bailed mid-voyage → back home.
-	var arrived : bool = _arrived()
-	var target : String = ""
-	if arrived and not PlayerState.pillage_destination_scene.is_empty():
-		target = PlayerState.pillage_destination_scene
-	else:
+	# Voyage's END (the whole route run) → the booty DIVVY card (the pool × your overall duty), THEN step
+	# ashore on its close — the same payoff the in-station arrival shows (the deck is the usual arrival now,
+	# so it can't skip the ceremony). Bailing mid-voyage → straight home, no plunder card.
+	if _arrived() and not PlayerState.pillage_destination_scene.is_empty():
+		var card : VoyageHaulCard = VoyageHaulCard.create(PlayerState.pillage_destination)
+		card.closed.connect(_on_haul_card_closed)
+		add_child(card)
+		return
+	_finish_voyage(PlayerState.voyage_home_scene)
+
+
+func _on_haul_card_closed() -> void:
+
+	_finish_voyage(PlayerState.pillage_destination_scene)
+
+
+# Pay out the pooled booty (you keep what you plundered), wipe the voyage scaffolding, and step off.
+func _finish_voyage(target: String) -> void:
+
+	if target.is_empty():
 		target = PlayerState.voyage_home_scene
 	if target.is_empty():
 		target = FALLBACK_HOME
-	# Voyage's over either way — pay out the pooled booty (you keep what you plundered), then wipe
-	# the scaffolding so nothing stale carries to the next run.
 	PlayerState.cash_out_voyage()
 	PlayerState.clear_voyage()
 	get_tree().change_scene_to_file(target)
