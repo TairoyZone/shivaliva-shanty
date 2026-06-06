@@ -61,12 +61,12 @@ func _build_ui() -> void:
 
 	# The speech bar across the bottom: [mode] [ input ] [Send] [Log].
 	var bar : PanelContainer = PanelContainer.new()
-	bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	bar.offset_left = 12.0
-	bar.offset_right = -12.0
-	bar.offset_top = -46.0
-	bar.offset_bottom = -8.0
-	bar.add_theme_stylebox_override("panel", _panel_style(Color(0.10, 0.09, 0.13, 0.82)))
+	bar.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)   # bottom-LEFT, same width as the log box (aligned)
+	bar.offset_left = 14.0
+	bar.offset_right = 634.0     # 620 wide — matches the log panel
+	bar.offset_top = -58.0       # 48 tall — enough for the controls (was cramped at 38)
+	bar.offset_bottom = -10.0
+	bar.add_theme_stylebox_override("panel", _panel_style(Color(0.10, 0.09, 0.13, 0.88)))
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE   # the empty bar background must not eat world clicks
 	add_child(bar)
 	var hb : HBoxContainer = HBoxContainer.new()
@@ -107,10 +107,10 @@ func _build_ui() -> void:
 	# The history panel, just above the bar (hidden until you open it).
 	_log_panel = PanelContainer.new()
 	_log_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_log_panel.offset_left = 12.0
-	_log_panel.offset_right = 12.0 + 444.0
-	_log_panel.offset_top = -52.0 - 264.0
-	_log_panel.offset_bottom = -52.0
+	_log_panel.offset_left = 14.0
+	_log_panel.offset_right = 634.0           # match the bar's width
+	_log_panel.offset_top = -62.0 - 260.0     # 260 tall, sitting just above the bar
+	_log_panel.offset_bottom = -62.0
 	_log_panel.add_theme_stylebox_override("panel", _panel_style(Color(0.08, 0.07, 0.11, 0.9)))
 	_log_panel.visible = false
 	add_child(_log_panel)
