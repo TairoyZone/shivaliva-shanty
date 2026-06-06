@@ -140,21 +140,32 @@ func interact() -> void:
 
 	if Engine.is_editor_hint():
 		return
-	# Grant the per-visit rapport bump before showing dialog so the
-	# tier line in the header reflects the new total.
+	# Click an NPC → a RADIAL options menu (YPP-style), NOT a dialogue box. The favour is just ONE option
+	# here, never demanded to your face. See [NpcMenu] / [[Official:Communications]].
+	var opts : Array = [{"label": "Talk", "action": _talk}]
+	if NPC_FAVORS.has(npc_name):
+		opts.append({"label": "Favour", "action": _open_favor_modal})
+	opts.append({"label": "Hearts", "action": _open_hearts})
+	var at : Vector2 = get_global_transform_with_canvas().origin + Vector2(0.0, -36.0)
+	NpcMenu.open(self, at, npc_name, portrait_color, opts)
+	interacted.emit()
+
+
+# Talk → a flavour line floats above the NPC (a speech bubble, no dialogue box) + the per-visit rapport bump.
+func _talk() -> void:
+
 	if not _granted_affinity_this_visit and not npc_name.is_empty():
 		PlayerState.add_affinity(npc_name, TALK_AFFINITY)
 		_granted_affinity_this_visit = true
-	# Lead with a standing favour the first time this visit (then fall back
-	# to normal chat for the rest of the visit, so it never nags).
-	if not _favor_handled_this_visit and NPC_FAVORS.has(npc_name):
-		_favor_handled_this_visit = true
-		_open_favor_modal()
-		interacted.emit()
-		return
 	var lines : Array[String] = dialog_lines if not dialog_lines.is_empty() else ["..."]
-	Overlay.show_dialog(_speaker_header(), lines)
-	interacted.emit()
+	SpeechBubble.say(self, lines[randi() % lines.size()])
+
+
+# Hearts → your Hearties page (rapport with the cast), via the backpack's Hearts tab.
+func _open_hearts() -> void:
+
+	if HUD != null:
+		HUD._open_inventory_tab("relationships")
 
 
 # Open this NPC's favour offer. The modal is self-contained — it checks
