@@ -644,6 +644,7 @@ func _animate_clear(cells: Array, gen: int = -1) -> void:
 		if s == null:
 			continue
 		doomed.append([cell, s])
+		_spawn_clear_burst(s)   # a shard puff as the gem shatters (borrow #5b) — pos read now, before free
 		tw.tween_property(s, "scale", Vector2.ZERO, CLEAR_TIME) \
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 		tw.tween_property(s, "modulate:a", 0.0, CLEAR_TIME)
@@ -660,6 +661,17 @@ func _animate_clear(cells: Array, gen: int = -1) -> void:
 		grid[cell.x][cell.y] = null
 		if is_instance_valid(d[1]):
 			d[1].queue_free()
+
+
+## A shard puff where a stone clears (borrow #5b). The position is read NOW, synchronously, before the
+## stone's clear-tween + free — never after an await (the await-after-free gotcha).
+func _spawn_clear_burst(stone: LoftStone) -> void:
+
+	if stone == null:
+		return
+	var b : ClearBurst = ClearBurst.make(LoftStone.HUES[stone.hue % LoftStone.HUES.size()], 9)
+	b.position = stone.position
+	add_child(b)
 
 
 func _animate_all_to_grid() -> void:
