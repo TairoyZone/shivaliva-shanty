@@ -49,6 +49,10 @@ func _ready() -> void:
 	if bed is AudioStreamWAV:
 		(bed as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_FORWARD
 	play_music(bed, -9.0)
+	# SYSTEM-WIDE UI CLICK: every BaseButton in the game (code- OR scene-built) clicks on press, via one
+	# hook on the tree's node_added — so new buttons inherit it for free. (System-wide SFX phase 2026-06-06.)
+	if get_tree() != null:
+		get_tree().node_added.connect(_on_node_added)
 
 
 # Fire a one-shot SFX by name (no-op if unknown). A little random pitch per play kills repetition fatigue.
@@ -75,3 +79,18 @@ func stop_music() -> void:
 
 	if _music_player != null:
 		_music_player.stop()
+
+
+## Every button added to the tree gets a click on press — the system-wide UI sound in ONE place, so no
+## button is ever silent and new ones need no wiring. (Opt a button out by playing your own sound instead.)
+func _on_node_added(node: Node) -> void:
+
+	if node is BaseButton:
+		var b : BaseButton = node as BaseButton
+		if not b.pressed.is_connected(_play_ui_click):
+			b.pressed.connect(_play_ui_click)
+
+
+func _play_ui_click() -> void:
+
+	play_sfx("click", -3.0)
