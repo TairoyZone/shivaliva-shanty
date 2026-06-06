@@ -85,10 +85,6 @@ const NAME_TAG_NEAR_COLOR : Color = Color(0.98, 0.85, 0.40, 1.0)
 # implicitly because the NPC node is rebuilt on every scene load.
 var _granted_affinity_this_visit : bool = false
 
-# True once this visit's favour interaction has happened (given OR
-# deferred) so repeated E-presses fall back to normal dialog instead of
-# re-nagging. Resets on scene reload, like _granted_affinity_this_visit.
-var _favor_handled_this_visit : bool = false
 # Open guard for the favour modal.
 var _favor_modal : FavorModal = null
 
