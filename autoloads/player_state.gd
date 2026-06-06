@@ -1276,7 +1276,7 @@ func record_puzzle_result(puzzle_id: String, score: int) -> Dictionary:
 	var new_tier : int = _mastery_tier_index(puzzle_id, best)
 	var ranked_up : bool = new_tier > old_tier
 	if ranked_up:
-		Audio.play_sfx("chime")   # the rank-up flourish (universal across every puzzle's result)
+		Audio.play_sfx("powerup")   # the rank-up fanfare (borrowed GDQuest lib — richer than the synth chime)
 		mastery_ranked_up.emit(puzzle_id, new_tier, MASTERY_TIERS[new_tier])
 		var pname : String = String((MASTERY_PUZZLES.get(puzzle_id, {}) as Dictionary).get("name", puzzle_id))
 		log_event("Ranked up: %s — %s" % [pname, MASTERY_TIERS[new_tier]], Color(0.98, 0.86, 0.5))

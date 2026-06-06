@@ -124,6 +124,7 @@ func _show_next_line() -> void:
 ## skip the reveal to full via [method _finish_typing].
 func _type_line(text: String) -> void:
 
+	Audio.play_sfx("voice", -3.0)   # a soft talk-synth blip per revealed line (borrowed lib)
 	_body_label.text = text
 	_body_label.visible_ratio = 0.0
 	_typing = true

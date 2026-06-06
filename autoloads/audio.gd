@@ -18,11 +18,30 @@ var _sfx : Dictionary = {
 	"buzz": preload("res://audio/sfx/buzz.wav"),
 	"click": preload("res://audio/sfx/click.wav"),
 	"toss": preload("res://audio/sfx/toss.wav"),
+	# --- Borrowed library SFX — richer designed/recorded sounds alongside the procedural placeholders.
+	# --- Licenses + attribution in audio/CREDITS.md: GDQuest CC-BY 4.0 · Kenney + Junkala CC0 ·
+	# --- tcarisland CC-BY-SA 4.0 (voice) · unicaegames CC0 (type_key).
+	"voice": preload("res://audio/sfx/voice_talk.ogg"),
+	"voice2": preload("res://audio/sfx/voice_talk2.ogg"),
+	"type_key": preload("res://audio/sfx/type_key.wav"),
+	"pickup": preload("res://audio/sfx/pickup.wav"),
+	"powerup": preload("res://audio/sfx/powerup.wav"),
+	"hit": preload("res://audio/sfx/hit.wav"),
+	"bop": preload("res://audio/sfx/bop.wav"),
+	"hurt": preload("res://audio/sfx/hurt.wav"),
+	"ko": preload("res://audio/sfx/ko.wav"),
+	"pain": preload("res://audio/sfx/pain.wav"),
+	"laser": preload("res://audio/sfx/laser.wav"),
+	"step_grass": preload("res://audio/sfx/step_grass.ogg"),
+	"step_stone": preload("res://audio/sfx/step_stone.ogg"),
+	"whoosh2": preload("res://audio/sfx/whoosh2.ogg"),
+	"explosion": preload("res://audio/sfx/explosion.ogg"),
 }
 
 ## The music bank (looping ambient beds — procedural, see tools/music_gen.gd).
 var _music : Dictionary = {
 	"overworld": preload("res://audio/music/overworld.wav"),
+	"title": preload("res://audio/music/title.ogg"),   # Juhani Junkala (CC0) — a chiptune title theme (audition)
 }
 
 var _sfx_player : AudioStreamPlayer
