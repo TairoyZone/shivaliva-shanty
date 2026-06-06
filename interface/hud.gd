@@ -130,6 +130,7 @@ func _refresh_journal(_unused = null) -> void:
 # disabled while the HUD is hidden (inside a puzzle).
 func _toggle_journal() -> void:
 
+	ChatBox.drop_focus()   # a mouse click on a HUD button leaves the chat bar (no stuck focus / world-freeze)
 	if not visible:
 		return
 	if _inventory_panel.is_open():
@@ -149,6 +150,7 @@ func _open_hearts() -> void:
 # toggles its own page). Shared by the quick-access menu + the R key.
 func _open_inventory_tab(tab: String) -> void:
 
+	ChatBox.drop_focus()   # a mouse click on a HUD button leaves the chat bar (no stuck focus / world-freeze)
 	if not visible:
 		return
 	if Overlay.is_active and not _inventory_panel.is_open():
@@ -242,6 +244,7 @@ func is_inventory_open() -> bool:
 # NPC/lore dialog, but a bag that's somehow already open can always close.
 func _toggle_inventory() -> void:
 
+	ChatBox.drop_focus()   # a mouse click on a HUD button leaves the chat bar (no stuck focus / world-freeze)
 	if not visible:
 		return
 	if Overlay.is_active and not _inventory_panel.is_open():
@@ -255,6 +258,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	# ESC here (consumes it) so it never falls through to a leave-to-title.
 	if not visible:
 		return
+	if ChatBox.is_typing():
+		return   # typing in chat — keys go to the text, not the backpack/journal
 	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("interact"):
 		_toggle_inventory()   # ESC or E opens/closes the backpack — E no longer interacts (Troy: click-based)
 		get_viewport().set_input_as_handled()

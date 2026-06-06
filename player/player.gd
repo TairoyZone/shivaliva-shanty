@@ -84,10 +84,9 @@ func _physics_process(_delta: float) -> void:
 	# Co-op seam: only the OWNING client drives this player's input (always true in single-player).
 	if not SessionState.is_local_authority(peer_id):
 		return
-	# Freeze while a fullscreen UI owns the screen — an NPC/lore dialog
-	# (Overlay) OR the open backpack (HUD inventory). Otherwise the player
-	# would walk around blind behind the overlay.
-	if Overlay.is_active or (HUD != null and HUD.is_inventory_open()):
+	# Freeze while something else owns input — an NPC/lore dialog (Overlay), the open backpack (HUD
+	# inventory), OR the chat bar (you're typing, so WASD must go to the text, not the world).
+	if Overlay.is_active or (HUD != null and HUD.is_inventory_open()) or ChatBox.is_typing():
 		velocity = Vector2.ZERO
 		move_and_slide()
 		return
@@ -115,8 +114,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
 		return
-	# Don't interact through a fullscreen UI (an open dialog or the backpack).
-	if Overlay.is_active or (HUD != null and HUD.is_inventory_open()):
+	# Don't interact through a fullscreen UI (an open dialog or the backpack) or while typing in chat.
+	if Overlay.is_active or (HUD != null and HUD.is_inventory_open()) or ChatBox.is_typing():
 		return
 	if _nearby_interactables.is_empty():
 		return
@@ -153,6 +152,12 @@ func _on_InteractionZone_area_exited(area: Area2D) -> void:
 		return
 	_nearby_interactables.erase(area)
 	area.set_tooltip_visible(false)
+
+
+# Say a line aloud — a floating SpeechBubble above the player's head. Called by the ChatBox when you chat.
+func speak(text: String) -> void:
+
+	SpeechBubble.say(self, text, -150.0)
 
 
 # Animation FPS gets scaled by the iso projection ratio so diagonal

@@ -177,6 +177,7 @@ func _load_settings() -> void:
 func _save_settings() -> void:
 
 	var cfg : ConfigFile = ConfigFile.new()
+	cfg.load(SETTINGS_PATH)   # keep sections other autoloads own (e.g. ChatBox's [chat]) — merge, don't clobber
 	cfg.set_value("audio", "music_enabled", music_enabled)
 	cfg.set_value("audio", "sfx_enabled", sfx_enabled)
 	cfg.save(SETTINGS_PATH)

@@ -318,7 +318,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _active.is_empty():
 		return
-	if Overlay.is_active or (HUD != null and HUD.is_inventory_open()):
+	if Overlay.is_active or (HUD != null and HUD.is_inventory_open()) or ChatBox.is_typing():
 		return
 	get_viewport().set_input_as_handled()
 	match _active:

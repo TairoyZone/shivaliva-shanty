@@ -25,7 +25,7 @@ func _ready() -> void:
 	_box.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_box.offset_left = 18.0
-	_box.offset_bottom = -18.0
+	_box.offset_bottom = -52.0   # sit above the chat bar, which lives at the very bottom
 	_box.add_theme_constant_override("separation", 3)
 	_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_box)
