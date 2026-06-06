@@ -88,28 +88,30 @@ finished). Adversarially reviewed (3 bugs fixed) + several playtest fixes alread
    HUD layout fix).
 4. **Voyage flow → "captain sets sail" (2026-06-06):** the deck now drives the crossing — set sail at the
    helm, she sails the whole route, man stations freely while sailing, and leaving a station keeps you on
-   the still-sailing deck (no snap-back to the island).
+   the still-sailing deck (no snap-back to the island). + deck arrival shows the booty haul card.
+5. **Stardust gem shader:** a `canvas_item` shader on the Loft — drifting, spinning **diamond** gems that
+   twinkle + glow in jewel hues (blue/purple/pink/red), reddening with the Stardust's bite.
+6. **Mined `godot-4-new-features` → `GODOT_BORROW_TODO.md`:** a 7-agent analysis → a prioritized, checkable
+   backlog of patterns to borrow (audio · visual juice · UI/dialogue · GDScript-data · co-op-ready).
+7. **Audio spine (borrow #1):** an `Audio` autoload (polyphonic SFX bank + music player) with 9 **procedural**
+   placeholder `.wav` synthesised in-engine (no lifted audio); first call site = the gold "coin".
 
 ## What's next
-- **Playtesting** the new set-sail voyage flow (set sail → sail → man/leave stations → boarding step-away/rejoin → arrive).
-- **Tuning:** the brigand-crew fight (crew sizes, AI pace, garbage) + the deck-sail pace are first-pass.
-- **Troy's TODO** (bottom of this file): a backlog of next-up / post-demo ideas (Stardust shader, NPC
-  click-interaction + a YPP-style chatbox, a 10th NPC "Geneva" for 10 poker seats, crew-hiring, ship/island
-  location persistence, …).
-- **Post-demo (deferred):** co-op netcode, parlor tournaments, filling Driftspar, music (a known gap).
+- **Wire the rest of the audio call sites:** `Audio.play_sfx` into puzzle clears (clack/pop), UI (click),
+  win/results (chime), toss/invalid (buzz) — the polyphony shines on cascades. Then continue down
+  `GODOT_BORROW_TODO.md` (Juice tween helper → sky shader → typewriter dialogue → …).
+- **Eyeball + tune** the Stardust gem shader in-editor (density / spin / hues).
+- **Playtest** the new set-sail voyage flow; tune the brigand-crew fight + the deck-sail pace.
+- **Troy's TODO** (bottom of this file) — several items now have a concrete blueprint from the godot mining.
+- **Post-demo (deferred):** co-op netcode, parlor tournaments, filling Driftspar, a real soundtrack.
 
 ---
 _This report is a living snapshot — regenerate it as the project moves. Deeper design history + locked
 decisions live in the auto-memory (`…/memory/MEMORY.md`); the code map lives in `CLAUDE.md`._
 
 # TROY's TODO #
-# = Shader the looks like Stardusts sparkling for 
-#   the Loft puzzle board.
-# = Get or learn patterns/principles/foundations/feautures from
-#   godot-4-new-features-main, perhaps analyze thoroughly all
-#   the demos, looking for what we can borrow or just learn from.
 # = For the Hearties tab in player's tab. Never show any NPC unless
-#   they are friends with the player. We need redesign our NPC
+#   they are friends with the player. We need to redesign our NPC
 #   interaction
 # = Remove the interaction mechanics where the player has to go nearby an NPC to interact with them by pressing "E".
 #   Instead, just like YPP(Might need extensive research and audit on this one) just left-click or right-click to them to show a bunch of options of how to interact with this NPC.
@@ -120,3 +122,4 @@ decisions live in the auto-memory (`…/memory/MEMORY.md`); the code map lives i
 # = players can chat with NPC. Use API for this one to respond intelligently
 # = Player should be able to start a crew, and hire crew members and assign their ranks
 # = need player location persistance on the ship and even island,    like the player after a pillage should land on the docks naturally
+# = The ship rn is cool. but lets make it aesthetically better.
