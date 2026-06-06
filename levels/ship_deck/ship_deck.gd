@@ -79,7 +79,8 @@ const SHADOW : Color = Color(0.0, 0.0, 0.0, 0.18)             # soft ground shad
 
 var _active : String = ""
 var _station_pos : Dictionary = {}   # station_id -> world pos, indexed from the placed DeckProp nodes (else iso const)
-var _hull_label : Label          # HULL condition readout (the ship you're crewing) — top-right
+var _active_pos : Vector2 = Vector2.ZERO   # world pos of the nearest active station — the prompt floats above it
+var _hull_gauge : HullGauge      # the ship's hull-condition readout (icon + text), top-left
 var _prompt : Label
 var _captain_label : Label
 var _chart : VoyageChart         # the drawn voyage progress ribbon
@@ -327,6 +328,8 @@ func _process(_delta: float) -> void:
 		_prompt.visible = not _active.is_empty()
 		if not _active.is_empty():
 			_prompt.text = "[Click]  %s" % _action_label(_active)
+			# Float the prompt above the active station's head (centred) — never the screen bottom.
+			_prompt.position = _active_pos + Vector2(-_prompt.get_minimum_size().x * 0.5, -64.0)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -364,6 +367,7 @@ func _nearest_active_station() -> String:
 		if d <= best_d:
 			best_d = d
 			best = s[0]
+			_active_pos = s[1]
 	return best
 
 
@@ -545,23 +549,17 @@ func _build_ui() -> void:
 	_captain_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	banner.add_child(_captain_label)
 
+	# The interaction prompt floats in WORLD space above the active station's head (placed in _process),
+	# so it never collides with the bottom chat bar / chart. A z-lifted deck child, not on the HUD layer.
 	_prompt = Label.new()
-	_prompt.add_theme_font_size_override("font_size", 22)
+	_prompt.add_theme_font_size_override("font_size", 20)
 	_prompt.add_theme_color_override("font_color", Color(0.80, 1.0, 0.66, 1.0))
 	_prompt.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_prompt.add_theme_constant_override("outline_size", 4)
-	_prompt.anchor_left = 0.5
-	_prompt.anchor_right = 0.5
-	_prompt.anchor_top = 1.0
-	_prompt.anchor_bottom = 1.0
-	_prompt.offset_top = -78.0
-	_prompt.offset_left = -240.0
-	_prompt.offset_right = 240.0
-	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_prompt.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_prompt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_prompt.z_index = 100
 	_prompt.visible = false
-	layer.add_child(_prompt)
+	add_child(_prompt)
 
 	# Voyage CHART (self-contained, BOTTOM-LEFT — clear of the captain banner up top and the
 	# [Click] prompt bottom-centre). Populated by _setup_phase → _refresh_chart right after this.
@@ -586,20 +584,16 @@ func _build_ui() -> void:
 	layer.add_child(report_btn)
 	_report_btn = report_btn
 
-	# HULL condition readout (top-right) — the ship you're crewing. Mirrors the Loft's HULL pill.
-	_hull_label = Label.new()
-	_hull_label.add_theme_font_size_override("font_size", 17)
-	_hull_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	_hull_label.add_theme_constant_override("outline_size", 3)
-	_hull_label.anchor_left = 0.0
-	_hull_label.anchor_right = 0.0
-	_hull_label.offset_left = 16.0
-	_hull_label.offset_right = 226.0
-	_hull_label.offset_top = 60.0   # top-LEFT under the Duty Report — clear of the HUD gold purse top-right
-	_hull_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_hull_label.grow_horizontal = Control.GROW_DIRECTION_END
-	_hull_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layer.add_child(_hull_label)
+	# HULL condition readout (top-LEFT under the Duty Report, clear of the HUD purse) — the SHIP's hull as
+	# an ICON: ONE shared condition (holes flood the Loft + are mended at the Patchworks), not Loft-only.
+	_hull_gauge = HullGauge.new()
+	_hull_gauge.anchor_left = 0.0
+	_hull_gauge.anchor_right = 0.0
+	_hull_gauge.offset_left = 16.0
+	_hull_gauge.offset_top = 60.0
+	_hull_gauge.offset_right = 16.0 + 160.0
+	_hull_gauge.offset_bottom = 60.0 + 32.0
+	layer.add_child(_hull_gauge)
 	_update_hull_label()
 
 
@@ -609,19 +603,11 @@ func _say(line: String) -> void:
 		_captain_label.text = "Cap'n %s:  \"%s\"" % [_captain_name(), line]
 
 
-# The HULL condition readout (the ship you're crewing) — green SOUND → amber → red, mirroring the Loft.
+# Refresh the HULL gauge from the ship's open holes (the gauge colour-codes + draws the icon itself).
 func _update_hull_label() -> void:
 
-	if _hull_label == null:
-		return
-	var holes : int = PlayerState.ship_open_holes()
-	if holes <= 0:
-		_hull_label.text = "HULL  SOUND"
-		_hull_label.add_theme_color_override("font_color", Color(0.7, 0.95, 0.75, 1.0))
-	else:
-		_hull_label.text = "HULL  %d hole%s" % [holes, "" if holes == 1 else "s"]
-		_hull_label.add_theme_color_override("font_color",
-			Color(0.98, 0.82, 0.5) if holes <= 2 else Color(1.0, 0.55, 0.5))
+	if _hull_gauge != null:
+		_hull_gauge.set_holes(PlayerState.ship_open_holes())
 
 
 # Open the YPP-style duty report (last leg's per-hand ratings) — one at a time.
