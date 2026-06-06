@@ -105,8 +105,9 @@ func _physics_process(_delta: float) -> void:
 
 
 # Click-to-interact, PROXIMITY-GATED + universal: you must be close enough (the object is in
-# _nearby_interactables via the InteractionZone) AND left-click — then the in-range object NEAREST your
-# click interacts. One hook covers EVERY interactable (NPC, door, puzzle, work-site, station). E opens the
+# _nearby_interactables via the InteractionZone) AND left-click ON it — then the in-range object you
+# clicked (contains_click; clicking the ground beside it does nothing) interacts. One hook covers EVERY
+# interactable (NPC, door, puzzle, work-site, station). E opens the
 # backpack (handled by the HUD), so the player no longer uses E to interact.
 func _unhandled_input(event: InputEvent) -> void:
 
@@ -119,12 +120,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _nearby_interactables.is_empty():
 		return
-	# Interact with the in-range interactable nearest the click, so you can aim when several are close.
+	# You must click ON an in-range interactable's body (contains_click), not merely be nearby (Troy
+	# 2026-06-06) — among those the click lands on, take the nearest so you can aim when several overlap.
 	var mouse : Vector2 = get_global_mouse_position()
 	var closest : Interactable = null
 	var closest_d : float = INF
 	for m in _nearby_interactables:
 		if not is_instance_valid(m):
+			continue
+		if not m.contains_click(mouse):
 			continue
 		var d : float = mouse.distance_squared_to(m.global_position)
 		if d < closest_d:

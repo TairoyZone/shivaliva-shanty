@@ -31,6 +31,14 @@ signal interacted
 ## BaseLocation when resolving the pending spawn anchor.
 @export var spawn_offset : Vector2 = Vector2(0, 60)
 
+## Click-target box (local px, from this node's origin/base) for "you must click ON me, not just be
+## nearby" (Troy 2026-06-06). Tight horizontally so clicking the ground beside me doesn't count; tall
+## enough to cover a standing figure from the feet (origin) up past the head. Wide/odd-footprint props
+## override [method contains_click].
+const CLICK_HALF_WIDTH : float = 48.0
+const CLICK_ABOVE : float = 140.0
+const CLICK_BELOW : float = 28.0
+
 @onready var _tooltip : Label = %Tooltip
 
 
@@ -48,6 +56,14 @@ func set_tooltip_visible(value: bool) -> void:
 	if value:
 		_tooltip.text = "%s   [Click]" % marker_label
 	_tooltip.visible = value
+
+
+## Whether a world-space [param point] lands ON this interactable's body — the Player uses this so you must
+## AIM at the prop, not merely stand near it. Default: the [constant CLICK_HALF_WIDTH] box around the origin.
+func contains_click(point: Vector2) -> bool:
+
+	var local : Vector2 = point - global_position
+	return absf(local.x) <= CLICK_HALF_WIDTH and local.y <= CLICK_BELOW and local.y >= -CLICK_ABOVE
 
 
 func interact() -> void:
