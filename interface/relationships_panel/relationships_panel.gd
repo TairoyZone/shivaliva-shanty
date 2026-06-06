@@ -17,6 +17,11 @@ const COLOR_HEART : Color = Color(0.88, 0.32, 0.44, 1.0)
 ## Heart pips in the meter; each = MAX_AFFINITY / HEARTS rapport points.
 const HEARTS : int = 10
 
+## Min rapport for an NPC to appear here. The Hearties tab is your FRIENDS list — only islanders you've
+## built positive rapport with, NOT the whole cast (Troy 2026-06-06). Talk to / help an NPC and they show
+## up. 1 = any positive rapport; bump toward the "Friend" tier (50) if you want it stricter.
+const FRIENDS_MIN_AFFINITY : int = 1
+
 var _list : VBoxContainer
 
 
@@ -49,8 +54,16 @@ func refresh() -> void:
 		return
 	for child in _list.get_children():
 		child.queue_free()
+	# Only show islanders you've actually befriended (positive rapport) — the Hearties tab is your FRIENDS
+	# list, not a roster of the whole cast. Empty until you talk to / help someone.
+	var shown : int = 0
 	for profile in NpcRegistry.all():
+		if PlayerState.get_affinity(profile.npc_name) < FRIENDS_MIN_AFFINITY:
+			continue
 		_list.add_child(_make_npc_card(profile))
+		shown += 1
+	if shown == 0:
+		_list.add_child(_make_empty_hint())
 
 
 func _make_npc_card(profile: NpcPersonality) -> Control:
@@ -92,6 +105,20 @@ func _make_npc_card(profile: NpcPersonality) -> Control:
 	hearts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(hearts)
 	return card
+
+
+# Shown when you've no hearties yet — so the empty tab reads as "go make friends", not "broken".
+func _make_empty_hint() -> Control:
+
+	var hint : Label = Label.new()
+	hint.text = "No hearties yet.\n\nClick an islander and choose Talk — lend a hand with a favour — and they'll appear here as you befriend them."
+	hint.add_theme_font_size_override("font_size", 16)
+	hint.add_theme_color_override("font_color", COLOR_INK_SOFT)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
+	hint.custom_minimum_size = Vector2(0.0, 160.0)
+	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return hint
 
 
 func _make_portrait(profile: NpcPersonality) -> Control:

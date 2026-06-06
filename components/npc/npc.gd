@@ -24,6 +24,10 @@ const TALK_AFFINITY : int = 1
 ## single rapport tap (they cost real items), just not a fast track.
 const FAVOR_AFFINITY : int = 8
 
+## The 1v1 Skirmish DUEL scene — the radial menu's "Spar" launches it against THIS NPC (mirrors the
+## Spar post). See [[combat-puzzle-direction]].
+const SKIRMISH_DUEL_SCENE : String = "res://puzzles/skirmish/skirmish_duel.tscn"
+
 ## Standing favours, keyed by NPC name — the cozy "do a good turn first"
 ## rapport tap (the One Piece "earn their liking by helping" feeling). Each
 ## is a small ask for something the player already produces (wood/ore), and
@@ -142,7 +146,7 @@ func interact() -> void:
 		return
 	# Click an NPC → a RADIAL options menu (YPP-style), NOT a dialogue box. The favour is just ONE option
 	# here, never demanded to your face. See [NpcMenu] / [[Official:Communications]].
-	var opts : Array = [{"label": "Talk", "action": _talk}]
+	var opts : Array = [{"label": "Talk", "action": _talk}, {"label": "Spar", "action": _challenge}]
 	if NPC_FAVORS.has(npc_name):
 		opts.append({"label": "Favour", "action": _open_favor_modal})
 	opts.append({"label": "Hearts", "action": _open_hearts})
@@ -166,6 +170,19 @@ func _open_hearts() -> void:
 
 	if HUD != null:
 		HUD._open_inventory_tab("relationships")
+
+
+# Spar → challenge THIS NPC to a 1v1 Skirmish duel. Mirrors the Spar post's launch: seat this NPC as the
+# opponent (consumed by SkirmishDuel._resolve_opponent), set the return anchor next to them, change scene.
+func _challenge() -> void:
+
+	for profile in NpcRegistry.all():
+		if profile.npc_name == npc_name:
+			PlayerState.skirmish_opponent = profile.resource_path
+			break
+	PlayerState.request_spawn_at_anchor(name)
+	Audio.play_sfx("whoosh")
+	get_tree().change_scene_to_file(SKIRMISH_DUEL_SCENE)
 
 
 # Open this NPC's favour offer. The modal is self-contained — it checks
