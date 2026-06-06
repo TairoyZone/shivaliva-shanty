@@ -327,11 +327,8 @@ func _bump_bag() -> void:
 
 	if not is_instance_valid(_bag_btn):
 		return
-	_bag_btn.pivot_offset = _bag_btn.size * 0.5
-	_bag_btn.scale = Vector2.ONE
-	var tw : Tween = create_tween()
-	tw.tween_property(_bag_btn, "scale", Vector2(1.22, 1.22), 0.11).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(_bag_btn, "scale", Vector2.ONE, 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	_bag_btn.scale = Vector2.ONE   # reset in case a prior bump is mid-flight (Juice centres the pivot)
+	Juice.bump(_bag_btn, 1.22, 0.26)   # de-dup'd onto the shared tween helper (borrow #2)
 
 
 # Replay a deferred bag bump on the way back to the overworld (a puzzle banked wood/ore while hidden).
