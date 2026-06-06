@@ -20,6 +20,11 @@ var _sfx : Dictionary = {
 	"toss": preload("res://audio/sfx/toss.wav"),
 }
 
+## The music bank (looping ambient beds — procedural, see tools/music_gen.gd).
+var _music : Dictionary = {
+	"overworld": preload("res://audio/music/overworld.wav"),
+}
+
 var _sfx_player : AudioStreamPlayer
 var _music_player : AudioStreamPlayer
 
@@ -38,6 +43,12 @@ func _ready() -> void:
 	_music_player = AudioStreamPlayer.new()
 	_music_player.volume_db = -8.0
 	add_child(_music_player)
+	# Start the ambient bed from the title onward (a quiet loop under everything). Force the loop on the
+	# stream itself so it never depends on the .wav import's loop flag.
+	var bed : AudioStream = _music.get("overworld")
+	if bed is AudioStreamWAV:
+		(bed as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_FORWARD
+	play_music(bed, -9.0)
 
 
 # Fire a one-shot SFX by name (no-op if unknown). A little random pitch per play kills repetition fatigue.
