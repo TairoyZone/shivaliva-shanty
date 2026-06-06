@@ -1,12 +1,12 @@
-## SpeechBubble — a single line of speech that floats above an NPC and fades (the YPP chat-bubble model,
-## see [[Official:Communications]]) — replaces the old dialogue box for casual "Talk". Add it to the NPC:
-##   SpeechBubble.say(npc, "This island is so peaceful...")
-## A child of the NPC, so it rides their position; outlined for readability; self-fades + frees. A future
-## chat box can render the same lines into a log. Placeholder-first. See [[godot-borrow-todo]].
+## SpeechBubble — a single line of speech that floats above a character inside a rounded bg BUBBLE
+## (YPP-style, see [[chatbox-comms-reference]]) and fades. Add it: SpeechBubble.say(node, "Ahoy!").
+## Used by NPC Talk + the player's chat. A child of the node, so it rides their position; the bubble
+## sizes to the text (snug for short lines, wraps long ones); self-fades + frees. Placeholder-first.
 class_name SpeechBubble
 extends Node2D
 
-const WIDTH : float = 230.0
+const MAX_WIDTH : float = 250.0
+const FONT_SIZE : int = 17
 
 var _text : String = ""
 
@@ -26,21 +26,52 @@ func _ready() -> void:
 	z_index = 100
 	var label : Label = Label.new()
 	label.text = _text
-	label.add_theme_font_size_override("font_size", 17)
+	label.add_theme_font_size_override("font_size", FONT_SIZE)
 	label.add_theme_color_override("font_color", Color(0.99, 0.97, 0.9, 1.0))
-	label.add_theme_color_override("font_outline_color", Color(0.04, 0.03, 0.06, 0.95))
-	label.add_theme_constant_override("outline_size", 6)
-	label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.5))
-	label.add_theme_constant_override("shadow_offset_y", 2)
+	label.add_theme_color_override("font_outline_color", Color(0.04, 0.03, 0.06, 0.9))
+	label.add_theme_constant_override("outline_size", 2)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	label.size = Vector2(WIDTH, 0.0)
-	label.position = Vector2(-WIDTH * 0.5, 0.0)   # centre it over the NPC
-	add_child(label)
-	# Pop in, hold, fade, free (the bubble breathes — like a real chat line).
+	# Size to the text, up to a max — short lines get a snug bubble, long ones wrap.
+	var font : Font = label.get_theme_font("font")
+	if font == null:
+		font = ThemeDB.fallback_font
+	var natural : float = font.get_string_size(_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, FONT_SIZE).x
+	label.custom_minimum_size = Vector2(minf(natural + 2.0, MAX_WIDTH), 0.0)
+
+	var pill : PanelContainer = PanelContainer.new()
+	pill.add_theme_stylebox_override("panel", _bubble_style())
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.add_child(label)
+	add_child(pill)
+
+	# Centre the bubble above the anchor once it's laid out (its size depends on the text). Hidden for the
+	# one layout frame so it never flashes at the wrong spot.
 	scale = Vector2(0.6, 0.6)
+	modulate.a = 0.0
+	await get_tree().process_frame
+	if not is_instance_valid(self) or not is_instance_valid(pill):
+		return
+	pill.position = Vector2(-pill.size.x * 0.5, -pill.size.y)
+	modulate.a = 1.0
+	# Pop in, hold, fade, free.
 	var tw : Tween = create_tween()
 	tw.tween_property(self, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_interval(2.6)
 	tw.tween_property(self, "modulate:a", 0.0, 0.5).set_trans(Tween.TRANS_SINE)
 	tw.tween_callback(queue_free)
+
+
+# Rounded dark bubble behind the line, matching the recent-log pills — reads over a busy world.
+func _bubble_style() -> StyleBoxFlat:
+
+	var s : StyleBoxFlat = StyleBoxFlat.new()
+	s.bg_color = Color(0.10, 0.09, 0.13, 0.88)
+	s.border_color = Color(0.62, 0.46, 0.20, 0.55)
+	s.set_border_width_all(1)
+	s.set_corner_radius_all(9)
+	s.content_margin_left = 11.0
+	s.content_margin_right = 11.0
+	s.content_margin_top = 5.0
+	s.content_margin_bottom = 5.0
+	return s
