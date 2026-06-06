@@ -112,7 +112,7 @@ func _on_round_advanced(new_round: int, new_target: int) -> void:
 
 func _on_round_clearing(winner: int) -> void:
 
-	Audio.play_sfx("pop")
+	Audio.play_sfx("bop")
 	# Hide both turn indicators while the inter-round pause plays out;
 	# the active-state will be re-asserted by _on_turn_changed when the
 	# next round starts.

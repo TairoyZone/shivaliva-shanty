@@ -351,9 +351,11 @@ func _do_swap() -> void:
 		# her: reaching SINK_LEVEL ends the session SUNK and the voyage handles the consequence (LOST IN
 		# THE STARDUST). Calm legs never sink — _can_sink stays false there.
 		if _can_sink and _stardust >= SINK_LEVEL:
+			Audio.play_sfx("explosion")   # LOST IN THE STARDUST — she's swallowed
 			_end_session(true)
 		return
 	if _stardust >= SINK_LEVEL:
+		Audio.play_sfx("explosion")   # the Stardust swallowed her — SUNK
 		_end_session(true)     # the Stardust swallowed her — SUNK, round over
 	elif _moves_left <= 0:
 		_end_session(false)

@@ -152,7 +152,7 @@ func _on_combo_landed(count: int, ore_gained: int) -> void:
 
 	if count < 2:
 		return
-	Audio.play_sfx("clack")
+	Audio.play_sfx("hit")
 	var combo_name : String = (COMBO_NAMES[count] if count < COMBO_NAMES.size()
 		else "HAUL x%d" % count)
 	var label : Label = Label.new()

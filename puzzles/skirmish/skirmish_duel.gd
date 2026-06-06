@@ -211,7 +211,7 @@ func _garbage_for(count: int) -> int:
 
 func _on_player_cleared(count: int) -> void:
 
-	Audio.play_sfx("clack", 9.0)   # boosted — Skirmish clears need punch over the action (Troy 06-06)
+	Audio.play_sfx("hit", 9.0)   # Skirmish line clear — a punchy impact (Troy 06-06)
 	var h : int = _garbage_for(count)
 	if h <= 0:
 		return
@@ -243,7 +243,7 @@ func _on_opponent_cleared(count: int) -> void:
 # --- KO / result -------------------------------------------------------
 
 func _on_player_ko(_final_score: int) -> void:
-	Audio.play_sfx("buzz")   # you topped out — the loss sting
+	Audio.play_sfx("ko")   # you topped out — the defeat sound
 	get_tree().root.add_child(ScreenFlash.make(Color(1.0, 0.32, 0.26), 0.4))   # red — you lost (borrow #5)
 	_end_duel(false)
 

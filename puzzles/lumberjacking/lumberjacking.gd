@@ -81,7 +81,7 @@ func _ready() -> void:
 func _on_score_changed(new_total: int) -> void:
 
 	if new_total > _running_score:
-		Audio.play_sfx("clack")   # a component shattered
+		Audio.play_sfx("hit")   # a component shattered
 	_running_score = new_total
 	_refresh_yield_label()
 

@@ -288,7 +288,7 @@ func _on_cleared(count: int, src: BoardingCombatant) -> void:
 	if not _active or _over or not src.alive:
 		return
 	if src.is_player and _player_present:
-		Audio.play_sfx("clack", 9.0)   # boosted — Skirmish clears need punch (Troy 06-06); only when present
+		Audio.play_sfx("hit", 9.0)   # your line clear — a punchy impact; only while you're at the board
 	var base : int = GARBAGE_FOR_LINES[clampi(count, 0, GARBAGE_FOR_LINES.size() - 1)]
 	if base <= 0:
 		return
@@ -360,6 +360,8 @@ func _on_ko(_score: int, c: BoardingCombatant) -> void:
 	if not _active or not c.alive:
 		return
 	c.alive = false
+	if _player_present:
+		Audio.play_sfx("ko")   # a fighter goes down (only while you're watching the melee)
 	c.board.defeat()   # freeze + flood the whole stack red so it reads as down
 	c.board.set_highlight(Color(0, 0, 0, 0))
 	# Anyone aiming at the fallen fighter re-picks a live target.

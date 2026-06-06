@@ -460,7 +460,7 @@ func _lock_station_input(on: bool) -> void:
 
 func _on_lines_cleared(rows: Array, cols: Array, combo: int) -> void:
 
-	Audio.play_sfx("pop")
+	Audio.play_sfx("hit")
 	_flash_rows = rows
 	_flash_cols = cols
 	_flash_t = 1.0

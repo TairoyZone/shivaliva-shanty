@@ -163,7 +163,7 @@ func _on_Board_stardust_changed(level: float) -> void:
 # The named combo flashes center-board (Arrr!/Bingo!/Vegas!/…).
 func _on_Board_combo_scored(combo_name: String, lift_gained: int) -> void:
 
-	Audio.play_sfx("pop")
+	Audio.play_sfx("bop")
 	if lift_gained >= 7:   # a notable combo punches the screen (borrow #5)
 		get_tree().root.add_child(ScreenFlash.make(_combo_color(lift_gained), clampf(float(lift_gained) * 0.02, 0.12, 0.4)))
 	var label : Label = Label.new()
