@@ -104,27 +104,9 @@ func _physics_process(_delta: float) -> void:
 	move_and_slide()
 
 
-func _unhandled_input(event: InputEvent) -> void:
-
-	if not SessionState.is_local_authority(peer_id):
-		return
-	if not event.is_action_pressed("interact"):
-		return
-	# Don't fire an interactable underneath a fullscreen UI — the bag's
-	# dim only blocks mouse, not the E action, and a dialog shouldn't be
-	# interruptible by E either. Mirrors the movement freeze.
-	if Overlay.is_active or (HUD != null and HUD.is_inventory_open()):
-		return
-	if _nearby_interactables.is_empty():
-		return
-	var closest : Interactable = _nearby_interactables[0]
-	var closest_dist : float = global_position.distance_squared_to(closest.global_position)
-	for m in _nearby_interactables:
-		var d : float = global_position.distance_squared_to(m.global_position)
-		if d < closest_dist:
-			closest = m
-			closest_dist = d
-	closest.interact()
+# Interaction is CLICK-based now (see Interactable._on_input_event) — and E opens the backpack (handled by
+# the HUD) — so the player no longer handles E-to-interact. The InteractionZone still drives the proximity
+# name-tags via _on_InteractionZone_area_entered/exited below.
 
 
 func _on_InteractionZone_area_entered(area: Area2D) -> void:

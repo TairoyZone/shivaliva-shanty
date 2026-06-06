@@ -255,8 +255,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	# ESC here (consumes it) so it never falls through to a leave-to-title.
 	if not visible:
 		return
-	if event.is_action_pressed("ui_cancel"):
-		_toggle_inventory()
+	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("interact"):
+		_toggle_inventory()   # ESC or E opens/closes the backpack — E no longer interacts (Troy: click-based)
 		get_viewport().set_input_as_handled()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_J:
 		_toggle_journal()

@@ -39,6 +39,11 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 	_tooltip.visible = false
+	# Click-to-interact (everything is click-based now — Troy). The Area2D emits input_event on a click within
+	# its shape; a left-click fires interact(). One base hook covers NPCs (dialog/popup), doors (change scene),
+	# puzzles (launch), work-sites — they only override interact().
+	input_pickable = true
+	input_event.connect(_on_input_event)
 
 
 func set_tooltip_visible(value: bool) -> void:
@@ -55,3 +60,14 @@ func interact() -> void:
 	if Engine.is_editor_hint():
 		return
 	interacted.emit()
+
+
+## Left-click on this object → interact() (the click-based model). Ignored through a fullscreen UI (an open
+## dialog or the backpack). Connected in _ready; subclasses only override interact().
+func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
+
+	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
+		return
+	if Overlay.is_active or (HUD != null and HUD.is_inventory_open()):
+		return
+	interact()
