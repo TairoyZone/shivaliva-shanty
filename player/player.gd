@@ -104,9 +104,35 @@ func _physics_process(_delta: float) -> void:
 	move_and_slide()
 
 
-# Interaction is CLICK-based now (see Interactable._on_input_event) — and E opens the backpack (handled by
-# the HUD) — so the player no longer handles E-to-interact. The InteractionZone still drives the proximity
-# name-tags via _on_InteractionZone_area_entered/exited below.
+# Click-to-interact, PROXIMITY-GATED + universal: you must be close enough (the object is in
+# _nearby_interactables via the InteractionZone) AND left-click — then the in-range object NEAREST your
+# click interacts. One hook covers EVERY interactable (NPC, door, puzzle, work-site, station). E opens the
+# backpack (handled by the HUD), so the player no longer uses E to interact.
+func _unhandled_input(event: InputEvent) -> void:
+
+	if not SessionState.is_local_authority(peer_id):
+		return
+	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
+		return
+	# Don't interact through a fullscreen UI (an open dialog or the backpack).
+	if Overlay.is_active or (HUD != null and HUD.is_inventory_open()):
+		return
+	if _nearby_interactables.is_empty():
+		return
+	# Interact with the in-range interactable nearest the click, so you can aim when several are close.
+	var mouse : Vector2 = get_global_mouse_position()
+	var closest : Interactable = null
+	var closest_d : float = INF
+	for m in _nearby_interactables:
+		if not is_instance_valid(m):
+			continue
+		var d : float = mouse.distance_squared_to(m.global_position)
+		if d < closest_d:
+			closest_d = d
+			closest = m
+	if closest != null:
+		closest.interact()
+		get_viewport().set_input_as_handled()
 
 
 func _on_InteractionZone_area_entered(area: Area2D) -> void:
