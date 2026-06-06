@@ -26,7 +26,7 @@ _Effort: **S** small · **M** medium · **L** large. ⚠️ = expands past the M
 - [ ] **`clip_children=2` masking** — (a) circular procedural NPC avatars (Overlay + Profile tab → fills the placeholder-avatar slot); (b) clip sparks to the Loft/Patchworks gauges so juice can't spill. *(2d_clipping)* **S**
 - [ ] **`CanvasModulate` + `DirectionalLight2D` + `LightOccluder2D`** — per-location mood (blue night Cradle Rock, warm tavern, dark Mine with a player light). Occluders on props already solid. **M**
 - [ ] **Scrolling-noise fog/clouds** — `FastNoiseLite` → thin scroll shader; drifting mist beneath the floating islands (parallax bands). *(top_clouds.gdshader)* **M**
-- [ ] **Idle/breathing tween loops** (`set_loops()`) — cheap aliveness: a bob on the `_draw()` NPCs + the hovering ship. **S**
+- [x] **Idle/breathing tween loops** — ✅ DONE 2026-06-06. `Juice.bob(node, height, dur)` — a looping vertical bob; wired into the `Npc` base `_ready` (editor-guarded, randomized dur so the cast desyncs), so every NPC breathes. *(ship-bob deferred — the player stands on the deck.)* **S**
 
 ## 💬 UI & dialogue
 - [x] **Typewriter dialogue reveal** — ✅ DONE 2026-06-06. `Overlay` types each dialog line / lore body out char-by-char (`Label.visible_ratio` tweened, length-scaled); an advance press completes the reveal, then the next advances/closes. Used the existing Label (not RichTextLabel) — BBCode `[wave]`/`[i]` deferred to the NPC-redesign. *(speech_bubble.gd)*

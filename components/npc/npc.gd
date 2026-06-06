@@ -96,6 +96,8 @@ func _ready() -> void:
 		marker_label = npc_name
 	_apply_tint()
 	_setup_name_tag()
+	if not Engine.is_editor_hint():
+		Juice.bob(self, 2.5, randf_range(1.7, 2.5))   # a gentle idle breathe; varied dur desyncs the cast
 
 
 # Repurpose the inherited proximity tooltip into a PERMANENT name tag —

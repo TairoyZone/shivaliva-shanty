@@ -56,6 +56,17 @@ static func pulse(node: CanvasItem, amount: float = 1.08, dur: float = 0.7) -> T
 	return tw
 
 
+## A gentle looping vertical BOB — idle "aliveness" for NPCs, props, a hovering ship. Tweens position.y
+## ±[param height] around where the node sits NOW. Store the returned Tween + `kill()` to stop.
+static func bob(node: Node2D, height: float = 3.0, dur: float = 1.8) -> Tween:
+
+	var base_y : float = node.position.y
+	var tw : Tween = node.create_tween().set_loops()
+	tw.tween_property(node, "position:y", base_y - height, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(node, "position:y", base_y, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	return tw
+
+
 ## Fade to transparent, then FREE. For a dismissed toast/panel that shouldn't just vanish.
 static func fade_out_free(node: CanvasItem, dur: float = 0.3) -> Tween:
 
