@@ -53,21 +53,31 @@ func _ready() -> void:
 		HUD.visible = true
 	Audio.play_music_track("overworld")   # the overworld bed (guarded — won't restart between locations)
 	_apply_mood()
-	player = PLAYER_SCENE.instantiate()
-	# Parent the player INSIDE YSortNode2D when the scene has one — that
-	# way the iso character y-sorts against painted tile objects and
-	# building placeholders the same way the GDQuest reference does.
-	# Falls back to self for legacy / top-down scenes without YSortNode2D.
+	# Co-op seam: spawn each session player (a loop-of-one in single-player). See [[multiplayer-direction]].
+	for id in SessionState.players:
+		_spawn_player(int(id))
+
+
+## Spawn the player for [param id] + parent it under the iso Y-sort root (falls back to self for legacy
+## top-down scenes). The LOCAL player resolves its spawn from the scene-transition handoff + becomes
+## [member player]; this loop body is what co-op fans out over when netcode lands.
+func _spawn_player(id: int) -> void:
+
+	var p : Player = PLAYER_SCENE.instantiate()
+	p.peer_id = id
+	# Parent inside YSortNode2D when present so the iso character y-sorts against tiles + buildings; falls
+	# back to self for legacy / top-down scenes without one.
 	var y_sort_root : Node = find_child("YSortNode2D", false, false)
 	if y_sort_root != null:
-		y_sort_root.add_child(player)
+		y_sort_root.add_child(p)
 	else:
-		add_child(player)
-	player.global_position = _resolve_spawn_position()
-	# Record where the player landed so a quit-now resume would restore
-	# them here.
-	PlayerState.last_scene = scene_file_path
-	PlayerState.last_position = player.global_position
+		add_child(p)
+	if id == SessionState.LOCAL_ID:
+		player = p
+		p.global_position = _resolve_spawn_position()
+		# Record where the local player landed so a quit-now resume restores them here.
+		PlayerState.last_scene = scene_file_path
+		PlayerState.last_position = p.global_position
 
 
 ## Add a [MoodTint] colour wash if this location has a mood — an explicit [member mood_tint], else a
