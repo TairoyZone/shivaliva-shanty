@@ -1,6 +1,6 @@
 ## ShoppeJobsBoard — a YPP "Shoppe Jobs"-style notice board listing the labour puzzles you can take on
-## (Mining + Woodcutting). Each row shows the trade + its wage and a "Go" that launches the puzzle —
-## gated by being hired at that work-site (apply at the Forge / Workshop first). A self-freeing modal
+## (Mining + Woodcutting). Each row shows the trade + its wage and a "Go" that takes you TO the work-site
+## (the Mine / the Forest), dropped next to the sign — you walk up + click it to start. A self-freeing modal
 ## CanvasLayer; opened from the HUD quick menu. Modelled on [VoyagesBoard]. See [[ypp-template]].
 class_name ShoppeJobsBoard
 extends CanvasLayer
@@ -9,9 +9,9 @@ const GROUP : StringName = &"shoppe_jobs_board"
 
 ## The labour jobs surfaced here. `hired` = the PlayerState flag gating it; `site` = where to apply.
 const JOBS : Array = [
-	{"title": "Mining", "scene": "res://puzzles/mining/mining.tscn",
+	{"title": "Mining", "location": "res://levels/mine/mine.tscn", "anchor": "MiningSign",
 		"wage": "2 gold per ore", "hired": "hired_at_forge", "site": "the Forge"},
-	{"title": "Woodcutting", "scene": "res://puzzles/lumberjacking/lumberjacking.tscn",
+	{"title": "Woodcutting", "location": "res://levels/forest/forest.tscn", "anchor": "WoodCuttingSign",
 		"wage": "1 gold per wood", "hired": "hired_at_workshop", "site": "the Workshop"},
 ]
 
@@ -86,34 +86,33 @@ func _make_job_row(job: Dictionary) -> PanelContainer:
 	row_panel.add_child(row)
 
 	var info : Label = Label.new()
-	var sub : String = String(job["wage"]) if hired else "Get hired at %s first" % String(job["site"])
+	var sub : String = String(job["wage"])
+	if not hired:
+		sub += "   ·   get hired at %s first" % String(job["site"])
 	info.text = "%s\n%s" % [String(job["title"]), sub]
 	info.add_theme_font_size_override("font_size", 17)
-	info.add_theme_color_override("font_color", Color(0.95, 0.9, 0.74, 1.0) if hired else Color(0.72, 0.66, 0.52, 1.0))
+	info.add_theme_color_override("font_color", Color(0.95, 0.9, 0.74, 1.0))
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(info)
 
-	var go : Button = _make_button("Go" if hired else "Locked", Color(0.80, 1.0, 0.66, 1.0) if hired else Color(0.7, 0.64, 0.5, 1.0))
-	go.disabled = not hired
+	# "Go" always takes you to the work-site (head there to apply / look even before you're hired).
+	var go : Button = _make_button("Go", Color(0.80, 1.0, 0.66, 1.0))
 	go.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	if hired:
-		go.pressed.connect(_on_go.bind(job))
+	go.pressed.connect(_on_go.bind(job))
 	row.add_child(go)
 	return row_panel
 
 
 func _on_go(job: Dictionary) -> void:
 
-	# Launched from a board, not a world prop — so return the player to where they stood (the spawn
-	# resolver falls back to this when there's no anchor). Then unpause + change scene like a Puzzle does.
-	var player : Node = get_tree().get_first_node_in_group("player")
-	if player is Node2D:
-		PlayerState.request_spawn_at_position((player as Node2D).global_position)
+	# Take the player TO the work-site (the Mine / the Forest), spawned next to the sign — they walk up +
+	# click it to start the puzzle (which gates on being hired). Not straight into the puzzle.
+	PlayerState.request_spawn_at_anchor(String(job["anchor"]))
 	if get_tree() != null:
 		get_tree().paused = false
 	Audio.play_sfx("whoosh")
-	get_tree().change_scene_to_file(String(job["scene"]))
+	get_tree().change_scene_to_file(String(job["location"]))
 
 
 func _on_dim_input(event: InputEvent) -> void:
