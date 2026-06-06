@@ -34,22 +34,41 @@ func _ready() -> void:
 
 func _on_event_logged(text: String, color: Color) -> void:
 
+	# Each recent line is a little bg PILL (YPP-style), left-aligned, that lingers then fades.
+	var pill : PanelContainer = PanelContainer.new()
+	pill.add_theme_stylebox_override("panel", _pill_style())
+	pill.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var l : Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 15)
 	l.add_theme_color_override("font_color", color)
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.92))
-	l.add_theme_constant_override("outline_size", 4)
+	l.add_theme_constant_override("outline_size", 3)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_box.add_child(l)
+	pill.add_child(l)
+	_box.add_child(pill)
 	# Drop the oldest line(s) past the cap — remove_child is immediate (queue_free is deferred, so a
-	# count-based loop on it would spin); the dropped label's bound tween auto-kills with it.
+	# count-based loop on it would spin); the dropped pill's bound tween auto-kills with it.
 	while _box.get_child_count() > MAX_LINES:
 		var oldest : Node = _box.get_child(0)
 		_box.remove_child(oldest)
 		oldest.queue_free()
-	# Linger, then fade + free. Tween is bound to the LABEL (l.create_tween) so it dies with the line.
-	var tw : Tween = l.create_tween()
+	# Linger, then fade + free. Tween is bound to the PILL (pill.create_tween) so it dies with the line.
+	var tw : Tween = pill.create_tween()
 	tw.tween_interval(LINGER)
-	tw.tween_property(l, "modulate:a", 0.0, FADE)
-	tw.tween_callback(l.queue_free)
+	tw.tween_property(pill, "modulate:a", 0.0, FADE)
+	tw.tween_callback(pill.queue_free)
+
+
+# Soft rounded background behind each recent line, so it reads over a busy world (YPP-style bubble bg).
+func _pill_style() -> StyleBoxFlat:
+
+	var s : StyleBoxFlat = StyleBoxFlat.new()
+	s.bg_color = Color(0.08, 0.07, 0.11, 0.74)
+	s.set_corner_radius_all(7)
+	s.content_margin_left = 9.0
+	s.content_margin_right = 9.0
+	s.content_margin_top = 2.0
+	s.content_margin_bottom = 2.0
+	return s

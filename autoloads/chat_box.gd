@@ -193,7 +193,9 @@ func _send(raw: String) -> void:
 	var player : Node = get_tree().get_first_node_in_group("player")
 	if player != null and player.has_method("speak"):
 		player.speak(bubble)
-	_append_log(line, CHAT_COLOR)
+	# Route through PlayerState.event_logged so the line shows in the transient bottom-left feed (timed pill,
+	# YPP-style) AND lands in this log's stored history — same pipe as game events.
+	PlayerState.log_event(line, CHAT_COLOR)
 	if _input != null:
 		_input.release_focus()   # back to the game so WASD moves again
 
