@@ -287,6 +287,8 @@ func _on_cleared(count: int, src: BoardingCombatant) -> void:
 
 	if not _active or _over or not src.alive:
 		return
+	if src.is_player and _player_present:
+		Audio.play_sfx("clack")   # your line clear — only while you're at the board, not a background tick
 	var base : int = GARBAGE_FOR_LINES[clampi(count, 0, GARBAGE_FOR_LINES.size() - 1)]
 	if base <= 0:
 		return

@@ -163,6 +163,7 @@ func _on_Board_stardust_changed(level: float) -> void:
 # The named combo flashes center-board (Arrr!/Bingo!/Vegas!/…).
 func _on_Board_combo_scored(combo_name: String, lift_gained: int) -> void:
 
+	Audio.play_sfx("pop")
 	var label : Label = Label.new()
 	label.text = "%s\n+%d" % [combo_name, lift_gained]
 	label.add_theme_font_size_override("font_size", 30 + mini(lift_gained, 40))

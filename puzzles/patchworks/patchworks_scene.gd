@@ -460,6 +460,7 @@ func _lock_station_input(on: bool) -> void:
 
 func _on_lines_cleared(rows: Array, cols: Array, combo: int) -> void:
 
+	Audio.play_sfx("pop")
 	_flash_rows = rows
 	_flash_cols = cols
 	_flash_t = 1.0
@@ -489,6 +490,7 @@ func _on_lines_cleared(rows: Array, cols: Array, combo: int) -> void:
 
 func _on_piece_tossed(penalty: int) -> void:
 
+	Audio.play_sfx("toss")
 	_combo_label.text = ""   # the toss broke the combo
 	_flash_label.add_theme_color_override("font_color", Color(1.0, 0.52, 0.42))   # red for a wasted piece
 	_flash_label.text = ("Wasted  -%d" % penalty) if penalty > 0 else "Wasted"

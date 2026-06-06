@@ -211,6 +211,7 @@ func _garbage_for(count: int) -> int:
 
 func _on_player_cleared(count: int) -> void:
 
+	Audio.play_sfx("clack")
 	var h : int = _garbage_for(count)
 	if h <= 0:
 		return
