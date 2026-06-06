@@ -31,9 +31,10 @@ func _scale_to(b: Control, s: float, dur: float) -> void:
 	if not is_instance_valid(b):
 		return
 	b.pivot_offset = b.size * 0.5   # centre the pivot now that the button is laid out
-	var prev : Variant = b.get_meta("_juice_tw", null)
-	if prev is Tween and (prev as Tween).is_valid():
-		(prev as Tween).kill()
+	if b.has_meta("_juice_tw"):     # has_meta first — get_meta(name, null) errors on a missing key
+		var prev : Variant = b.get_meta("_juice_tw")
+		if prev is Tween and (prev as Tween).is_valid():
+			(prev as Tween).kill()
 	var tw : Tween = b.create_tween()
 	tw.tween_property(b, "scale", Vector2.ONE * s, dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	b.set_meta("_juice_tw", tw)
