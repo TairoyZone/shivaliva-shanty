@@ -103,6 +103,7 @@ func _build_leave_button() -> void:
 		btn.add_theme_stylebox_override(state, style)
 	btn.add_theme_color_override("font_color", Color(0.97, 0.87, 0.55, 1.0))
 	btn.add_theme_color_override("font_hover_color", Color(1.0, 0.92, 0.6, 1.0))
+	btn.pressed.connect(func() -> void: Audio.play_sfx("click"))
 	btn.pressed.connect(_return_to_launching_scene)
 	layer.add_child(btn)
 

@@ -243,6 +243,7 @@ func _on_opponent_cleared(count: int) -> void:
 # --- KO / result -------------------------------------------------------
 
 func _on_player_ko(_final_score: int) -> void:
+	Audio.play_sfx("buzz")   # you topped out — the loss sting
 	_end_duel(false)
 
 
