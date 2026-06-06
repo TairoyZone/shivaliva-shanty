@@ -15,6 +15,16 @@ extends Node2D
 
 const PLAYER_SCENE : PackedScene = preload("res://player/player.tscn")
 
+## Default mood washes by scene-path keyword (used when [member mood_tint] is left transparent). Subtle —
+## tune or override per-scene via the inspector.
+const SCENE_MOODS : Dictionary = {
+	"mine": Color(0.10, 0.16, 0.40, 0.28),
+	"tavern": Color(0.55, 0.32, 0.08, 0.16),
+	"forest": Color(0.12, 0.34, 0.18, 0.12),
+	"ship_deck": Color(0.18, 0.30, 0.62, 0.14),
+	"shanty": Color(0.52, 0.34, 0.14, 0.12),
+}
+
 @export var pirate_spawn_position : Vector2 = Vector2(640, 540)
 ## (Legacy) scene this location used to load on ESC. ESC is now the
 ## backpack key — owned + consumed by the [HUD] in the overworld — so
@@ -22,6 +32,10 @@ const PLAYER_SCENE : PackedScene = preload("res://player/player.tscn")
 ## explicit "quit to title" entry point (e.g. a button in the bag /
 ## pause screen). NOT read anywhere right now.
 @export_file("*.tscn") var escape_scene : String = ""
+
+## A colour WASH over this location for mood (alpha = strength); transparent = fall back to the SCENE_MOODS
+## keyword default, or none. Set per-scene in the inspector to override. See [MoodTint].
+@export var mood_tint : Color = Color(0, 0, 0, 0)
 
 var player : Player
 
@@ -38,6 +52,7 @@ func _ready() -> void:
 	if HUD:
 		HUD.visible = true
 	Audio.play_music_track("overworld")   # the overworld bed (guarded — won't restart between locations)
+	_apply_mood()
 	player = PLAYER_SCENE.instantiate()
 	# Parent the player INSIDE YSortNode2D when the scene has one — that
 	# way the iso character y-sorts against painted tile objects and
@@ -53,6 +68,20 @@ func _ready() -> void:
 	# them here.
 	PlayerState.last_scene = scene_file_path
 	PlayerState.last_position = player.global_position
+
+
+## Add a [MoodTint] colour wash if this location has a mood — an explicit [member mood_tint], else a
+## SCENE_MOODS keyword match on the scene path. Tints the world only (sits below the HUD/UI).
+func _apply_mood() -> void:
+
+	var tint : Color = mood_tint
+	if tint.a <= 0.0:
+		for key in SCENE_MOODS:
+			if scene_file_path.contains(key):
+				tint = SCENE_MOODS[key]
+				break
+	if tint.a > 0.0:
+		add_child(MoodTint.make(tint))
 
 
 func _resolve_spawn_position() -> Vector2:
