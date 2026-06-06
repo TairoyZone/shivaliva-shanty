@@ -7,7 +7,7 @@
 ##
 ## The Forge-side mirror of [WoodDropoff]. Tooltip is state-aware:
 ##   - 0 ore carried → "No ore to deliver"
-##   - N ore carried → "Deliver N ore for X gold   [E]"
+##   - N ore carried → "Deliver N ore for X gold   [Click]"
 @tool
 class_name OreDropoff
 extends Interactable
@@ -69,7 +69,7 @@ func _refresh_tooltip_text() -> void:
 		return
 	var payout : int = int(round(
 		PlayerState.total_ore * PlayerState.ORE_TO_GOLD_RATE))
-	_tooltip.text = "Deliver %d ore for %d gold   [E]" % [PlayerState.total_ore, payout]
+	_tooltip.text = "Deliver %d ore for %d gold   [Click]" % [PlayerState.total_ore, payout]
 	_tooltip.modulate = Color(0.78, 1.0, 0.62, 1.0)
 
 

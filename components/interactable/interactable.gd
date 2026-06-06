@@ -46,7 +46,7 @@ func set_tooltip_visible(value: bool) -> void:
 	if Engine.is_editor_hint():
 		return
 	if value:
-		_tooltip.text = "%s   [E]" % marker_label
+		_tooltip.text = "%s   [Click]" % marker_label
 	_tooltip.visible = value
 
 

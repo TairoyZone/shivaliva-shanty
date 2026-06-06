@@ -46,10 +46,10 @@ func set_tooltip_visible(value: bool) -> void:
 func _refresh_tooltip_text() -> void:
 
 	if not PlayerState.has_ship():
-		_tooltip.text = "Sign onto a crew — job a pillage   [E]"
+		_tooltip.text = "Sign onto a crew — job a pillage   [Click]"
 		_tooltip.modulate = Color(0.78, 1.0, 0.62, 1.0)
 		return
-	_tooltip.text = "Set sail — captain your own voyage   [E]"
+	_tooltip.text = "Set sail — captain your own voyage   [Click]"
 	_tooltip.modulate = Color(0.78, 1.0, 0.62, 1.0)
 
 

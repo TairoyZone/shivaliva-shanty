@@ -48,7 +48,7 @@ func _ready() -> void:
 	marker_label = "A Gem Drop tournament is on!" if _in_session else "Tournament board"
 	var tip : Label = get_node_or_null("Tooltip") as Label
 	if tip != null:
-		tip.text = "%s   [E]" % marker_label
+		tip.text = "%s   [Click]" % marker_label
 
 
 func _exit_tree() -> void:

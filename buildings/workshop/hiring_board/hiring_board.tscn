@@ -42,6 +42,6 @@ offset_bottom = -156.0
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 16
-text = "Read the hiring board   [E]"
+text = "Read the hiring board   [Click]"
 horizontal_alignment = 1
 vertical_alignment = 1

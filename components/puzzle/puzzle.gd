@@ -74,11 +74,11 @@ func _launch_puzzle(charge_cost: bool) -> void:
 func _refresh_tooltip_text() -> void:
 
 	if play_cost <= 0:
-		_tooltip.text = "%s   [E]" % marker_label
+		_tooltip.text = "%s   [Click]" % marker_label
 		_tooltip.modulate = Color(0.98, 0.92, 0.55, 1.0)
 		return
 	if PlayerState.total_coins >= play_cost:
-		_tooltip.text = "%d gold to play   [E]" % play_cost
+		_tooltip.text = "%d gold to play   [Click]" % play_cost
 		_tooltip.modulate = Color(0.98, 0.92, 0.55, 1.0)
 	else:
 		_tooltip.text = "Need %d gold" % play_cost

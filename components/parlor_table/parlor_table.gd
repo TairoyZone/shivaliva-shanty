@@ -130,7 +130,7 @@ func _refresh_tooltip_text() -> void:
 	if _tooltip == null:
 		return
 	var label : String = marker_label if not marker_label.is_empty() else _game_name()
-	_tooltip.text = "%s   [E]" % label
+	_tooltip.text = "%s   [Click]" % label
 	_tooltip.modulate = Color(0.98, 0.92, 0.55, 1.0)
 
 

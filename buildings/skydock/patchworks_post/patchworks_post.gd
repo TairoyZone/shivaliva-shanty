@@ -41,10 +41,10 @@ func _refresh_tooltip_text() -> void:
 		return
 	var holes : int = PlayerState.ship_open_holes()
 	if holes <= 0:
-		_tooltip.text = "Mend the Hull — she's sound  [E]"
+		_tooltip.text = "Mend the Hull — she's sound  [Click]"
 		_tooltip.modulate = Color(0.72, 0.95, 0.76, 1.0)
 	else:
-		_tooltip.text = "Mend the Hull — %d hole%s  [E]" % [holes, "" if holes == 1 else "s"]
+		_tooltip.text = "Mend the Hull — %d hole%s  [Click]" % [holes, "" if holes == 1 else "s"]
 		_tooltip.modulate = Color(0.98, 0.78, 0.50, 1.0)
 
 

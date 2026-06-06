@@ -9,7 +9,7 @@
 ##
 ## Tooltip is state-aware:
 ##   - 0 wood carried → "No wood to deliver"
-##   - N wood carried → "Deliver N wood for X gold   [E]"
+##   - N wood carried → "Deliver N wood for X gold   [Click]"
 @tool
 class_name WoodDropoff
 extends Interactable
@@ -74,7 +74,7 @@ func _refresh_tooltip_text() -> void:
 		return
 	var payout : int = int(round(
 		PlayerState.total_wood * PlayerState.WOOD_TO_GOLD_RATE))
-	_tooltip.text = "Deliver %d wood for %d gold   [E]" % [
+	_tooltip.text = "Deliver %d wood for %d gold   [Click]" % [
 		PlayerState.total_wood, payout]
 	_tooltip.modulate = Color(0.78, 1.0, 0.62, 1.0)
 
