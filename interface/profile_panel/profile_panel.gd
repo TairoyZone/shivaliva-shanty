@@ -200,8 +200,7 @@ func _make_center_column() -> Control:
 		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(none)
 		return col
-	var grid : GridContainer = GridContainer.new()
-	grid.columns = 3
+	var grid : HFlowContainer = HFlowContainer.new()   # wraps the trophy shelf responsively as more are earned
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 8)
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
