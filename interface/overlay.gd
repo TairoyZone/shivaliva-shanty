@@ -33,6 +33,11 @@ var is_active : bool = false
 
 var _panel_style : StyleBoxFlat
 var _pending_lines : Array[String] = []
+## The typewriter (borrow #4): each line/body reveals char-by-char; an advance press first completes the
+## reveal, then the next press advances. See [[godot-borrow-todo]].
+const CHAR_TIME : float = 0.018
+var _type_tween : Tween
+var _typing : bool = false
 
 
 func _ready() -> void:
@@ -72,11 +77,11 @@ func show_lore(title: String, body: String) -> void:
 		return
 	_apply_lore_style()
 	_title_label.text = title
-	_body_label.text = body
 	_hint_label.text = "[E] to close"
 	_pending_lines.clear()
 	_panel.visible = true
 	is_active = true
+	_type_line(body)
 
 
 func _input(event: InputEvent) -> void:
@@ -93,6 +98,9 @@ func _input(event: InputEvent) -> void:
 	if not advance:
 		return
 	get_viewport().set_input_as_handled()
+	if _typing:
+		_finish_typing()   # first press completes the reveal; the next one advances/closes
+		return
 	if _pending_lines.is_empty():
 		_close()
 	else:
@@ -104,15 +112,43 @@ func _show_next_line() -> void:
 	if _pending_lines.is_empty():
 		_close()
 		return
-	_body_label.text = _pending_lines.pop_front()
+	var line : String = _pending_lines.pop_front()
 	# On the FINAL line E closes rather than continues — mirror show_lore's "[E] to close" hint.
 	if _pending_lines.is_empty():
 		_hint_label.text = "[E] to close"
 	_panel.visible = true
+	_type_line(line)
+
+
+## Reveal [param text] character-by-character (the typewriter). Stores the tween so an advance press can
+## skip the reveal to full via [method _finish_typing].
+func _type_line(text: String) -> void:
+
+	_body_label.text = text
+	_body_label.visible_ratio = 0.0
+	_typing = true
+	if _type_tween != null and _type_tween.is_valid():
+		_type_tween.kill()
+	var dur : float = clampf(float(text.length()) * CHAR_TIME, 0.15, 2.5)
+	_type_tween = create_tween()
+	_type_tween.tween_property(_body_label, "visible_ratio", 1.0, dur)
+	_type_tween.finished.connect(func() -> void: _typing = false)
+
+
+## Snap the current reveal fully open (an advance press while still typing).
+func _finish_typing() -> void:
+
+	if _type_tween != null and _type_tween.is_valid():
+		_type_tween.kill()
+	_body_label.visible_ratio = 1.0
+	_typing = false
 
 
 func _close() -> void:
 
+	if _type_tween != null and _type_tween.is_valid():
+		_type_tween.kill()
+	_typing = false
 	_panel.visible = false
 	is_active = false
 	_pending_lines.clear()

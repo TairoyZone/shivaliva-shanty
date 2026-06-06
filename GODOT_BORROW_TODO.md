@@ -29,7 +29,7 @@ _Effort: **S** small · **M** medium · **L** large. ⚠️ = expands past the M
 - [ ] **Idle/breathing tween loops** (`set_loops()`) — cheap aliveness: a bob on the `_draw()` NPCs + the hovering ship. **S**
 
 ## 💬 UI & dialogue
-- [ ] **Typewriter dialogue reveal** (`RichTextLabel.visible_ratio`) — `Overlay` types each line out; advance-input skips-to-full then advances. Supports `[wave]`/`[i]` BBCode. *(speech_bubble.gd)* **S**
+- [x] **Typewriter dialogue reveal** — ✅ DONE 2026-06-06. `Overlay` types each dialog line / lore body out char-by-char (`Label.visible_ratio` tweened, length-scaled); an advance press completes the reveal, then the next advances/closes. Used the existing Label (not RichTextLabel) — BBCode `[wave]`/`[i]` deferred to the NPC-redesign. *(speech_bubble.gd)*
 - [ ] **Self-animating `SkyButton`** — a small `extends Button` giving every code-built button (dialogue choices, results, station picks) entrance/exit juice for free. **S**
 - [ ] **`HFlowContainer` wrap + bounce-in-after-one-frame** — backpack + trophy/mastery grids wrap as the bag expands; new pickups pop. (Copy the `await process_frame` gotcha.) **S**
 - [ ] ⚠️ **Branching data-driven dialogue** — array of line-dicts + `{choice: target_id}`, could become an `NpcDialogue.tres`, branch on `npc_affinity` via a `requires` field. *Our `Overlay` is linear-only — this is the NPC-interaction core* (feeds the NPC-redesign + chatbox TODOs). *(dialogue_tree_ui.gd)* **M**
