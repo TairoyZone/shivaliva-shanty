@@ -46,6 +46,7 @@ var _music : Dictionary = {
 
 var _sfx_player : AudioStreamPlayer
 var _music_player : AudioStreamPlayer
+var _current_music : String = ""   # the playing track key — guards play_music_track against restarts
 
 
 func _ready() -> void:
@@ -62,12 +63,8 @@ func _ready() -> void:
 	_music_player = AudioStreamPlayer.new()
 	_music_player.volume_db = -8.0
 	add_child(_music_player)
-	# Start the ambient bed from the title onward (a quiet loop under everything). Force the loop on the
-	# stream itself so it never depends on the .wav import's loop flag.
-	var bed : AudioStream = _music.get("overworld")
-	if bed is AudioStreamWAV:
-		(bed as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_FORWARD
-	play_music(bed, -9.0)
+	# Music is driven PER-SCENE now: main.gd plays "title", BaseLocation plays "overworld" (both via
+	# play_music_track, guarded so walking between locations never restarts the bed).
 	# SYSTEM-WIDE UI CLICK: every BaseButton in the game (code- OR scene-built) clicks on press, via one
 	# hook on the tree's node_added — so new buttons inherit it for free. (System-wide SFX phase 2026-06-06.)
 	if get_tree() != null:
@@ -92,6 +89,21 @@ func play_music(stream: AudioStream, volume_db: float = -8.0) -> void:
 	_music_player.stream = stream
 	_music_player.volume_db = volume_db
 	_music_player.play()
+
+
+## Play a NAMED looping track, guarded so re-entering the same scene doesn't restart it. main.gd plays
+## "title"; every BaseLocation plays "overworld". Forces the loop on the stream (WAV or Ogg).
+func play_music_track(track: String, volume_db: float = -9.0) -> void:
+
+	if track == _current_music or not _music.has(track):
+		return
+	_current_music = track
+	var s : AudioStream = _music[track]
+	if s is AudioStreamWAV:
+		(s as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_FORWARD
+	elif s is AudioStreamOggVorbis:
+		(s as AudioStreamOggVorbis).loop = true
+	play_music(s, volume_db)
 
 
 func stop_music() -> void:

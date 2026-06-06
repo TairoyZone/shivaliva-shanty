@@ -44,6 +44,10 @@ var _nearby_interactables : Array[Interactable] = []
 var _isometric_factor : Vector2 = Vector2(1.0, 0.5)
 var _last_direction : String = "south"
 
+## Footstep cadence while walking (borrowed lib). _step_t counts up; a step fires each STEP_INTERVAL.
+const STEP_INTERVAL : float = 0.32
+var _step_t : float = STEP_INTERVAL
+
 
 func _ready() -> void:
 
@@ -76,7 +80,7 @@ func _find_tile_layer() -> TileMapLayer:
 	return null
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 
 	# Freeze while a fullscreen UI owns the screen — an NPC/lore dialog
 	# (Overlay) OR the open backpack (HUD inventory). Otherwise the player
@@ -89,6 +93,7 @@ func _physics_process(_delta: float) -> void:
 	if input.is_zero_approx():
 		_sprite.play("idle_%s" % _last_direction)
 		velocity = Vector2.ZERO
+		_step_t = STEP_INTERVAL   # so the first step on resuming plays promptly
 		move_and_slide()
 		return
 	var direction : String = INPUT_TO_DIRECTION.get(input, _last_direction)
@@ -96,6 +101,11 @@ func _physics_process(_delta: float) -> void:
 	_sprite.play("run_%s" % direction)
 	velocity = _isometric_factor * input * SPEED
 	move_and_slide()
+	# A footstep on a steady cadence — only when actually moving (not pressing into a wall).
+	_step_t += delta
+	if _step_t >= STEP_INTERVAL and get_real_velocity().length() > 10.0:
+		_step_t = 0.0
+		Audio.play_sfx("step_grass", -7.0, 0.14)
 
 
 func _unhandled_input(event: InputEvent) -> void:

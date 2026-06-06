@@ -37,6 +37,7 @@ func _ready() -> void:
 	# title screen hides it; puzzle scenes hide + restore it themselves).
 	if HUD:
 		HUD.visible = true
+	Audio.play_music_track("overworld")   # the overworld bed (guarded — won't restart between locations)
 	player = PLAYER_SCENE.instantiate()
 	# Parent the player INSIDE YSortNode2D when the scene has one — that
 	# way the iso character y-sorts against painted tile objects and

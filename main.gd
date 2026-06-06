@@ -20,6 +20,7 @@ func _ready() -> void:
 	# The HUD is a gameplay element — keep it off the title.
 	if HUD:
 		HUD.visible = false
+	Audio.play_music_track("title")   # the chiptune title theme (Juhani Junkala, CC0)
 	# Living procedural sky behind the menu (drifting isles + stardust). Sits over the flat
 	# fallback bg, beneath the title/buttons.
 	var backdrop : MenuBackdrop = MenuBackdrop.new()
