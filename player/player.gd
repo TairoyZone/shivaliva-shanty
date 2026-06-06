@@ -44,6 +44,9 @@ var _nearby_interactables : Array[Interactable] = []
 var _isometric_factor : Vector2 = Vector2(1.0, 0.5)
 var _last_direction : String = "south"
 
+## The owning client's id (co-op seam) — always the local player in single-player. See [[multiplayer-direction]].
+var peer_id : int = SessionState.LOCAL_ID
+
 
 func _ready() -> void:
 
@@ -78,6 +81,9 @@ func _find_tile_layer() -> TileMapLayer:
 
 func _physics_process(_delta: float) -> void:
 
+	# Co-op seam: only the OWNING client drives this player's input (always true in single-player).
+	if not SessionState.is_local_authority(peer_id):
+		return
 	# Freeze while a fullscreen UI owns the screen — an NPC/lore dialog
 	# (Overlay) OR the open backpack (HUD inventory). Otherwise the player
 	# would walk around blind behind the overlay.
@@ -100,6 +106,8 @@ func _physics_process(_delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 
+	if not SessionState.is_local_authority(peer_id):
+		return
 	if not event.is_action_pressed("interact"):
 		return
 	# Don't fire an interactable underneath a fullscreen UI — the bag's
