@@ -14,12 +14,15 @@ extends VoyageStationScene
 ## the AI crew covers the rest. Arrival → the haul card; a sink → LOST IN THE STARDUST. See [[voyage-loop-research]].
 const SELF_SCENE : String = "res://puzzles/loft/loft.tscn"   # SKIRMISH/SHIP_DECK scenes live in the base
 
+## The same status-bar component the ship deck uses, so the Loft's LIFT/HULL read identically.
+const METER_BAR : PackedScene = preload("res://components/meter_bar/meter_bar.tscn")
+
 @onready var _board : LoftBoard = $Board
 
 var _banked_label : Label
 var _moves_label : Label
-var _gauge_label : Label
-var _hull_label : Label
+var _stardust_bar : MeterBar    # LIFT/Stardust as a real meter (was the LIFT text gauge)
+var _hull_bar : MeterBar        # voyage-only HULL meter (was the HULL text label)
 var _ui : CanvasLayer
 
 var _current_lift : int = 0       # live CUMULATIVE lift this leg (the board's running total)
@@ -68,10 +71,16 @@ func _build_ui() -> void:
 
 	_banked_label = _make_label("BANKED  0", Color(0.97, 0.88, 0.50, 1.0))
 	_moves_label = _make_label("SWAPS  %d" % LoftBoard.MOVES_PER_ROUND, Color(0.82, 0.90, 1.0, 1.0))
-	_gauge_label = _make_label("LIFT  ALOFT", Color(0.55, 0.92, 0.95, 1.0))
 	bar.add_child(_wrap(_banked_label))
 	bar.add_child(_wrap(_moves_label))
-	bar.add_child(_wrap(_gauge_label))
+	# LIFT/Stardust as a real meter BAR (same component as the ship deck) — it FILLS as the Stardust
+	# rises (calm-blue → red past the bite tick), so you SEE her sinking. Caption = ALOFT/STEADY/SINKING.
+	_stardust_bar = _make_loft_meter("STARDUST", "stardust")
+	_stardust_bar.rising_palette = true
+	_stardust_bar.danger_tick = 0.8   # STARDUST_DANGER(8) / SINK(10)
+	_stardust_bar.hard_line = 1.0     # the SINK line
+	_stardust_bar.set_caption("ALOFT")
+	bar.add_child(_stardust_bar)
 
 	var help : String = ("THE LOFT — keep the falling rock aloft.\n\n"
 		+ "• Move the cursor with the MOUSE or ARROW KEYS.\n"
@@ -91,10 +100,25 @@ func _build_ui() -> void:
 	# gauge bar and the Leave/? buttons) — and let her SAIL in real time while you work, in sync
 	# with the deck (both charts share PlayerState.voyage_ship_t). Manning a station = a crossing.
 	if PlayerState.voyage_active:
-		# A HULL readout beside the gauges — the PILLAGE ship's holes (shows WHY the Stardust floods fast).
-		# The voyage CHART + its sailing/leg-resolution are built by the base (_enter_voyage_station).
-		_hull_label = _make_label("HULL  SOUND", Color(0.7, 0.95, 0.75, 1.0))
-		bar.add_child(_wrap(_hull_label))
+		# A HULL meter beside the gauges — the PILLAGE ship's holes (shows WHY the Stardust floods fast).
+		# Same bar as the deck (green→amber→red, one notch per hole). The voyage CHART + leg-resolution are
+		# built by the base (_enter_voyage_station).
+		_hull_bar = _make_loft_meter("HULL", "hull")
+		_hull_bar.warn_frac = 0.25   # 1 hole → amber, 3+ → red
+		_hull_bar.bad_frac = 0.75
+		bar.add_child(_hull_bar)
+		_update_hull_label()
+
+
+# A status meter sized for the Loft's centre bar (vertically centred next to the BANKED/SWAPS pills).
+func _make_loft_meter(label_text: String, icon: String) -> MeterBar:
+
+	var m : MeterBar = METER_BAR.instantiate() as MeterBar
+	m.custom_minimum_size = Vector2(208.0, 28.0)
+	m.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	m.label_text = label_text
+	m.icon_kind = icon
+	return m
 
 
 func _make_label(text: String, color: Color) -> Label:
@@ -143,21 +167,19 @@ func _on_Board_moves_changed(remaining: int, total: int) -> void:
 		_moves_label.text = ("SWAPS  %d flown" % remaining) if total < 0 else ("SWAPS  %d" % remaining)
 
 
-# The LIFT gauge reads the Stardust: low = aloft (clear sky), mid = steady, high = sinking.
+# The STARDUST meter reads the live level: low = aloft (clear sky), mid = steady, high = sinking. The bar
+# fills + reddens as it climbs (animate-everything); the caption gives the lift reading.
 func _on_Board_stardust_changed(level: float) -> void:
 
-	if _gauge_label == null:
+	if _stardust_bar == null:
 		return
 	var text : String = "STEADY"
-	var color : Color = Color(0.96, 0.86, 0.40, 1.0)
 	if level <= 4.0:
 		text = "ALOFT"
-		color = Color(0.50, 0.92, 0.96, 1.0)
 	elif level >= 7.5:
 		text = "SINKING"
-		color = Color(1.0, 0.55, 0.42, 1.0)
-	_gauge_label.text = "LIFT  %s" % text
-	_gauge_label.add_theme_color_override("font_color", color)
+	_stardust_bar.set_value(level, LoftBoard.SINK_LEVEL)
+	_stardust_bar.set_caption(text)
 
 
 # The named combo flashes center-board (Arrr!/Bingo!/Vegas!/…).
@@ -295,19 +317,17 @@ func _push_effective_rise() -> void:
 	_update_hull_label()
 
 
-# Refresh the voyage HULL readout from the active ship's open holes (green sound → amber → red).
+# Refresh the voyage HULL meter from the active ship's open holes (green sound → amber → red), same as
+# the deck — one lit notch per open hole.
 func _update_hull_label() -> void:
 
-	if _hull_label == null:
+	if _hull_bar == null:
 		return
 	var holes : int = PlayerState.ship_open_holes()
-	if holes <= 0:
-		_hull_label.text = "HULL  SOUND"
-		_hull_label.add_theme_color_override("font_color", Color(0.7, 0.95, 0.75, 1.0))
-	else:
-		_hull_label.text = "HULL  %d hole%s" % [holes, "" if holes == 1 else "s"]
-		_hull_label.add_theme_color_override("font_color",
-			Color(0.98, 0.82, 0.5) if holes <= 2 else Color(1.0, 0.55, 0.5))
+	var maxh : int = maxi(PlayerState.VOYAGE_MAX_HOLES, 1)
+	_hull_bar.segments = maxh
+	_hull_bar.set_value(float(holes), float(maxh))
+	_hull_bar.set_caption("sound" if holes <= 0 else ("%d hole%s" % [holes, "" if holes == 1 else "s"]))
 
 
 # (The shared voyage-leg flow — board / resume / resolve / report / sink / haul / the "Sail ho!" cry —
