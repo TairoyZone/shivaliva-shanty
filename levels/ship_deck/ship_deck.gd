@@ -27,6 +27,10 @@ const FALLBACK_HOME : String = "res://levels/shore/shore.tscn"
 const DOCK_ANCHOR : String = "SkydockDoor"
 ## Crew are REAL [Npc] instances (reuse the overworld character), not drawn figures.
 const NPC_SCENE : PackedScene = preload("res://components/npc/npc.tscn")
+## The reusable status bar for the vessel vitals (HULL / STARDUST) — scene-per-component, art-swappable.
+const METER_BAR : PackedScene = preload("res://components/meter_bar/meter_bar.tscn")
+## The Stardust sink threshold (mirrors [LoftBoard].SINK_LEVEL = 10) — the STARDUST bar's full scale.
+const STARDUST_SINK : float = 10.0
 # Voyage payout / footing tuning now lives on PlayerState (shared with the Loft cockpit):
 # resolve_voyage_leg(), voyage_seed_from_lift(), voyage_total_gold().
 
@@ -80,9 +84,13 @@ const SHADOW : Color = Color(0.0, 0.0, 0.0, 0.18)             # soft ground shad
 var _active : String = ""
 var _station_pos : Dictionary = {}   # station_id -> world pos, indexed from the placed DeckProp nodes (else iso const)
 var _active_pos : Vector2 = Vector2.ZERO   # world pos of the nearest active station — the prompt floats above it
-var _hull_gauge : HullGauge      # the ship's hull-condition readout (icon + text), top-left
+## Top-LEFT consolidated VESSEL panel — the ONE home for ship status (was: a lonely hull icon top-left +
+## a 760px captain banner top-centre). Two real animated [MeterBar]s: HULL (holes) + STARDUST (her next
+## Loft start). See [[ship-condition-research]].
+var _hull_bar : MeterBar
+var _stardust_bar : MeterBar
 var _prompt : Label
-var _captain_label : Label
+var _captain_anchor : Node2D     # an invisible world-point over the captain's post — the captain SPEAKS here
 var _chart : VoyageChart         # the drawn voyage progress ribbon
 var _crossing : bool = false     # the ship is sailing between stops — stations locked, watch her make way
 var _report_btn : Button         # Duty Report button — hidden mid-boarding (its panel pauses the live melee)
@@ -157,7 +165,7 @@ func _setup_phase() -> void:
 	# while a boarding's in progress (you can read it again once the leg's banked).
 	if _report_btn != null:
 		_report_btn.visible = not BoardingMelee.has_active()
-	_update_hull_label()   # refresh the HULL readout (holes change as legs resolve)
+	_refresh_vitals()   # refresh the HULL + STARDUST bars (holes change as legs resolve)
 	if _arrived():
 		# Voyage's end. Also guards a redundant re-load so the last leg is never re-banked.
 		_say("%s dead ahead — voyage's end! Your cut: %d gold. Take the plank to make port." % [
@@ -526,7 +534,7 @@ func _finish_voyage(target: String) -> void:
 	get_tree().change_scene_to_file(target)
 
 
-# --- UI (captain line + the E prompt) --------------------------------
+# --- UI (vessel vitals panel + captain speech + the click prompt) ----
 
 func _build_ui() -> void:
 
@@ -534,29 +542,12 @@ func _build_ui() -> void:
 	layer.layer = 6
 	add_child(layer)
 
-	var banner : PanelContainer = PanelContainer.new()
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.0, 0.0, 0.0, 0.55)
-	s.set_corner_radius_all(14)
-	s.set_content_margin_all(12)
-	banner.add_theme_stylebox_override("panel", s)
-	banner.anchor_left = 0.5
-	banner.anchor_right = 0.5
-	banner.offset_top = 18.0
-	banner.offset_left = -380.0
-	banner.offset_right = 380.0
-	banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layer.add_child(banner)
-	_captain_label = Label.new()
-	_captain_label.add_theme_font_size_override("font_size", 19)
-	_captain_label.add_theme_color_override("font_color", Color(0.98, 0.90, 0.62, 1.0))
-	_captain_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	_captain_label.add_theme_constant_override("outline_size", 3)
-	_captain_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_captain_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_captain_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	banner.add_child(_captain_label)
+	# The captain SPEAKS over his post (a transient SpeechBubble, re-fired each phase) instead of a permanent
+	# 760px banner — obeys the no-banner rule ([[objectives-in-window]]); every line is also echoed to the
+	# log so a player who looked away can still read it. An invisible WORLD anchor at the helm.
+	_captain_anchor = Node2D.new()
+	_captain_anchor.position = _iso(6.4, 4.2)   # over the Navigating hand (the captain's post)
+	add_child(_captain_anchor)
 
 	# The interaction prompt floats in WORLD space above the active station's head (placed in _process),
 	# so it never collides with the bottom chat bar / chart. A z-lifted deck child, not on the HUD layer.
@@ -579,44 +570,91 @@ func _build_ui() -> void:
 	_chart.reached_stop.connect(_on_chart_reached_stop)
 	_chart.reached_encounter.connect(_on_chart_reached_encounter)
 
-	# DUTY REPORT button (top-left — how the crew fared last leg, YPP-style).
+	# CONSOLIDATED VESSEL PANEL (top-LEFT) — the ONE home for ship status: two real animated meter BARS
+	# (HULL holes + STARDUST start) + the Duty Report button, grouped so the deck reads at a glance instead
+	# of scattering status to every corner. Replaces the lonely hull icon + the free-floating report button.
+	var vitals : VBoxContainer = VBoxContainer.new()
+	vitals.offset_left = 14.0
+	vitals.offset_top = 12.0
+	vitals.offset_right = 14.0 + 230.0
+	vitals.add_theme_constant_override("separation", 5)
+	vitals.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(vitals)
+
+	_hull_bar = METER_BAR.instantiate() as MeterBar
+	_hull_bar.custom_minimum_size = Vector2(230.0, 22.0)
+	_hull_bar.label_text = "HULL"
+	_hull_bar.icon_kind = "hull"
+	_hull_bar.warn_frac = 0.25   # 1 hole -> amber, 3+ -> red (matches the retired HullGauge's bands)
+	_hull_bar.bad_frac = 0.75
+	_hull_bar.tooltip_text = "The ship's hull. Open holes flood the Loft faster — mend them at the Patchworks."
+	vitals.add_child(_hull_bar)
+
+	_stardust_bar = METER_BAR.instantiate() as MeterBar
+	_stardust_bar.custom_minimum_size = Vector2(230.0, 22.0)
+	_stardust_bar.label_text = "STARDUST"
+	_stardust_bar.icon_kind = "stardust"
+	_stardust_bar.rising_palette = true
+	_stardust_bar.danger_tick = 0.8   # the Stardust's BITE line (DANGER 8 / SINK 10)
+	_stardust_bar.hard_line = 1.0     # the SINK line
+	_stardust_bar.tooltip_text = "The Stardust she'll START the next Loft leg at — more holes, higher start. Loft well to keep her aloft."
+	vitals.add_child(_stardust_bar)
+
+	# DUTY REPORT (how the crew fared last leg, YPP-style) — grouped under the vitals, not free-floating.
 	var report_btn : Button = Button.new()
 	report_btn.text = "Duty Report"
-	report_btn.add_theme_font_size_override("font_size", 16)
-	report_btn.anchor_left = 0.0
-	report_btn.anchor_top = 0.0
-	report_btn.offset_left = 16.0
-	report_btn.offset_top = 16.0
-	report_btn.offset_right = 176.0
-	report_btn.offset_bottom = 52.0
+	report_btn.focus_mode = Control.FOCUS_NONE
+	report_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	report_btn.add_theme_font_size_override("font_size", 14)
 	report_btn.pressed.connect(_open_duty_report)
-	layer.add_child(report_btn)
+	vitals.add_child(report_btn)
 	_report_btn = report_btn
 
-	# HULL condition readout (top-LEFT under the Duty Report, clear of the HUD purse) — the SHIP's hull as
-	# an ICON: ONE shared condition (holes flood the Loft + are mended at the Patchworks), not Loft-only.
-	_hull_gauge = HullGauge.new()
-	_hull_gauge.anchor_left = 0.0
-	_hull_gauge.anchor_right = 0.0
-	_hull_gauge.offset_left = 16.0
-	_hull_gauge.offset_top = 60.0
-	_hull_gauge.offset_right = 16.0 + 160.0
-	_hull_gauge.offset_bottom = 60.0 + 32.0
-	layer.add_child(_hull_gauge)
-	_update_hull_label()
+	_refresh_vitals()
 
 
 func _say(line: String) -> void:
 
-	if _captain_label != null:
-		_captain_label.text = "Cap'n %s:  \"%s\"" % [_captain_name(), line]
+	# Transient captain speech over his post (re-fired each phase) + an echo to the log — no permanent banner.
+	if _captain_anchor != null:
+		for c in _captain_anchor.get_children():
+			c.queue_free()   # only the latest line shows (don't stack bubbles on rapid phase changes)
+		SpeechBubble.say(_captain_anchor, line)
+	PlayerState.log_event("Cap'n %s: %s" % [_captain_name(), line], Color(0.98, 0.90, 0.62))
 
 
-# Refresh the HULL gauge from the ship's open holes (the gauge colour-codes + draws the icon itself).
-func _update_hull_label() -> void:
+# Refresh the consolidated VESSEL panel — both meter bars from live ship state. HULL = open holes (segmented,
+# one notch per possible hole); STARDUST = the flood she'd START her next Loft leg at (more holes -> higher).
+# Each bar tweens to its new value (animate-everything), so returning from a holed leg SHOWS the damage.
+func _refresh_vitals() -> void:
 
-	if _hull_gauge != null:
-		_hull_gauge.set_holes(PlayerState.ship_open_holes())
+	if _hull_bar != null:
+		var holes : int = PlayerState.ship_open_holes()
+		var maxh : int = maxi(_active_max_holes(), 1)
+		_hull_bar.segments = maxh
+		_hull_bar.set_value(float(holes), float(maxh))
+		_hull_bar.set_caption("sound" if holes <= 0 else ("%d hole%s" % [holes, "" if holes == 1 else "s"]))
+	if _stardust_bar != null:
+		var dust : float = PlayerState.ship_stardust_start()
+		_stardust_bar.set_value(dust, STARDUST_SINK)
+		var cap : String = "low"
+		if dust >= 8.0:
+			cap = "high"
+		elif dust >= 5.0:
+			cap = "rising"
+		_stardust_bar.set_caption(cap)
+
+
+# Max holes for the ship the HULL bar reports against — the voyage (jobbed) ship while sailing, else the
+# player's active OWNED ship (so the segment count always matches what ship_open_holes() counts against).
+func _active_max_holes() -> int:
+
+	if PlayerState.voyage_active:
+		return PlayerState.VOYAGE_MAX_HOLES
+	var id : String = PlayerState.active_ship_id()
+	if id.is_empty():
+		return PlayerState.SHIP_MAX_HOLES_DEFAULT
+	return PlayerState.ship_max_holes(id)
 
 
 # Open the YPP-style duty report (last leg's per-hand ratings) — one at a time.
@@ -671,8 +709,8 @@ func _add_hull_collision() -> void:
 
 
 # --- Procedural ISO ship (clean, stylized placeholder) ---------------
-# NO floating labels anywhere — the only text is the captain banner + the [Click] prompt
-# (both fixed UI). The ONE station you need this phase GLOWS so it reads without a tag.
+# NO floating labels anywhere — the only deck text is the [Click] prompt + the captain's transient
+# SpeechBubble. The ONE station you need this phase GLOWS so it reads without a tag.
 
 func _draw() -> void:
 
