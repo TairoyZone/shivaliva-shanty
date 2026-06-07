@@ -114,6 +114,10 @@ func place_collapsed_top(parent: CanvasLayer) -> void:
 	mouse_entered.connect(_on_hover_expand)
 	mouse_exited.connect(_on_hover_collapse)
 	parent.add_child(self)
+	# _ready (run on add_child) sets custom_minimum_size = SIZE (116 tall), which would FORCE the box to
+	# full height and leave the collapsed strip floating in a big empty panel. Clear it so the offsets +
+	# the hover tween control the height instead.
+	custom_minimum_size = Vector2.ZERO
 
 
 func _on_hover_expand() -> void:
