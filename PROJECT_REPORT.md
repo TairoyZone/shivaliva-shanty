@@ -1,6 +1,6 @@
 # Shivaliva Shanty — Project Report
 
-_Last updated: 2026-06-07_
+_Last updated: 2026-06-08_
 
 ## What it is
 A single-player-first, retro-charming **puzzle-skill adventure** among floating sky-islands — a
@@ -75,7 +75,15 @@ finished). Adversarially reviewed (3 bugs fixed) + several playtest fixes alread
 - **Inheritance over duplication; scene-per-component.**
 - Build proactively, flag only big design forks; commit freely; **never push without an explicit ask.**
 
-## Recent work (2026-06-05 → 07, all committed)
+## Recent work (2026-06-05 → 08, all committed)
+A. **AI NPC chat — the unique hook (2026-06-07):** chat freely with the cast; in-character LLM replies
+   (DeepSeek via a key-safe **proxy**, personality on `NpcPersonality` chat_* fields), routed through the
+   chat box as a private "→ Name" mode; **affinity shapes warmth/openness**; an Options on/off toggle.
+B. **Sunshine Widget — the consolidated user panel (2026-06-08):** a foldable right-edge icon tab rail
+   (Tutorials · Backpack · Hearts · Profile + a Jobs launcher + an **Ayo!** trophy-claim tab with a count
+   badge). Replaced the per-puzzle "?" AND the old right-side quick-menu. **Tutorials shows only the
+   current scene's** how-to; trophies go earned → **claimed in Ayo!** → then onto the Profile shelf.
+C. **Economy guard (2026-06-08):** gold can never go negative; cash play is gated on affordability everywhere.
 0. **HUD overhaul + UI hardening (2026-06-07):** a big, well-reviewed pass —
    - **Real meter bars:** new reusable `components/meter_bar/` (`MeterBar`) — animated tweened fill,
      segmented (hull notches) / smooth (stardust), green→amber→red states + danger/sink ticks. Replaced
