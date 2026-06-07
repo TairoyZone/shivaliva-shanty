@@ -14,11 +14,11 @@ var _amount : int = 12
 var _power : float = 1.0
 
 
-static func make(tint: Color, amount: int = 12, power: float = 1.0) -> ClearBurst:
+static func make(tint: Color, count: int = 12, power: float = 1.0) -> ClearBurst:
 
 	var b : ClearBurst = ClearBurst.new()
 	b._tint = tint
-	b._amount = amount
+	b._amount = count
 	b._power = power
 	return b
 
