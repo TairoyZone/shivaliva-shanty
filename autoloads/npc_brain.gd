@@ -38,6 +38,7 @@ signal npc_replied(text: String)     # a reply came back (also appended to histo
 signal chat_failed(reason: String)   # the request failed — caller should fall back to canned lines
 signal thinking_started               # a request went out — show a "…" / typing state
 
+var ai_enabled : bool = true           # Options toggle — when off, "Chat" falls back to a canned line
 var endpoint : String = DEFAULT_ENDPOINT
 var _secret : String = ""              # optional x-shanty-key header (matches the proxy's SHARED_SECRET)
 var _dev_key : String = ""             # DEV-ONLY direct key (settings.cfg or SHANTY_NPC_KEY env) — blank = use the proxy
@@ -67,6 +68,7 @@ func _load_config() -> void:
 	var cfg : ConfigFile = ConfigFile.new()
 	if cfg.load("user://settings.cfg") != OK:
 		return
+	ai_enabled = bool(cfg.get_value("npc_chat", "enabled", true))
 	endpoint = String(cfg.get_value("npc_chat", "endpoint", DEFAULT_ENDPOINT))
 	_secret = String(cfg.get_value("npc_chat", "secret", ""))
 	# DEV-DIRECT key: settings.cfg first, else the SHANTY_NPC_KEY env var (set it once, no terminal). Blank
@@ -76,6 +78,17 @@ func _load_config() -> void:
 		_dev_key = OS.get_environment("SHANTY_NPC_KEY")
 	_dev_url = String(cfg.get_value("npc_chat", "dev_url", DEV_DIRECT_URL))
 	_dev_model = String(cfg.get_value("npc_chat", "dev_model", DEV_DIRECT_MODEL))
+
+
+## Options toggle: enable/disable live AI chat. Persisted to user://settings.cfg; when off, an NPC's "Chat"
+## falls back to a canned line instead of calling the LLM.
+func set_ai_enabled(on: bool) -> void:
+
+	ai_enabled = on
+	var cfg : ConfigFile = ConfigFile.new()
+	cfg.load("user://settings.cfg")   # keep the other sections (audio / chat) — merge, don't clobber
+	cfg.set_value("npc_chat", "enabled", on)
+	cfg.save("user://settings.cfg")
 
 
 ## True while a request is in flight (the panel disables input). One conversation at a time.

@@ -65,7 +65,9 @@ func _on_event_logged(text: String, color: Color) -> void:
 func _pill_style() -> StyleBoxFlat:
 
 	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.08, 0.07, 0.11, 0.74)
+	s.bg_color = Color(0.16, 0.11, 0.06, 0.80)   # warm walnut, matching the chat box (was cool navy)
+	s.border_color = Color(Palette.BRASS_FRAME.r, Palette.BRASS_FRAME.g, Palette.BRASS_FRAME.b, 0.30)
+	s.set_border_width_all(1)
 	s.set_corner_radius_all(7)
 	s.content_margin_left = 9.0
 	s.content_margin_right = 9.0

@@ -157,8 +157,8 @@ func interact() -> void:
 func _chat() -> void:
 
 	var persona : NpcPersonality = _resolve_personality()
-	if persona == null:
-		_talk()
+	if persona == null or not NpcBrain.ai_enabled:
+		_talk()   # no profile, or AI chat switched off in Options → a quick canned line instead
 		return
 	if not _granted_affinity_this_visit and not npc_name.is_empty():
 		PlayerState.add_affinity(npc_name, TALK_AFFINITY)

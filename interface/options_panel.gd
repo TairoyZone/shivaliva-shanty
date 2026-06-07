@@ -70,6 +70,7 @@ func _ready() -> void:
 	vbox.add_child(_make_toggle("Music", Audio.music_enabled, Audio.set_music_enabled))
 	vbox.add_child(_make_toggle("Sound effects", Audio.sfx_enabled, Audio.set_sfx_enabled))
 	vbox.add_child(_make_toggle("Show chat", ChatBox.chat_visible, ChatBox.set_chat_visible))
+	vbox.add_child(_make_toggle("AI NPC chat", NpcBrain.ai_enabled, NpcBrain.set_ai_enabled))
 
 	var spacer : Control = Control.new()
 	spacer.custom_minimum_size = Vector2(0.0, 10.0)
