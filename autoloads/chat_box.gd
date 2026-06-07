@@ -41,6 +41,13 @@ func is_typing() -> bool:
 	return _input != null and _input.has_focus()
 
 
+## True while the stored chat/event LOG overlay is open — so ESC closes it (and the HUD stands down on
+## ESC rather than opening the backpack; see hud.gd).
+func is_log_open() -> bool:
+
+	return _log_open
+
+
 ## Release the chat bar's focus — called when a HUD panel opens via a mouse click (which bypasses the
 ## keyboard is_typing() guards), so we never get stuck typing behind a modal with the world frozen.
 func drop_focus() -> void:
@@ -218,6 +225,13 @@ func _toggle_log() -> void:
 		_log_panel.visible = _log_open
 	if _log_open:
 		_autoscroll()
+
+
+## Close the log if open (ESC from the HUD calls this before falling through to the pause menu).
+func close_log() -> void:
+
+	if _log_open:
+		_toggle_log()
 
 
 # --- log --------------------------------------------------------------

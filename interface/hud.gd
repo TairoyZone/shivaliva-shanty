@@ -265,6 +265,20 @@ func _toggle_inventory() -> void:
 	_inventory_panel.toggle()
 
 
+# ESC priority: close whatever's open first (backpack → chat log); if nothing is, open the PAUSE MENU
+# (Resume / Options / Quit). The Journal owns its own ESC (it pauses + processes-always, so the HUD
+# doesn't get the key while it's up). Troy 2026-06-07: ESC = pause menu; Options/Quit moved out of the bag.
+func _on_escape() -> void:
+
+	if _inventory_panel.is_open():
+		_inventory_panel.close()
+		return
+	if ChatBox != null and ChatBox.is_log_open():
+		ChatBox.close_log()
+		return
+	PauseMenu.open(self)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 
 	# ESC summons / dismisses the backpack in the overworld. The HUD owns
@@ -273,8 +287,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if ChatBox.is_typing():
 		return   # typing in chat — keys go to the text, not the backpack/journal
-	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("interact"):
-		_toggle_inventory()   # ESC or E opens/closes the backpack — E no longer interacts (Troy: click-based)
+	if event.is_action_pressed("interact"):
+		_toggle_inventory()   # E opens/closes the backpack (E no longer interacts — Troy: click-based world)
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_cancel"):
+		_on_escape()          # ESC: close whatever's open, else open the pause menu (Troy 2026-06-07)
 		get_viewport().set_input_as_handled()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_J:
 		_toggle_journal()

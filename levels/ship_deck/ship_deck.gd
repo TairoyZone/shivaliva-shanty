@@ -615,7 +615,13 @@ func _build_ui() -> void:
 
 func _say(line: String) -> void:
 
-	# Transient captain speech over his post (re-fired each phase) + an echo to the log — no permanent banner.
+	# DEDUP across deck re-entries: the deck is a fresh node every time you come back from a station, and
+	# _setup_phase re-says the phase line — so skip it if it's identical to the last thing the captain said
+	# (tracked on PlayerState, which survives the scene swap). Only genuinely NEW lines speak + log.
+	if line == PlayerState.last_deck_say:
+		return
+	PlayerState.last_deck_say = line
+	# Transient captain speech over his post + an echo to the log — no permanent banner.
 	if _captain_anchor != null:
 		for c in _captain_anchor.get_children():
 			c.queue_free()   # only the latest line shows (don't stack bubbles on rapid phase changes)

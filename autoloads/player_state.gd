@@ -196,6 +196,10 @@ var ship_condition : Dictionary = {}
 ## THIS, not the persisted owned-ship `ship_condition`, so the Loft / the Patchworks station / the sink
 ## all act on the ship you're actually crewing (YPP-style). Reset when a voyage ends. See [[ship-condition-research]].
 var voyage_open_holes : int = 0
+## TRANSIENT (not saved): the last line the deck captain spoke — so re-entering the deck in the SAME
+## phase doesn't re-announce/re-log the identical line (the deck is a fresh node each re-entry). Reset
+## by clear_voyage so a new voyage greets you again. See ship_deck.gd `_say`.
+var last_deck_say : String = ""
 
 ## The player's Skirmish weapons. You start with just FISTS (brawl); the rest are bought
 ## at Cinder Troy's forge ([WeaponShop]) → appended here. The EQUIPPED one is the attack
@@ -487,6 +491,7 @@ func clear_voyage() -> void:
 	voyage_leg_swaps0 = 0
 	voyage_boarding_seed = 0   # don't bleed a stale footing seed into the next (maybe friendly) Skirmish
 	voyage_open_holes = 0      # the pillage SHIP's holes are transient — the next voyage's ship starts fresh
+	last_deck_say = ""         # so the next voyage's captain greets you again instead of staying silent
 	# (Your OWNED ship's persisted condition (`ship_condition`) is separate + survives, repaired at the
 	# Skydock's Patchworks post. The in-voyage Patchworks station mends the CURRENT pillage ship.)
 	# A boarding melee still in flight (you stepped away, never rejoined, then bailed) is abandoned too.

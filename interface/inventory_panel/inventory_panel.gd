@@ -140,51 +140,8 @@ func _build_skeleton() -> void:
 	hint.add_theme_color_override("font_color", Color(0.8, 0.68, 0.42, 1.0))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(hint)
-	# Quit to title — the discoverable clean save-and-quit from the overworld (ESC opens this bag, so
-	# this is the way out). PlayerState autosaves on every change, so we just return to the title.
-	var quit_row : HBoxContainer = HBoxContainer.new()
-	quit_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	quit_row.add_theme_constant_override("separation", 12)
-	vbox.add_child(quit_row)
-	# Options (music / sound toggles) — next to Quit so settings are reachable in-game.
-	var opt_btn : Button = Button.new()
-	opt_btn.text = "⚙  Options"
-	opt_btn.focus_mode = Control.FOCUS_NONE
-	opt_btn.add_theme_font_size_override("font_size", 15)
-	opt_btn.add_theme_color_override("font_color", Color(0.80, 0.86, 0.96, 1.0))
-	opt_btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	opt_btn.add_theme_constant_override("outline_size", 3)
-	var os : StyleBoxFlat = StyleBoxFlat.new()
-	os.bg_color = Color(0.14, 0.13, 0.20, 0.92)
-	os.border_color = Color(0.40, 0.42, 0.58, 1.0)
-	os.set_border_width_all(2)
-	os.set_corner_radius_all(8)
-	os.content_margin_left = 16
-	os.content_margin_right = 16
-	os.content_margin_top = 7
-	os.content_margin_bottom = 7
-	opt_btn.add_theme_stylebox_override("normal", os)
-	opt_btn.pressed.connect(func() -> void: OptionsPanel.open(self))
-	quit_row.add_child(opt_btn)
-	var quit_btn : Button = Button.new()
-	quit_btn.text = "⏻  Quit to Title"
-	quit_btn.focus_mode = Control.FOCUS_NONE
-	quit_btn.add_theme_font_size_override("font_size", 15)
-	quit_btn.add_theme_color_override("font_color", Color(0.92, 0.72, 0.52, 1.0))
-	quit_btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	quit_btn.add_theme_constant_override("outline_size", 3)
-	var qs : StyleBoxFlat = StyleBoxFlat.new()
-	qs.bg_color = Color(0.20, 0.12, 0.07, 0.92)
-	qs.border_color = Color(0.55, 0.38, 0.18, 1.0)
-	qs.set_border_width_all(2)
-	qs.set_corner_radius_all(8)
-	qs.content_margin_left = 16
-	qs.content_margin_right = 16
-	qs.content_margin_top = 7
-	qs.content_margin_bottom = 7
-	quit_btn.add_theme_stylebox_override("normal", qs)
-	quit_btn.pressed.connect(_on_quit_to_title)
-	quit_row.add_child(quit_btn)
+	# (Options + Quit to Title moved OUT of the backpack to the ESC PAUSE MENU, Troy 2026-06-07 — see
+	# interface/pause_menu/pause_menu.gd. The bag is now purely items/hearts/profile.)
 	_update_tab_styles()
 
 
@@ -281,22 +238,6 @@ func toggle() -> void:
 		close()
 	else:
 		open("items")
-
-
-# Return to the title screen. PlayerState autosaves on every change + records last_scene, so main.tscn
-# resumes the player right back here on next launch — a clean save-and-quit.
-func _on_quit_to_title() -> void:
-
-	close()
-	if get_tree() == null:
-		return
-	get_tree().paused = false
-	# Abandon any in-flight pillage entirely (NOT just the melee): the voyage fields are transient + not
-	# saved, so leaving voyage_active / open_holes / the board snapshot live would bleed into the next run
-	# (a phantom resume on Continue, or a fresh voyage starting already-holed). clear_voyage clears the
-	# boarding melee too.
-	PlayerState.clear_voyage()
-	get_tree().change_scene_to_file("res://main.tscn")
 
 
 func current_tab() -> String:

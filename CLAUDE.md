@@ -70,7 +70,10 @@ main.gd/.tscn     entry point / title → resume or new session
   `puzzle_return_scene`, and `voyage_phase`. Persisted via `_save()`/`_load()` (ConfigFile). Mutate
   mastery ONLY via `record_puzzle_result`.
 - **`HUD`** (`interface/hud.tscn`) — overworld HUD: gold purse, backpack button, objective banner,
-  quick-access menu. Hidden by the title + every `PuzzleScene`; owns **ESC** (opens the backpack).
+  quick-access menu. Hidden by the title + every `PuzzleScene`. **E** opens the backpack; **ESC** runs a
+  priority chain (`_on_escape`): close the open backpack → close the chat Log → else open the **`PauseMenu`**
+  (`interface/pause_menu/`, a `PROCESS_MODE_ALWAYS` modal that pauses + holds Resume / Options / Quit to
+  Title). The Journal owns its own ESC (it pauses + processes-always).
 - **`Overlay`** (`interface/overlay.tscn`) — the NPC dialog overlay.
 
 ---
