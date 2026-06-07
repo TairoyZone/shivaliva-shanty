@@ -9,7 +9,7 @@ const GOLD : Color = Color(0.96, 0.86, 0.50, 1.0)
 const DARK : Color = Color(0.0, 0.0, 0.0, 0.55)
 const HANDLE : Color = Color(0.55, 0.38, 0.18, 1.0)
 
-@export_enum("bag", "heart", "star", "jobs") var kind : String = "bag":
+@export_enum("bag", "heart", "star", "jobs", "book") var kind : String = "bag":
 	set(value):
 		kind = value
 		queue_redraw()
@@ -27,6 +27,8 @@ func _draw() -> void:
 			_star(c)
 		"jobs":
 			_jobs(c)
+		"book":
+			_book(c)
 
 
 func _bag(c: Vector2) -> void:
@@ -64,3 +66,15 @@ func _jobs(c: Vector2) -> void:
 	draw_line(c + Vector2(-6.0, 8.0), c + Vector2(4.0, -8.0), HANDLE, 2.6)   # handle
 	draw_arc(c + Vector2(4.0, -8.0), 7.5, PI * 0.05, PI * 0.95, 12, GOLD, 2.4)   # head
 	draw_circle(c + Vector2(4.0, -8.0), 1.6, GOLD)   # collar
+
+
+func _book(c: Vector2) -> void:
+
+	# An open book (the Tutorials tab): two pages meeting at a central spine.
+	draw_colored_polygon(PackedVector2Array([
+		c + Vector2(-1.0, -7.0), c + Vector2(-1.0, 7.0), c + Vector2(-9.0, 5.0), c + Vector2(-9.0, -5.0)]), GOLD)
+	draw_colored_polygon(PackedVector2Array([
+		c + Vector2(1.0, -7.0), c + Vector2(1.0, 7.0), c + Vector2(9.0, 5.0), c + Vector2(9.0, -5.0)]), GOLD)
+	draw_line(c + Vector2(0.0, -7.0), c + Vector2(0.0, 7.0), DARK, 1.4)   # spine
+	draw_line(c + Vector2(-7.0, -2.0), c + Vector2(-2.5, -1.2), DARK, 1.0)
+	draw_line(c + Vector2(2.5, -1.2), c + Vector2(7.0, -2.0), DARK, 1.0)

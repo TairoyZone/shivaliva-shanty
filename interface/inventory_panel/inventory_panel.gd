@@ -1,16 +1,13 @@
-## The player's backpack overlay — a Stardew/Minecraft-style slot grid
-## that opens over the overworld. Reads [PlayerState.inventory] and
-## rebuilds its slot widgets on open + whenever the inventory changes.
+## The player's USER PANEL — a YPP "Sunshine-widget"-style foldable, tabbed side panel docked on the LEFT.
+## A vertical icon TAB RAIL (always on screen) opens a content pane: 📖 Tutorial · 🎒 Backpack · ♥ Hearts ·
+## ★ Profile. Click a tab to open it; click the OPEN tab (or Esc) to fold it away — only one open at a time
+## (the exact YPP fold mechanic). Researched from YPPedia (Troy 2026-06-07; YPP docks right, we dock left).
 ##
-## Lives inside the [HUD] CanvasLayer (so it inherits the HUD's
-## hide-in-puzzle behavior and never shows during a minigame). The HUD
-## owns the open/close input (the "I" key + a bag button) and calls
-## [method open] / [method close] / [method toggle]; this script just
-## renders the contents and handles its own dim + close button.
+## Still named InventoryPanel / class InventoryPanel so the HUD's existing wiring (open / close / toggle /
+## is_open / current_tab) keeps working. Lives inside the [HUD] CanvasLayer (so the rail shows in the
+## overworld + hides in puzzles with the rest of the HUD; in-puzzle tutorials are handled by [PuzzleScene]).
 ##
-## Built entirely in code (no .tscn layout) because the slot grid is
-## dynamic — it rebuilds to match [member PlayerState.inventory_capacity],
-## which grows when the player buys backpack upgrades.
+## Built entirely in code — the slot grid is dynamic (rebuilds to [member PlayerState.inventory_capacity]).
 @tool
 class_name InventoryPanel
 extends Control
@@ -20,12 +17,20 @@ const SLOT_SIZE : float = 64.0
 const SLOT_SEP : float = 8.0
 const COLS : int = 6   # slots per row in the grid
 
-const COLOR_DIM : Color = Color(0, 0, 0, 0.55)
+const COLOR_DIM : Color = Color(0, 0, 0, 0.5)
 const COLOR_SLOT_BG : Color = Color(0.14, 0.09, 0.05, 1.0)
 const COLOR_SLOT_BORDER : Color = Color(0.55, 0.38, 0.18, 1.0)
 const COLOR_SLOT_EMPTY_BORDER : Color = Color(0.34, 0.24, 0.12, 1.0)
 const COLOR_TITLE : Color = Color(0.98, 0.86, 0.42, 1.0)
 const COLOR_COUNT : Color = Color(1.0, 0.95, 0.78, 1.0)
+
+## The left tab rail, top→down. Each: tab id · MenuGlyph kind · hover tip.
+const RAIL_TABS : Array = [
+	{"tab": "tutorial", "glyph": "book", "tip": "Tutorials — how to play"},
+	{"tab": "items", "glyph": "bag", "tip": "Backpack — your items  (E)"},
+	{"tab": "relationships", "glyph": "heart", "tip": "Hearties — your bonds with the cast  (R)"},
+	{"tab": "profile", "glyph": "star", "tip": "Profile — your rank, trophies, and skills"},
+]
 
 
 var _dim : ColorRect
@@ -34,28 +39,24 @@ var _window : PanelContainer
 var _items_page : VBoxContainer
 var _weapon_bar : HBoxContainer
 var _grid : GridContainer
-## The Hearts tab — a [RelationshipsView] embedded as a second tab (the
-## Stardew-style social page).
+## The Hearts tab — a [RelationshipsView] (Stardew-style social page).
 var _hearts_view : RelationshipsView
-## The Profile tab — a [ProfileView] (character page: rank, reputation,
-## fleet, avatar, trophies, and per-puzzle mastery standings).
+## The Profile tab — a [ProfileView] (rank, reputation, fleet, trophies, mastery standings).
 var _profile_view : ProfileView
-var _tab_items : Button
-var _tab_hearts : Button
-var _tab_profile : Button
-## "items" (the backpack grid), "relationships" (hearts), or "profile"
-## (standings).
+## The Tutorial tab — a help library (every puzzle's how-to, from [PuzzleHelp]).
+var _tutorial_page : Control
+var _rail_buttons : Dictionary = {}   # tab id → its rail Button (for active-state styling)
+## "tutorial" / "items" / "relationships" / "profile".
 var _current_tab : String = "items"
-var _is_open : bool = false
+var _is_open : bool = false           # is the content pane EXPANDED (the rail is always visible)
 
 
 func _ready() -> void:
 
-	# Cover the whole screen (so the centered window's 0.5 anchors center
-	# on the full viewport); start hidden.
+	# Cover the whole screen (the dim + the left-docked window anchor within it); the rail shows always
+	# (the panel node rides the HUD's visibility), the pane stays folded until a tab is clicked.
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	visible = false
 	_build_skeleton()
 	if not Engine.is_editor_hint():
 		PlayerState.inventory_changed.connect(_on_inventory_changed)
@@ -63,47 +64,38 @@ func _ready() -> void:
 
 func _build_skeleton() -> void:
 
-	# Dim backdrop — eats mouse so clicks don't fall through to the world.
+	# Dim backdrop — only while the pane is OPEN; a click on it folds the panel.
 	_dim = ColorRect.new()
 	_dim.color = COLOR_DIM
 	_dim.anchor_right = 1.0
 	_dim.anchor_bottom = 1.0
 	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_dim.visible = false
+	_dim.gui_input.connect(_on_dim_input)
 	add_child(_dim)
-	# Centered walnut/brass window.
+
+	# Left-docked content window (hidden until a tab opens). Anchored top-left, just right of the rail,
+	# grows to fit its page (so the wide Hearts/Profile views still fit).
 	_window = PanelContainer.new()
 	_window.add_theme_stylebox_override("panel", _window_style())
-	_window.anchor_left = 0.5
-	_window.anchor_top = 0.5
-	_window.anchor_right = 0.5
-	_window.anchor_bottom = 0.5
-	_window.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_window.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_window.anchor_left = 0.0
+	_window.anchor_top = 0.0
+	_window.offset_left = 78.0
+	_window.offset_top = 60.0
+	_window.grow_horizontal = Control.GROW_DIRECTION_END
+	_window.grow_vertical = Control.GROW_DIRECTION_END
+	_window.visible = false
 	add_child(_window)
+
 	var vbox : VBoxContainer = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 12)
 	_window.add_child(vbox)
-	# Tab bar — Backpack / Hearts (the Stardew unified-menu pages).
-	var tabs : HBoxContainer = HBoxContainer.new()
-	tabs.add_theme_constant_override("separation", 8)
-	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
-	vbox.add_child(tabs)
-	_tab_items = _make_tab_button("Backpack")
-	_tab_items.pressed.connect(_switch_tab.bind("items"))
-	tabs.add_child(_tab_items)
-	_tab_hearts = _make_tab_button("♥  Hearts")
-	_tab_hearts.pressed.connect(_switch_tab.bind("relationships"))
-	tabs.add_child(_tab_hearts)
-	_tab_profile = _make_tab_button("★  Profile")
-	_tab_profile.pressed.connect(_switch_tab.bind("profile"))
-	tabs.add_child(_tab_profile)
-	# Divider.
-	var rule : ColorRect = ColorRect.new()
-	rule.color = Color(0.55, 0.38, 0.18, 1.0)
-	rule.custom_minimum_size = Vector2(0, 2)
-	vbox.add_child(rule)
-	# Items page — a WEAPON equip bar (your boarding weapon, YPP-style) above the
-	# backpack slot grid. Both toggle together with the "items" tab.
+
+	# Tutorial page — a scrollable how-to library (the "?" replacement).
+	_tutorial_page = _build_tutorial_page()
+	vbox.add_child(_tutorial_page)
+
+	# Items page — a WEAPON equip bar above the backpack slot grid.
 	_items_page = VBoxContainer.new()
 	_items_page.add_theme_constant_override("separation", 10)
 	vbox.add_child(_items_page)
@@ -119,98 +111,164 @@ func _build_skeleton() -> void:
 	wrule.color = Color(0.40, 0.28, 0.14, 0.8)
 	wrule.custom_minimum_size = Vector2(0, 2)
 	_items_page.add_child(wrule)
-	# The backpack slot grid.
 	_grid = GridContainer.new()
 	_grid.columns = COLS
 	_grid.add_theme_constant_override("h_separation", int(SLOT_SEP))
 	_grid.add_theme_constant_override("v_separation", int(SLOT_SEP))
 	_items_page.add_child(_grid)
-	# Hearts page — the relationships view (hidden until its tab is picked).
+
+	# Hearts + Profile pages (hidden until their tab is picked).
 	_hearts_view = RelationshipsView.new()
 	_hearts_view.visible = false
 	vbox.add_child(_hearts_view)
-	# Profile page — the character/standings view (hidden until its tab is picked).
 	_profile_view = ProfileView.new()
 	_profile_view.visible = false
 	vbox.add_child(_profile_view)
+
 	# Hint line.
 	var hint : Label = Label.new()
-	hint.text = "Press  Esc  to close"
-	hint.add_theme_font_size_override("font_size", 15)
+	hint.text = "Click the tab again, or press  Esc,  to close"
+	hint.add_theme_font_size_override("font_size", 14)
 	hint.add_theme_color_override("font_color", Color(0.8, 0.68, 0.42, 1.0))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(hint)
-	# (Options + Quit to Title moved OUT of the backpack to the ESC PAUSE MENU, Troy 2026-06-07 — see
-	# interface/pause_menu/pause_menu.gd. The bag is now purely items/hearts/profile.)
-	_update_tab_styles()
+
+	# The RAIL last, so it draws on top of the dim and stays clickable while the pane is open.
+	_build_rail()
+	_update_rail_styles()
+
+
+# The always-visible left tab rail — a slim brass strip of icon buttons.
+func _build_rail() -> void:
+
+	var holder : PanelContainer = PanelContainer.new()
+	holder.add_theme_stylebox_override("panel", _rail_bg_style())
+	holder.anchor_left = 0.0
+	holder.anchor_top = 0.0
+	holder.offset_left = 12.0
+	holder.offset_top = 116.0
+	holder.grow_horizontal = Control.GROW_DIRECTION_END
+	holder.grow_vertical = Control.GROW_DIRECTION_END
+	add_child(holder)
+	var col : VBoxContainer = VBoxContainer.new()
+	col.add_theme_constant_override("separation", 7)
+	holder.add_child(col)
+	for def in RAIL_TABS:
+		var btn : Button = _make_rail_button(String(def["glyph"]), String(def["tab"]), String(def["tip"]))
+		_rail_buttons[String(def["tab"])] = btn
+		col.add_child(btn)
+
+
+func _make_rail_button(glyph: String, tab: String, tip: String) -> Button:
+
+	var btn : Button = Button.new()
+	btn.custom_minimum_size = Vector2(46.0, 46.0)
+	btn.tooltip_text = tip
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	var icon : MenuGlyph = MenuGlyph.new()
+	icon.kind = glyph
+	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.add_child(icon)
+	btn.pressed.connect(_on_rail_pressed.bind(tab))
+	return btn
+
+
+# Click a rail tab: open it — or FOLD if it's already the open one (the YPP "click the open tab" mechanic).
+func _on_rail_pressed(tab: String) -> void:
+
+	ChatBox.drop_focus()
+	if _is_open and _current_tab == tab:
+		close()
+	else:
+		open(tab)
+
+
+func _build_tutorial_page() -> Control:
+
+	var scroll : ScrollContainer = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(540.0, 392.0)
+	scroll.visible = false
+	var col : VBoxContainer = VBoxContainer.new()
+	col.add_theme_constant_override("separation", 14)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(col)
+	var head : Label = Label.new()
+	head.text = "How to play"
+	head.add_theme_font_size_override("font_size", 22)
+	head.add_theme_color_override("font_color", COLOR_TITLE)
+	col.add_child(head)
+	for entry in PuzzleHelp.TUTORIALS:
+		var title : Label = Label.new()
+		title.text = String(entry["title"])
+		title.add_theme_font_size_override("font_size", 17)
+		title.add_theme_color_override("font_color", Color(0.96, 0.80, 0.46, 1.0))
+		col.add_child(title)
+		var body : Label = Label.new()
+		body.text = String(entry["body"])
+		body.add_theme_font_size_override("font_size", 14)
+		body.add_theme_color_override("font_color", Color(0.92, 0.86, 0.74, 1.0))
+		body.autowrap_mode = TextServer.AUTOWRAP_WORD
+		body.custom_minimum_size = Vector2(500.0, 0.0)
+		col.add_child(body)
+	return scroll
 
 
 func _window_style() -> StyleBoxFlat:
 
 	var s : StyleBoxFlat = StyleBoxFlat.new()
 	s.bg_color = Color(0.18, 0.11, 0.06, 0.98)
-	s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-	s.border_width_left = 3
-	s.border_width_top = 3
-	s.border_width_right = 3
-	s.border_width_bottom = 3
-	s.corner_radius_top_left = 14
-	s.corner_radius_top_right = 14
-	s.corner_radius_bottom_right = 14
-	s.corner_radius_bottom_left = 14
-	s.content_margin_left = 28
-	s.content_margin_right = 28
-	s.content_margin_top = 22
-	s.content_margin_bottom = 22
+	s.border_color = Palette.BRASS_FRAME
+	s.set_border_width_all(3)
+	s.set_corner_radius_all(14)
+	s.content_margin_left = 24
+	s.content_margin_right = 24
+	s.content_margin_top = 20
+	s.content_margin_bottom = 20
 	return s
 
 
-# --- Tabs ------------------------------------------------------------
+func _rail_bg_style() -> StyleBoxFlat:
 
-func _make_tab_button(text: String) -> Button:
-
-	var btn : Button = Button.new()
-	btn.text = text
-	btn.focus_mode = Control.FOCUS_NONE
-	btn.add_theme_font_size_override("font_size", 18)
-	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	btn.add_theme_constant_override("outline_size", 3)
-	return btn
+	var s : StyleBoxFlat = StyleBoxFlat.new()
+	s.bg_color = Color(0.16, 0.11, 0.06, 0.90)
+	s.border_color = Color(Palette.BRASS_FRAME.r, Palette.BRASS_FRAME.g, Palette.BRASS_FRAME.b, 0.6)
+	s.set_border_width_all(2)
+	s.set_corner_radius_all(12)
+	s.set_content_margin_all(6)
+	return s
 
 
-func _update_tab_styles() -> void:
+# --- Rail styling ----------------------------------------------------
 
-	_style_tab(_tab_items, _current_tab == "items")
-	_style_tab(_tab_hearts, _current_tab == "relationships")
-	_style_tab(_tab_profile, _current_tab == "profile")
+func _update_rail_styles() -> void:
+
+	for tab in _rail_buttons:
+		var active : bool = _is_open and _current_tab == tab
+		_style_rail_button(_rail_buttons[tab], active)
 
 
-func _style_tab(btn: Button, active: bool) -> void:
+func _style_rail_button(btn: Button, active: bool) -> void:
 
 	if btn == null:
 		return
-	btn.add_theme_color_override("font_color",
-		COLOR_TITLE if active else Color(0.72, 0.60, 0.42, 1.0))
 	for state in ["normal", "hover", "pressed"]:
 		var s : StyleBoxFlat = StyleBoxFlat.new()
-		s.bg_color = Color(0.27, 0.17, 0.09, 1.0) if active else Color(0.15, 0.10, 0.05, 0.85)
-		s.border_color = Color(0.78, 0.58, 0.24, 1.0) if active else Color(0.40, 0.30, 0.16, 0.8)
-		s.border_width_left = 2
-		s.border_width_top = 2
-		s.border_width_right = 2
-		s.border_width_bottom = 2
-		s.corner_radius_top_left = 8
-		s.corner_radius_top_right = 8
-		s.corner_radius_bottom_right = 8
-		s.corner_radius_bottom_left = 8
-		s.content_margin_left = 18
-		s.content_margin_right = 18
-		s.content_margin_top = 6
-		s.content_margin_bottom = 6
+		var bg : Color = Color(0.27, 0.17, 0.09, 1.0) if active else Color(0.15, 0.10, 0.05, 0.85)
+		if state == "hover":
+			bg = bg.lightened(0.10)
+		elif state == "pressed":
+			bg = bg.darkened(0.10)
+		s.bg_color = bg
+		s.border_color = Palette.BRASS_FRAME if active else Color(0.40, 0.30, 0.16, 0.85)
+		s.set_border_width_all(2)
+		s.set_corner_radius_all(9)
 		btn.add_theme_stylebox_override(state, s)
 
 
-# --- Open / close ----------------------------------------------------
+# --- Open / close (fold) ---------------------------------------------
 
 func is_open() -> bool:
 
@@ -219,9 +277,18 @@ func is_open() -> bool:
 
 func open(tab : String = "items") -> void:
 
+	var was_open : bool = _is_open
 	_is_open = true
-	visible = true
 	_switch_tab(tab)
+	_dim.visible = true
+	_window.visible = true
+	if not was_open:
+		# Fade the pane in (animate-everything; the rail itself never blinks).
+		_dim.modulate.a = 0.0
+		_window.modulate.a = 0.0
+		var tw : Tween = create_tween().set_parallel(true)
+		tw.tween_property(_dim, "modulate:a", 1.0, 0.12)
+		tw.tween_property(_window, "modulate:a", 1.0, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
 func close() -> void:
@@ -229,7 +296,20 @@ func close() -> void:
 	if not _is_open:
 		return
 	_is_open = false
-	visible = false
+	_update_rail_styles()
+	var tw : Tween = create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(_dim, "modulate:a", 0.0, 0.10)
+	tw.tween_property(_window, "modulate:a", 0.0, 0.12)
+	tw.set_parallel(false)
+	tw.tween_callback(_hide_pane_if_closed)
+
+
+func _hide_pane_if_closed() -> void:
+
+	if not _is_open:
+		_dim.visible = false
+		_window.visible = false
 
 
 func toggle() -> void:
@@ -245,19 +325,26 @@ func current_tab() -> String:
 	return _current_tab
 
 
-# Switch page ("items" / "relationships" / "profile"): show it, restyle the
-# tabs, refresh.
+# Switch page: show it, restyle the rail, refresh.
 func _switch_tab(tab: String) -> void:
 
 	_current_tab = tab
+	if _tutorial_page != null:
+		_tutorial_page.visible = (tab == "tutorial")
 	if _items_page != null:
 		_items_page.visible = (tab == "items")
 	if _hearts_view != null:
 		_hearts_view.visible = (tab == "relationships")
 	if _profile_view != null:
 		_profile_view.visible = (tab == "profile")
-	_update_tab_styles()
+	_update_rail_styles()
 	_refresh()
+
+
+func _on_dim_input(event: InputEvent) -> void:
+
+	if event is InputEventMouseButton and event.pressed:
+		close()
 
 
 # --- Contents --------------------------------------------------------
@@ -268,9 +355,11 @@ func _on_inventory_changed() -> void:
 		_refresh()
 
 
-# Refresh the active page — the slot grid, the hearts view, or the standings.
+# Refresh the active page — the slot grid, the hearts view, the standings (tutorial is static).
 func _refresh() -> void:
 
+	if _current_tab == "tutorial":
+		return
 	if _current_tab == "relationships":
 		if _hearts_view != null:
 			_hearts_view.refresh()
@@ -303,15 +392,8 @@ func _make_slot(slot: Dictionary) -> Control:
 	panel.add_theme_stylebox_override("panel", _slot_style(filled))
 	if not filled:
 		return panel
-	# Icon — FULL_RECT-anchored inside the slot with a small inset so it
-	# tracks the panel's actual rect (the GridContainer sizes the panel to
-	# SLOT_SIZE). WoodIcon._draw centers its disc within whatever rect it
-	# gets, so this yields a centered icon. Manual position() doesn't work
-	# here because the panel has no size until the grid lays it out.
 	var icon : Control = _make_item_icon(String(slot["id"]))
 	if icon != null:
-		# Symmetric inset → the icon is CENTERED in the slot. The count
-		# overlays the bottom-right corner on top of it (overlap is fine).
 		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
 		icon.offset_left = 8.0
 		icon.offset_top = 8.0
@@ -319,7 +401,6 @@ func _make_slot(slot: Dictionary) -> Control:
 		icon.offset_bottom = -8.0
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		panel.add_child(icon)
-	# Count — also FULL_RECT-anchored, text aligned to the bottom-right.
 	var count : Label = Label.new()
 	count.text = str(int(slot["count"]))
 	count.add_theme_font_size_override("font_size", 15)
@@ -338,16 +419,14 @@ func _make_slot(slot: Dictionary) -> Control:
 	return panel
 
 
-# A Minecraft-style weapon equip slot: a SQUARE icon slot + a name below. The EQUIPPED
-# one is lit (gold border + brighter fill + ✓), like a selected hotbar slot. Click to
-# equip (what your boarding/duel attacks send). Switched here only, never mid-fight.
+# A Minecraft-style weapon equip slot: a SQUARE icon slot + a name below. The EQUIPPED one is lit (gold
+# border + brighter fill + ✓). Click to equip (what your boarding/duel attacks send). Switched here only.
 func _make_weapon_slot(weapon_id: String) -> Control:
 
 	var is_default : bool = weapon_id == SkirmishWeapon.DEFAULT_WEAPON   # fists = unarmed → an EMPTY slot
 	var equipped : bool = PlayerState.equipped_weapon == weapon_id
 	var cell : VBoxContainer = VBoxContainer.new()
 	cell.add_theme_constant_override("separation", 3)
-	# Square slot.
 	var panel : Panel = Panel.new()
 	panel.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
 	var s : StyleBoxFlat = StyleBoxFlat.new()
@@ -371,7 +450,6 @@ func _make_weapon_slot(weapon_id: String) -> Control:
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		panel.add_child(icon)
 	cell.add_child(panel)
-	# Name below — gold + ✓ when equipped.
 	var name_l : Label = Label.new()
 	name_l.text = "" if is_default else (("✓ %s" % SkirmishWeapon.display_name(weapon_id)) if equipped \
 		else SkirmishWeapon.display_name(weapon_id))
@@ -391,10 +469,7 @@ func _on_weapon_input(event: InputEvent, weapon_id: String) -> void:
 		_refresh()
 
 
-# Per-item icon. Wood reuses the procedural [WoodIcon] (same art as the
-# old HUD pouch). The icon is sized by FULL_RECT anchors in _make_slot,
-# so we don't set a fixed size here — WoodIcon draws centered in whatever
-# rect it's given.
+# Per-item icon. Wood/ore reuse the procedural icons; unknown items get a placeholder swatch.
 func _make_item_icon(item_id: String) -> Control:
 
 	if item_id == PlayerState.ITEM_WOOD:
@@ -410,14 +485,7 @@ func _slot_style(filled: bool) -> StyleBoxFlat:
 
 	var s : StyleBoxFlat = StyleBoxFlat.new()
 	s.bg_color = COLOR_SLOT_BG
-	var border : Color = COLOR_SLOT_BORDER if filled else COLOR_SLOT_EMPTY_BORDER
-	s.border_color = border
-	s.border_width_left = 2
-	s.border_width_top = 2
-	s.border_width_right = 2
-	s.border_width_bottom = 2
-	s.corner_radius_top_left = 6
-	s.corner_radius_top_right = 6
-	s.corner_radius_bottom_right = 6
-	s.corner_radius_bottom_left = 6
+	s.border_color = COLOR_SLOT_BORDER if filled else COLOR_SLOT_EMPTY_BORDER
+	s.set_border_width_all(2)
+	s.set_corner_radius_all(6)
 	return s
