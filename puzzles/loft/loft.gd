@@ -14,9 +14,6 @@ extends VoyageStationScene
 ## the AI crew covers the rest. Arrival → the haul card; a sink → LOST IN THE STARDUST. See [[voyage-loop-research]].
 const SELF_SCENE : String = "res://puzzles/loft/loft.tscn"   # SKIRMISH/SHIP_DECK scenes live in the base
 
-## The same status-bar component the ship deck uses, so the Loft's LIFT/HULL read identically.
-const METER_BAR : PackedScene = preload("res://components/meter_bar/meter_bar.tscn")
-
 @onready var _board : LoftBoard = $Board
 
 var _banked_label : Label
@@ -71,11 +68,11 @@ func _build_ui() -> void:
 
 	_banked_label = _make_label("BANKED  0", Color(0.97, 0.88, 0.50, 1.0))
 	_moves_label = _make_label("SWAPS  %d" % LoftBoard.MOVES_PER_ROUND, Color(0.82, 0.90, 1.0, 1.0))
-	bar.add_child(_wrap(_banked_label))
-	bar.add_child(_wrap(_moves_label))
+	bar.add_child(_make_station_pill(_banked_label))
+	bar.add_child(_make_station_pill(_moves_label))
 	# LIFT/Stardust as a real meter BAR (same component as the ship deck) — it FILLS as the Stardust
 	# rises (calm-blue → red past the bite tick), so you SEE her sinking. Caption = ALOFT/STEADY/SINKING.
-	_stardust_bar = _make_loft_meter("STARDUST", "stardust")
+	_stardust_bar = _make_station_meter("STARDUST", "stardust")
 	_stardust_bar.rising_palette = true
 	_stardust_bar.danger_tick = 0.8   # STARDUST_DANGER(8) / SINK(10)
 	_stardust_bar.hard_line = 1.0     # the SINK line
@@ -103,22 +100,11 @@ func _build_ui() -> void:
 		# A HULL meter beside the gauges — the PILLAGE ship's holes (shows WHY the Stardust floods fast).
 		# Same bar as the deck (green→amber→red, one notch per hole). The voyage CHART + leg-resolution are
 		# built by the base (_enter_voyage_station).
-		_hull_bar = _make_loft_meter("HULL", "hull")
+		_hull_bar = _make_station_meter("HULL", "hull")
 		_hull_bar.warn_frac = 0.25   # 1 hole → amber, 3+ → red
 		_hull_bar.bad_frac = 0.75
 		bar.add_child(_hull_bar)
 		_update_hull_label()
-
-
-# A status meter sized for the Loft's centre bar (vertically centred next to the BANKED/SWAPS pills).
-func _make_loft_meter(label_text: String, icon: String) -> MeterBar:
-
-	var m : MeterBar = METER_BAR.instantiate() as MeterBar
-	m.custom_minimum_size = Vector2(208.0, 28.0)
-	m.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	m.label_text = label_text
-	m.icon_kind = icon
-	return m
 
 
 func _make_label(text: String, color: Color) -> Label:
@@ -131,24 +117,6 @@ func _make_label(text: String, color: Color) -> Label:
 	label.add_theme_constant_override("outline_size", 3)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return label
-
-
-func _wrap(label: Label) -> PanelContainer:
-
-	var panel : PanelContainer = PanelContainer.new()
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.11, 0.10, 0.16, 0.92)
-	s.border_color = Color(0.4, 0.5, 0.72, 1.0)
-	s.set_border_width_all(2)
-	s.set_corner_radius_all(10)
-	s.content_margin_left = 16
-	s.content_margin_right = 16
-	s.content_margin_top = 7
-	s.content_margin_bottom = 7
-	panel.add_theme_stylebox_override("panel", s)
-	panel.custom_minimum_size = Vector2(150.0, 0.0)
-	panel.add_child(label)
-	return panel
 
 
 func _on_Board_lift_changed(total_lift: int) -> void:
@@ -317,17 +285,11 @@ func _push_effective_rise() -> void:
 	_update_hull_label()
 
 
-# Refresh the voyage HULL meter from the active ship's open holes (green sound → amber → red), same as
-# the deck — one lit notch per open hole.
+# Refresh the voyage HULL meter from the active ship's open holes — the shared station refresher (so the
+# Loft + Patchworks + deck all read the hull the same way).
 func _update_hull_label() -> void:
 
-	if _hull_bar == null:
-		return
-	var holes : int = PlayerState.ship_open_holes()
-	var maxh : int = maxi(PlayerState.VOYAGE_MAX_HOLES, 1)
-	_hull_bar.segments = maxh
-	_hull_bar.set_value(float(holes), float(maxh))
-	_hull_bar.set_caption("sound" if holes <= 0 else ("%d hole%s" % [holes, "" if holes == 1 else "s"]))
+	_refresh_hull_meter(_hull_bar)
 
 
 # (The shared voyage-leg flow — board / resume / resolve / report / sink / haul / the "Sail ho!" cry —

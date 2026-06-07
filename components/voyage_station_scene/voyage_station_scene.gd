@@ -14,6 +14,12 @@ extends PuzzleScene
 const SKIRMISH_SCENE : String = "res://puzzles/skirmish/skirmish_boarding.tscn"
 const SHIP_DECK_SCENE : String = "res://levels/ship_deck/ship_deck.tscn"
 
+## Shared station-HUD chrome so the Loft + Patchworks gauge bars read IDENTICALLY (one source of truth,
+## per the inheritance-over-duplication rule). The deck uses the same MeterBar in its own panel layout.
+const METER_BAR : PackedScene = preload("res://components/meter_bar/meter_bar.tscn")
+const STATION_METER_SIZE : Vector2 = Vector2(208.0, 22.0)   # canonical station gauge size (matches the deck's height)
+const STARDUST_SINK : float = 10.0                          # the Stardust full scale (mirrors LoftBoard.SINK_LEVEL)
+
 var _voyage_chart : VoyageChart
 var _voyage_busy : bool = false           # a voyage transition (stop/fight/report/sink) underway — fire once
 var _fight_done_this_leg : bool = false   # this fight leg's boarding is fought — resolve at the node, don't re-board
@@ -57,6 +63,52 @@ func _build_voyage_chart() -> void:
 	_voyage_chart_placement(layer)   # the hook calls place_at (which add_child's it) + positions it
 	_voyage_chart.reached_stop.connect(_on_voyage_reached_stop)
 	_voyage_chart.reached_encounter.connect(_on_voyage_reached_encounter)
+
+
+# --- Shared station HUD chrome (Loft + Patchworks read identically) ----
+
+## A status MeterBar sized for a station's centre gauge bar (cool, art-swappable). Caller sets its
+## rising_palette / danger ticks / call-site refresh.
+func _make_station_meter(label_text: String, icon: String) -> MeterBar:
+
+	var m : MeterBar = METER_BAR.instantiate() as MeterBar
+	m.custom_minimum_size = STATION_METER_SIZE
+	m.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	m.label_text = label_text
+	m.icon_kind = icon
+	return m
+
+
+## Wrap a label in the cool station "pill" (navy trough + sky-blue frame) — the BANKED/SWAPS/SCORE chips.
+func _make_station_pill(label: Label) -> PanelContainer:
+
+	var panel : PanelContainer = PanelContainer.new()
+	var s : StyleBoxFlat = StyleBoxFlat.new()
+	s.bg_color = Palette.PANEL_TROUGH
+	s.border_color = Palette.SKY_FRAME
+	s.set_border_width_all(2)
+	s.set_corner_radius_all(10)
+	s.content_margin_left = 16
+	s.content_margin_right = 16
+	s.content_margin_top = 7
+	s.content_margin_bottom = 7
+	panel.add_theme_stylebox_override("panel", s)
+	panel.custom_minimum_size = Vector2(150.0, 0.0)
+	panel.add_child(label)
+	return panel
+
+
+## Refresh a HULL MeterBar from the ACTIVE ship's open holes (one lit notch per hole; green→amber→red).
+## Shared by the Loft + Patchworks so the ship's condition reads the same at either station.
+func _refresh_hull_meter(bar: MeterBar) -> void:
+
+	if bar == null:
+		return
+	var holes : int = PlayerState.ship_open_holes()
+	var maxh : int = maxi(PlayerState.VOYAGE_MAX_HOLES, 1)
+	bar.segments = maxh
+	bar.set_value(float(holes), float(maxh))
+	bar.set_caption("sound" if holes <= 0 else ("%d hole%s" % [holes, "" if holes == 1 else "s"]))
 
 
 # --- The shared leg flow ----------------------------------------------

@@ -50,6 +50,8 @@ var _leaving : bool = false        # standalone leave-celebration in flight — 
 var _score_label : Label
 var _combo_label : Label
 var _flash_label : Label
+var _stardust_bar : MeterBar   # voyage-only: the ship's resting Stardust start (mirrors the deck vessel panel)
+var _hull_bar : MeterBar       # voyage-only: the hull she's mending — drops LIVE as you seal holes
 
 
 func _ready() -> void:
@@ -104,12 +106,54 @@ func _build_hud() -> void:
 	_combo_label = _make_label(layer, "", Vector2(960.0, 64.0), 20, Color(0.78, 1.0, 0.68), HORIZONTAL_ALIGNMENT_RIGHT, 280.0)
 	_flash_label = _make_label(layer, "", Vector2(440.0, 40.0), 44, Color(1.0, 0.95, 0.6), HORIZONTAL_ALIGNMENT_CENTER, 400.0)
 	_flash_label.modulate.a = 0.0
+	# Manning her on a pillage: show the SHIP gauges the Loft shows — the hull she's MENDING + the Stardust
+	# that flood-starts from it — in a top-centre cool bar (the same MeterBar component as the Loft + deck).
+	# As you seal holes BOTH drop, so you SEE the mend pay off (animate-everything). Mirrors the Loft so the
+	# two stations read consistently; absent standalone (no ship to crew).
+	if PlayerState.voyage_active:
+		var bar : HBoxContainer = HBoxContainer.new()
+		bar.add_theme_constant_override("separation", 14)
+		bar.anchor_left = 0.5
+		bar.anchor_right = 0.5
+		bar.offset_top = 18.0
+		bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		layer.add_child(bar)
+		_stardust_bar = _make_station_meter("STARDUST", "stardust")
+		_stardust_bar.rising_palette = true
+		_stardust_bar.danger_tick = 0.8   # the Stardust's BITE line (DANGER 8 / SINK 10)
+		_stardust_bar.hard_line = 1.0
+		bar.add_child(_stardust_bar)
+		_hull_bar = _make_station_meter("HULL", "hull")
+		_hull_bar.warn_frac = 0.25   # 1 hole → amber, 3+ → red (matches the Loft + deck)
+		_hull_bar.bad_frac = 0.75
+		bar.add_child(_hull_bar)
+		_refresh_ship_meters()
+	# Toss button — cool styled (matches the deck/station chrome; was a bare default-grey button).
 	var toss : Button = Button.new()
 	toss.text = "Toss piece"
 	toss.position = Vector2(980.0, 556.0)
 	toss.custom_minimum_size = Vector2(150.0, 44.0)
 	toss.focus_mode = Control.FOCUS_NONE
 	toss.add_theme_font_size_override("font_size", 18)
+	toss.add_theme_color_override("font_color", Color(0.86, 0.92, 1.0, 1.0))
+	toss.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	toss.add_theme_constant_override("outline_size", 3)
+	for state in ["normal", "hover", "pressed"]:
+		var ts : StyleBoxFlat = StyleBoxFlat.new()
+		var tbg : Color = Color(0.12, 0.17, 0.27, 0.94)
+		if state == "hover":
+			tbg = tbg.lightened(0.10)
+		elif state == "pressed":
+			tbg = tbg.darkened(0.12)
+		ts.bg_color = tbg
+		ts.border_color = Palette.SKY_FRAME
+		ts.set_border_width_all(2)
+		ts.set_corner_radius_all(8)
+		ts.content_margin_left = 12
+		ts.content_margin_right = 12
+		ts.content_margin_top = 6
+		ts.content_margin_bottom = 6
+		toss.add_theme_stylebox_override(state, ts)
 	toss.pressed.connect(_on_toss)
 	layer.add_child(toss)
 
@@ -128,6 +172,23 @@ func _make_label(parent: Node, text: String, pos: Vector2, size: int, color: Col
 	l.add_theme_constant_override("outline_size", 4)
 	parent.add_child(l)
 	return l
+
+
+# Refresh the voyage SHIP gauges. HULL = open holes (the shared station refresher); STARDUST = the resting
+# flood-start (mirrors the deck — she's not flying here, the crew is). Both are holes-derived, so sealing a
+# hole drops BOTH (the meters TWEEN down — animate-everything). No-op standalone (the bars are null).
+func _refresh_ship_meters() -> void:
+
+	_refresh_hull_meter(_hull_bar)
+	if _stardust_bar != null:
+		var dust : float = PlayerState.ship_stardust_start()
+		_stardust_bar.set_value(dust, STARDUST_SINK)
+		var cap : String = "low"
+		if dust >= 4.8:
+			cap = "high"
+		elif dust >= 3.6:
+			cap = "rising"
+		_stardust_bar.set_caption(cap)
 
 
 # --- Rendering ---------------------------------------------------------
@@ -417,6 +478,7 @@ func _leg_performance() -> Dictionary:
 func _open_next_leg() -> void:
 
 	PlayerState.voyage_leg_lift0 = _board.score
+	_refresh_ship_meters()   # a fight may have opened holes between legs — keep the gauges truthful
 
 
 # A patch leg ranks up PATCHWORKS mastery (by board score), not Lofting.
@@ -438,6 +500,7 @@ func _restore_voyage_state(state: Dictionary) -> void:
 	_lines_toward_seal = int(state.get("lines_toward_seal", 0))
 	_active_index = -1   # the held piece was freed by the scene swap
 	_active_cells = []
+	_refresh_ship_meters()   # the boarding may have opened holes — reflect the post-fight hull
 
 
 # Chart top-left, nudged DOWN clear of the "The Patchworks" title (the Leave button owns bottom-left).
@@ -471,6 +534,7 @@ func _on_lines_cleared(rows: Array, cols: Array, combo: int) -> void:
 	while _lines_toward_seal >= PATCHWORKS_LINES_PER_HOLE:
 		_lines_toward_seal -= PATCHWORKS_LINES_PER_HOLE
 		PlayerState.close_hole(1)
+	_refresh_ship_meters()   # the hull (+ its Stardust start) just dropped — SHOW the mend on the gauges
 	_combo_label.text = ("Combo  x%d" % combo) if combo > 1 else ""
 	if combo > 1:
 		_flash_label.text = "Combo  x%d!" % combo
