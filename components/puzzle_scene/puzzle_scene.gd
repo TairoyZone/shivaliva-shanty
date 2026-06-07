@@ -107,11 +107,10 @@ func _build_leave_button() -> void:
 	layer.add_child(btn)
 
 
-## STANDING RULE (Troy 2026-06-01): puzzle instructions live behind a hoverable
-## "?" button — NEVER a long text strip under the board (it runs off-screen + reads
-## messy). Concrete puzzles call this with their how-to-play text; reuse everywhere.
-## A small "?" sits bottom-right; hovering it reveals a fixed-width, word-wrapped
-## panel just above it (so it can never overflow the screen).
+## Puzzle instructions live behind a 📖 TUTORIAL button (Troy: never a strip under the board — it runs
+## off-screen). A small book sits bottom-right; CLICK it to fold a word-wrapped how-to card open/shut — the
+## in-puzzle face of the user panel's Tutorial tab (it replaced the old hover "?" 2026-06-07, same book glyph
+## + footprint so help reads the same everywhere). Concrete puzzles call this with their how-to-play text.
 func set_help_text(text: String) -> void:
 
 	var layer : CanvasLayer = CanvasLayer.new()
@@ -119,63 +118,87 @@ func set_help_text(text: String) -> void:
 	layer.name = "HelpLayer"
 	add_child(layer)
 
-	# The instruction panel — hidden until the "?" is hovered.
-	var panel : PanelContainer = PanelContainer.new()
+	# The tutorial CARD — bottom-right (where the old help panel sat), hidden until the book is clicked.
+	var card : PanelContainer = PanelContainer.new()
 	var ps : StyleBoxFlat = StyleBoxFlat.new()
-	ps.bg_color = Color(0.16, 0.11, 0.07, 0.97)
-	ps.border_color = Color(0.78, 0.58, 0.24, 1.0)
-	ps.set_border_width_all(2)
-	ps.set_corner_radius_all(10)
+	ps.bg_color = Color(0.18, 0.11, 0.06, 0.98)
+	ps.border_color = Palette.BRASS_FRAME
+	ps.set_border_width_all(3)
+	ps.set_corner_radius_all(12)
 	ps.set_content_margin_all(16)
-	panel.add_theme_stylebox_override("panel", ps)
-	panel.anchor_left = 1.0
-	panel.anchor_right = 1.0
-	panel.anchor_top = 1.0
-	panel.anchor_bottom = 1.0
-	panel.offset_left = -440.0
-	panel.offset_right = -18.0
-	panel.offset_bottom = -64.0
-	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.visible = false
+	card.add_theme_stylebox_override("panel", ps)
+	card.anchor_left = 1.0
+	card.anchor_right = 1.0
+	card.anchor_top = 1.0
+	card.anchor_bottom = 1.0
+	card.offset_left = -448.0
+	card.offset_right = -18.0
+	card.offset_bottom = -66.0
+	card.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	card.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.visible = false
+	var box : VBoxContainer = VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(box)
+	var head : Label = Label.new()
+	head.text = "How to play"
+	head.add_theme_font_size_override("font_size", 19)
+	head.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
+	box.add_child(head)
 	var label : Label = Label.new()
 	label.text = text
-	label.add_theme_font_size_override("font_size", 16)
-	label.add_theme_color_override("font_color", Color(0.94, 0.89, 0.74, 1.0))
+	label.add_theme_font_size_override("font_size", 15)
+	label.add_theme_color_override("font_color", Color(0.93, 0.88, 0.74, 1.0))
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	label.custom_minimum_size = Vector2(404.0, 0.0)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(label)
-	layer.add_child(panel)
+	box.add_child(label)
+	layer.add_child(card)
 
-	# The "?" button, bottom-right (opposite the Leave button), walnut/brass.
+	# 📖 Tutorial book — bottom-right (replaces the old "?"), the same book glyph as the user panel's rail
+	# Tutorial tab. CLICK to fold the card open/shut (the YPP fold mechanic), instead of the old hover.
 	var btn : Button = Button.new()
-	btn.text = "?"
+	btn.custom_minimum_size = Vector2(40.0, 40.0)
+	btn.tooltip_text = "Tutorial — how to play"
 	btn.focus_mode = Control.FOCUS_NONE
 	btn.anchor_left = 1.0
 	btn.anchor_right = 1.0
 	btn.anchor_top = 1.0
 	btn.anchor_bottom = 1.0
-	btn.offset_left = -54.0
+	btn.offset_left = -58.0
 	btn.offset_right = -18.0
-	btn.offset_top = -54.0
-	btn.offset_bottom = -16.0
-	btn.add_theme_font_size_override("font_size", 22)
-	btn.add_theme_color_override("font_color", Color(0.97, 0.87, 0.55, 1.0))
+	btn.offset_top = -58.0
+	btn.offset_bottom = -18.0
 	for state in ["normal", "hover", "pressed"]:
 		var s : StyleBoxFlat = StyleBoxFlat.new()
 		var bg : Color = Color(0.18, 0.11, 0.06, 0.94)
 		if state == "hover":
 			bg = bg.lightened(0.10)
+		elif state == "pressed":
+			bg = bg.darkened(0.10)
 		s.bg_color = bg
-		s.border_color = Color(0.78, 0.58, 0.24, 1.0)
+		s.border_color = Palette.BRASS_FRAME
 		s.set_border_width_all(2)
-		s.set_corner_radius_all(8)
+		s.set_corner_radius_all(9)
 		btn.add_theme_stylebox_override(state, s)
-	btn.mouse_entered.connect(panel.show)
-	btn.mouse_exited.connect(panel.hide)
+	var glyph : MenuGlyph = MenuGlyph.new()
+	glyph.kind = "book"
+	glyph.set_anchors_preset(Control.PRESET_FULL_RECT)
+	glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.add_child(glyph)
+	btn.pressed.connect(_toggle_help_card.bind(card))
 	layer.add_child(btn)
+
+
+# Fold the in-puzzle tutorial card open/shut; fades in (animate-everything) so it never pops.
+func _toggle_help_card(card: PanelContainer) -> void:
+
+	card.visible = not card.visible
+	if card.visible:
+		card.modulate.a = 0.0
+		create_tween().tween_property(card, "modulate:a", 1.0, 0.12)
 
 
 # Concrete puzzles call this when the game ends so the next click /
