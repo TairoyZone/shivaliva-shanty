@@ -314,10 +314,11 @@ func _draw() -> void:
 	var x0 : float = LM
 	var ship_x : float = LM + (size.x - LM - RM) * _ship_t
 
-	# Header: where we're bound.
+	# Header: where we're bound. Size 14 to MATCH the collapsed strip's header — so the same "Bound for"
+	# text doesn't resize 14→16 when the chart expands on hover.
 	if font != null:
 		draw_string(font, Vector2(LM - 6.0, 22.0), "Bound for %s" % _dest,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 16, TEXT_DEST)
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 14, TEXT_DEST)
 
 	# The route track — dim ahead, bright behind the sloop.
 	draw_line(Vector2(x0, TRACK_Y), Vector2(size.x - RM, TRACK_Y), TRACK_DIM, 4.0)

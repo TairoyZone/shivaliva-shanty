@@ -92,6 +92,8 @@ var _captain_anchor : Node2D     # an invisible world-point over the captain's p
 var _chart : VoyageChart         # the drawn voyage progress ribbon
 var _crossing : bool = false     # the ship is sailing between stops — stations locked, watch her make way
 var _report_btn : Button         # Duty Report button — hidden mid-boarding (its panel pauses the live melee)
+var _glow : Glow                 # the pulsing halo on the active station — SLIDES between stations (never snaps)
+var _patch_glow : Glow           # a second halo on the Patchworks when the hull's holed
 
 
 # Iso projection, centred so the deck middle sits on the world origin.
@@ -126,6 +128,7 @@ func _ready() -> void:
 	_add_crew()
 	_build_ui()
 	_index_stations()   # map the placed DeckProp station nodes -> positions (the deck reads these to interact)
+	_build_glows()      # the pulsing active-station halos (real nodes now — they slide + breathe, see _process)
 	_setup_phase()
 	queue_redraw()
 
@@ -325,7 +328,7 @@ func _foe_name(leg_i: int) -> String:
 
 # --- Interactions (self-contained: proximity + E) --------------------
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 
 	if Engine.is_editor_hint() or player == null:
 		return
@@ -336,6 +339,23 @@ func _process(_delta: float) -> void:
 			_prompt.text = "[Click]  %s" % _action_label(_active)
 			# Float the prompt above the active station's head (centred) — never the screen bottom.
 			_prompt.position = _active_pos + Vector2(-_prompt.get_minimum_size().x * 0.5, -64.0)
+	_update_glows(delta)
+
+
+# Slide the active-station halo toward the station that glows this phase (a phase change makes it GLIDE
+# there rather than snap — animate-everything); the [Glow] nodes self-pulse. A second halo marks the
+# Patchworks while the hull's holed. Cheap (moving 2 nodes — no full-ship redraw).
+func _update_glows(delta: float) -> void:
+
+	if _glow != null:
+		var target : Vector2 = _active_world_pos() + Vector2(0.0, 4.0)
+		_glow.position = _glow.position.lerp(target, clampf(delta * 9.0, 0.0, 1.0))
+	if _patch_glow != null:
+		var show_patch : bool = not _arrived() and not BoardingMelee.has_active() \
+			and PlayerState.pillage_phase != 0 and PlayerState.ship_open_holes() > 0
+		_patch_glow.visible = show_patch
+		if show_patch:
+			_patch_glow.position = _station_world("patchworks") + Vector2(0.0, 4.0)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -569,13 +589,25 @@ func _build_ui() -> void:
 	# CONSOLIDATED VESSEL PANEL (top-LEFT) — the ONE home for ship status: two real animated meter BARS
 	# (HULL holes + STARDUST start) + the Duty Report button, grouped so the deck reads at a glance instead
 	# of scattering status to every corner. Replaces the lonely hull icon + the free-floating report button.
+	# A cool BACKING CARD so the two bars + the Duty Report read as ONE grouped panel (they floated unbacked
+	# before, against the "consolidated panel" intent). Lighter than the meter troughs so the bars still pop;
+	# cool to match the deck's sky-at-altitude theme. See [[cool-deck-hud]].
+	var vitals_card : PanelContainer = PanelContainer.new()
+	vitals_card.offset_left = 14.0
+	vitals_card.offset_top = 12.0
+	var vcs : StyleBoxFlat = StyleBoxFlat.new()
+	vcs.bg_color = Palette.PANEL_TROUGH.lightened(0.05)
+	vcs.border_color = Palette.SKY_FRAME
+	vcs.set_border_width_all(2)
+	vcs.set_corner_radius_all(10)
+	vcs.set_content_margin_all(10)
+	vitals_card.add_theme_stylebox_override("panel", vcs)
+	vitals_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(vitals_card)
 	var vitals : VBoxContainer = VBoxContainer.new()
-	vitals.offset_left = 14.0
-	vitals.offset_top = 12.0
-	vitals.offset_right = 14.0 + 230.0
-	vitals.add_theme_constant_override("separation", 5)
+	vitals.add_theme_constant_override("separation", 6)
 	vitals.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layer.add_child(vitals)
+	vitals_card.add_child(vitals)
 
 	_hull_bar = METER_BAR.instantiate() as MeterBar
 	_hull_bar.custom_minimum_size = Vector2(230.0, 22.0)
@@ -770,15 +802,8 @@ func _draw() -> void:
 	for gy in [4.5, 8.0, 11.5]:
 		_draw_cannon(_iso(0.7, gy))
 		_draw_cannon(_iso(float(GW) - 0.7, gy))
-	# Glow the action this phase needs (runtime only — reads voyage / PlayerState state absent at edit time).
-	if not Engine.is_editor_hint():
-		_draw_glow(_active_world_pos())
-		# A second halo on the Patchworks when the hull's holed (man it to mend) — not at the set-sail node
-		# or mid-boarding (where the only glow is the helm).
-		if not _arrived() and not BoardingMelee.has_active() and PlayerState.pillage_phase != 0 \
-				and PlayerState.ship_open_holes() > 0:
-			_draw_glow(_station_world("patchworks"))
-	# (Crew + the station/mast/chest props are real nodes added in _add_crew / placed in the .tscn.)
+	# (The active-station halos are now real pulsing [Glow] nodes — see _build_glows / _update_glows. Crew +
+	# the station/mast/chest props are real nodes added in _add_crew / placed in the .tscn.)
 
 
 # World position of the station active this phase (the one that glows). Only used outside a
@@ -794,12 +819,21 @@ func _active_world_pos() -> Vector2:
 	return _station_world("loft")       # underway — man the Loft
 
 
-# A soft accent halo marking the active station (no text needed).
-func _draw_glow(pos: Vector2) -> void:
+# The active-station halos — real additive [Glow] nodes (self-pulsing), so the marker breathes + can SLIDE
+# between stations on a phase change instead of popping (see _update_glows). z_index 0 puts them on the deck
+# planks (above the parent _draw); additive blend keeps them soft over the props/crew.
+func _build_glows() -> void:
 
 	var c : Color = STATION_LIVE
-	draw_circle(pos + Vector2(0.0, 4.0), 42.0, Color(c.r, c.g, c.b, 0.13))
-	draw_arc(pos + Vector2(0.0, 4.0), 38.0, 0.0, TAU, 32, Color(c.r, c.g, c.b, 0.85), 2.5)
+	_glow = Glow.make(Color(c.r, c.g, c.b, 0.5), 56.0)
+	_glow.z_index = 0
+	_glow.position = _active_world_pos() + Vector2(0.0, 4.0)
+	add_child(_glow)
+	_patch_glow = Glow.make(Color(c.r, c.g, c.b, 0.42), 50.0)
+	_patch_glow.z_index = 0
+	_patch_glow.position = _station_world("patchworks") + Vector2(0.0, 4.0)
+	_patch_glow.visible = false
+	add_child(_patch_glow)
 
 
 # The hull outline pulled IN toward the deck centre by [param amount] grid units (the inset rail ring).

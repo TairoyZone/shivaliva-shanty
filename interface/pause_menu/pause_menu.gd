@@ -112,7 +112,7 @@ func _make_button(text: String, fg: Color, bg: Color, border: Color, action: Cal
 		s.bg_color = sb
 		s.border_color = border
 		s.set_border_width_all(2)
-		s.set_corner_radius_all(9)
+		s.set_corner_radius_all(8)   # the modal-button family radius (options/voyages/shoppe/favor all 8)
 		s.content_margin_left = 18
 		s.content_margin_right = 18
 		s.content_margin_top = 9

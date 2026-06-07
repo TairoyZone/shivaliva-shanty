@@ -156,7 +156,10 @@ func _draw() -> void:
 
 func _draw_text(font: Font, pos: Vector2, text: String, fs: int) -> void:
 
-	draw_string(font, pos + Vector2(1.0, 1.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, TEXT_SHADOW)
+	# A 4-direction 1px halo (not a single drop-shadow): near-white text rides over the LIGHT fill states
+	# (sound-green / warn-amber are high-luminance), where a single bottom-right offset washed out.
+	for o in [Vector2(-1.0, 0.0), Vector2(1.0, 0.0), Vector2(0.0, -1.0), Vector2(0.0, 1.0)]:
+		draw_string(font, pos + o, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, TEXT_SHADOW)
 	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, TEXT)
 
 
