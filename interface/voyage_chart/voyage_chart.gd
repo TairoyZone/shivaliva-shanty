@@ -102,7 +102,7 @@ func place_collapsed_top(parent: CanvasLayer) -> void:
 
 	_collapsible = true
 	_collapsed = true
-	mouse_filter = Control.MOUSE_FILTER_IGNORE   # never eat deck clicks; hover is POLLED in _process
+	mouse_filter = Control.MOUSE_FILTER_STOP   # CLICK the strip to toggle open/folded — it STAYS as you leave it
 	anchor_left = 0.5
 	anchor_right = 0.5
 	anchor_top = 0.0
@@ -118,17 +118,17 @@ func place_collapsed_top(parent: CanvasLayer) -> void:
 	custom_minimum_size = Vector2.ZERO
 
 
-# Poll the mouse against our rect each frame (reliable regardless of mouse_filter/occlusion, unlike the
-# mouse_entered/exited signals) — expand while hovered, collapse when not.
-func _poll_hover() -> void:
+# CLICK the strip to TOGGLE it open/folded — it stays that way until you click again (Troy 2026-06-07:
+# a persistent toggle, not hover-to-peek). mouse_filter is STOP so the click lands here (and is consumed,
+# so it never also mans a deck station underneath).
+func _gui_input(event: InputEvent) -> void:
 
-	var over : bool = Rect2(Vector2.ZERO, size).has_point(get_local_mouse_position())
-	if over and _collapsed:
-		_collapsed = false
-		_tween_height(14.0 + SIZE.y)
-	elif not over and not _collapsed:
-		_collapsed = true
-		_tween_height(14.0 + COLLAPSED_H)
+	if not _collapsible:
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_collapsed = not _collapsed
+		_tween_height((14.0 + COLLAPSED_H) if _collapsed else (14.0 + SIZE.y))
+		accept_event()
 
 
 func _tween_height(target_bottom: float) -> void:
@@ -202,8 +202,6 @@ func set_route(dest: String, total: int, done: int, leg_log: Array, encounters: 
 # bob keeps her alive even while holding at a stop.
 func _process(delta: float) -> void:
 
-	if _collapsible:
-		_poll_hover()   # hover-to-expand the collapsed deck strip (polled — see _poll_hover)
 	if not is_equal_approx(_ship_t, _goal_t):
 		var prev : float = _ship_t
 		_ship_t = move_toward(_ship_t, _goal_t, _sail_speed * delta)
@@ -315,10 +313,12 @@ func _draw() -> void:
 	var ship_x : float = LM + (size.x - LM - RM) * _ship_t
 
 	# Header: where we're bound. Size 14 to MATCH the collapsed strip's header — so the same "Bound for"
-	# text doesn't resize 14→16 when the chart expands on hover.
+	# text doesn't resize when the chart toggles open. A ▴ at the right = "click to fold" (the deck strip).
 	if font != null:
 		draw_string(font, Vector2(LM - 6.0, 22.0), "Bound for %s" % _dest,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 14, TEXT_DEST)
+		if _collapsible:
+			draw_string(font, Vector2(0.0, 22.0), "▴", HORIZONTAL_ALIGNMENT_RIGHT, size.x - RM + 8.0, 14, TEXT_STOP)
 
 	# The route track — dim ahead, bright behind the sloop.
 	draw_line(Vector2(x0, TRACK_Y), Vector2(size.x - RM, TRACK_Y), TRACK_DIM, 4.0)
