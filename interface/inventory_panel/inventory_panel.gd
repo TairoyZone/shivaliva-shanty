@@ -33,6 +33,7 @@ const RAIL_TABS : Array = [
 ]
 
 
+var _dim : ColorRect
 var _window : PanelContainer
 ## The "items" (Backpack) page — a Weapon equip bar above the backpack slot grid.
 var _items_page : VBoxContainer
@@ -50,8 +51,9 @@ var _current_help_box : VBoxContainer
 var _current_help_label : Label
 var _puzzle_help_text : String = ""
 var _rail_buttons : Dictionary = {}   # tab id → its rail Button (for active-state styling)
-## The always-docked pane's active tab: "tutorial" / "items" / "relationships" / "profile".
+## "tutorial" / "items" / "relationships" / "profile".
 var _current_tab : String = "items"
+var _is_open : bool = false           # is the content pane EXPANDED (the rail is always visible)
 
 
 func _ready() -> void:
@@ -80,8 +82,18 @@ func _fit_viewport() -> void:
 
 func _build_skeleton() -> void:
 
-	# Right-docked content PANE — ALWAYS shown (YPP-style always-docked widget); clicking a rail tab just
-	# changes its page. No full-screen dim: it's non-modal, you play with it open.
+	# Dim backdrop — only while the pane is OPEN; a click on it folds the panel.
+	_dim = ColorRect.new()
+	_dim.color = COLOR_DIM
+	_dim.anchor_right = 1.0
+	_dim.anchor_bottom = 1.0
+	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_dim.visible = false
+	_dim.gui_input.connect(_on_dim_input)
+	add_child(_dim)
+
+	# Left-docked content window (hidden until a tab opens). Anchored top-left, just right of the rail,
+	# grows to fit its page (so the wide Hearts/Profile views still fit).
 	_window = PanelContainer.new()
 	_window.add_theme_stylebox_override("panel", _window_style())
 	# Corner-pin the window just LEFT of the rail + BELOW the top HUD, growing left + down to fit its page
@@ -96,6 +108,7 @@ func _build_skeleton() -> void:
 	_window.offset_bottom = 150.0
 	_window.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_window.grow_vertical = Control.GROW_DIRECTION_END
+	_window.visible = false
 	add_child(_window)
 
 	var vbox : VBoxContainer = VBoxContainer.new()
@@ -144,9 +157,9 @@ func _build_skeleton() -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(hint)
 
-	# The RAIL last so it draws over the pane edge + stays clickable.
+	# The RAIL last, so it draws on top of the dim and stays clickable while the pane is open.
 	_build_rail()
-	_switch_tab(_current_tab)   # show the default page (the pane is always docked open)
+	_update_rail_styles()
 
 
 # The always-visible left tab rail — a slim brass strip of icon buttons.
@@ -214,11 +227,14 @@ func bump_backpack() -> void:
 		Juice.bump(btn, 1.22, 0.26)
 
 
-# Click a rail tab → switch the always-docked pane to it.
+# Click a rail tab: open it — or FOLD if it's already the open one (the YPP "click the open tab" mechanic).
 func _on_rail_pressed(tab: String) -> void:
 
 	ChatBox.drop_focus()
-	open(tab)
+	if _is_open and _current_tab == tab:
+		close()
+	else:
+		open(tab)
 
 
 func _build_tutorial_page() -> Control:
@@ -298,7 +314,8 @@ func _rail_bg_style() -> StyleBoxFlat:
 func _update_rail_styles() -> void:
 
 	for tab in _rail_buttons:
-		_style_rail_button(_rail_buttons[tab], _current_tab == tab)
+		var active : bool = _is_open and _current_tab == tab
+		_style_rail_button(_rail_buttons[tab], active)
 
 
 func _style_rail_button(btn: Button, active: bool) -> void:
@@ -321,26 +338,54 @@ func _style_rail_button(btn: Button, active: bool) -> void:
 
 # --- Open / close (fold) ---------------------------------------------
 
-# The panel is ALWAYS docked + non-modal (YPP-style), so it never "blocks": is_open stays false (the world
-# keeps moving + Esc opens the pause menu, not the panel), and close() is a no-op. open()/toggle() pick a tab.
 func is_open() -> bool:
 
-	return false
+	return _is_open
 
 
 func open(tab : String = "items") -> void:
 
+	var was_open : bool = _is_open
+	_is_open = true
 	_switch_tab(tab)
+	_dim.visible = true
+	_window.visible = true
+	if not was_open:
+		# Fade the pane in (animate-everything; the rail itself never blinks).
+		_dim.modulate.a = 0.0
+		_window.modulate.a = 0.0
+		var tw : Tween = create_tween().set_parallel(true)
+		tw.tween_property(_dim, "modulate:a", 1.0, 0.12)
+		tw.tween_property(_window, "modulate:a", 1.0, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
 func close() -> void:
 
-	pass
+	if not _is_open:
+		return
+	_is_open = false
+	_update_rail_styles()
+	var tw : Tween = create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(_dim, "modulate:a", 0.0, 0.10)
+	tw.tween_property(_window, "modulate:a", 0.0, 0.12)
+	tw.set_parallel(false)
+	tw.tween_callback(_hide_pane_if_closed)
+
+
+func _hide_pane_if_closed() -> void:
+
+	if not _is_open:
+		_dim.visible = false
+		_window.visible = false
 
 
 func toggle() -> void:
 
-	open("items")
+	if _is_open:
+		close()
+	else:
+		open("items")
 
 
 func current_tab() -> String:
@@ -375,11 +420,17 @@ func _switch_tab(tab: String) -> void:
 	_refresh()
 
 
+func _on_dim_input(event: InputEvent) -> void:
+
+	if event is InputEventMouseButton and event.pressed:
+		close()
+
+
 # --- Contents --------------------------------------------------------
 
 func _on_inventory_changed() -> void:
 
-	if _current_tab == "items":
+	if _is_open and _current_tab == "items":
 		_refresh()
 
 
