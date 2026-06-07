@@ -1,9 +1,9 @@
 ## NpcBrain — the live NPC-CHAT brain (THE unique hook). The player talks freely to a cast member and the
-## NPC answers IN CHARACTER via Claude (Haiku 4.5), driven by that NPC's [NpcPersonality] chat fields. The
-## game NEVER holds the API key: it POSTs to a small PROXY you host (see proxy/server.js), which adds the
-## key + calls Claude server-side. Mirrors the GodotNPCAI course's GameManager pattern, upgraded for safe
-## public distribution. Maintains a short rolling history per conversation; falls back to canned lines on
-## any error (caller decides how). Autoloaded (project.godot) so any scene can open a chat.
+## NPC answers IN CHARACTER via an LLM (DeepSeek by default — the PROXY picks the provider), driven by that
+## NPC's [NpcPersonality] chat fields. The game NEVER holds the API key: it POSTs to a small PROXY you host
+## (see proxy/server.js), which adds the key + calls the LLM server-side. Mirrors the GodotNPCAI course's
+## GameManager pattern, upgraded for safe public distribution. Maintains a short rolling history per
+## conversation; falls back to canned lines on any error (caller decides how). Autoloaded so any scene can chat.
 ##
 ## Foundation for richer AI later (memory, affinity-aware mood, tool-use). Keep replies SHORT + cheap.
 extends Node
