@@ -27,6 +27,7 @@ Overlay="*res://interface/overlay.tscn"
 EventFeed="*res://interface/event_feed/event_feed.gd"
 ChatBox="*res://autoloads/chat_box.gd"
 NpcBrain="*res://autoloads/npc_brain.gd"
+UserPanel="*res://interface/user_panel/user_panel.gd"
 
 [display]
 

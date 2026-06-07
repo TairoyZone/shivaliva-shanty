@@ -41,7 +41,6 @@ const COLOR_NEUTRAL : Color = Color(1.0, 0.92, 0.55, 1.0)
 
 @onready var _purse : PanelContainer = %Purse
 @onready var _coin_label : Label = %CoinLabel
-@onready var _inventory_panel : InventoryPanel = $InventoryPanel
 @onready var _journal_button : Button = %JournalButton
 @onready var _journal_panel : JournalPanel = %JournalPanel
 
@@ -144,7 +143,7 @@ func _toggle_journal() -> void:
 	ChatBox.drop_focus()   # a mouse click on a HUD button leaves the chat bar (no stuck focus / world-freeze)
 	if not visible:
 		return
-	if _inventory_panel.is_open():
+	if UserPanel.is_open():
 		return
 	_journal_panel.toggle()
 
@@ -164,14 +163,14 @@ func _open_inventory_tab(tab: String) -> void:
 	ChatBox.drop_focus()   # a mouse click on a HUD button leaves the chat bar (no stuck focus / world-freeze)
 	if not visible:
 		return
-	if Overlay.is_active and not _inventory_panel.is_open():
+	if Overlay.is_active and not UserPanel.is_open():
 		return
 	if _journal_panel.is_open():
 		return
-	if _inventory_panel.is_open() and _inventory_panel.current_tab() == tab:
-		_inventory_panel.close()
+	if UserPanel.is_open() and UserPanel.current_tab() == tab:
+		UserPanel.close()
 	else:
-		_inventory_panel.open(tab)
+		UserPanel.open(tab)
 
 
 # The journal "!" button reuses this brass style (the right-side quick-menu that also used it was removed
@@ -204,7 +203,7 @@ func _menu_btn_style(state: int) -> StyleBoxFlat:
 ## [Player] so the world freezes and ESC stays owned by the bag.
 func is_inventory_open() -> bool:
 
-	return _inventory_panel != null and _inventory_panel.is_open()
+	return UserPanel != null and UserPanel.is_open()
 
 
 # The backpack is NOT a HUD element — it lives off-screen and is summoned
@@ -215,9 +214,9 @@ func _toggle_inventory() -> void:
 	ChatBox.drop_focus()   # a mouse click on a HUD button leaves the chat bar (no stuck focus / world-freeze)
 	if not visible:
 		return
-	if Overlay.is_active and not _inventory_panel.is_open():
+	if Overlay.is_active and not UserPanel.is_open():
 		return
-	_inventory_panel.toggle()
+	UserPanel.toggle()
 
 
 # ESC priority: close whatever's open first (backpack → chat log); if nothing is, open the PAUSE MENU
@@ -225,8 +224,8 @@ func _toggle_inventory() -> void:
 # doesn't get the key while it's up). Troy 2026-06-07: ESC = pause menu; Options/Quit moved out of the bag.
 func _on_escape() -> void:
 
-	if _inventory_panel.is_open():
-		_inventory_panel.close()
+	if UserPanel.is_open():
+		UserPanel.close()
 		return
 	if ChatBox != null and ChatBox.is_log_open():
 		ChatBox.close_log()
@@ -268,8 +267,8 @@ func _on_visibility_changed() -> void:
 		# reappear when the HUD shows again. Close the journal AND the backpack (mirrors each other).
 		if is_instance_valid(_journal_panel) and _journal_panel.is_open():
 			_journal_panel.close()
-		if is_instance_valid(_inventory_panel) and _inventory_panel.is_open():
-			_inventory_panel.close()
+		if is_instance_valid(UserPanel) and UserPanel.is_open():
+			UserPanel.close()
 		return
 	flush_pending_change()
 	flush_pending_wood_change()
@@ -310,7 +309,7 @@ func _on_coins_changed(new_total: int) -> void:
 func _on_inventory_changed() -> void:
 
 	if visible:
-		_inventory_panel.bump_backpack()
+		UserPanel.bump_backpack()
 	else:
 		_bag_pending = true
 
@@ -322,7 +321,7 @@ func flush_pending_wood_change() -> void:
 	if not _bag_pending:
 		return
 	_bag_pending = false
-	_inventory_panel.bump_backpack()
+	UserPanel.bump_backpack()
 
 
 func flush_pending_change() -> void:

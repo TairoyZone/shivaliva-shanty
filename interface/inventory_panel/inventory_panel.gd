@@ -45,6 +45,11 @@ var _hearts_view : RelationshipsView
 var _profile_view : ProfileView
 ## The Tutorial tab — a help library (every puzzle's how-to, from [PuzzleHelp]).
 var _tutorial_page : Control
+## The "this puzzle" how-to at the top of the Tutorial tab — set by [PuzzleScene] while you play (so help
+## is right beside the board), hidden in the overworld.
+var _current_help_box : VBoxContainer
+var _current_help_label : Label
+var _puzzle_help_text : String = ""
 var _rail_buttons : Dictionary = {}   # tab id → its rail Button (for active-state styling)
 ## "tutorial" / "items" / "relationships" / "profile".
 var _current_tab : String = "items"
@@ -78,11 +83,12 @@ func _build_skeleton() -> void:
 	# grows to fit its page (so the wide Hearts/Profile views still fit).
 	_window = PanelContainer.new()
 	_window.add_theme_stylebox_override("panel", _window_style())
-	_window.anchor_left = 0.0
+	_window.anchor_left = 1.0
+	_window.anchor_right = 1.0
 	_window.anchor_top = 0.0
-	_window.offset_left = 78.0
+	_window.offset_right = -72.0   # left of the right-edge rail; grows leftward to fit its page
 	_window.offset_top = 60.0
-	_window.grow_horizontal = Control.GROW_DIRECTION_END
+	_window.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_window.grow_vertical = Control.GROW_DIRECTION_END
 	_window.visible = false
 	add_child(_window)
@@ -143,11 +149,13 @@ func _build_rail() -> void:
 
 	var holder : PanelContainer = PanelContainer.new()
 	holder.add_theme_stylebox_override("panel", _rail_bg_style())
-	holder.anchor_left = 0.0
+	holder.anchor_left = 1.0
+	holder.anchor_right = 1.0
 	holder.anchor_top = 0.0
-	holder.offset_left = 12.0
+	holder.offset_left = -58.0
+	holder.offset_right = -12.0
 	holder.offset_top = 116.0
-	holder.grow_horizontal = Control.GROW_DIRECTION_END
+	holder.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	holder.grow_vertical = Control.GROW_DIRECTION_END
 	add_child(holder)
 	var col : VBoxContainer = VBoxContainer.new()
@@ -221,6 +229,22 @@ func _build_tutorial_page() -> Control:
 	col.add_theme_constant_override("separation", 14)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(col)
+	# "This puzzle" — the current puzzle's how-to (PuzzleScene sets it while you play); hidden in the overworld.
+	_current_help_box = VBoxContainer.new()
+	_current_help_box.add_theme_constant_override("separation", 4)
+	_current_help_box.visible = false
+	var ch : Label = Label.new()
+	ch.text = "This puzzle"
+	ch.add_theme_font_size_override("font_size", 20)
+	ch.add_theme_color_override("font_color", COLOR_TITLE)
+	_current_help_box.add_child(ch)
+	_current_help_label = Label.new()
+	_current_help_label.add_theme_font_size_override("font_size", 14)
+	_current_help_label.add_theme_color_override("font_color", Color(0.95, 0.90, 0.78, 1.0))
+	_current_help_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_current_help_label.custom_minimum_size = Vector2(500.0, 0.0)
+	_current_help_box.add_child(_current_help_label)
+	col.add_child(_current_help_box)
 	var head : Label = Label.new()
 	head.text = "How to play"
 	head.add_theme_font_size_override("font_size", 22)
@@ -349,6 +373,17 @@ func toggle() -> void:
 func current_tab() -> String:
 
 	return _current_tab
+
+
+## Set the CURRENT puzzle's how-to (PuzzleScene calls this while playing; "" clears it). Surfaces at the top
+## of the Tutorial tab so help sits right beside the board.
+func set_puzzle_help(text: String) -> void:
+
+	_puzzle_help_text = text
+	if _current_help_label != null:
+		_current_help_label.text = text
+	if _current_help_box != null:
+		_current_help_box.visible = not text.strip_edges().is_empty()
 
 
 # Switch page: show it, restyle the rail, refresh.
