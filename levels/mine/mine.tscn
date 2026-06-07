@@ -111,24 +111,3 @@ theme_override_font_sizes/font_size = 26
 text = "The Mine"
 horizontal_alignment = 1
 vertical_alignment = 1
-
-[node name="HelpButton" type="Button" parent="UI" unique_id=1092398151]
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -64.0
-offset_top = -64.0
-offset_right = -20.0
-offset_bottom = -20.0
-grow_horizontal = 0
-grow_vertical = 0
-tooltip_text = "The Mine
-
-• Walk to the sign and press E to mine ore
-• Apply for the job at Cinder Troy's Forge first
-• Walk south to return to Cradle Rock"
-focus_mode = 0
-theme_override_font_sizes/font_size = 22
-text = "?"

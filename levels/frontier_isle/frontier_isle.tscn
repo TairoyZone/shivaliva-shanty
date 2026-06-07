@@ -84,24 +84,3 @@ theme_override_font_sizes/font_size = 26
 text = "Driftspar"
 horizontal_alignment = 1
 vertical_alignment = 1
-
-[node name="HelpButton" type="Button" parent="UI"]
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -64.0
-offset_top = -64.0
-offset_right = -20.0
-offset_bottom = -20.0
-grow_horizontal = 0
-grow_vertical = 0
-tooltip_text = "Driftspar — a frontier rock
-
-• You sailed here. Nothing's been built on it yet…
-• Take the HELM (just south) to voyage back toward Cradle Rock
-• Pillage a crew for booty, or pay a small fare for a straight ride"
-focus_mode = 0
-theme_override_font_sizes/font_size = 22
-text = "?"

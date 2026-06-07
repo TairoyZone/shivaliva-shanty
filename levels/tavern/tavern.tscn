@@ -121,25 +121,3 @@ theme_override_font_sizes/font_size = 26
 text = "The Inn"
 horizontal_alignment = 1
 vertical_alignment = 1
-
-[node name="HelpButton" type="Button" parent="UI" unique_id=1769147327]
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -64.0
-offset_top = -64.0
-offset_right = -20.0
-offset_bottom = -20.0
-grow_horizontal = 0
-grow_vertical = 0
-tooltip_text = "The Inn
-
-• Press E at a table to find an open seat (Gem Drop · Poker)
-• Press E near any of the folk to talk
-• Walk to the door to step outside
-• ESC — open your backpack"
-focus_mode = 0
-theme_override_font_sizes/font_size = 22
-text = "?"
