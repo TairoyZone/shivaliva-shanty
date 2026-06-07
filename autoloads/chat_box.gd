@@ -287,7 +287,8 @@ func start_private_chat(persona: NpcPersonality, npc: Node = null, fallback_line
 	NpcBrain.enter_chat(persona)
 	_target_btn.text = "→ %s   ✕" % _short_name()
 	_target_btn.visible = true
-	PlayerState.log_event("— You begin talking with %s —" % persona.npc_name, SYSTEM_LINE_COLOR)
+	PlayerState.log_event("— You begin talking with %s  (%s) —" % [persona.npc_name,
+		PlayerState.affinity_tier(persona.npc_name)], SYSTEM_LINE_COLOR)
 	if not _log_open:
 		_toggle_log()              # open the thread so the back-and-forth reads as a chat
 	_input.grab_focus()

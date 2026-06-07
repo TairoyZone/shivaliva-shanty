@@ -168,9 +168,34 @@ func _system_prompt() -> String:
 	if not _persona.chat_locale.is_empty():
 		parts.append("You are at %s." % _persona.chat_locale)
 	if not _persona.chat_secret.is_empty():
-		parts.append("A secret you hold (do NOT volunteer it; only hint at it, or reveal it, if the "
-			+ "player pointedly digs for it): " + _persona.chat_secret)
+		parts.append("A secret you hold (do NOT volunteer it; only hint at it, or reveal it, if the player "
+			+ "pointedly digs for it — and the more you trust them, the more willing you are): "
+			+ _persona.chat_secret)
+	parts.append(_affinity_block(_persona.npc_name))
 	return "\n\n".join(parts)
+
+
+# RAPPORT context — the player's standing with this NPC shapes their warmth + openness (first step toward
+# memory). Read live from PlayerState: tier + score + favours they've turned in for this NPC.
+func _affinity_block(npc_name: String) -> String:
+
+	var tier : String = PlayerState.affinity_tier(npc_name)
+	var aff : int = PlayerState.get_affinity(npc_name)
+	var helped : int = int(PlayerState.npc_favor_done.get(npc_name, 0))
+	var guide : String
+	match tier:
+		"Confidant":
+			guide = "You trust this traveller deeply, like a close friend — warm, open and familiar; glad to share personal thoughts."
+		"Friend":
+			guide = "You and this traveller are friends — relaxed, warm and glad to see them."
+		"Acquaintance":
+			guide = "You've crossed paths a few times — friendly, but still feeling them out."
+		_:
+			guide = "You barely know this traveller — courteous but a touch guarded and reserved; warm up only if they're genuinely kind."
+	var block : String = "RAPPORT with this traveller: %s (%d/100). %s" % [tier, aff, guide]
+	if helped > 0:
+		block += " They've done you a good turn %d time%s — you remember their kindness." % [helped, "" if helped == 1 else "s"]
+	return block
 
 
 # Keep the rolling history bounded (cost guard). Trim from the front, then ensure it still starts on a
