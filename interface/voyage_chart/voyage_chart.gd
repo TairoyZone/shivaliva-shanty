@@ -102,7 +102,7 @@ func place_collapsed_top(parent: CanvasLayer) -> void:
 
 	_collapsible = true
 	_collapsed = true
-	mouse_filter = Control.MOUSE_FILTER_PASS   # hover works; clicks fall through to the deck
+	mouse_filter = Control.MOUSE_FILTER_IGNORE   # never eat deck clicks; hover is POLLED in _process
 	anchor_left = 0.5
 	anchor_right = 0.5
 	anchor_top = 0.0
@@ -111,8 +111,6 @@ func place_collapsed_top(parent: CanvasLayer) -> void:
 	offset_right = SIZE.x * 0.5
 	offset_top = 14.0
 	offset_bottom = 14.0 + COLLAPSED_H
-	mouse_entered.connect(_on_hover_expand)
-	mouse_exited.connect(_on_hover_collapse)
 	parent.add_child(self)
 	# _ready (run on add_child) sets custom_minimum_size = SIZE (116 tall), which would FORCE the box to
 	# full height and leave the collapsed strip floating in a big empty panel. Clear it so the offsets +
@@ -120,20 +118,17 @@ func place_collapsed_top(parent: CanvasLayer) -> void:
 	custom_minimum_size = Vector2.ZERO
 
 
-func _on_hover_expand() -> void:
+# Poll the mouse against our rect each frame (reliable regardless of mouse_filter/occlusion, unlike the
+# mouse_entered/exited signals) — expand while hovered, collapse when not.
+func _poll_hover() -> void:
 
-	if not _collapsible or not _collapsed:
-		return
-	_collapsed = false
-	_tween_height(14.0 + SIZE.y)
-
-
-func _on_hover_collapse() -> void:
-
-	if not _collapsible or _collapsed:
-		return
-	_collapsed = true
-	_tween_height(14.0 + COLLAPSED_H)
+	var over : bool = Rect2(Vector2.ZERO, size).has_point(get_local_mouse_position())
+	if over and _collapsed:
+		_collapsed = false
+		_tween_height(14.0 + SIZE.y)
+	elif not over and not _collapsed:
+		_collapsed = true
+		_tween_height(14.0 + COLLAPSED_H)
 
 
 func _tween_height(target_bottom: float) -> void:
@@ -207,6 +202,8 @@ func set_route(dest: String, total: int, done: int, leg_log: Array, encounters: 
 # bob keeps her alive even while holding at a stop.
 func _process(delta: float) -> void:
 
+	if _collapsible:
+		_poll_hover()   # hover-to-expand the collapsed deck strip (polled — see _poll_hover)
 	if not is_equal_approx(_ship_t, _goal_t):
 		var prev : float = _ship_t
 		_ship_t = move_toward(_ship_t, _goal_t, _sail_speed * delta)
