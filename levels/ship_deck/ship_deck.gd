@@ -343,7 +343,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if Overlay.is_active or (HUD != null and HUD.is_inventory_open()) or ChatBox.is_typing():
 		return
-	get_viewport().set_input_as_handled()
+	# CLICK-ON-TARGET (standing rule — see [[click-on-target-rule]]): you must click ON the station, not
+	# merely be near it. Same forgiving box the overworld Interactable uses (ONE source of truth) tested
+	# against the station's world origin (_active_pos); clicking bare deck beside it does nothing.
+	var local : Vector2 = get_global_mouse_position() - _active_pos
+	if absf(local.x) > Interactable.CLICK_HALF_WIDTH \
+			or local.y > Interactable.CLICK_BELOW or local.y < -Interactable.CLICK_ABOVE:
+		return
+	var vp := get_viewport()
+	if vp != null:
+		vp.set_input_as_handled()
 	match _active:
 		"set_sail":
 			_set_sail()

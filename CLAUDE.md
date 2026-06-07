@@ -22,6 +22,11 @@ Compatibility, 1280×720. No build step — run `main.tscn`, or any `puzzles/*/<
   pop-in. Garbage/stones/pieces visibly fall. (Troy is a visual thinker; teleports read as broken.)
 - **Instructions behind a "?"**: puzzle how-to-play text ALWAYS goes behind a hoverable "?" button
   (call `PuzzleScene.set_help_text(text)`), NEVER a long strip under the board — strips run off-screen.
+- **Click-ON-target, never click-anywhere-while-near**: a click-to-interact fires ONLY when the click
+  lands ON the object's body AND the player is in range. Proximity shows the prompt; the click landing
+  on the body does the interaction (two gates). This is GENERAL — holds for EVERY input handler, not
+  just the overworld. Reuse the ONE click-box in `interactable.gd` (`Interactable.CLICK_HALF_WIDTH` /
+  `CLICK_ABOVE` / `CLICK_BELOW`). Audit any new `_unhandled_input`/`_input`/click handler against this.
 - **Inheritance over duplication**: every gameplay category has a base class; concrete variants
   override only what differs. Never re-implement a foundation.
 - **Scene-per-component**: each visual game piece is its own `.tscn` so art can be swapped later
@@ -81,9 +86,11 @@ extending BaseLocation + a `Door` back + props.
 
 ### 2. Interactable prop → `extends Interactable` (`components/interactable/interactable.gd`)
 `@tool` `Area2D` on physics layer **Interactable**. The Player's InteractionZone calls
-`set_tooltip_visible()`; a proximity-gated **left-click** calls `interact()` (emits `interacted`) — the
-Player's `_unhandled_input` picks the nearest in-range interactable (the world is **click-based**; **E** now
-opens the backpack). Tooltips read `[Click]`. Has `marker_label`, `spawn_offset`. Subclasses:
+`set_tooltip_visible()`; a **left-click that lands ON the body** (`contains_click`) while in range calls
+`interact()` (emits `interacted`) — the Player's `_unhandled_input` picks the nearest in-range
+interactable **the click actually hit** (clicking bare ground beside it does nothing — see the
+click-ON-target standing rule; the ship deck obeys the same box). The world is **click-based**; **E** now
+opens the backpack. Tooltips read `[Click]`. Has `marker_label`, `spawn_offset`. Subclasses:
 - **`Puzzle`** (`components/puzzle/puzzle.gd`) — adds `@export_file puzzle_scene` + `play_cost`;
   `interact()` charges gold then `request_spawn_at_anchor(name)` + `change_scene_to_file(puzzle_scene)`
   so the player returns next to the prop. **This is how a puzzle is launched from the world.**
