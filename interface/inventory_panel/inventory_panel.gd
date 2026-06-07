@@ -24,6 +24,14 @@ const COLOR_SLOT_EMPTY_BORDER : Color = Color(0.34, 0.24, 0.12, 1.0)
 const COLOR_TITLE : Color = Color(0.98, 0.86, 0.42, 1.0)
 const COLOR_COUNT : Color = Color(1.0, 0.95, 0.78, 1.0)
 
+## The Tutorial tab's default text when you're NOT in a puzzle (the overworld controls). In a puzzle,
+## PuzzleScene.set_help_text replaces it with THAT puzzle's how-to — only ever what's relevant to where you are.
+const OVERWORLD_HELP : String = ("Around the islands\n\n"
+	+ "• WASD / arrow keys — move\n"
+	+ "• Click a person, door, or work-site (on it, while close) to interact\n"
+	+ "• E — open your pack\n"
+	+ "• Esc — pause")
+
 ## The left tab rail, top→down. Each: tab id · MenuGlyph kind · hover tip.
 const RAIL_TABS : Array = [
 	{"tab": "ayo", "glyph": "bell", "tip": "Ayo! — claim your trophies + notices"},
@@ -44,15 +52,14 @@ var _grid : GridContainer
 var _hearts_view : RelationshipsView
 ## The Profile tab — a [ProfileView] (rank, reputation, fleet, trophies, mastery standings).
 var _profile_view : ProfileView
-## The Tutorial tab — a help library (every puzzle's how-to, from [PuzzleHelp]).
+## The Tutorial tab — the how-to for the CURRENT scene (the puzzle you're in, or the overworld controls).
 var _tutorial_page : Control
 ## The Ayo! tab — claim earned trophies + notices (our reskin of YPP's "Ahoy").
 var _ayo_page : Control
 var _ayo_list : VBoxContainer
 var _ayo_badge : Label
-## The "this puzzle" how-to at the top of the Tutorial tab — set by [PuzzleScene] while you play (so help
-## is right beside the board), hidden in the overworld.
-var _current_help_box : VBoxContainer
+## The Tutorial tab's body label — shows the CURRENT context's how-to (the puzzle you're in, or the
+## overworld controls), set via [method set_puzzle_help]. Never the whole library.
 var _current_help_label : Label
 var _puzzle_help_text : String = ""
 var _rail_buttons : Dictionary = {}   # tab id → its rail Button (for active-state styling)
@@ -419,43 +426,23 @@ func _build_tutorial_page() -> Control:
 	scroll.custom_minimum_size = Vector2(540.0, 392.0)
 	scroll.visible = false
 	var col : VBoxContainer = VBoxContainer.new()
-	col.add_theme_constant_override("separation", 14)
+	col.add_theme_constant_override("separation", 10)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(col)
-	# "This puzzle" — the current puzzle's how-to (PuzzleScene sets it while you play); hidden in the overworld.
-	_current_help_box = VBoxContainer.new()
-	_current_help_box.add_theme_constant_override("separation", 4)
-	_current_help_box.visible = false
-	var ch : Label = Label.new()
-	ch.text = "This puzzle"
-	ch.add_theme_font_size_override("font_size", 20)
-	ch.add_theme_color_override("font_color", COLOR_TITLE)
-	_current_help_box.add_child(ch)
-	_current_help_label = Label.new()
-	_current_help_label.add_theme_font_size_override("font_size", 14)
-	_current_help_label.add_theme_color_override("font_color", Color(0.95, 0.90, 0.78, 1.0))
-	_current_help_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_current_help_label.custom_minimum_size = Vector2(500.0, 0.0)
-	_current_help_box.add_child(_current_help_label)
-	col.add_child(_current_help_box)
 	var head : Label = Label.new()
 	head.text = "How to play"
 	head.add_theme_font_size_override("font_size", 22)
 	head.add_theme_color_override("font_color", COLOR_TITLE)
 	col.add_child(head)
-	for entry in PuzzleHelp.TUTORIALS:
-		var title : Label = Label.new()
-		title.text = String(entry["title"])
-		title.add_theme_font_size_override("font_size", 17)
-		title.add_theme_color_override("font_color", Color(0.96, 0.80, 0.46, 1.0))
-		col.add_child(title)
-		var body : Label = Label.new()
-		body.text = String(entry["body"])
-		body.add_theme_font_size_override("font_size", 14)
-		body.add_theme_color_override("font_color", Color(0.92, 0.86, 0.74, 1.0))
-		body.autowrap_mode = TextServer.AUTOWRAP_WORD
-		body.custom_minimum_size = Vector2(500.0, 0.0)
-		col.add_child(body)
+	# ONLY the current context's how-to — the puzzle you're in (PuzzleScene.set_help_text) or the overworld
+	# controls by default. Never a list of every puzzle.
+	_current_help_label = Label.new()
+	_current_help_label.text = OVERWORLD_HELP
+	_current_help_label.add_theme_font_size_override("font_size", 15)
+	_current_help_label.add_theme_color_override("font_color", Color(0.93, 0.88, 0.74, 1.0))
+	_current_help_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_current_help_label.custom_minimum_size = Vector2(460.0, 0.0)
+	col.add_child(_current_help_label)
 	return scroll
 
 
@@ -574,9 +561,7 @@ func set_puzzle_help(text: String) -> void:
 
 	_puzzle_help_text = text
 	if _current_help_label != null:
-		_current_help_label.text = text
-	if _current_help_box != null:
-		_current_help_box.visible = not text.strip_edges().is_empty()
+		_current_help_label.text = text if not text.strip_edges().is_empty() else OVERWORLD_HELP
 
 
 # Switch page: show it, restyle the rail, refresh.
