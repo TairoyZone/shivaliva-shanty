@@ -52,6 +52,12 @@ var _sail_speed : float = 0.05   # track-fraction/sec — set ENTIRELY by the cr
 var _bg : StyleBoxFlat           # self-drawn panel backing (so any scene can drop us in bare)
 
 const SIZE : Vector2 = Vector2(326.0, 116.0)
+const COLLAPSED_H : float = 30.0   # the thin one-line strip height when collapsed (hover to expand)
+const EXPAND_TIME : float = 0.22
+
+var _collapsible : bool = false    # deck chart only: a thin top strip that expands DOWN on hover
+var _collapsed : bool = true
+var _h_tween : Tween
 ## She sails CONTINUOUSLY while you work the station (deck + Loft charts share voyage_ship_t, so
 ## the progress is identical on both screens), STOPPING at each node where the event fires. Pace
 ## is how good the crew are (avg duty_skill) — slow enough to fill a puzzle session per leg.
@@ -88,6 +94,52 @@ func place_at(parent: CanvasLayer, top: bool) -> void:
 	offset_top = 16.0 if top else -(16.0 + SIZE.y)
 	offset_bottom = (16.0 + SIZE.y) if top else -16.0
 	parent.add_child(self)
+
+
+# Deck variant: a THIN top-CENTRE strip (dest + stop + pool) that expands DOWN into the full route on
+# hover, then collapses again — keeps the busy bottom-left clear (chat + feed live there). Troy 2026-06-07.
+func place_collapsed_top(parent: CanvasLayer) -> void:
+
+	_collapsible = true
+	_collapsed = true
+	mouse_filter = Control.MOUSE_FILTER_PASS   # hover works; clicks fall through to the deck
+	anchor_left = 0.5
+	anchor_right = 0.5
+	anchor_top = 0.0
+	anchor_bottom = 0.0
+	offset_left = -SIZE.x * 0.5
+	offset_right = SIZE.x * 0.5
+	offset_top = 14.0
+	offset_bottom = 14.0 + COLLAPSED_H
+	mouse_entered.connect(_on_hover_expand)
+	mouse_exited.connect(_on_hover_collapse)
+	parent.add_child(self)
+
+
+func _on_hover_expand() -> void:
+
+	if not _collapsible or not _collapsed:
+		return
+	_collapsed = false
+	_tween_height(14.0 + SIZE.y)
+
+
+func _on_hover_collapse() -> void:
+
+	if not _collapsible or _collapsed:
+		return
+	_collapsed = true
+	_tween_height(14.0 + COLLAPSED_H)
+
+
+func _tween_height(target_bottom: float) -> void:
+
+	if _h_tween != null and _h_tween.is_valid():
+		_h_tween.kill()
+	_h_tween = create_tween()
+	_h_tween.tween_property(self, "offset_bottom", target_bottom, EXPAND_TIME) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_h_tween.parallel().tween_method(func(_v: float) -> void: queue_redraw(), 0.0, 1.0, EXPAND_TIME)
 
 
 # Pull the live route straight from PlayerState. `sailing` = she's CROSSING a leg now (sails
@@ -242,6 +294,16 @@ func _draw() -> void:
 	if _bg != null:
 		draw_style_box(_bg, Rect2(Vector2.ZERO, size))
 	var font : Font = get_theme_default_font()
+	# Collapsed deck strip: one line (dest left, stop + pool right, a ▾ expand hint). Hover shows the route.
+	if _collapsible and _collapsed:
+		if font != null:
+			var arrived0 : bool = _done >= _total
+			draw_string(font, Vector2(LM - 6.0, 20.0), "Bound for %s" % _dest,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 14, TEXT_DEST)
+			var stop0 : String = "Arrived!" if arrived0 else "Stop %d/%d" % [mini(_done + 1, _total), _total]
+			draw_string(font, Vector2(0.0, 19.0), "%s   ·   Pool %dg   ▾" % [stop0, _haul],
+				HORIZONTAL_ALIGNMENT_RIGHT, size.x - RM + 8.0, 13, TEXT_STOP)
+		return
 	var x0 : float = LM
 	var ship_x : float = LM + (size.x - LM - RM) * _ship_t
 

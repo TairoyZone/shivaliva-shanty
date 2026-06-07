@@ -561,12 +561,10 @@ func _build_ui() -> void:
 	_prompt.visible = false
 	add_child(_prompt)
 
-	# Voyage CHART (self-contained, BOTTOM-LEFT — clear of the captain banner up top and the
-	# [Click] prompt bottom-centre). Populated by _setup_phase → _refresh_chart right after this.
+	# Voyage CHART — a THIN top-CENTRE strip (dest · stop · pool) that expands DOWN into the full route on
+	# hover, keeping the busy bottom-left (chat + feed) clear. Populated by _setup_phase → _refresh_chart.
 	_chart = VoyageChart.new()
-	_chart.place_at(layer, false)
-	_chart.offset_top -= 50.0       # lift the chart clear of the bottom chat bar (Troy 2026-06-07)
-	_chart.offset_bottom -= 50.0
+	_chart.place_collapsed_top(layer)
 	_chart.reached_stop.connect(_on_chart_reached_stop)
 	_chart.reached_encounter.connect(_on_chart_reached_encounter)
 

@@ -184,36 +184,38 @@ func _build_menu() -> void:
 	menu.name = "QuickMenu"
 	menu.anchor_left = 1.0
 	menu.anchor_right = 1.0
-	menu.offset_left = -132.0
+	menu.offset_left = -62.0     # slim icon column (was a wide text column) — frees the right edge
 	menu.offset_top = 146.0
-	menu.offset_right = -16.0
+	menu.offset_right = -14.0
 	menu.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	menu.add_theme_constant_override("separation", 6)
+	menu.add_theme_constant_override("separation", 7)
 	menu.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(menu)
 	# Draw the menu beneath the inventory/journal overlays (which come later
 	# in the tree), so opening a panel visually covers the buttons.
 	move_child(menu, _inventory_panel.get_index())
-	_bag_btn = _make_menu_button("Backpack", "items", "Backpack — your items  (Esc)")
+	# Slim ICON-first buttons (Troy 2026-06-07) — a procedural [MenuGlyph] + a hover tooltip for the label.
+	_bag_btn = _make_icon_button("bag", "items", "Backpack — your items  (E)")
 	menu.add_child(_bag_btn)
-	menu.add_child(_make_menu_button("♥  Hearts", "relationships", "Hearties — your bonds with the cast  (R)"))
-	menu.add_child(_make_menu_button("★  Profile", "profile", "Profile — your rank, trophies, and skills"))
-	menu.add_child(_make_menu_button("Jobs", "", "Shoppe Jobs — Mining & Woodcutting", _open_jobs))
+	menu.add_child(_make_icon_button("heart", "relationships", "Hearties — your bonds with the cast  (R)"))
+	menu.add_child(_make_icon_button("star", "profile", "Profile — your rank, trophies, and skills"))
+	menu.add_child(_make_icon_button("jobs", "", "Shoppe Jobs — Mining & Woodcutting", _open_jobs))
 
 
-func _make_menu_button(text: String, tab: String, tooltip: String, action: Callable = Callable()) -> Button:
+func _make_icon_button(glyph: String, tab: String, tooltip: String, action: Callable = Callable()) -> Button:
 
 	var btn : Button = Button.new()
-	btn.text = text
+	btn.custom_minimum_size = Vector2(46.0, 46.0)
 	btn.tooltip_text = tooltip
 	btn.focus_mode = Control.FOCUS_NONE
-	btn.add_theme_font_size_override("font_size", 16)
-	btn.add_theme_color_override("font_color", Color(0.96, 0.86, 0.50, 1.0))
-	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	btn.add_theme_constant_override("outline_size", 3)
 	btn.add_theme_stylebox_override("normal", _menu_btn_style(0))
 	btn.add_theme_stylebox_override("hover", _menu_btn_style(1))
 	btn.add_theme_stylebox_override("pressed", _menu_btn_style(2))
+	var icon : MenuGlyph = MenuGlyph.new()
+	icon.kind = glyph
+	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE   # the button takes the click, the glyph just draws
+	btn.add_child(icon)
 	if action.is_valid():
 		btn.pressed.connect(action)
 	else:
