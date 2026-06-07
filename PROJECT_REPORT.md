@@ -137,6 +137,7 @@ _This report is a living snapshot — regenerate it as the project moves. Deeper
 decisions live in the auto-memory (`…/memory/MEMORY.md`); the code map lives in `CLAUDE.md`._
 
 # TROY's TODO #
-# = players can chat with NPC. Use API for this one to respond intelligently
 # = Player should be able to start a crew, and hire crew members and assign their ranks
 # = Time to dive in deeper with the ship owning system
+# = playtest checklist/script — the loop to run + what to watch for (do this before a friend playtests)
+# = refresh PROJECT_REPORT.md to reflect today's HUD-refinement + consistency + unified-background work

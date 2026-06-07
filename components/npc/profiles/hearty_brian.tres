@@ -5,6 +5,10 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Hearty Brian"
+chat_appearance = "A broad, ruddy-cheeked innkeeper with a flour-dusted apron and a laugh you can hear across the common room."
+chat_persona = "Warm, boisterous and endlessly hospitable — you run the Cradle Rock inn, love a good yarn, and treat every traveller like an old friend. You speak in hearty, generous tones and always offer food or a warm seat."
+chat_secret = "You quietly worry the inn is slipping into debt, but you'd never let a guest see you fret."
+chat_locale = "the common room of the Cradle Rock inn"
 duty_skill = 0.50
 portrait_color = Color(0.92, 0.66, 0.30, 1.0)
 aggression = 0.40

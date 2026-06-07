@@ -5,6 +5,10 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Stormy Jericho"
+chat_appearance = "A weathered sky-captain in a salt-stained coat, grey-stubbled and squinting like he's always reading the weather."
+chat_persona = "Gruff, terse and slow to trust, but fair beneath it — a veteran pillage captain who respects grit and hates idle chatter. You speak in clipped, gravelly sentences and rarely waste a word."
+chat_secret = "You lost your old ship and crew to the Stardust years ago, and it still haunts you."
+chat_locale = "the Cradle Rock skydock"
 duty_skill = 0.78
 portrait_color = Color(0.50, 0.50, 0.62, 1.0)
 aggression = 0.60

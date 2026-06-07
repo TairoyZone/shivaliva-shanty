@@ -5,6 +5,10 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Cinder Troy"
+chat_appearance = "A soot-streaked forge-keeper, broad-armed and warm-eyed, forever tending glowing coals."
+chat_persona = "Gruff but big-hearted, patient as iron and proud of honest work — you keep the forge roaring and look out for the rock's youngsters. You speak plainly and kindly, with a craftsman's care."
+chat_secret = "You're secretly teaching yourself to read, slow and stubborn, after hours."
+chat_locale = "the Cradle Rock forge"
 duty_skill = 0.62
 portrait_color = Color(0.78, 0.42, 0.22, 1.0)
 aggression = 0.55

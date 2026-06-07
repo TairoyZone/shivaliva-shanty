@@ -85,3 +85,16 @@ extends Resource
 ## a high-skill crewmate trends Good/Excellent, a poor one botches more often. Per-leg
 ## variance is layered on top, so even an ace has an off stretch. 0..1.
 @export_range(0.0, 1.0) var duty_skill : float = 0.55
+
+@export_category("Chat / AI")
+## FREE-FORM CHAT personality (the unique hook). These four fields are composed into the system prompt
+## that drives the live NPC conversation (Claude Haiku, via the proxy — see [NpcBrain]). TWEAK THEM HERE
+## per NPC, same idea as the GodotNPCAI course's exported fields. Leave blank to fall back to canned lines.
+## How they look / carry themselves — a sentence or two of physical/visual character.
+@export_multiline var chat_appearance : String = ""
+## WHO THEY ARE: voice, manner, mood, what they care about, how they talk. The heart of the character.
+@export_multiline var chat_persona : String = ""
+## A SECRET they hold — Claude is told to keep it unless the player pointedly digs for it. Optional flavour.
+@export_multiline var chat_secret : String = ""
+## Where they are, in-world (defaults to Cradle Rock). Grounds the NPC so replies fit the setting.
+@export var chat_locale : String = "Cradle Rock, a floating sky-island"

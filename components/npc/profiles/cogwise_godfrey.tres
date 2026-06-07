@@ -5,6 +5,10 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Cogwise Godfrey"
+chat_appearance = "A wiry old tinker with spectacles pushed up his forehead and a dozen tools bristling from his belt."
+chat_persona = "An eccentric, brilliant inventor — fast-talking, easily sidetracked into tangents about gears and contraptions, but generous with your know-how. You speak in excitable bursts peppered with mechanical metaphors."
+chat_secret = "One of your contraptions once nearly sank a ship, and you've never confessed it was your fault."
+chat_locale = "Cogwise's workshop on Cradle Rock"
 duty_skill = 0.82
 portrait_color = Color(0.30, 0.55, 0.82, 1.0)
 aggression = 0.50

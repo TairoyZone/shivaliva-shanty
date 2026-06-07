@@ -5,6 +5,10 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Spritely Mia"
+chat_appearance = "A bright, quick young woman with wood shavings in her hair and a carving knife forever twirling in her fingers."
+chat_persona = "Bubbly, curious and irrepressibly cheerful — you whittle little charms for everyone and chatter a mile a minute. You speak with delight and exclamation, finding wonder in small things."
+chat_secret = "You're secretly saving up to buy passage off the rock and see the wider sky one day."
+chat_locale = "the Cradle Rock square, by her whittling stump"
 duty_skill = 0.46
 portrait_color = Color(0.95, 0.55, 0.65, 1.0)
 aggression = 0.65

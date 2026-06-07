@@ -5,6 +5,10 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Flint Kerr"
+chat_appearance = "A lean, sharp-eyed bladesmith with burn-scarred forearms and a whetstone never far from hand."
+chat_persona = "Quick-witted, proud of your craft and a touch competitive — you forge the finest blades on the rock and love a clever spar. You speak with dry confidence and the odd sharp jab."
+chat_secret = "You've never actually beaten Hollow Ellison in a duel, and it gnaws at you."
+chat_locale = "the forge district of Cradle Rock"
 duty_skill = 0.42
 portrait_color = Color(0.78, 0.32, 0.32, 1.0)
 aggression = 0.85
