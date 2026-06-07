@@ -39,13 +39,6 @@ const COLOR_GAIN : Color = Color(0.55, 1.0, 0.55, 1.0)
 const COLOR_LOSS : Color = Color(1.0, 0.55, 0.55, 1.0)
 const COLOR_NEUTRAL : Color = Color(1.0, 0.92, 0.55, 1.0)
 
-## Shared right inset (px from the screen edge) for the stacked right-side column — the purse, the
-## journal button, and the quick-menu all align their right edge to this (the .tscn purse Margin +
-## JournalButton use the matching -16). MENU_WIDTH = the quick-menu icon column's width.
-const RIGHT_MARGIN : float = 16.0
-const MENU_WIDTH : float = 48.0
-
-
 @onready var _purse : PanelContainer = %Purse
 @onready var _coin_label : Label = %CoinLabel
 @onready var _inventory_panel : InventoryPanel = $InventoryPanel
@@ -67,9 +60,8 @@ var _journal_modulate_tween : Tween   # tweens the "!" badge bright/dim so the s
 ## + floater all play in front of the player instead of silently
 ## finishing while invisible.
 var _pending_total : int = -1
-## The Backpack quick-menu button + whether the bag took an item in while the HUD was hidden (inside a
-## puzzle) — so the bump replays on return, like the purse's _pending_total. No count, just a bump.
-var _bag_btn : Button
+## Whether the bag took an item in while the HUD was hidden (inside a puzzle) — so the backpack-tab bump
+## replays on return, like the purse's _pending_total. No count, just a bump.
 var _bag_pending : bool = false
 
 func _ready() -> void:
@@ -104,10 +96,8 @@ func _ready() -> void:
 	PlayerState.ships_changed.connect(_refresh_journal)
 	PlayerState.lumber_stock_changed.connect(_refresh_journal)
 	_refresh_journal()
-	# Quick-access menu — a YPP-style right-side button column under the
-	# journal that opens the backpack straight to each page, so Bag / Hearts /
-	# Profile are discoverable, not hidden behind hotkeys.
-	_build_menu()
+	# (The old right-side quick-menu was removed 2026-06-07 — its functions live in the user panel's LEFT tab
+	# rail now: Tutorial / Backpack / Hearts / Profile + a Jobs launcher. See InventoryPanel.)
 	# Self-heal: if coins changed while hidden (inside a puzzle), replay
 	# the purse animation the moment the HUD becomes visible again —
 	# rather than depending on a caller remembering to flush. (Audit
@@ -166,15 +156,6 @@ func _open_hearts() -> void:
 	_open_inventory_tab("relationships")
 
 
-# Open the Shoppe Jobs board (Mining + Woodcutting). It's a pausing modal, so drop chat focus first
-# like the other panel-open paths (no stuck-focus / world-freeze).
-func _open_jobs() -> void:
-
-	ChatBox.drop_focus()
-	if visible:
-		ShoppeJobsBoard.open(self)
-
-
 # Open the backpack straight to [param tab] ("items" / "relationships" /
 # "profile"), or CLOSE it if it's already showing that page (so a button
 # toggles its own page). Shared by the quick-access menu + the R key.
@@ -193,57 +174,8 @@ func _open_inventory_tab(tab: String) -> void:
 		_inventory_panel.open(tab)
 
 
-# --- Quick-access menu (built in code) -------------------------------
-
-# A small brass button column under the journal — opens the backpack to each
-# of its pages. YPP's Ye/Booty/Crew menu, trimmed to what a solo player needs
-# (no chat, no crew roster, no ship panel — those belong to the future voyage
-# HUD). Lives BELOW the overlays so an open panel's dim covers it.
-func _build_menu() -> void:
-
-	var menu : VBoxContainer = VBoxContainer.new()
-	menu.name = "QuickMenu"
-	menu.anchor_left = 1.0
-	menu.anchor_right = 1.0
-	menu.offset_left = -(RIGHT_MARGIN + MENU_WIDTH)   # slim icon column, right edge flush with the purse + journal
-	menu.offset_top = 146.0
-	menu.offset_right = -RIGHT_MARGIN
-	menu.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	menu.add_theme_constant_override("separation", 7)
-	menu.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(menu)
-	# Draw the menu beneath the inventory/journal overlays (which come later
-	# in the tree), so opening a panel visually covers the buttons.
-	move_child(menu, _inventory_panel.get_index())
-	# Slim ICON-first buttons (Troy 2026-06-07) — a procedural [MenuGlyph] + a hover tooltip for the label.
-	_bag_btn = _make_icon_button("bag", "items", "Backpack — your items  (E)")
-	menu.add_child(_bag_btn)
-	menu.add_child(_make_icon_button("heart", "relationships", "Hearties — your bonds with the cast  (R)"))
-	menu.add_child(_make_icon_button("star", "profile", "Profile — your rank, trophies, and skills"))
-	menu.add_child(_make_icon_button("jobs", "", "Shoppe Jobs — Mining & Woodcutting", _open_jobs))
-
-
-func _make_icon_button(glyph: String, tab: String, tooltip: String, action: Callable = Callable()) -> Button:
-
-	var btn : Button = Button.new()
-	btn.custom_minimum_size = Vector2(46.0, 46.0)
-	btn.tooltip_text = tooltip
-	btn.focus_mode = Control.FOCUS_NONE
-	btn.add_theme_stylebox_override("normal", _menu_btn_style(0))
-	btn.add_theme_stylebox_override("hover", _menu_btn_style(1))
-	btn.add_theme_stylebox_override("pressed", _menu_btn_style(2))
-	var icon : MenuGlyph = MenuGlyph.new()
-	icon.kind = glyph
-	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE   # the button takes the click, the glyph just draws
-	btn.add_child(icon)
-	if action.is_valid():
-		btn.pressed.connect(action)
-	else:
-		btn.pressed.connect(_open_inventory_tab.bind(tab))
-	return btn
-
-
+# The journal "!" button reuses this brass style (the right-side quick-menu that also used it was removed
+# 2026-06-07 — its icons moved to the user panel's left tab rail).
 # state: 0 = normal, 1 = hover, 2 = pressed.
 func _menu_btn_style(state: int) -> StyleBoxFlat:
 
@@ -378,27 +310,19 @@ func _on_coins_changed(new_total: int) -> void:
 func _on_inventory_changed() -> void:
 
 	if visible:
-		_bump_bag()
+		_inventory_panel.bump_backpack()
 	else:
 		_bag_pending = true
 
 
-func _bump_bag() -> void:
-
-	if not is_instance_valid(_bag_btn):
-		return
-	_bag_btn.scale = Vector2.ONE   # reset in case a prior bump is mid-flight (Juice centres the pivot)
-	Juice.bump(_bag_btn, 1.22, 0.26)   # de-dup'd onto the shared tween helper (borrow #2)
-
-
-# Replay a deferred bag bump on the way back to the overworld (a puzzle banked wood/ore while hidden).
+# Replay a deferred backpack bump on the way back to the overworld (a puzzle banked wood/ore while hidden).
 # Called by PuzzleScene._exit_tree + the visibility self-heal — mirrors flush_pending_change for gold.
 func flush_pending_wood_change() -> void:
 
 	if not _bag_pending:
 		return
 	_bag_pending = false
-	_bump_bag()
+	_inventory_panel.bump_backpack()
 
 
 func flush_pending_change() -> void:

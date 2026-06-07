@@ -157,9 +157,14 @@ func _build_rail() -> void:
 		var btn : Button = _make_rail_button(String(def["glyph"]), String(def["tab"]), String(def["tip"]))
 		_rail_buttons[String(def["tab"])] = btn
 		col.add_child(btn)
+	# Jobs — a LAUNCHER (opens the Shoppe Jobs board), not a pane tab. Absorbed from the old quick-menu so
+	# Mining/Woodcutting jobs stay reachable from the consolidated rail.
+	var jobs_btn : Button = _make_rail_button("jobs", "", "Shoppe Jobs — Mining & Woodcutting", _open_jobs)
+	_style_rail_button(jobs_btn, false)
+	col.add_child(jobs_btn)
 
 
-func _make_rail_button(glyph: String, tab: String, tip: String) -> Button:
+func _make_rail_button(glyph: String, tab: String, tip: String, launcher: Callable = Callable()) -> Button:
 
 	var btn : Button = Button.new()
 	btn.custom_minimum_size = Vector2(46.0, 46.0)
@@ -171,8 +176,29 @@ func _make_rail_button(glyph: String, tab: String, tip: String) -> Button:
 	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	btn.add_child(icon)
-	btn.pressed.connect(_on_rail_pressed.bind(tab))
+	if launcher.is_valid():
+		btn.pressed.connect(launcher)
+	else:
+		btn.pressed.connect(_on_rail_pressed.bind(tab))
 	return btn
+
+
+# Jobs rail launcher — fold the pane, then open the Shoppe Jobs board (Mining / Woodcutting).
+func _open_jobs() -> void:
+
+	ChatBox.drop_focus()
+	close()
+	ShoppeJobsBoard.open(self)
+
+
+## BUMP the Backpack rail tab (you took an item in) — the feedback the old HUD bag button gave. Called by
+## the HUD on inventory_changed (deferred + replayed if it happened while the HUD was hidden in a puzzle).
+func bump_backpack() -> void:
+
+	var btn : Variant = _rail_buttons.get("items", null)
+	if btn != null and is_instance_valid(btn):
+		btn.scale = Vector2.ONE
+		Juice.bump(btn, 1.22, 0.26)
 
 
 # Click a rail tab: open it — or FOLD if it's already the open one (the YPP "click the open tab" mechanic).
