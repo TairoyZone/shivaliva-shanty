@@ -83,7 +83,7 @@ func _build_ui() -> void:
 	bar.offset_right = 634.0     # 620 wide — matches the log panel
 	bar.offset_top = -58.0       # 48 tall — enough for the controls (was cramped at 38)
 	bar.offset_bottom = -10.0
-	bar.add_theme_stylebox_override("panel", _panel_style(Color(0.10, 0.09, 0.13, 0.88)))
+	bar.add_theme_stylebox_override("panel", _panel_style(Color(0.16, 0.11, 0.06, 0.90)))   # warm walnut (was cool navy)
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE   # the empty bar background must not eat world clicks
 	add_child(bar)
 	var hb : HBoxContainer = HBoxContainer.new()
@@ -98,6 +98,7 @@ func _build_ui() -> void:
 	_target_btn.tooltip_text = "Step away from this conversation"
 	_target_btn.pressed.connect(_exit_private)
 	_target_btn.visible = false
+	_style_chat_button(_target_btn)
 	hb.add_child(_target_btn)
 
 	_input = LineEdit.new()
@@ -106,12 +107,14 @@ func _build_ui() -> void:
 	_input.max_length = 200
 	_input.text_submitted.connect(_on_submit)
 	_input.gui_input.connect(_on_input_gui)
+	_style_chat_input(_input)
 	hb.add_child(_input)
 
 	var send : Button = Button.new()
 	send.text = "Send"
 	send.focus_mode = Control.FOCUS_NONE
 	send.pressed.connect(_send_current)
+	_style_chat_button(send)
 	hb.add_child(send)
 
 	var log_btn : Button = Button.new()
@@ -120,6 +123,7 @@ func _build_ui() -> void:
 	log_btn.focus_mode = Control.FOCUS_NONE
 	log_btn.tooltip_text = "Toggle the chat + event history"
 	log_btn.pressed.connect(_toggle_log)
+	_style_chat_button(log_btn)
 	hb.add_child(log_btn)
 
 	# The history panel, just above the bar (hidden until you open it).
@@ -129,7 +133,7 @@ func _build_ui() -> void:
 	_log_panel.offset_right = 634.0           # match the bar's width
 	_log_panel.offset_top = -62.0 - 260.0     # 260 tall, sitting just above the bar
 	_log_panel.offset_bottom = -62.0
-	_log_panel.add_theme_stylebox_override("panel", _panel_style(Color(0.08, 0.07, 0.11, 0.9)))
+	_log_panel.add_theme_stylebox_override("panel", _panel_style(Color(0.13, 0.09, 0.05, 0.93)))   # warm walnut
 	_log_panel.visible = false
 	add_child(_log_panel)
 	_log_scroll = ScrollContainer.new()
@@ -145,14 +149,66 @@ func _panel_style(bg: Color) -> StyleBoxFlat:
 
 	var s : StyleBoxFlat = StyleBoxFlat.new()
 	s.bg_color = bg
-	s.border_color = Color(0.62, 0.46, 0.20, 0.7)
+	s.border_color = _brass(0.6)   # lowkey brass rim (matches the NPC chat panel / menu family)
 	s.set_border_width_all(2)
-	s.set_corner_radius_all(8)
+	s.set_corner_radius_all(10)
 	s.content_margin_left = 8.0
 	s.content_margin_right = 8.0
 	s.content_margin_top = 6.0
 	s.content_margin_bottom = 6.0
 	return s
+
+
+# Brass (the menu-family rim) at [param a] alpha — kept subtle so the persistent chat chrome stays lowkey.
+func _brass(a: float) -> Color:
+
+	return Color(Palette.BRASS_FRAME.r, Palette.BRASS_FRAME.g, Palette.BRASS_FRAME.b, a)
+
+
+# A small warm-brass button (Send / Log / the private-chat target chip) — matches the NPC chat panel.
+func _style_chat_button(btn: Button) -> void:
+
+	btn.add_theme_font_size_override("font_size", 14)
+	btn.add_theme_color_override("font_color", Color(0.95, 0.86, 0.58, 1.0))
+	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	btn.add_theme_constant_override("outline_size", 2)
+	for state in ["normal", "hover", "pressed"]:
+		var s : StyleBoxFlat = StyleBoxFlat.new()
+		var bg : Color = Color(0.22, 0.15, 0.08, 0.92)
+		if state == "hover":
+			bg = bg.lightened(0.10)
+		elif state == "pressed":
+			bg = bg.darkened(0.12)
+		s.bg_color = bg
+		s.border_color = _brass(0.7)
+		s.set_border_width_all(1)
+		s.set_corner_radius_all(7)
+		s.content_margin_left = 10.0
+		s.content_margin_right = 10.0
+		s.content_margin_top = 4.0
+		s.content_margin_bottom = 4.0
+		btn.add_theme_stylebox_override(state, s)
+
+
+# A subtly warm input field — dark walnut trough, faint brass rim that brightens on focus.
+func _style_chat_input(le: LineEdit) -> void:
+
+	le.add_theme_font_size_override("font_size", 15)
+	le.add_theme_color_override("font_color", Color(0.96, 0.93, 0.85, 1.0))
+	le.add_theme_color_override("font_placeholder_color", Color(0.78, 0.72, 0.60, 0.6))
+	var normal : StyleBoxFlat = StyleBoxFlat.new()
+	normal.bg_color = Color(0.10, 0.07, 0.04, 0.55)
+	normal.set_corner_radius_all(7)
+	normal.set_border_width_all(1)
+	normal.border_color = _brass(0.3)
+	normal.content_margin_left = 8.0
+	normal.content_margin_right = 8.0
+	normal.content_margin_top = 4.0
+	normal.content_margin_bottom = 4.0
+	le.add_theme_stylebox_override("normal", normal)
+	var focused : StyleBoxFlat = normal.duplicate()
+	focused.border_color = _brass(0.75)
+	le.add_theme_stylebox_override("focus", focused)
 
 
 # --- input ------------------------------------------------------------
