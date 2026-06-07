@@ -311,10 +311,12 @@ func _unhandled_input(event: InputEvent) -> void:
 func _on_visibility_changed() -> void:
 
 	if not visible:
-		# Safety: never leave the tree paused with the journal open while
-		# the HUD is hidden (e.g. entering a puzzle).
+		# Safety: never leave a panel open while the HUD is hidden (e.g. entering a puzzle) — it would
+		# reappear when the HUD shows again. Close the journal AND the backpack (mirrors each other).
 		if is_instance_valid(_journal_panel) and _journal_panel.is_open():
 			_journal_panel.close()
+		if is_instance_valid(_inventory_panel) and _inventory_panel.is_open():
+			_inventory_panel.close()
 		return
 	flush_pending_change()
 	flush_pending_wood_change()

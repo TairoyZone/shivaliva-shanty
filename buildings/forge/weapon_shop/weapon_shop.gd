@@ -36,6 +36,9 @@ func interact() -> void:
 
 func _exit_tree() -> void:
 
+	# Mirror _on_close_pressed's cleanup in case the shop is freed (scene change) with the modal still open.
+	if PlayerState.weapons_changed.is_connected(_rebuild_rows):
+		PlayerState.weapons_changed.disconnect(_rebuild_rows)
 	if is_instance_valid(_modal):
 		get_tree().paused = false
 		_modal.queue_free()
