@@ -71,6 +71,7 @@ func _ready() -> void:
 	_build_chrome()
 	_render()
 	get_tree().paused = true
+	add_child(EscToClose.new(_close.bind(true)))
 
 
 func _exit_tree() -> void:

@@ -72,6 +72,8 @@ func _ready() -> void:
 	btn.pressed.connect(_close)
 	col.add_child(btn)
 
+	add_child(EscToClose.new(_close))
+
 
 func _add(parent: VBoxContainer, text: String, size: int, color: Color, outline: int) -> void:
 

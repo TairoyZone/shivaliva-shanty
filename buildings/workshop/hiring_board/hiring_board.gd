@@ -162,6 +162,7 @@ func _show_modal() -> void:
 	# impossible to trigger a scene change while it's open.
 	_modal = layer
 	add_child(layer)
+	layer.add_child(EscToClose.new(_on_close_pressed))   # ESC closes the modal (standing rule — on the MODAL, not the post)
 	get_tree().paused = true
 
 

@@ -91,6 +91,7 @@ func _show_modal() -> void:
 	vbox.add_child(close_btn)
 	_modal = layer
 	add_child(layer)
+	layer.add_child(EscToClose.new(_on_close_pressed))   # ESC closes the shop (standing rule — on the MODAL, not the post)
 	get_tree().paused = true
 	PlayerState.weapons_changed.connect(_rebuild_rows)
 

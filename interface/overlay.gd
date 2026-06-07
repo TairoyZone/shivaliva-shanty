@@ -57,6 +57,9 @@ func _ready() -> void:
 	_panel_style.content_margin_top = 18
 	_panel_style.content_margin_bottom = 18
 	_panel.add_theme_stylebox_override("panel", _panel_style)
+	# Overlay is a PERSISTENT autoload that toggles a CHILD panel (not its own visibility), so pass an
+	# is_open check (is_active) — else ESC would be swallowed in every scene. See [[esc-closes-every-window]].
+	add_child(EscToClose.new(_close, func() -> bool: return is_active))
 
 
 func show_dialog(speaker: String, lines: Array[String]) -> void:

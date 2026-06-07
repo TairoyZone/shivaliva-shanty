@@ -105,6 +105,8 @@ func _ready() -> void:
 	dismiss.pressed.connect(_close)
 	col.add_child(dismiss)
 
+	add_child(EscToClose.new(_close))
+
 
 # One report line: [swatch] [duty] [name] [rating]. Player row brightened.
 func _row(grid: GridContainer, entry: Dictionary) -> void:

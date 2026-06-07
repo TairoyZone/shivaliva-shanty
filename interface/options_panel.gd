@@ -78,6 +78,8 @@ func _ready() -> void:
 	close.pressed.connect(_close)
 	vbox.add_child(close)
 
+	add_child(EscToClose.new(_close))
+
 
 func _make_toggle(text: String, on: bool, setter: Callable) -> CheckButton:
 

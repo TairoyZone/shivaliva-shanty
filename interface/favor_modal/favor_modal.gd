@@ -72,6 +72,7 @@ func _ready() -> void:
 	panel.add_child(_vbox)
 	_show_main()
 	get_tree().paused = true
+	add_child(EscToClose.new(_on_close))
 
 
 func _exit_tree() -> void:

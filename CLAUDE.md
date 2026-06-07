@@ -27,6 +27,10 @@ Compatibility, 1280×720. No build step — run `main.tscn`, or any `puzzles/*/<
   on the body does the interaction (two gates). This is GENERAL — holds for EVERY input handler, not
   just the overworld. Reuse the ONE click-box in `interactable.gd` (`Interactable.CLICK_HALF_WIDTH` /
   `CLICK_ABOVE` / `CLICK_BELOW`). Audit any new `_unhandled_input`/`_input`/click handler against this.
+- **ESC closes every window**: ANY exitable window/modal MUST close on **ESC**. Don't hand-roll a handler
+  per panel — drop the ONE reusable `components/esc_to_close/` node in: `add_child(EscToClose.new(_close))`
+  (it processes-always, consumes the key, and no-ops while its modal is hidden). Audit every new
+  panel/card/menu/shop/dialog for it. (The HUD ESC chain + pause_menu/journal own their own ESC.)
 - **Inheritance over duplication**: every gameplay category has a base class; concrete variants
   override only what differs. Never re-implement a foundation.
 - **Scene-per-component**: each visual game piece is its own `.tscn` so art can be swapped later

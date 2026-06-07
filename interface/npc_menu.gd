@@ -93,6 +93,8 @@ func _ready() -> void:
 		btn.position = p - Vector2(BTN_SIZE, BTN_SIZE) * 0.5
 		add_child(btn)
 
+	add_child(EscToClose.new(_close))
+
 
 func _make_option(opt: Dictionary) -> Button:
 
