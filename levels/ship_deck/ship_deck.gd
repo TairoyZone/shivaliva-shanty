@@ -638,10 +638,10 @@ func _refresh_vitals() -> void:
 		var dust : float = PlayerState.ship_stardust_start()
 		_stardust_bar.set_value(dust, STARDUST_SINK)
 		var cap : String = "low"
-		if dust >= 8.0:
+		if dust >= 7.5:
 			cap = "high"
-		elif dust >= 5.0:
-			cap = "rising"
+		elif dust >= 4.0:
+			cap = "rising"   # any real damage (2+ holes) reads as rising, not falsely "low"
 		_stardust_bar.set_caption(cap)
 
 
