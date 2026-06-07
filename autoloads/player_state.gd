@@ -665,7 +665,7 @@ func add_coins(amount: int, reason: String = "") -> void:
 	if amount > 0:
 		lifetime_coins_earned += amount
 		Audio.play_sfx("coin")   # the gold-earned chime (first audio call site — more to come)
-	total_coins += amount
+	total_coins = maxi(0, total_coins + amount)   # gold NEVER goes negative — you can't spend what you lack
 	check_new_trophies()   # Full Purse + a periodic sweep for any newly-earned trophy
 	if not reason.is_empty() and amount != 0:
 		log_event("%s%d  %s" % ["+" if amount >= 0 else "", amount, reason],
