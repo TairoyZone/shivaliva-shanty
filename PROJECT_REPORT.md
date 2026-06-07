@@ -144,12 +144,17 @@ C. **Economy guard (2026-06-08):** gold can never go negative; cash play is gate
 _This report is a living snapshot — regenerate it as the project moves. Deeper design history + locked
 decisions live in the auto-memory (`…/memory/MEMORY.md`); the code map lives in `CLAUDE.md`._
 
-# TROY's TODO #
-= Player should be able to start a crew, and hire crew members and assign their ranks
-= Time to dive in deeper with the ship owning system
-= playtest checklist/script — the loop to run + what to watch for (do this before a friend playtests)
-= refresh PROJECT_REPORT.md to reflect today's HUD-refinement + consistency + unified-background work
-= NPC chat (BUILT + live on DeepSeek) — feed AFFINITY into the prompt: NPCs warmer/colder + reference shared history (first step toward memory)
-= NPC chat — add an AI-chat ON/OFF toggle in Options (demo both ways; offline-safe)
-= NPC chat — persona-tuning pass on the .tres Chat/AI fields once you've talked to the whole cast
-= NPC chat — deploy the proxy to a free Node host before the public demo (see proxy/README.md)
+# TROY's TODO (next session) #
+= [✓ done 2026-06-08] NPC chat affinity-into-prompt · Options on/off toggle · Ayo! trophy-claim · context Tutorials · no-negative-gold
+--- FINISH THE PANEL (today's work) ---
+= Sunshine Widget — PLAYTEST it inside a puzzle: does the right rail/pane overlap the board or a puzzle's UI? tune size + position
+= Sunshine Widget — decide "always-show done right" (a narrow always-docked pane) vs the current foldable rail
+= Sunshine Widget — (optional) fold Objectives in as another tab
+--- NPC CHAT ---
+= persona-tuning pass on the .tres Chat/AI fields once you've talked to the whole cast
+= deploy the proxy to a free Node host before the public demo (see proxy/README.md)
+--- DEMO READINESS ---
+= a self-playthrough + a written playtest checklist/script before a friend plays
+--- BIGGER SYSTEMS ---
+= start a crew: hire crew members + assign their ranks
+= dive deeper into the ship-owning system
