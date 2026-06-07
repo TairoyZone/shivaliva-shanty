@@ -58,13 +58,26 @@ var _is_open : bool = false           # is the content pane EXPANDED (the rail i
 
 func _ready() -> void:
 
-	# Cover the whole screen (the dim + the left-docked window anchor within it); the rail shows always
-	# (the panel node rides the HUD's visibility), the pane stays folded until a tab is clicked.
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Cover the whole screen so the right-docked rail/pane + the dim anchor to the real screen edges.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_skeleton()
-	if not Engine.is_editor_hint():
+	_fit_viewport()   # MUST force the size: a Control .new()'d under a CanvasLayer (our autoload) is NOT
+	if not Engine.is_editor_hint():   # auto-laid-out to the viewport the way a scene-placed one is → it'd
+		var vp : Viewport = get_viewport()   # stay (0,0) and the right-anchored rail would sit off-screen.
+		if vp != null:
+			vp.size_changed.connect(_fit_viewport)
 		PlayerState.inventory_changed.connect(_on_inventory_changed)
+
+
+# Fill the viewport (and keep filling it on resize) so the right-edge rail + pane land at the screen edge.
+func _fit_viewport() -> void:
+
+	var vp : Viewport = get_viewport()
+	if vp == null:
+		return
+	set_anchors_preset(Control.PRESET_TOP_LEFT)
+	position = Vector2.ZERO
+	size = vp.get_visible_rect().size
 
 
 func _build_skeleton() -> void:
@@ -87,7 +100,7 @@ func _build_skeleton() -> void:
 	_window.anchor_right = 1.0
 	_window.anchor_top = 0.0
 	_window.offset_right = -72.0   # left of the right-edge rail; grows leftward to fit its page
-	_window.offset_top = 60.0
+	_window.offset_top = 150.0     # below the top-right purse + journal "!"
 	_window.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_window.grow_vertical = Control.GROW_DIRECTION_END
 	_window.visible = false
@@ -154,7 +167,7 @@ func _build_rail() -> void:
 	holder.anchor_top = 0.0
 	holder.offset_left = -58.0
 	holder.offset_right = -12.0
-	holder.offset_top = 116.0
+	holder.offset_top = 150.0   # below the top-right purse + journal "!"
 	holder.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	holder.grow_vertical = Control.GROW_DIRECTION_END
 	add_child(holder)
