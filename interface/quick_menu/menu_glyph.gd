@@ -9,7 +9,7 @@ const GOLD : Color = Color(0.96, 0.86, 0.50, 1.0)
 const DARK : Color = Color(0.0, 0.0, 0.0, 0.55)
 const HANDLE : Color = Color(0.55, 0.38, 0.18, 1.0)
 
-@export_enum("bag", "heart", "star", "jobs", "book") var kind : String = "bag":
+@export_enum("bag", "heart", "star", "jobs", "book", "bell") var kind : String = "bag":
 	set(value):
 		kind = value
 		queue_redraw()
@@ -29,6 +29,8 @@ func _draw() -> void:
 			_jobs(c)
 		"book":
 			_book(c)
+		"bell":
+			_bell(c)
 
 
 func _bag(c: Vector2) -> void:
@@ -78,3 +80,13 @@ func _book(c: Vector2) -> void:
 	draw_line(c + Vector2(0.0, -7.0), c + Vector2(0.0, 7.0), DARK, 1.4)   # spine
 	draw_line(c + Vector2(-7.0, -2.0), c + Vector2(-2.5, -1.2), DARK, 1.0)
 	draw_line(c + Vector2(2.5, -1.2), c + Vector2(7.0, -2.0), DARK, 1.0)
+
+
+func _bell(c: Vector2) -> void:
+
+	# A ship's bell (the Ayo! tab): a domed body, a flared rim, and a clapper.
+	draw_arc(c + Vector2(0.0, -2.0), 7.0, PI, TAU, 14, GOLD, 2.4)   # dome top
+	draw_colored_polygon(PackedVector2Array([
+		c + Vector2(-7.0, -2.0), c + Vector2(7.0, -2.0), c + Vector2(9.0, 5.0), c + Vector2(-9.0, 5.0)]), GOLD)
+	draw_line(c + Vector2(-9.0, 5.0), c + Vector2(9.0, 5.0), DARK, 1.4)   # rim
+	draw_circle(c + Vector2(0.0, 8.0), 1.8, GOLD)   # clapper

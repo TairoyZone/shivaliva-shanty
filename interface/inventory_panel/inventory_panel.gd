@@ -26,6 +26,7 @@ const COLOR_COUNT : Color = Color(1.0, 0.95, 0.78, 1.0)
 
 ## The left tab rail, top→down. Each: tab id · MenuGlyph kind · hover tip.
 const RAIL_TABS : Array = [
+	{"tab": "ayo", "glyph": "bell", "tip": "Ayo! — claim your trophies + notices"},
 	{"tab": "tutorial", "glyph": "book", "tip": "Tutorials — how to play"},
 	{"tab": "items", "glyph": "bag", "tip": "Backpack — your items  (E)"},
 	{"tab": "relationships", "glyph": "heart", "tip": "Hearties — your bonds with the cast  (R)"},
@@ -45,6 +46,10 @@ var _hearts_view : RelationshipsView
 var _profile_view : ProfileView
 ## The Tutorial tab — a help library (every puzzle's how-to, from [PuzzleHelp]).
 var _tutorial_page : Control
+## The Ayo! tab — claim earned trophies + notices (our reskin of YPP's "Ahoy").
+var _ayo_page : Control
+var _ayo_list : VBoxContainer
+var _ayo_badge : Label
 ## The "this puzzle" how-to at the top of the Tutorial tab — set by [PuzzleScene] while you play (so help
 ## is right beside the board), hidden in the overworld.
 var _current_help_box : VBoxContainer
@@ -67,6 +72,9 @@ func _ready() -> void:
 		if vp != null:
 			vp.size_changed.connect(_fit_viewport)
 		PlayerState.inventory_changed.connect(_on_inventory_changed)
+		PlayerState.trophy_earned.connect(_on_trophies_changed)
+		PlayerState.trophy_claimed.connect(_on_trophies_changed)
+		_update_ayo_badge()
 
 
 # Fill the viewport (and keep filling it on resize) so the right-edge rail + pane land at the screen edge.
@@ -118,6 +126,10 @@ func _build_skeleton() -> void:
 	# Tutorial page — a scrollable how-to library (the "?" replacement).
 	_tutorial_page = _build_tutorial_page()
 	vbox.add_child(_tutorial_page)
+
+	# Ayo! page — claim earned trophies + notices.
+	_ayo_page = _build_ayo_page()
+	vbox.add_child(_ayo_page)
 
 	# Items page — a WEAPON equip bar above the backpack slot grid.
 	_items_page = VBoxContainer.new()
@@ -202,6 +214,9 @@ func _make_rail_button(glyph: String, tab: String, tip: String, launcher: Callab
 	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	btn.add_child(icon)
+	if tab == "ayo":
+		_ayo_badge = _make_badge()
+		btn.add_child(_ayo_badge)
 	if launcher.is_valid():
 		btn.pressed.connect(launcher)
 	else:
@@ -235,6 +250,166 @@ func _on_rail_pressed(tab: String) -> void:
 		close()
 	else:
 		open(tab)
+
+
+# --- Ayo! tab (claim earned trophies + notices) ----------------------
+
+func _build_ayo_page() -> Control:
+
+	var scroll : ScrollContainer = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(480.0, 392.0)
+	scroll.visible = false
+	_ayo_list = VBoxContainer.new()
+	_ayo_list.add_theme_constant_override("separation", 10)
+	_ayo_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_ayo_list)
+	return scroll
+
+
+# Rebuild the Ayo! list: earned-but-unclaimed trophies as Claim cards (or an all-caught-up line).
+func _refresh_ayo() -> void:
+
+	if _ayo_list == null:
+		return
+	for c in _ayo_list.get_children():
+		c.queue_free()
+	var head : Label = Label.new()
+	head.text = "Ayo!"
+	head.add_theme_font_size_override("font_size", 22)
+	head.add_theme_color_override("font_color", COLOR_TITLE)
+	_ayo_list.add_child(head)
+	var ids : Array = PlayerState.unclaimed_trophy_ids()
+	if ids.is_empty():
+		var none : Label = Label.new()
+		none.text = "No new tidings — you're all caught up."
+		none.add_theme_font_size_override("font_size", 14)
+		none.add_theme_color_override("font_color", Color(0.8, 0.72, 0.56, 1.0))
+		_ayo_list.add_child(none)
+		return
+	var sub : Label = Label.new()
+	sub.text = "New trophies earned — claim them!"
+	sub.add_theme_font_size_override("font_size", 14)
+	sub.add_theme_color_override("font_color", Color(0.86, 0.78, 0.6, 1.0))
+	_ayo_list.add_child(sub)
+	for id in ids:
+		_ayo_list.add_child(_make_claim_card(String(id)))
+
+
+func _make_claim_card(id: String) -> Control:
+
+	var info : Dictionary = _trophy_info(id)
+	var card : PanelContainer = PanelContainer.new()
+	var s : StyleBoxFlat = StyleBoxFlat.new()
+	s.bg_color = Color(0.22, 0.15, 0.08, 0.95)
+	s.border_color = Palette.BRASS_FRAME
+	s.set_border_width_all(2)
+	s.set_corner_radius_all(8)
+	s.set_content_margin_all(10)
+	card.add_theme_stylebox_override("panel", s)
+	var hb : HBoxContainer = HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 10)
+	card.add_child(hb)
+	var star : MenuGlyph = MenuGlyph.new()
+	star.kind = "star"
+	star.custom_minimum_size = Vector2(34.0, 34.0)
+	hb.add_child(star)
+	var col : VBoxContainer = VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hb.add_child(col)
+	var nm : Label = Label.new()
+	nm.text = String(info.get("name", id))
+	nm.add_theme_font_size_override("font_size", 16)
+	nm.add_theme_color_override("font_color", COLOR_TITLE)
+	col.add_child(nm)
+	var ds : Label = Label.new()
+	ds.text = String(info.get("desc", ""))
+	ds.add_theme_font_size_override("font_size", 13)
+	ds.add_theme_color_override("font_color", Color(0.85, 0.78, 0.62, 1.0))
+	ds.autowrap_mode = TextServer.AUTOWRAP_WORD
+	ds.custom_minimum_size = Vector2(300.0, 0.0)
+	col.add_child(ds)
+	var claim : Button = Button.new()
+	claim.text = "Claim"
+	claim.focus_mode = Control.FOCUS_NONE
+	claim.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	claim.add_theme_font_size_override("font_size", 15)
+	claim.add_theme_color_override("font_color", Color(0.86, 1.0, 0.72, 1.0))
+	for st in ["normal", "hover", "pressed"]:
+		var bs : StyleBoxFlat = StyleBoxFlat.new()
+		var bg : Color = Color(0.20, 0.30, 0.14, 0.95)
+		if st == "hover":
+			bg = bg.lightened(0.12)
+		elif st == "pressed":
+			bg = bg.darkened(0.10)
+		bs.bg_color = bg
+		bs.border_color = Color(0.55, 0.82, 0.42, 0.8)
+		bs.set_border_width_all(1)
+		bs.set_corner_radius_all(7)
+		bs.content_margin_left = 14.0
+		bs.content_margin_right = 14.0
+		bs.content_margin_top = 6.0
+		bs.content_margin_bottom = 6.0
+		claim.add_theme_stylebox_override(st, bs)
+	claim.pressed.connect(_on_claim.bind(id))
+	hb.add_child(claim)
+	return card
+
+
+func _on_claim(id: String) -> void:
+
+	PlayerState.claim_trophy(id)
+	Audio.play_sfx("powerup")   # the "accept" fanfare; trophy_claimed → _on_trophies_changed refreshes the list
+
+
+func _trophy_info(id: String) -> Dictionary:
+
+	for t in Trophies.ALL:
+		if String(t["id"]) == id:
+			return t
+	return {}
+
+
+# Refresh the Ayo! badge + (if open) the list when a trophy is earned or claimed. Optional args absorb the
+# differing signal signatures (trophy_earned(id, name) vs trophy_claimed(id)).
+func _on_trophies_changed(_a = null, _b = null) -> void:
+
+	_update_ayo_badge()
+	if _current_tab == "ayo":
+		_refresh_ayo()
+
+
+func _update_ayo_badge() -> void:
+
+	if _ayo_badge == null:
+		return
+	var n : int = PlayerState.unclaimed_trophy_ids().size()
+	_ayo_badge.text = str(n)
+	_ayo_badge.visible = n > 0
+
+
+# A small red count badge for the Ayo! rail tab (top-right corner), hidden at zero.
+func _make_badge() -> Label:
+
+	var b : Label = Label.new()
+	b.add_theme_font_size_override("font_size", 12)
+	b.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+	b.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	b.custom_minimum_size = Vector2(18.0, 18.0)
+	b.anchor_left = 1.0
+	b.anchor_right = 1.0
+	b.offset_left = -16.0
+	b.offset_top = -4.0
+	b.offset_right = 4.0
+	b.offset_bottom = 14.0
+	b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb : StyleBoxFlat = StyleBoxFlat.new()
+	sb.bg_color = Color(0.85, 0.22, 0.22, 1.0)
+	sb.set_corner_radius_all(9)
+	b.add_theme_stylebox_override("normal", sb)
+	b.visible = false
+	return b
 
 
 func _build_tutorial_page() -> Control:
@@ -410,6 +585,8 @@ func _switch_tab(tab: String) -> void:
 	_current_tab = tab
 	if _tutorial_page != null:
 		_tutorial_page.visible = (tab == "tutorial")
+	if _ayo_page != null:
+		_ayo_page.visible = (tab == "ayo")
 	if _items_page != null:
 		_items_page.visible = (tab == "items")
 	if _hearts_view != null:
@@ -438,6 +615,9 @@ func _on_inventory_changed() -> void:
 func _refresh() -> void:
 
 	if _current_tab == "tutorial":
+		return
+	if _current_tab == "ayo":
+		_refresh_ayo()
 		return
 	if _current_tab == "relationships":
 		if _hearts_view != null:

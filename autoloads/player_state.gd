@@ -57,6 +57,7 @@ signal ships_changed
 ## A trophy was JUST earned for the first time — (id, display_name). The HUD pops a
 ## [TrophyToast] (the YPP "Ye Received a Trophy!" beat). Detected by [method check_new_trophies].
 signal trophy_earned(id: String, trophy_name: String)
+signal trophy_claimed(id: String)   # accepted in the Ayo! tab (clears its badge)
 ## Fires when the player buys a Skirmish weapon. The forge weapon-shop listens
 ## to refresh its rows (Buy → Owned).
 signal weapons_changed
@@ -588,6 +589,8 @@ var puzzle_mastery : Dictionary = {}
 ## Trophy ids the player has already been NOTIFIED of (so each toasts ONCE). Seeded with
 ## currently-earned trophies on load so existing ones never re-toast; persisted.
 var trophies_seen : Array = []
+## Trophies the player has ACCEPTED in the Ayo! tab. Earned-but-unclaimed = the Ayo! badge. Persisted.
+var trophies_claimed : Array = []
 
 var last_scene : String = ""
 var last_position : Vector2 = Vector2.ZERO
@@ -1311,6 +1314,28 @@ func check_new_trophies() -> void:
 		_save()
 
 
+## Earned trophies the player hasn't yet ACCEPTED in the Ayo! tab (drives its badge count).
+func unclaimed_trophy_ids() -> Array:
+
+	var out : Array = []
+	for t in Trophies.ALL:
+		var id : String = String(t["id"])
+		if Trophies.is_earned(id) and not trophies_claimed.has(id):
+			out.append(id)
+	return out
+
+
+## Accept a trophy in the Ayo! tab — marks it claimed (clears it from the badge), persists, and fires
+## [signal trophy_claimed]. No-op if already claimed or not actually earned.
+func claim_trophy(id: String) -> void:
+
+	if trophies_claimed.has(id) or not Trophies.is_earned(id):
+		return
+	trophies_claimed.append(id)
+	_save()
+	trophy_claimed.emit(id)
+
+
 ## Mark all CURRENTLY-earned trophies as already-seen WITHOUT announcing — called once on
 ## load so existing trophies (or a pre-system save) never spam toasts; only live earns notify.
 func _seed_trophies_seen() -> void:
@@ -1426,6 +1451,7 @@ func clear_save() -> void:
 	frontier_unlocked = false
 	puzzle_mastery = {}
 	trophies_seen = []
+	trophies_claimed = []
 	owned_ships = []
 	ship_condition = {}
 	owned_weapons = ["brawl"]
@@ -1468,6 +1494,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "frontier_unlocked", frontier_unlocked)
 	config.set_value(SAVE_SECTION, "puzzle_mastery", puzzle_mastery)
 	config.set_value(SAVE_SECTION, "trophies_seen", trophies_seen)
+	config.set_value(SAVE_SECTION, "trophies_claimed", trophies_claimed)
 	config.set_value(SAVE_SECTION, "owned_ships", owned_ships)
 	config.set_value(SAVE_SECTION, "ship_condition", ship_condition)
 	config.set_value(SAVE_SECTION, "owned_weapons", owned_weapons)
@@ -1503,6 +1530,7 @@ func _load() -> void:
 	frontier_unlocked = bool(config.get_value(SAVE_SECTION, "frontier_unlocked", false))
 	puzzle_mastery = config.get_value(SAVE_SECTION, "puzzle_mastery", {})
 	trophies_seen = config.get_value(SAVE_SECTION, "trophies_seen", [])
+	trophies_claimed = config.get_value(SAVE_SECTION, "trophies_claimed", [])
 	owned_ships = config.get_value(SAVE_SECTION, "owned_ships", [])
 	ship_condition = config.get_value(SAVE_SECTION, "ship_condition", {})
 	owned_weapons = config.get_value(SAVE_SECTION, "owned_weapons", ["brawl"])
