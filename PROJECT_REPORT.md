@@ -141,3 +141,7 @@ decisions live in the auto-memory (`…/memory/MEMORY.md`); the code map lives i
 # = Time to dive in deeper with the ship owning system
 # = playtest checklist/script — the loop to run + what to watch for (do this before a friend playtests)
 # = refresh PROJECT_REPORT.md to reflect today's HUD-refinement + consistency + unified-background work
+# = NPC chat (BUILT + live on DeepSeek) — feed AFFINITY into the prompt: NPCs warmer/colder + reference shared history (first step toward memory)
+# = NPC chat — add an AI-chat ON/OFF toggle in Options (demo both ways; offline-safe)
+# = NPC chat — persona-tuning pass on the .tres Chat/AI fields once you've talked to the whole cast
+# = NPC chat — deploy the proxy to a free Node host before the public demo (see proxy/README.md)

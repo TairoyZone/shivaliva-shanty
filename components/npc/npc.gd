@@ -142,7 +142,7 @@ func interact() -> void:
 		return
 	# Click an NPC → a RADIAL options menu (YPP-style), NOT a dialogue box. The favour is just ONE option
 	# here, never demanded to your face. See [NpcMenu] / [[Official:Communications]].
-	var opts : Array = [{"label": "Chat", "action": _chat}, {"label": "Talk", "action": _talk}, {"label": "Spar", "action": _challenge}]
+	var opts : Array = [{"label": "Chat", "action": _chat}, {"label": "Spar", "action": _challenge}]
 	if NPC_FAVORS.has(npc_name):
 		opts.append({"label": "Favour", "action": _open_favor_modal})
 	opts.append({"label": "Hearts", "action": _open_hearts})
@@ -152,8 +152,8 @@ func interact() -> void:
 
 
 # Chat → a free-form AI CONVERSATION with this NPC (the unique hook), driven by their NpcPersonality chat
-# fields via [NpcBrain] (Claude, through the proxy). Grants the per-visit rapport bump like Talk. Falls back
-# to the quick canned line if this NPC has no personality profile.
+# fields via [NpcBrain]. Runs RIGHT IN THE CHAT BOX (a private "→ Name" mode) — no separate window. Grants
+# the per-visit rapport bump. Falls back to the quick canned bubble if this NPC has no personality profile.
 func _chat() -> void:
 
 	var persona : NpcPersonality = _resolve_personality()
@@ -163,7 +163,7 @@ func _chat() -> void:
 	if not _granted_affinity_this_visit and not npc_name.is_empty():
 		PlayerState.add_affinity(npc_name, TALK_AFFINITY)
 		_granted_affinity_this_visit = true
-	NpcChatPanel.open(self, persona, dialog_lines)
+	ChatBox.start_private_chat(persona, self, dialog_lines)
 
 
 # This NPC's [NpcPersonality] profile, matched by name from the [NpcRegistry] (null if unlisted).

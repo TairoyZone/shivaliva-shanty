@@ -2,26 +2,36 @@
 ## Autoloaded; shown in the walkable overworld (mirrors the HUD's visibility). You type at the bottom and
 ## your pirate SPEAKS (a floating [SpeechBubble]); every line — your chat AND game events (gold, plunder,
 ## holes, rank-ups: everything on [signal PlayerState.event_logged]) — is kept in a scrollable LOG you can
-## toggle open ("logs are stored"). The transient [EventFeed] still streams the live one-liners; this is the
-## stored history + the input. Single-player for now: modes = Speak / Emote / Think; the directed modes
-## (Tell / Crew / Vessel) arrive with co-op (see [[multiplayer-direction]]) — build co-op-ready.
+## toggle open. The transient [EventFeed] still streams the live one-liners; this is the stored history + input.
+##
+## PRIVATE NPC CHAT (the unique hook): an NPC's "Chat" routes a free-form, in-character AI conversation
+## THROUGH this bar ([method start_private_chat]) — no separate window. While private, your typing goes to
+## that NPC via [NpcBrain] (DeepSeek/Claude) and their replies log here + float above them; click the target
+## chip to step away. (The old Speak/Emote/Think "chat mode" was removed — Troy 2026-06-07; no use for it.)
 extends CanvasLayer
 
 const SETTINGS_PATH : String = "user://settings.cfg"
 const MAX_LOG_LINES : int = 120
-const MODES : Array[String] = ["Speak", "Emote", "Think"]
-const CHAT_COLOR : Color = Color(0.92, 0.95, 1.0, 1.0)
+const CHAT_COLOR : Color = Color(0.92, 0.95, 1.0, 1.0)         # your public speech
+const PRIVATE_YOU_COLOR : Color = Color(0.78, 0.90, 1.0, 1.0)  # your line while privately chatting an NPC
+const SYSTEM_LINE_COLOR : Color = Color(0.72, 0.75, 0.82, 1.0) # "— you begin / step away —" framing lines
 
 ## User setting (persisted) — whether the chat bar + log show at all.
 var chat_visible : bool = true
 
 var _input : LineEdit
-var _mode_btn : Button
+var _target_btn : Button       # private-NPC-chat target chip ("→ Name ✕"); hidden when chatting publicly
 var _log_panel : PanelContainer
 var _log_box : VBoxContainer
 var _log_scroll : ScrollContainer
-var _mode : int = 0
 var _log_open : bool = false
+
+# Private NPC chat state (one conversation at a time; routed through this bar).
+var _in_private : bool = false
+var _private_persona : NpcPersonality = null
+var _private_npc : Node = null          # the Npc node, for floating reply bubbles (may go invalid on scene change)
+var _private_fallback : Array = []      # the NPC's canned lines — used if a request fails
+var _npc_signals_connected : bool = false
 
 
 func _ready() -> void:
@@ -81,13 +91,14 @@ func _build_ui() -> void:
 	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE   # only the actual controls (LineEdit/buttons) catch clicks
 	bar.add_child(hb)
 
-	_mode_btn = Button.new()
-	_mode_btn.custom_minimum_size = Vector2(88.0, 0.0)
-	_mode_btn.focus_mode = Control.FOCUS_NONE
-	_mode_btn.text = MODES[_mode]
-	_mode_btn.tooltip_text = "Chat mode — Speak / Emote / Think"
-	_mode_btn.pressed.connect(_cycle_mode)
-	hb.add_child(_mode_btn)
+	# Target chip — only shown while privately chatting an NPC; click it to step away. (No more Speak/Emote/
+	# Think mode switch — removed; the bar is plain speech unless you're in a private NPC chat.)
+	_target_btn = Button.new()
+	_target_btn.focus_mode = Control.FOCUS_NONE
+	_target_btn.tooltip_text = "Step away from this conversation"
+	_target_btn.pressed.connect(_exit_private)
+	_target_btn.visible = false
+	hb.add_child(_target_btn)
 
 	_input = LineEdit.new()
 	_input.placeholder_text = "Say something…   (Enter)"
@@ -190,32 +201,124 @@ func _send(raw: String) -> void:
 		_input.clear()
 	if text.is_empty():
 		return
-	var bubble : String = text
-	var line : String = ""
-	match MODES[_mode]:
-		"Emote":
-			line = "You %s" % text
-		"Think":
-			bubble = "(%s)" % text
-			line = "You think: %s" % text
-		_:
-			line = "You: %s" % text
-	# Your pirate speaks it aloud (a floating bubble) when there's a player in the scene.
+	if _in_private:
+		_send_private(text)
+		return
+	# Public speech — your pirate says it aloud (a floating bubble) + it lands in the feed + stored log
+	# (same pipe as game events).
 	var player : Node = get_tree().get_first_node_in_group("player")
 	if player != null and player.has_method("speak"):
-		player.speak(bubble)
-	# Route through PlayerState.event_logged so the line shows in the transient bottom-left feed (timed pill,
-	# YPP-style) AND lands in this log's stored history — same pipe as game events.
-	PlayerState.log_event(line, CHAT_COLOR)
+		player.speak(text)
+	PlayerState.log_event("You: %s" % text, CHAT_COLOR)
 	if _input != null:
 		_input.release_focus()   # back to the game so WASD moves again
 
 
-func _cycle_mode() -> void:
+# --- private NPC chat (routed through this bar; see [NpcBrain]) --------
 
-	_mode = (_mode + 1) % MODES.size()
-	if _mode_btn != null:
-		_mode_btn.text = MODES[_mode]
+## Start a free-form AI conversation with [param persona], driven through this chat bar — the player's
+## "Chat" option on an NPC calls this. [param npc] is the Npc node (for floating reply bubbles);
+## [param fallback_lines] are its canned lines, used if a request fails. No-op off the walkable overworld.
+func start_private_chat(persona: NpcPersonality, npc: Node = null, fallback_lines: Array = []) -> void:
+
+	if persona == null or not visible:
+		return
+	_connect_npc_signals()
+	_in_private = true
+	_private_persona = persona
+	_private_npc = npc
+	_private_fallback = fallback_lines
+	NpcBrain.enter_chat(persona)
+	_target_btn.text = "→ %s   ✕" % _short_name()
+	_target_btn.visible = true
+	PlayerState.log_event("— You begin talking with %s —" % persona.npc_name, SYSTEM_LINE_COLOR)
+	if not _log_open:
+		_toggle_log()              # open the thread so the back-and-forth reads as a chat
+	_input.grab_focus()
+	_set_thinking(true)
+	NpcBrain.request_opening()
+
+
+func _send_private(text: String) -> void:
+
+	if NpcBrain.is_busy():
+		return                     # still waiting on the last reply
+	PlayerState.log_event("You → %s: %s" % [_short_name(), text], PRIVATE_YOU_COLOR)
+	_set_thinking(true)
+	NpcBrain.send(text)            # bar stays focused for the conversation
+
+
+# Step out of the private chat, back to plain public speech.
+func _exit_private() -> void:
+
+	if not _in_private:
+		return
+	var who : String = _short_name()
+	NpcBrain.end_chat()
+	_in_private = false
+	_private_persona = null
+	_private_npc = null
+	_private_fallback = []
+	if _target_btn != null:
+		_target_btn.visible = false
+	if _input != null:
+		_input.placeholder_text = "Say something…   (Enter)"
+		_input.release_focus()
+	PlayerState.log_event("— You step away from %s —" % who, SYSTEM_LINE_COLOR)
+
+
+func _connect_npc_signals() -> void:
+
+	if _npc_signals_connected:
+		return
+	_npc_signals_connected = true
+	NpcBrain.npc_replied.connect(_on_npc_replied)
+	NpcBrain.chat_failed.connect(_on_npc_chat_failed)
+	NpcBrain.thinking_started.connect(_on_npc_thinking)
+
+
+func _on_npc_replied(reply: String) -> void:
+
+	if not _in_private:
+		return
+	var col : Color = _private_persona.portrait_color.lightened(0.35) if _private_persona != null else CHAT_COLOR
+	PlayerState.log_event("%s: %s" % [_short_name(), reply], col)
+	if is_instance_valid(_private_npc):
+		SpeechBubble.say(_private_npc, reply)
+	_set_thinking(false)
+
+
+# A request failed — keep the conversation alive with one of the NPC's canned lines so it never dead-ends.
+func _on_npc_chat_failed(_reason: String) -> void:
+
+	if not _in_private:
+		return
+	var line : String = String(_private_fallback[randi() % _private_fallback.size()]) if not _private_fallback.is_empty() else "..."
+	PlayerState.log_event("%s: %s" % [_short_name(), line], CHAT_COLOR)
+	if is_instance_valid(_private_npc):
+		SpeechBubble.say(_private_npc, line)
+	_set_thinking(false)
+
+
+func _on_npc_thinking() -> void:
+
+	if _in_private:
+		_set_thinking(true)
+
+
+func _set_thinking(thinking: bool) -> void:
+
+	if _input == null:
+		return
+	_input.placeholder_text = ("%s is thinking…" % _short_name()) if thinking else ("Message %s…   (Enter)" % _short_name())
+
+
+func _short_name() -> String:
+
+	if _private_persona == null:
+		return "them"
+	var parts : PackedStringArray = _private_persona.npc_name.split(" ")
+	return parts[parts.size() - 1] if parts.size() > 0 else _private_persona.npc_name
 
 
 func _toggle_log() -> void:
@@ -281,6 +384,8 @@ func _process(_delta: float) -> void:
 		visible = should
 		if not visible and is_typing():
 			_input.release_focus()
+	if _in_private and not visible:
+		_exit_private()   # left the walkable scene (puzzle / title) — end the conversation cleanly
 	# The open log shows the same lines as the transient EventFeed + shares the lower-left corner, so hide
 	# the feed while the log is open (avoids the same line rendering twice).
 	var feed_visible : bool = not (visible and _log_open)

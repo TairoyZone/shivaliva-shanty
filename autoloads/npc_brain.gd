@@ -13,6 +13,13 @@ extends Node
 ## point it at your deployed proxy for the public demo. Override at runtime without recompiling via
 ## user://settings.cfg: [npc_chat] endpoint="https://..."  (and optional secret="...").
 const DEFAULT_ENDPOINT : String = "http://127.0.0.1:8787/chat"
+## DEV-DIRECT (no terminal): if a dev key is found — user://settings.cfg [npc_chat] dev_api_key, else the
+## SHANTY_NPC_KEY environment variable — the game calls this OpenAI-compatible LLM (DeepSeek) DIRECTLY with
+## that key, skipping the proxy. Neither source ships: user:// is per-machine + not bundled in an export,
+## and an env var lives in YOUR OS only. ⚠️ For the PUBLIC demo leave both blank — the build must never
+## carry a key; that path uses the proxy. (A determined player could also drop their OWN key here = BYOK.)
+const DEV_DIRECT_URL : String = "https://api.deepseek.com/chat/completions"
+const DEV_DIRECT_MODEL : String = "deepseek-chat"
 const REPLY_MAX_TOKENS : int = 300        # short, snappy NPC lines (cheap + low latency; proxy also caps)
 const HISTORY_MESSAGES : int = 24         # rolling cap (~12 exchanges) sent each call — a cost guard
 const REQUEST_TIMEOUT : float = 20.0
@@ -33,6 +40,10 @@ signal thinking_started               # a request went out — show a "…" / ty
 
 var endpoint : String = DEFAULT_ENDPOINT
 var _secret : String = ""              # optional x-shanty-key header (matches the proxy's SHARED_SECRET)
+var _dev_key : String = ""             # DEV-ONLY direct key (settings.cfg or SHANTY_NPC_KEY env) — blank = use the proxy
+var _dev_url : String = DEV_DIRECT_URL
+var _dev_model : String = DEV_DIRECT_MODEL
+var _using_direct : bool = false       # which path the in-flight request used (decides how the reply is parsed)
 var _http : HTTPRequest
 var _persona : NpcPersonality = null
 var _messages : Array = []             # [{role, content}] rolling history for the active conversation
@@ -58,6 +69,13 @@ func _load_config() -> void:
 		return
 	endpoint = String(cfg.get_value("npc_chat", "endpoint", DEFAULT_ENDPOINT))
 	_secret = String(cfg.get_value("npc_chat", "secret", ""))
+	# DEV-DIRECT key: settings.cfg first, else the SHANTY_NPC_KEY env var (set it once, no terminal). Blank
+	# on a player's machine -> the proxy path. See DEV_DIRECT_URL above.
+	_dev_key = String(cfg.get_value("npc_chat", "dev_api_key", ""))
+	if _dev_key.is_empty():
+		_dev_key = OS.get_environment("SHANTY_NPC_KEY")
+	_dev_url = String(cfg.get_value("npc_chat", "dev_url", DEV_DIRECT_URL))
+	_dev_model = String(cfg.get_value("npc_chat", "dev_model", DEV_DIRECT_MODEL))
 
 
 ## True while a request is in flight (the panel disables input). One conversation at a time.
@@ -108,18 +126,30 @@ func _post() -> void:
 	_trim_history()
 	_busy = true
 	thinking_started.emit()
-	var body : String = JSON.stringify({
-		"system": _system_prompt(),
-		"messages": _messages,
-		"max_tokens": REPLY_MAX_TOKENS,
-	})
-	var headers : PackedStringArray = PackedStringArray(["Content-Type: application/json"])
-	if not _secret.is_empty():
-		headers.append("x-shanty-key: " + _secret)
-	var err : int = _http.request(endpoint, headers, HTTPClient.METHOD_POST, body)
+	_using_direct = not _dev_key.is_empty()
+	var url : String
+	var headers : PackedStringArray
+	var body : String
+	if _using_direct:
+		# DEV-DIRECT: call the OpenAI-compatible LLM (DeepSeek) straight from the game — no proxy/terminal.
+		# The system prompt folds into the first message (OpenAI shape).
+		var oai : Array = [{"role": "system", "content": _system_prompt()}]
+		oai.append_array(_messages)
+		url = _dev_url
+		headers = PackedStringArray(["Content-Type: application/json", "Authorization: Bearer " + _dev_key])
+		body = JSON.stringify({"model": _dev_model, "messages": oai,
+			"max_tokens": REPLY_MAX_TOKENS, "temperature": 0.8})
+	else:
+		# Release path: POST to the proxy (it holds the key + picks the provider).
+		url = endpoint
+		headers = PackedStringArray(["Content-Type: application/json"])
+		if not _secret.is_empty():
+			headers.append("x-shanty-key: " + _secret)
+		body = JSON.stringify({"system": _system_prompt(), "messages": _messages, "max_tokens": REPLY_MAX_TOKENS})
+	var err : int = _http.request(url, headers, HTTPClient.METHOD_POST, body)
 	if err != OK:
 		_busy = false
-		chat_failed.emit("request error %d (is the proxy running at %s?)" % [err, endpoint])
+		chat_failed.emit("request error %d" % err)
 
 
 # Compose the per-NPC system prompt — the part you tweak via the .tres chat fields. Empty fields are
@@ -167,12 +197,26 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		chat_failed.emit("bad response")
 		return
 	var data : Variant = json.get_data()
-	if typeof(data) != TYPE_DICTIONARY or not data.has("reply"):
-		chat_failed.emit("no reply in response")
+	if typeof(data) != TYPE_DICTIONARY:
+		chat_failed.emit("bad response")
 		return
-	var reply : String = String(data["reply"]).strip_edges()
+	var reply : String = _extract_reply(data).strip_edges()
 	if reply.is_empty():
 		chat_failed.emit("empty reply")
 		return
 	_messages.append({"role": "assistant", "content": reply})
 	npc_replied.emit(reply)
+
+
+# Pull the reply text — the proxy returns {reply}; dev-direct gets the raw OpenAI
+# {choices:[{message:{content}}]} shape.
+func _extract_reply(data: Dictionary) -> String:
+
+	if _using_direct:
+		var choices : Variant = data.get("choices", [])
+		if choices is Array and not choices.is_empty() and choices[0] is Dictionary:
+			var msg : Variant = (choices[0] as Dictionary).get("message", {})
+			if msg is Dictionary:
+				return String((msg as Dictionary).get("content", ""))
+		return ""
+	return String(data.get("reply", ""))
