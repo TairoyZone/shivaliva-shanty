@@ -138,7 +138,7 @@ func _tween_height(target_bottom: float) -> void:
 	_h_tween = create_tween()
 	_h_tween.tween_property(self, "offset_bottom", target_bottom, EXPAND_TIME) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_h_tween.parallel().tween_method(func(_v: float) -> void: queue_redraw(), 0.0, 1.0, EXPAND_TIME)
+	# (No parallel repaint driver needed — _process queue_redraw()s every frame while we're in the tree.)
 
 
 # Pull the live route straight from PlayerState. `sailing` = she's CROSSING a leg now (sails
@@ -299,11 +299,17 @@ func _draw() -> void:
 	if _collapsible and _collapsed:
 		if font != null:
 			var arrived0 : bool = _done >= _total
-			draw_string(font, Vector2(LM - 6.0, 20.0), "Bound for %s" % _dest,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 14, TEXT_DEST)
 			var stop0 : String = "Arrived!" if arrived0 else "Stop %d/%d" % [mini(_done + 1, _total), _total]
-			draw_string(font, Vector2(0.0, 19.0), "%s   ·   Pool %dg   ▾" % [stop0, _haul],
-				HORIZONTAL_ALIGNMENT_RIGHT, size.x - RM + 8.0, 13, TEXT_STOP)
+			var right0 : String = "%s   ·   Pool %dg   ▾" % [stop0, _haul]
+			# Draw the right block first, then CLAMP the left dest to the space left over so a long
+			# destination name clips instead of colliding with the stop/pool. Both at 14 / one baseline
+			# (was 14 vs 13 on two y's, reading as two mismatched fragments on one line).
+			draw_string(font, Vector2(0.0, 20.0), right0,
+				HORIZONTAL_ALIGNMENT_RIGHT, size.x - RM + 8.0, 14, TEXT_STOP)
+			var rw : float = font.get_string_size(right0, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 14).x
+			var left_max : float = maxf((size.x - RM + 8.0) - rw - (LM - 6.0) - 12.0, 24.0)
+			draw_string(font, Vector2(LM - 6.0, 20.0), "Bound for %s" % _dest,
+				HORIZONTAL_ALIGNMENT_LEFT, left_max, 14, TEXT_DEST)
 		return
 	var x0 : float = LM
 	var ship_x : float = LM + (size.x - LM - RM) * _ship_t

@@ -74,6 +74,8 @@ func _build() -> void:
 	var back : Button = _make_button("Never mind", Color(0.95, 0.84, 0.56, 1.0))
 	back.pressed.connect(_close)
 	vbox.add_child(back)
+	# ESC closes the board — the ONE reusable primitive (standing rule), not a hand-rolled _unhandled_input.
+	add_child(EscToClose.new(_close))
 
 
 func _make_job_row(job: Dictionary) -> PanelContainer:
@@ -118,15 +120,6 @@ func _on_go(job: Dictionary) -> void:
 func _on_dim_input(event: InputEvent) -> void:
 
 	if event is InputEventMouseButton and event.pressed:
-		_close()
-
-
-func _unhandled_input(event: InputEvent) -> void:
-
-	if event.is_action_pressed("ui_cancel"):   # Esc closes the board
-		var vp : Viewport = get_viewport()
-		if vp != null:
-			vp.set_input_as_handled()
 		_close()
 
 

@@ -17,6 +17,8 @@ const TROUGH_BG : Color = Color(0.07, 0.10, 0.17, 0.92)
 const TROUGH_BORDER : Color = Color(0.0, 0.0, 0.0, 0.55)
 const TEXT : Color = Color(0.98, 0.96, 0.92, 1.0)
 const TEXT_SHADOW : Color = Color(0.0, 0.0, 0.0, 0.9)
+const DANGER_TICK_COLOR : Color = Color(1.0, 0.85, 0.40, 0.7)    # the amber WARNING tick line
+const HARD_LINE_COLOR : Color = Color(1.0, 0.40, 0.40, 0.95)     # the hard SINK threshold line
 
 const FILL_TIME : float = 0.40   # mirrors the HUD purse's COUNT_DURATION so the deck's juice is unified
 const ICON_W : float = 20.0
@@ -130,13 +132,15 @@ func _draw() -> void:
 		for i in range(1, segments):
 			var x : float = track_x + track_w * (float(i) / float(segments))
 			draw_line(Vector2(x, 3.0), Vector2(x, h - 3.0), TROUGH_BG, 1.5)
-	# Danger tick + hard threshold line.
+	# Danger tick + hard threshold line. CLAMPED inside the track so a fraction at 1.0 (the SINK line —
+	# the single most critical tick) isn't half-eaten by the rounded frame / clip edge: at frac 1.0 the
+	# raw x lands on size.x, so ~1px renders outside the control + the rest hides under the corner.
 	if danger_tick >= 0.0:
-		var dx : float = track_x + track_w * danger_tick
-		draw_line(Vector2(dx, 2.0), Vector2(dx, h - 2.0), Color(1.0, 0.85, 0.40, 0.7), 1.5)
+		var dx : float = clampf(track_x + track_w * danger_tick, track_x + 1.0, track_x + track_w - 2.0)
+		draw_line(Vector2(dx, 2.0), Vector2(dx, h - 2.0), DANGER_TICK_COLOR, 1.5)
 	if hard_line >= 0.0:
-		var hx : float = track_x + track_w * hard_line
-		draw_line(Vector2(hx, 1.0), Vector2(hx, h - 1.0), Color(1.0, 0.40, 0.40, 0.95), 2.0)
+		var hx : float = clampf(track_x + track_w * hard_line, track_x + 1.0, track_x + track_w - 2.0)
+		draw_line(Vector2(hx, 1.0), Vector2(hx, h - 1.0), HARD_LINE_COLOR, 2.0)
 	# Leading icon (tinted to state, so the glyph ALSO carries the colour cue).
 	_draw_icon(Vector2(ICON_W * 0.5, h * 0.5), col)
 	# Label (left) + value caption (right), each with a 1px shadow for contrast over the fill.

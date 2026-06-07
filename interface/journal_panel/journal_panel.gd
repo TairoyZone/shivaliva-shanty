@@ -21,6 +21,7 @@ const COLOR_INK_DONE : Color = Color(0.52, 0.47, 0.36, 1.0)
 const COLOR_FRAME : Color = Color(0.52, 0.36, 0.16, 1.0)
 
 var _list : VBoxContainer
+var _panel : PanelContainer   # the centred parchment card — pop-in target on open
 var _open : bool = false
 
 
@@ -56,6 +57,11 @@ func open() -> void:
 	visible = true
 	_open = true
 	get_tree().paused = true
+	# Appear with a soft fade + pop rather than a hard pop-in (animate-everything). This panel is
+	# PROCESS_MODE_ALWAYS, so the tweens run despite the pause this open triggers.
+	Juice.fade_in(self, 0.16)
+	if _panel != null:
+		Juice.pop_in(_panel, 0.28)
 
 
 func close() -> void:
@@ -110,6 +116,7 @@ func _build_chrome() -> void:
 	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	add_child(panel)
+	_panel = panel
 
 	var vbox : VBoxContainer = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 12)

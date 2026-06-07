@@ -92,6 +92,7 @@ func _build() -> void:
 	dim.anchor_right = 1.0
 	dim.anchor_bottom = 1.0
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	dim.gui_input.connect(_on_dim_input)   # click off the panel closes (parity with the other modals)
 	add_child(dim)
 
 	var panel : PanelContainer = PanelContainer.new()
@@ -110,6 +111,14 @@ func _build() -> void:
 	_content.add_theme_constant_override("separation", 12)
 	panel.add_child(_content)
 	_show_list()
+	# ESC closes the board — the ONE reusable primitive, not a hand-rolled handler (standing rule).
+	add_child(EscToClose.new(_on_cancel))
+
+
+func _on_dim_input(event: InputEvent) -> void:
+
+	if event is InputEventMouseButton and event.pressed:
+		_on_cancel()
 
 
 # --- The crew list ----------------------------------------------------

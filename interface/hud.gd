@@ -39,6 +39,12 @@ const COLOR_GAIN : Color = Color(0.55, 1.0, 0.55, 1.0)
 const COLOR_LOSS : Color = Color(1.0, 0.55, 0.55, 1.0)
 const COLOR_NEUTRAL : Color = Color(1.0, 0.92, 0.55, 1.0)
 
+## Shared right inset (px from the screen edge) for the stacked right-side column — the purse, the
+## journal button, and the quick-menu all align their right edge to this (the .tscn purse Margin +
+## JournalButton use the matching -16). MENU_WIDTH = the quick-menu icon column's width.
+const RIGHT_MARGIN : float = 16.0
+const MENU_WIDTH : float = 48.0
+
 
 @onready var _purse : PanelContainer = %Purse
 @onready var _coin_label : Label = %CoinLabel
@@ -53,6 +59,7 @@ var _displayed : int = 0
 var _count_tween : Tween
 var _bounce_tween : Tween
 var _shake_tween : Tween
+var _journal_modulate_tween : Tween   # tweens the "!" badge bright/dim so the state change shows, never pops
 ## Most-recent total received from [signal PlayerState.coins_changed]
 ## while this HUD was hidden (i.e. inside a puzzle scene). -1 means
 ## "no deferred change." Flushed by [method flush_pending_change] when
@@ -87,6 +94,11 @@ func _ready() -> void:
 	# Journal button — wire the click and keep its "!" badge in sync with
 	# whether any quest is still open (recompute on every input to a goal).
 	_journal_button.pressed.connect(_toggle_journal)
+	# Give the journal button the same 3-state brass styling as the quick-menu column below it — the .tscn
+	# assigned ONE inert style to normal/hover/pressed, so it gave no hover/press affordance. Unifies the
+	# right-side column (keeps the bold "!" font from the .tscn).
+	for i in 3:
+		_journal_button.add_theme_stylebox_override(["normal", "hover", "pressed"][i], _menu_btn_style(i))
 	PlayerState.objective_changed.connect(_refresh_journal)
 	PlayerState.coins_changed.connect(_refresh_journal)
 	PlayerState.ships_changed.connect(_refresh_journal)
@@ -120,8 +132,17 @@ func _on_purse_resized() -> void:
 func _refresh_journal(_unused = null) -> void:
 
 	if is_instance_valid(_journal_button):
-		_journal_button.modulate = (Color(1, 1, 1, 1) if PlayerState.has_active_quests()
+		# TWEEN the bright/dim so the badge lighting up (new objective) / dimming (all done) SHOWS as a
+		# transition, never an instant pop (animate-everything). Only re-tween when the target changes, since
+		# this fires on every gold/lumber tick.
+		var target : Color = (Color(1, 1, 1, 1) if PlayerState.has_active_quests()
 			else Color(0.72, 0.72, 0.72, 0.8))
+		if not _journal_button.modulate.is_equal_approx(target):
+			if _journal_modulate_tween != null and _journal_modulate_tween.is_valid():
+				_journal_modulate_tween.kill()
+			_journal_modulate_tween = create_tween()
+			_journal_modulate_tween.tween_property(_journal_button, "modulate", target, 0.25) \
+				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	if is_instance_valid(_journal_panel):
 		_journal_panel.refresh_if_open()
 
@@ -184,9 +205,9 @@ func _build_menu() -> void:
 	menu.name = "QuickMenu"
 	menu.anchor_left = 1.0
 	menu.anchor_right = 1.0
-	menu.offset_left = -62.0     # slim icon column (was a wide text column) — frees the right edge
+	menu.offset_left = -(RIGHT_MARGIN + MENU_WIDTH)   # slim icon column, right edge flush with the purse + journal
 	menu.offset_top = 146.0
-	menu.offset_right = -14.0
+	menu.offset_right = -RIGHT_MARGIN
 	menu.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	menu.add_theme_constant_override("separation", 7)
 	menu.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -233,7 +254,7 @@ func _menu_btn_style(state: int) -> StyleBoxFlat:
 	elif state == 2:
 		bg = Color(0.13, 0.08, 0.04, 0.97)
 	s.bg_color = bg
-	s.border_color = Color(0.78, 0.58, 0.24, 1.0)
+	s.border_color = Palette.BRASS_FRAME   # the ONE brass source of truth (was a hand-typed duplicate)
 	s.set_border_width_all(2)
 	s.set_corner_radius_all(10)
 	s.content_margin_left = 14

@@ -72,9 +72,7 @@ const HULL_SIDE : Color = Color(0.38, 0.25, 0.12, 1.0)
 const RAIL : Color = Color(0.30, 0.19, 0.09, 1.0)
 ## The open sky the ship floats in (NOT sea — a high twilight blue).
 const SKY : Color = Color(0.34, 0.50, 0.72, 1.0)
-const STATION_BG : Color = Color(0.18, 0.25, 0.38, 0.92)
-const STATION_LIVE : Color = Color(0.66, 0.90, 1.0, 1.0)
-const STATION_IDLE : Color = Color(0.60, 0.64, 0.76, 1.0)
+const STATION_LIVE : Color = Color(0.66, 0.90, 1.0, 1.0)   # the active-station glow (the only station tint still drawn)
 ## Extra wood/sail tones for the aesthetic pass (procedural, no imported art).
 const HULL_SIDE_DARK : Color = Color(0.27, 0.17, 0.08, 1.0)   # lower hull, in shadow (2-tone depth)
 const DECK_INSET : Color = Color(0.57, 0.41, 0.23, 1.0)       # the inset deck-border ring + post caps
@@ -641,11 +639,14 @@ func _refresh_vitals() -> void:
 	if _stardust_bar != null:
 		var dust : float = PlayerState.ship_stardust_start()
 		_stardust_bar.set_value(dust, STARDUST_SINK)
+		# Caption keyed to the ACHIEVABLE embark band (sound 3.0 → max-holed 5.4), so every word is reachable.
+		# (The bar's danger/sink ticks are the in-Loft goalposts she climbs INTO; the START never reaches them,
+		# so the old "high" at 7.5 was dead code.) 0 holes → low · 1-2 holes → rising · 3-4 holes → high.
 		var cap : String = "low"
-		if dust >= 7.5:
+		if dust >= 4.8:
 			cap = "high"
-		elif dust >= 4.0:
-			cap = "rising"   # any real damage (2+ holes) reads as rising, not falsely "low"
+		elif dust >= 3.6:
+			cap = "rising"   # any real damage (1+ hole) reads as rising, not falsely "low"
 		_stardust_bar.set_caption(cap)
 
 

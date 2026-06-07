@@ -75,6 +75,25 @@ func _ready() -> void:
 	close.focus_mode = Control.FOCUS_NONE
 	close.add_theme_font_size_override("font_size", 20)
 	close.add_theme_color_override("font_color", GOLD)
+	close.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	close.add_theme_constant_override("outline_size", 3)
+	# Walnut/brass 3-state styling so it matches the family (was a bare default-grey button in a brass panel).
+	for state in ["normal", "hover", "pressed"]:
+		var s : StyleBoxFlat = StyleBoxFlat.new()
+		var bg : Color = Color(0.24, 0.16, 0.09, 0.95)
+		if state == "hover":
+			bg = bg.lightened(0.10)
+		elif state == "pressed":
+			bg = bg.darkened(0.12)
+		s.bg_color = bg
+		s.border_color = Palette.BRASS_FRAME
+		s.set_border_width_all(2)
+		s.set_corner_radius_all(9)
+		s.content_margin_left = 18
+		s.content_margin_right = 18
+		s.content_margin_top = 9
+		s.content_margin_bottom = 9
+		close.add_theme_stylebox_override(state, s)
 	close.pressed.connect(_close)
 	vbox.add_child(close)
 
@@ -97,7 +116,7 @@ func _panel_style() -> StyleBoxFlat:
 
 	var s : StyleBoxFlat = StyleBoxFlat.new()
 	s.bg_color = Color(0.16, 0.11, 0.06, 0.98)
-	s.border_color = Color(0.78, 0.58, 0.24, 1.0)
+	s.border_color = Palette.BRASS_FRAME   # the ONE brass source of truth (was a hand-typed duplicate)
 	s.set_border_width_all(3)
 	s.set_corner_radius_all(14)
 	s.set_content_margin_all(28)

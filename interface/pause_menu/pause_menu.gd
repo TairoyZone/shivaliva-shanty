@@ -95,16 +95,23 @@ func _make_button(text: String, fg: Color, bg: Color, border: Color, action: Cal
 	b.add_theme_color_override("font_color", fg)
 	b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	b.add_theme_constant_override("outline_size", 3)
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = bg
-	s.border_color = border
-	s.set_border_width_all(2)
-	s.set_corner_radius_all(9)
-	s.content_margin_left = 18
-	s.content_margin_right = 18
-	s.content_margin_top = 9
-	s.content_margin_bottom = 9
-	b.add_theme_stylebox_override("normal", s)
+	# 3-state styling so the button responds to hover/press (was normal-only — inert, no affordance).
+	for state in ["normal", "hover", "pressed"]:
+		var s : StyleBoxFlat = StyleBoxFlat.new()
+		var sb : Color = bg
+		if state == "hover":
+			sb = bg.lightened(0.10)
+		elif state == "pressed":
+			sb = bg.darkened(0.12)
+		s.bg_color = sb
+		s.border_color = border
+		s.set_border_width_all(2)
+		s.set_corner_radius_all(9)
+		s.content_margin_left = 18
+		s.content_margin_right = 18
+		s.content_margin_top = 9
+		s.content_margin_bottom = 9
+		b.add_theme_stylebox_override(state, s)
 	b.pressed.connect(action)
 	return b
 
@@ -113,7 +120,7 @@ func _panel_style() -> StyleBoxFlat:
 
 	var s : StyleBoxFlat = StyleBoxFlat.new()
 	s.bg_color = Color(0.16, 0.11, 0.06, 0.98)
-	s.border_color = Color(0.78, 0.58, 0.24, 1.0)
+	s.border_color = Palette.BRASS_FRAME   # the ONE brass source of truth (was a hand-typed duplicate)
 	s.set_border_width_all(3)
 	s.set_corner_radius_all(14)
 	s.set_content_margin_all(26)
