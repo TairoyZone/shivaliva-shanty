@@ -96,11 +96,16 @@ func _build_skeleton() -> void:
 	# grows to fit its page (so the wide Hearts/Profile views still fit).
 	_window = PanelContainer.new()
 	_window.add_theme_stylebox_override("panel", _window_style())
+	# Corner-pin the window just LEFT of the rail + BELOW the top HUD, growing left + down to fit its page
+	# (equal left/right + top/bottom offsets at the pin point + grow directions — a shrink container).
 	_window.anchor_left = 1.0
 	_window.anchor_right = 1.0
 	_window.anchor_top = 0.0
-	_window.offset_right = -72.0   # left of the right-edge rail; grows leftward to fit its page
-	_window.offset_top = 150.0     # below the top-right purse + journal "!"
+	_window.anchor_bottom = 0.0
+	_window.offset_left = -72.0
+	_window.offset_right = -72.0
+	_window.offset_top = 150.0
+	_window.offset_bottom = 150.0
 	_window.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_window.grow_vertical = Control.GROW_DIRECTION_END
 	_window.visible = false
