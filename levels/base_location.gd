@@ -25,6 +25,12 @@ const SCENE_MOODS : Dictionary = {
 	"shanty": Color(0.52, 0.34, 0.14, 0.12),
 }
 
+## Outdoor SKY-island locations share ONE procedural Stardust sky + drifting clouds behind them, so every
+## open-air scene (the islands AND the ship deck) reads with the SAME background (Troy 2026-06-07: "make the
+## background of the ship and the islands the same"). Interiors (tavern, mine, *_interior) stay indoors.
+const SKY_LOCATIONS : Array = ["shore", "forest", "frontier_isle", "ship_deck"]
+const SKY_FOG_TINT : Color = Color(0.80, 0.84, 0.96, 0.85)   # drifting-cloud colour (shared everywhere)
+
 @export var pirate_spawn_position : Vector2 = Vector2(640, 540)
 ## (Legacy) scene this location used to load on ESC. ESC is now the
 ## backpack key — owned + consumed by the [HUD] in the overworld — so
@@ -36,6 +42,9 @@ const SCENE_MOODS : Dictionary = {
 ## A colour WASH over this location for mood (alpha = strength); transparent = fall back to the SCENE_MOODS
 ## keyword default, or none. Set per-scene in the inspector to override. See [MoodTint].
 @export var mood_tint : Color = Color(0, 0, 0, 0)
+
+## Sky backdrop: Auto = on for the outdoor [constant SKY_LOCATIONS] (by scene path); Always / Never force it.
+@export_enum("Auto", "Always", "Never") var sky_mode : int = 0
 
 var player : Player
 
@@ -52,6 +61,7 @@ func _ready() -> void:
 	if HUD:
 		HUD.visible = true
 	Audio.play_music_track("overworld")   # the overworld bed (guarded — won't restart between locations)
+	_apply_sky()
 	_apply_mood()
 	# Co-op seam: spawn each session player (a loop-of-one in single-player). See [[multiplayer-direction]].
 	for id in SessionState.players:
@@ -78,6 +88,29 @@ func _spawn_player(id: int) -> void:
 		# Record where the local player landed so a quit-now resume restores them here.
 		PlayerState.last_scene = scene_file_path
 		PlayerState.last_position = p.global_position
+
+
+## Add the shared procedural Stardust SKY + drifting clouds behind an OUTDOOR location, so the islands +
+## the ship deck share ONE background. Gated by [method _wants_sky]; sits on low CanvasLayers (sky -10,
+## clouds -5), fixed in screen space — a distant sky, not parented to the camera.
+func _apply_sky() -> void:
+
+	if not _wants_sky():
+		return
+	add_child(SkyBackdrop.new())
+	add_child(DriftFog.make(SKY_FOG_TINT))
+
+
+func _wants_sky() -> bool:
+
+	if sky_mode == 1:
+		return true    # Always
+	if sky_mode == 2:
+		return false   # Never (interiors)
+	for key in SKY_LOCATIONS:
+		if scene_file_path.contains(key):
+			return true
+	return false
 
 
 ## Add a [MoodTint] colour wash if this location has a mood — an explicit [member mood_tint], else a

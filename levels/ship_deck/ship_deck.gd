@@ -70,8 +70,6 @@ const DECK_DARK : Color = Color(0.46, 0.31, 0.16, 1.0)
 const PLANK_LINE : Color = Color(0.0, 0.0, 0.0, 0.13)
 const HULL_SIDE : Color = Color(0.38, 0.25, 0.12, 1.0)
 const RAIL : Color = Color(0.30, 0.19, 0.09, 1.0)
-## The open sky the ship floats in (NOT sea — a high twilight blue).
-const SKY : Color = Color(0.34, 0.50, 0.72, 1.0)
 const STATION_LIVE : Color = Color(0.66, 0.90, 1.0, 1.0)   # the active-station glow (the only station tint still drawn)
 ## Extra wood/sail tones for the aesthetic pass (procedural, no imported art).
 const HULL_SIDE_DARK : Color = Color(0.27, 0.17, 0.08, 1.0)   # lower hull, in shadow (2-tone depth)
@@ -117,13 +115,9 @@ func _ready() -> void:
 		get_tree().paused = false
 	pirate_spawn_position = _iso(SPAWN_G.x, SPAWN_G.y)
 	_seed_demo_route_if_unset()
-	super._ready()                 # spawns the Player under YSortNode2D (normal camera)
-	# A LIVING procedural sky behind the deck — twinkling Stardust starfield (borrow #3) replaces the old
-	# flat SKY fill. Low CanvasLayer, behind the ship; SKY stays the flat fallback if the shader is stripped.
-	var sky : SkyBackdrop = SkyBackdrop.new()
-	sky.fallback_color = SKY
-	add_child(sky)
-	add_child(DriftFog.make(Color(0.80, 0.84, 0.96, 0.85)))   # drifting cloud wisps between the stars + the deck
+	super._ready()                 # spawns the Player + adds the shared Stardust SKY + clouds (BaseLocation)
+	# (The twinkling Stardust sky + drifting clouds are now added by BaseLocation for EVERY outdoor scene —
+	# the deck included — so the islands + the deck share ONE background. Troy 2026-06-07.)
 	_add_hull_collision()
 	_add_crew()
 	_build_ui()
@@ -772,7 +766,7 @@ func _add_hull_collision() -> void:
 
 func _draw() -> void:
 
-	# The sky is now the procedural SkyBackdrop (added in _ready) on a low CanvasLayer — no flat fill here.
+	# The sky is the shared procedural SkyBackdrop (added by BaseLocation) on a low CanvasLayer — no fill here.
 	var deck : PackedVector2Array = PackedVector2Array()
 	for g in OUTLINE:
 		deck.append(_iso(g.x, g.y))
