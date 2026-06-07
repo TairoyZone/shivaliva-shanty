@@ -110,16 +110,6 @@ _This report is a living snapshot — regenerate it as the project moves. Deeper
 decisions live in the auto-memory (`…/memory/MEMORY.md`); the code map lives in `CLAUDE.md`._
 
 # TROY's TODO #
-# = For the Hearties tab in player's tab. Never show any NPC unless
-#   they are friends with the player. We need to redesign our NPC
-#   interaction
-# = Remove the interaction mechanics where the player has to go nearby an NPC to interact with them by pressing "E".
-#   Instead, just like YPP(Might need extensive research and audit on this one) just left-click or right-click to them to show a bunch of options of how to interact with this NPC.
-# = "E" is now opening player's panel like the backpack and other tabs.
-# = Add a chatbox like YPP. This is where events are announced and logs are stored like in YPP(audit to make sure)
-# = Add 1 last NPC in the island. Named Geneva (you add an appropriate NPC first name for her) and she is the wife of Brian, this is so that i can have 10 poker game seat finally.
-# = Implement poker table seat to be 10 again max cap
 # = players can chat with NPC. Use API for this one to respond intelligently
 # = Player should be able to start a crew, and hire crew members and assign their ranks
-# = need player location persistance on the ship and even island,    like the player after a pillage should land on the docks naturally
-# = The ship rn is cool. but lets make it aesthetically better.
+# = Time to dive in deeper with the ship owning system
