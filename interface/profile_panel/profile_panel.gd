@@ -185,26 +185,26 @@ func _make_center_column() -> Control:
 	frame.add_child(CircleClip.wrap(avatar, 168.0))
 	col.add_child(frame)
 
-	# Trophy COLLECTION — ONLY the trophies you've actually EARNED show here (Troy); the
-	# locked ones are hidden. Earning one pops a TrophyToast notification instead.
-	col.add_child(_section_label("Trophies   %d" % Trophies.earned_count()))
-	var earned_list : Array = []
+	# Trophy COLLECTION — only trophies you've CLAIMED in the Ayo! tab show here (Troy 2026-06-08). An
+	# earned-but-unclaimed trophy waits in Ayo! until you accept it, THEN it lands on this shelf.
+	var claimed_list : Array = []
 	for t in Trophies.ALL:
-		if Trophies.is_earned(String(t["id"])):
-			earned_list.append(t)
-	if earned_list.is_empty():
+		if PlayerState.trophies_claimed.has(String(t["id"])):
+			claimed_list.append(t)
+	col.add_child(_section_label("Trophies   %d" % claimed_list.size()))
+	if claimed_list.is_empty():
 		var none : Label = Label.new()
-		none.text = "No trophies yet — earn them out in the world."
+		none.text = "No trophies yet — earn them, then claim them in the Ayo! tab."
 		none.add_theme_font_size_override("font_size", 12)
 		none.add_theme_color_override("font_color", COLOR_INK_SOFT)
 		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(none)
 		return col
-	var grid : HFlowContainer = HFlowContainer.new()   # wraps the trophy shelf responsively as more are earned
+	var grid : HFlowContainer = HFlowContainer.new()   # wraps the trophy shelf responsively as more are claimed
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 8)
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	for t in earned_list:
+	for t in claimed_list:
 		grid.add_child(_make_trophy(t))
 	col.add_child(grid)
 	return col
