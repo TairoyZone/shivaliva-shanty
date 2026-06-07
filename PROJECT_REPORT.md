@@ -1,6 +1,6 @@
 # Shivaliva Shanty — Project Report
 
-_Last updated: 2026-06-06_
+_Last updated: 2026-06-07_
 
 ## What it is
 A single-player-first, retro-charming **puzzle-skill adventure** among floating sky-islands — a
@@ -75,7 +75,24 @@ finished). Adversarially reviewed (3 bugs fixed) + several playtest fixes alread
 - **Inheritance over duplication; scene-per-component.**
 - Build proactively, flag only big design forks; commit freely; **never push without an explicit ask.**
 
-## Recent work (2026-06-05 → 06, all committed)
+## Recent work (2026-06-05 → 07, all committed)
+0. **HUD overhaul + UI hardening (2026-06-07):** a big, well-reviewed pass —
+   - **Real meter bars:** new reusable `components/meter_bar/` (`MeterBar`) — animated tweened fill,
+     segmented (hull notches) / smooth (stardust), green→amber→red states + danger/sink ticks. Replaced
+     the deck's lonely hull icon AND the Loft's LIFT/HULL text gauges; **retired `HullGauge`**.
+   - **Decluttered ship deck:** killed the 760px captain banner (now a transient `SpeechBubble` + a log
+     echo, deduped so it never repeats on deck re-entry); consolidated HULL + STARDUST into ONE top-left
+     vessel panel; voyage chart → a hover-expand top-centre **strip** (`place_collapsed_top`, polled hover);
+     quick-menu → slim **icon** buttons (new `interface/quick_menu/` `MenuGlyph`: bag/heart/star/pickaxe).
+   - **ESC system:** ESC now opens a new **`PauseMenu`** (Resume / Options / Quit-to-Title — moved OUT of
+     the backpack); HUD ESC chain = close backpack → close chat log → else pause. **STANDING RULE: every
+     window closes on ESC** via the new `components/esc_to_close/` (`EscToClose`) on all 11 modals.
+   - **Bugs fixed:** deck click-ON-target (was click-anywhere-while-near); `clear_burst` shadow warning;
+     chart collapse min-size + signal-vs-poll hover; shop signal-disconnect hygiene; HUD closes the bag
+     when hidden.
+   - **New standing rules** (in MEMORY.md + CLAUDE.md): click-on-target, ESC-closes-every-window,
+     game-boot-writes-save (booting the game for screenshots writes `save.cfg` — back it up first).
+
 1. **Demo readiness:** all 6 demo blockers + the entire readiness-sweep polish tail (Patchworks
    results-celebration + blast animation, HUD backpack bag-bump, the `I`-key, the bed responds to E,
    Skirmish "READY?" lead-in + garbage explained + duel weapon swatch, Loft voyage help, voyages-board
@@ -97,6 +114,16 @@ finished). Adversarially reviewed (3 bugs fixed) + several playtest fixes alread
    placeholder `.wav` synthesised in-engine (no lifted audio); first call site = the gold "coin".
 
 ## What's next
+- **⏳ IN PROGRESS — refine the HUD (Troy 2026-06-07):** Troy said "I still need to refine the HUD" —
+  the overhaul above is done + reviewed, but he wants more refinement (specifics TBD — ask him). The deck
+  HUD, vessel panel, meter bars, pause menu + chart strip are all live; iterate on feel/layout from there.
+- **DECISION NEEDED — the "later forks"** (deferred, need Troy's green light, all flagged in the todo):
+  - `Theme.tres` — centralize the heavy inline `StyleBoxFlat` duplication into one Godot Theme. Real DRY
+    win, BUT a big refactor with visual-regression risk → **recommend AFTER the demo**, not during the lock.
+  - `ItemDef.tres` — data-drive `PlayerState.ITEM_DEFS` as resources. Nice architecture, not polish →
+    **recommend defer** (the dict works; MVP is locked).
+  - Cutout-limb character art — needs Troy's art direction (placeholder humanoids today).
+  - Audio call-site wiring + juice/feel + voyage-pace tuning — needs a real playtest (subjective feel).
 - **Wire the rest of the audio call sites:** `Audio.play_sfx` into puzzle clears (clack/pop), UI (click),
   win/results (chime), toss/invalid (buzz) — the polyphony shines on cascades. Then continue down
   `GODOT_BORROW_TODO.md` (Juice tween helper → sky shader → typewriter dialogue → …).
