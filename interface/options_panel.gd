@@ -9,6 +9,9 @@ extends CanvasLayer
 const GOLD : Color = Color(0.96, 0.86, 0.5, 1.0)
 const GROUP : StringName = &"options_panel"
 
+var _panel : PanelContainer   # pop-in / dismiss target
+var _dim : ColorRect
+
 
 ## Open the panel (added to the tree root). No-op if one is already showing.
 static func open(host: Node) -> void:
@@ -33,6 +36,7 @@ func _ready() -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	dim.gui_input.connect(_on_dim_input)
 	add_child(dim)
+	_dim = dim
 
 	# Centred panel.
 	var panel : PanelContainer = PanelContainer.new()
@@ -48,6 +52,7 @@ func _ready() -> void:
 	panel.offset_right = 210.0
 	panel.offset_bottom = 150.0
 	add_child(panel)
+	_panel = panel
 
 	var vbox : VBoxContainer = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 16)
@@ -98,6 +103,7 @@ func _ready() -> void:
 	vbox.add_child(close)
 
 	add_child(EscToClose.new(_close))
+	ModalFx.appear(_panel, _dim)   # fade + pop in (animate-everything)
 
 
 func _make_toggle(text: String, on: bool, setter: Callable) -> CheckButton:
@@ -130,5 +136,10 @@ func _on_dim_input(event: InputEvent) -> void:
 
 
 func _close() -> void:
+
+	ModalFx.dismiss(self, _panel, _dim, _do_close)   # scale + fade out, THEN free
+
+
+func _do_close() -> void:
 
 	queue_free()

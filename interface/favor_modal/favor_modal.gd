@@ -28,9 +28,10 @@ var _affinity : int = 15
 ## earlier, not yet turned in) — drives the turn-in vs offer button set.
 var _accepted : bool = false
 var _favor_given : bool = false
-var _closing : bool = false
 
 var _vbox : VBoxContainer
+var _panel : PanelContainer   # pop-in / dismiss target
+var _dim : ColorRect
 
 
 static func create(config: Dictionary) -> FavorModal:
@@ -56,6 +57,7 @@ func _ready() -> void:
 	dim.anchor_bottom = 1.0
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
+	_dim = dim
 	var panel : PanelContainer = PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", _build_panel_style())
 	panel.anchor_left = 0.5
@@ -67,12 +69,14 @@ func _ready() -> void:
 	panel.offset_right = 300.0
 	panel.offset_bottom = 190.0
 	add_child(panel)
+	_panel = panel
 	_vbox = VBoxContainer.new()
 	_vbox.add_theme_constant_override("separation", 16)
 	panel.add_child(_vbox)
 	_show_main()
 	get_tree().paused = true
 	add_child(EscToClose.new(_on_close))
+	ModalFx.appear(_panel, _dim)   # fade + pop in (animate-everything)
 
 
 func _exit_tree() -> void:
@@ -164,9 +168,11 @@ func _on_give() -> void:
 
 func _on_close() -> void:
 
-	if _closing:
-		return
-	_closing = true
+	ModalFx.dismiss(self, _panel, _dim, _do_close)   # scale + fade out, THEN really close
+
+
+func _do_close() -> void:
+
 	if get_tree() != null:
 		get_tree().paused = false
 	closed.emit()

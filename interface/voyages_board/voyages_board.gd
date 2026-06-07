@@ -69,6 +69,8 @@ const CREWS : Array = [
 ]
 
 var _content : VBoxContainer
+var _panel : PanelContainer   # pop-in / dismiss target
+var _dim : ColorRect
 
 
 func _ready() -> void:
@@ -94,6 +96,7 @@ func _build() -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	dim.gui_input.connect(_on_dim_input)   # click off the panel closes (parity with the other modals)
 	add_child(dim)
+	_dim = dim
 
 	var panel : PanelContainer = PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", _panel_style())
@@ -106,6 +109,7 @@ func _build() -> void:
 	panel.offset_right = 340.0
 	panel.offset_bottom = 250.0
 	add_child(panel)
+	_panel = panel
 
 	_content = VBoxContainer.new()
 	_content.add_theme_constant_override("separation", 12)
@@ -113,6 +117,7 @@ func _build() -> void:
 	_show_list()
 	# ESC closes the board — the ONE reusable primitive, not a hand-rolled handler (standing rule).
 	add_child(EscToClose.new(_on_cancel))
+	ModalFx.appear(_panel, _dim)   # fade + pop in (animate-everything)
 
 
 func _on_dim_input(event: InputEvent) -> void:
@@ -268,6 +273,11 @@ func _on_fare(dest: Dictionary) -> void:
 
 
 func _on_cancel() -> void:
+
+	ModalFx.dismiss(self, _panel, _dim, _do_cancel)   # scale + fade out, THEN really close
+
+
+func _do_cancel() -> void:
 
 	if get_tree() != null:
 		get_tree().paused = false

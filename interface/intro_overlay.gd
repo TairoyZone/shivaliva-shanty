@@ -25,6 +25,10 @@ const BODY_TEXT : String = (
 	+ "(or press J) to see what to aim for next.")
 
 
+var _panel : PanelContainer   # pop-in / dismiss target
+var _dim : ColorRect
+
+
 func _ready() -> void:
 
 	layer = 50
@@ -32,6 +36,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build()
 	get_tree().paused = true
+	ModalFx.appear(_panel, _dim)   # fade + pop in (animate-everything)
 
 
 func _build() -> void:
@@ -42,6 +47,7 @@ func _build() -> void:
 	dim.anchor_bottom = 1.0
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
+	_dim = dim
 
 	var panel : PanelContainer = PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", _panel_style())
@@ -56,6 +62,7 @@ func _build() -> void:
 	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	add_child(panel)
+	_panel = panel
 
 	var vbox : VBoxContainer = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 18)
@@ -90,8 +97,14 @@ func _build() -> void:
 
 func _on_begin_pressed() -> void:
 
+	ModalFx.dismiss(self, _panel, _dim, _do_begin)   # scale + fade out, THEN really close
+
+
+func _do_begin() -> void:
+
 	PlayerState.has_seen_intro = true
-	get_tree().paused = false
+	if get_tree() != null:
+		get_tree().paused = false
 	queue_free()
 
 

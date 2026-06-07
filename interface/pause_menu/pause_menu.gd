@@ -9,6 +9,9 @@ extends CanvasLayer
 const GROUP : StringName = &"pause_menu"
 const GOLD : Color = Color(0.96, 0.86, 0.5, 1.0)
 
+var _panel : PanelContainer   # pop-in / dismiss target
+var _dim : ColorRect
+
 
 ## Open the pause menu (added to the tree root + pauses). No-op if one is already showing.
 static func open(host: Node) -> void:
@@ -28,6 +31,7 @@ func _ready() -> void:
 	_build()
 	if get_tree() != null:
 		get_tree().paused = true
+	ModalFx.appear(_panel, _dim)   # fade + pop in (animate-everything)
 
 
 func _build() -> void:
@@ -39,6 +43,7 @@ func _build() -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	dim.gui_input.connect(_on_dim_input)
 	add_child(dim)
+	_dim = dim
 
 	var panel : PanelContainer = PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", _panel_style())
@@ -53,6 +58,7 @@ func _build() -> void:
 	panel.offset_right = 190.0
 	panel.offset_bottom = 170.0
 	add_child(panel)
+	_panel = panel
 
 	var vbox : VBoxContainer = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 14)
@@ -147,6 +153,11 @@ func _on_dim_input(event: InputEvent) -> void:
 
 
 func _close() -> void:
+
+	ModalFx.dismiss(self, _panel, _dim, _do_close)   # scale + fade out, THEN really close
+
+
+func _do_close() -> void:
 
 	if get_tree() != null:
 		get_tree().paused = false

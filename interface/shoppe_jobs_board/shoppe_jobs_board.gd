@@ -7,6 +7,9 @@ extends CanvasLayer
 
 const GROUP : StringName = &"shoppe_jobs_board"
 
+var _panel : PanelContainer   # pop-in / dismiss target
+var _dim : ColorRect
+
 ## The labour jobs surfaced here. `hired` = the PlayerState flag gating it; `site` = where to apply.
 const JOBS : Array = [
 	{"title": "Mining", "location": "res://levels/mine/mine.tscn", "anchor": "MiningSign",
@@ -48,6 +51,7 @@ func _build() -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	dim.gui_input.connect(_on_dim_input)
 	add_child(dim)
+	_dim = dim
 
 	var panel : PanelContainer = PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", _panel_style())
@@ -60,6 +64,7 @@ func _build() -> void:
 	panel.offset_right = 300.0
 	panel.offset_bottom = 175.0
 	add_child(panel)
+	_panel = panel
 
 	var vbox : VBoxContainer = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 12)
@@ -76,6 +81,7 @@ func _build() -> void:
 	vbox.add_child(back)
 	# ESC closes the board — the ONE reusable primitive (standing rule), not a hand-rolled _unhandled_input.
 	add_child(EscToClose.new(_close))
+	ModalFx.appear(_panel, _dim)   # fade + pop in (animate-everything)
 
 
 func _make_job_row(job: Dictionary) -> PanelContainer:
@@ -124,6 +130,11 @@ func _on_dim_input(event: InputEvent) -> void:
 
 
 func _close() -> void:
+
+	ModalFx.dismiss(self, _panel, _dim, _do_close)   # scale + fade out, THEN free (_exit_tree unpauses)
+
+
+func _do_close() -> void:
 
 	queue_free()
 
