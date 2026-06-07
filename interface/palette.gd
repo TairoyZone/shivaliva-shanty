@@ -53,6 +53,14 @@ const GEM_EMERALD : Color = Color(0.30, 0.62, 0.36, 1.0)
 const GEM_SAPPHIRE : Color = Color(0.30, 0.55, 0.82, 1.0)
 const GEM_TOPAZ : Color = Color(1.0, 0.80, 0.30, 1.0)
 
+# --- Cool UI panels (the ship-deck "sky-at-altitude" HUD family) -------
+## DELIBERATELY distinct from the warm brass/wood chrome (Troy 2026-06-07): the deck reads as a vessel
+## adrift in the night sky, so its status troughs + voyage chart use a cool navy + sky-blue frame instead
+## of brass. Centralized here so the deck blues can't drift (status bars + the chart shared this navy as
+## two copy-pasted literals before). The overworld HUD + every menu stay BRASS_* — see [[cool-deck-hud]].
+const PANEL_TROUGH : Color = Color(0.07, 0.10, 0.17, 0.92)    # dark navy status-trough / sky-panel backing
+const SKY_FRAME : Color = Color(0.50, 0.62, 0.85, 0.92)       # cool sky-blue panel border (chart, deck cards)
+
 # --- Utility -----------------------------------------------------------
 const SHADOW_SOFT : Color = Color(0, 0, 0, 0.55)
 const OUTLINE_HARD : Color = Color(0, 0, 0, 0.9)

@@ -602,6 +602,27 @@ func _build_ui() -> void:
 	report_btn.focus_mode = Control.FOCUS_NONE
 	report_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	report_btn.add_theme_font_size_override("font_size", 14)
+	report_btn.add_theme_color_override("font_color", Color(0.86, 0.92, 1.0, 1.0))   # cool sky-blue text
+	report_btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	report_btn.add_theme_constant_override("outline_size", 3)
+	# COOL 3-state styling to match the deck's sky-at-altitude HUD (was a bare default-grey button under the
+	# navy meter bars). The deck is deliberately cool, not brass — see the cool-deck decision.
+	for state in ["normal", "hover", "pressed"]:
+		var rs : StyleBoxFlat = StyleBoxFlat.new()
+		var rbg : Color = Color(0.12, 0.17, 0.27, 0.94)   # a touch lighter than the trough so it reads as a button
+		if state == "hover":
+			rbg = rbg.lightened(0.10)
+		elif state == "pressed":
+			rbg = rbg.darkened(0.12)
+		rs.bg_color = rbg
+		rs.border_color = Palette.SKY_FRAME
+		rs.set_border_width_all(2)
+		rs.set_corner_radius_all(8)
+		rs.content_margin_left = 14
+		rs.content_margin_right = 14
+		rs.content_margin_top = 6
+		rs.content_margin_bottom = 6
+		report_btn.add_theme_stylebox_override(state, rs)
 	report_btn.pressed.connect(_open_duty_report)
 	vitals.add_child(report_btn)
 	_report_btn = report_btn

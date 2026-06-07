@@ -73,8 +73,8 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip_contents = true
 	_bg = StyleBoxFlat.new()
-	_bg.bg_color = Color(0.07, 0.10, 0.17, 0.92)
-	_bg.border_color = Color(0.50, 0.62, 0.85, 0.92)
+	_bg.bg_color = Palette.PANEL_TROUGH   # the deck's cool-HUD family (shared w/ the MeterBar troughs)
+	_bg.border_color = Palette.SKY_FRAME
 	_bg.set_border_width_all(2)
 	_bg.set_corner_radius_all(10)
 	# Repaint when the layout resolves our size (matches the codebase's other size-dependent
