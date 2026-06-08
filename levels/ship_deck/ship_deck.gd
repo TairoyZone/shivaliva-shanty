@@ -90,6 +90,7 @@ var _captain_anchor : Node2D     # an invisible world-point over the captain's p
 var _chart : VoyageChart         # the drawn voyage progress ribbon
 var _crossing : bool = false     # the ship is sailing between stops — stations locked, watch her make way
 var _report_btn : Button         # Duty Report button — hidden mid-boarding (its panel pauses the live melee)
+var _crew_btn : Button           # Crew Duty button — post crew to stations; hidden mid-boarding like the report
 var _glow : Glow                 # the pulsing halo on the active station — SLIDES between stations (never snaps)
 var _patch_glow : Glow           # a second halo on the Patchworks when the hull's holed
 
@@ -160,6 +161,8 @@ func _setup_phase() -> void:
 	# while a boarding's in progress (you can read it again once the leg's banked).
 	if _report_btn != null:
 		_report_btn.visible = not BoardingMelee.has_active()
+	if _crew_btn != null:
+		_crew_btn.visible = not BoardingMelee.has_active()   # can't reshuffle the crew mid-boarding
 	_refresh_vitals()   # refresh the HULL + STARDUST bars (holes change as legs resolve)
 	if _arrived():
 		# Voyage's end. Also guards a redundant re-load so the last leg is never re-banked.
@@ -653,6 +656,13 @@ func _build_ui() -> void:
 	vitals.add_child(report_btn)
 	_report_btn = report_btn
 
+	# CREW DUTY — post your recruited crew to the voyage's stations (their skill carries the post you aren't
+	# manning). Same cool styling, grouped under the vitals.
+	var crew_btn : Button = _deck_button("Crew Duty")
+	crew_btn.pressed.connect(_open_crew_duty)
+	vitals.add_child(crew_btn)
+	_crew_btn = crew_btn
+
 	_refresh_vitals()
 
 
@@ -707,6 +717,42 @@ func _active_max_holes() -> int:
 	if id.is_empty():
 		return PlayerState.SHIP_MAX_HOLES_DEFAULT
 	return PlayerState.ship_max_holes(id)
+
+
+# Open the Crew Duty panel — post your crew to the voyage's stations.
+func _open_crew_duty() -> void:
+
+	CrewDutyPanel.open(self)
+
+
+# A cool deck-styled HUD button (matches the Duty Report button under the vitals).
+func _deck_button(text: String) -> Button:
+
+	var b : Button = Button.new()
+	b.text = text
+	b.focus_mode = Control.FOCUS_NONE
+	b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	b.add_theme_font_size_override("font_size", 14)
+	b.add_theme_color_override("font_color", Color(0.86, 0.92, 1.0, 1.0))
+	b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	b.add_theme_constant_override("outline_size", 3)
+	for state in ["normal", "hover", "pressed"]:
+		var rs : StyleBoxFlat = StyleBoxFlat.new()
+		var rbg : Color = Color(0.12, 0.17, 0.27, 0.94)
+		if state == "hover":
+			rbg = rbg.lightened(0.10)
+		elif state == "pressed":
+			rbg = rbg.darkened(0.12)
+		rs.bg_color = rbg
+		rs.border_color = Palette.SKY_FRAME
+		rs.set_border_width_all(2)
+		rs.set_corner_radius_all(8)
+		rs.content_margin_left = 14
+		rs.content_margin_right = 14
+		rs.content_margin_top = 6
+		rs.content_margin_bottom = 6
+		b.add_theme_stylebox_override(state, rs)
+	return b
 
 
 # Open the YPP-style duty report (last leg's per-hand ratings) — one at a time.
