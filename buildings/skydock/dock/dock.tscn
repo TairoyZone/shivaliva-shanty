@@ -1,6 +1,13 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://boengr438xpr7"]
 
-[ext_resource type="Script" path="res://buildings/skydock/dock/dock.gd" id="1_dock"]
+[ext_resource type="Script" uid="uid://cwhodymfr2w7g" path="res://buildings/skydock/dock/dock.gd" id="1_dock"]
 
-[node name="Dock" type="Node2D"]
+[node name="Dock" type="Node2D" unique_id=141756542]
 script = ExtResource("1_dock")
+
+[node name="Rails" type="StaticBody2D" parent="." unique_id=1549768171]
+collision_layer = 2
+collision_mask = 0
+
+[node name="RailShape" type="CollisionPolygon2D" parent="Rails" unique_id=490016432]
+polygon = PackedVector2Array(95, -17, 390, 130, 324, 163, 28, 15, -2, 30, 320, 192, 422, 130, 107, -24)

@@ -1,8 +1,7 @@
 ## THE DOCK — a wooden pier jutting off Cradle Rock's edge into the open sky, where your ship is berthed
-## ([MooredShip] sits at its far end). Procedural iso plank walkway on posts, with COLLISION RAILS that fence
-## the player onto the planks (open only on the island/top side, walled on the two rails + the far end so you
-## can't walk off into the void). Size is tunable in the inspector (steps / step_len / plank_width) to fit the
-## gap. Built 2026-06-09. See [[voyage-loop-research]].
+## ([MooredShip] sits at its far end). Procedural iso plank walkway on posts. Size is tunable in the inspector
+## (steps / step_len / plank_width) to fit the gap; the COLLISION that keeps the player off the void is an
+## EDITABLE CollisionPolygon2D in the scene (the "Rails" StaticBody) — shape it on sight. See [[voyage-loop-research]].
 @tool
 class_name Dock
 extends Node2D
@@ -31,38 +30,15 @@ const POST_DROP : float = 64.0
 		queue_redraw()
 
 
-func _ready() -> void:
-
-	if Engine.is_editor_hint():
-		return
-	_build_walls()
-
-
-# The four walkway corners: A(top/island), B(top-right), C(far), D(bottom-left).
+# The four walkway corners (used by the drawn outline).
 func _corners() -> Array:
 
 	var far : Vector2 = step_len * float(steps)
 	return [Vector2.ZERO, plank_width, far + plank_width, far]
 
 
-# Wall only the VOID sides (the right rail B-C + the far end C-D) so you can't walk off into the stars. The
-# two ISLAND-facing edges (near A-B + left D-A) stay OPEN — fencing them was blocking the way ON from Cradle
-# Rock. (If you can still slip off a side, tell me which and I'll wall it.)
-func _build_walls() -> void:
-
-	var c : Array = _corners()
-	var body : StaticBody2D = StaticBody2D.new()
-	body.collision_layer = 2   # "Walls" — what the player's body collides against
-	body.collision_mask = 0
-	add_child(body)
-	for edge in [[c[1], c[2]], [c[2], c[3]]]:   # B-C (right rail) + C-D (far end) — the void sides only
-		var seg : SegmentShape2D = SegmentShape2D.new()
-		seg.a = edge[0]
-		seg.b = edge[1]
-		var cs : CollisionShape2D = CollisionShape2D.new()
-		cs.shape = seg
-		body.add_child(cs)
-
+# NOTE: collision is now an EDITABLE CollisionPolygon2D in dock.tscn (the "Rails" StaticBody) — shape it
+# on-sight in the editor (no more guessing the iso edges in code).
 
 func _draw() -> void:
 

@@ -11,7 +11,7 @@
 [ext_resource type="PackedScene" path="res://levels/forest/tree.tscn" id="10_170tr"]
 [ext_resource type="PackedScene" uid="uid://blr4e33qxprt2" path="res://levels/door/door.tscn" id="10_door"]
 [ext_resource type="PackedScene" path="res://levels/mine/boulder.tscn" id="11_1n1ob"]
-[ext_resource type="PackedScene" path="res://buildings/skydock/dock/dock.tscn" id="12_dock"]
+[ext_resource type="PackedScene" uid="uid://boengr438xpr7" path="res://buildings/skydock/dock/dock.tscn" id="12_dock"]
 [ext_resource type="PackedScene" path="res://buildings/skydock/moored_ship/moored_ship.tscn" id="13_ship"]
 
 [sub_resource type="StyleBoxFlat" id="banner_style"]
