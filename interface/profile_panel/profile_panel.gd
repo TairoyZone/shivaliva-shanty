@@ -43,14 +43,18 @@ func _ready() -> void:
 	# none of that can execute against editor state.
 	if Engine.is_editor_hint():
 		return
-	custom_minimum_size = Vector2(540.0, 440.0)
-	# A VBox anchored to FILL this view — the columns are then bounded by the panel width (the old wrapping
-	# ScrollContainer let the columns overflow horizontally, pushing Skills off-screen under the rail). The
-	# profile content is short, so no scroll is needed.
+	custom_minimum_size = Vector2(440.0, 440.0)
+	# SINGLE-COLUMN layout: a vertical ScrollContainer + a full-width VBox. Every section stacks and FILLS the
+	# panel width, so nothing can overflow sideways (the old 3-column HBox kept spilling Skills off the edge);
+	# vertical scroll handles the height.
+	var scroll : ScrollContainer = ScrollContainer.new()
+	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(scroll)
 	_root = VBoxContainer.new()
-	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_root.add_theme_constant_override("separation", 10)
-	add_child(_root)
+	_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_root.add_theme_constant_override("separation", 8)
+	scroll.add_child(_root)
 	refresh()
 
 
@@ -61,17 +65,21 @@ func refresh() -> void:
 	for child in _root.get_children():
 		child.queue_free()
 	_root.add_child(_make_header())
+	_root.add_child(_rule())
+	# Stacked full-width sections (single column — can't overflow sideways).
+	_root.add_child(_make_center_column())   # avatar + trophies
+	_root.add_child(_rule())
+	_root.add_child(_make_left_column())     # reputation + fleet
+	_root.add_child(_rule())
+	_root.add_child(_make_skills_column())   # skills
+
+
+func _rule() -> Control:
+
 	var rule : ColorRect = ColorRect.new()
 	rule.color = COLOR_FRAME
 	rule.custom_minimum_size = Vector2(0, 2)
-	_root.add_child(rule)
-	var cols : HBoxContainer = HBoxContainer.new()
-	cols.add_theme_constant_override("separation", 10)
-	cols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_root.add_child(cols)
-	cols.add_child(_make_left_column())
-	cols.add_child(_make_center_column())
-	cols.add_child(_make_skills_column())
+	return rule
 
 
 # --- Header (name + rank) --------------------------------------------
@@ -115,7 +123,7 @@ func _make_left_column() -> Control:
 
 	var col : VBoxContainer = VBoxContainer.new()
 	col.add_theme_constant_override("separation", 4)
-	col.custom_minimum_size = Vector2(132, 0)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	col.add_child(_section_label("Reputation"))
 	var cast : Array[NpcPersonality] = NpcRegistry.all()
@@ -167,7 +175,7 @@ func _make_center_column() -> Control:
 
 	var col : VBoxContainer = VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)
-	col.custom_minimum_size = Vector2(132, 0)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	# Framed avatar.
 	var frame : PanelContainer = PanelContainer.new()
@@ -181,7 +189,7 @@ func _make_center_column() -> Control:
 	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	# A circular avatar via clip_children masking (borrow) — the procedural bust clipped to a circle.
 	var avatar : ProfileAvatar = ProfileAvatar.new()
-	frame.add_child(CircleClip.wrap(avatar, 116.0))
+	frame.add_child(CircleClip.wrap(avatar, 140.0))
 	col.add_child(frame)
 
 	# Trophy COLLECTION — only trophies you've CLAIMED in the Ayo! tab show here (Troy 2026-06-08). An
@@ -256,7 +264,6 @@ func _make_skills_column() -> Control:
 	var col : VBoxContainer = VBoxContainer.new()
 	col.add_theme_constant_override("separation", 4)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.custom_minimum_size = Vector2(176, 0)
 	col.add_child(_section_label("Skills"))
 	for group in SKILL_GROUPS:
 		col.add_child(_category_label(String(group["label"])))
