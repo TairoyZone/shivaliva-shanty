@@ -172,6 +172,13 @@ func _chat() -> void:
 	ChatBox.start_private_chat(persona, self, dialog_lines)
 
 
+## Public entry to start this NPC's private chat — used by the chat box's scope selector (pick "→ Name")
+## as well as the radial Chat option.
+func open_chat() -> void:
+
+	_chat()
+
+
 # This NPC's [NpcPersonality] profile, matched by name from the [NpcRegistry] (null if unlisted).
 func _resolve_personality() -> NpcPersonality:
 

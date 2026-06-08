@@ -20,7 +20,8 @@ const SYSTEM_LINE_COLOR : Color = Color(0.72, 0.75, 0.82, 1.0) # "— you begin 
 var chat_visible : bool = true
 
 var _input : LineEdit
-var _target_btn : Button       # private-NPC-chat target chip ("→ Name ✕"); hidden when chatting publicly
+var _scope_btn : Button        # the LEFT-side scope selector — "All" (the room) or "→ Name" (private)
+var _scope_targets : Dictionary = {}   # scope-menu item id → the present Npc node
 var _log_panel : PanelContainer
 var _log_box : VBoxContainer
 var _log_scroll : ScrollContainer
@@ -91,15 +92,16 @@ func _build_ui() -> void:
 	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE   # only the actual controls (LineEdit/buttons) catch clicks
 	bar.add_child(hb)
 
-	# Target chip — only shown while privately chatting an NPC; click it to step away. (No more Speak/Emote/
-	# Think mode switch — removed; the bar is plain speech unless you're in a private NPC chat.)
-	_target_btn = Button.new()
-	_target_btn.focus_mode = Control.FOCUS_NONE
-	_target_btn.tooltip_text = "Step away from this conversation"
-	_target_btn.pressed.connect(_exit_private)
-	_target_btn.visible = false
-	_style_chat_button(_target_btn)
-	hb.add_child(_target_btn)
+	# Scope selector (Valorant-style) on the LEFT: "All" = speak to the room, "→ Name" = a private word with an
+	# NPC. Click it to pick who you're talking to (the room, or anyone present).
+	_scope_btn = Button.new()
+	_scope_btn.focus_mode = Control.FOCUS_NONE
+	_scope_btn.custom_minimum_size = Vector2(80.0, 0.0)
+	_scope_btn.tooltip_text = "Who you're talking to — All (the room) or a private word"
+	_scope_btn.pressed.connect(_open_scope_menu)
+	_style_chat_button(_scope_btn)
+	hb.add_child(_scope_btn)
+	_update_scope_chip()
 
 	_input = LineEdit.new()
 	_input.placeholder_text = "Say something…   (Enter)"
@@ -292,8 +294,7 @@ func start_private_chat(persona: NpcPersonality, npc: Node = null, fallback_line
 	_private_npc = npc
 	_private_fallback = fallback_lines
 	NpcBrain.enter_chat(persona)
-	_target_btn.text = "→ %s   ✕" % _short_name()
-	_target_btn.visible = true
+	_update_scope_chip()
 	PlayerState.log_event("— You begin talking with %s  (%s) —" % [persona.npc_name,
 		PlayerState.affinity_tier(persona.npc_name)], SYSTEM_LINE_COLOR)
 	if not _log_open:
@@ -323,12 +324,76 @@ func _exit_private() -> void:
 	_private_persona = null
 	_private_npc = null
 	_private_fallback = []
-	if _target_btn != null:
-		_target_btn.visible = false
+	_update_scope_chip()
 	if _input != null:
 		_input.placeholder_text = "Say something…   (Enter)"
 		_input.release_focus()
 	PlayerState.log_event("— You step away from %s —" % who, SYSTEM_LINE_COLOR)
+
+
+# --- scope selector (All the room / a private word with someone) -----
+
+func _update_scope_chip() -> void:
+
+	if _scope_btn == null:
+		return
+	if _in_private:
+		_scope_btn.text = "→ %s  ▾" % _short_name()
+		var col : Color = _private_persona.portrait_color.lightened(0.4) if _private_persona != null else Color(0.95, 0.86, 0.58, 1.0)
+		_scope_btn.add_theme_color_override("font_color", col)
+	else:
+		_scope_btn.text = "All  ▾"
+		_scope_btn.add_theme_color_override("font_color", Color(0.80, 0.95, 1.0, 1.0))   # cool = speak to the room
+
+
+# Pop a small list ABOVE the chip: "All" (the room) + everyone present (a private word).
+func _open_scope_menu() -> void:
+
+	var menu : PopupMenu = PopupMenu.new()
+	_style_popup(menu)
+	menu.add_item("All — speak to the room", 0)
+	_scope_targets = {}
+	var idx : int = 1
+	for n in get_tree().get_nodes_in_group("npc"):
+		if not is_instance_valid(n) or not ("npc_name" in n):
+			continue
+		menu.add_item("→ %s   (private)" % String(n.npc_name), idx)
+		_scope_targets[idx] = n
+		idx += 1
+	if idx == 1:
+		menu.add_item("(no one nearby to whisper)", 99)
+		menu.set_item_disabled(menu.get_item_index(99), true)
+	menu.id_pressed.connect(_on_scope_picked)
+	add_child(menu)
+	# The bar sits at the screen bottom, so pop the menu ABOVE the chip (Godot clamps it on-screen anyway).
+	var gp : Rect2 = _scope_btn.get_global_rect()
+	var est_h : int = menu.get_item_count() * 30 + 14
+	menu.position = Vector2i(int(gp.position.x), int(gp.position.y) - est_h)
+	menu.popup()
+	menu.popup_hide.connect(menu.queue_free)
+
+
+func _on_scope_picked(id: int) -> void:
+
+	if id == 0:
+		_exit_private()   # back to All (the room)
+		return
+	var npc : Node = _scope_targets.get(id, null)
+	if not is_instance_valid(npc):
+		return
+	if _in_private:
+		_exit_private()   # leave the current conversation before opening a new one
+	if npc.has_method("open_chat"):
+		npc.open_chat()
+
+
+func _style_popup(menu: PopupMenu) -> void:
+
+	menu.add_theme_stylebox_override("panel", _panel_style(Color(0.16, 0.11, 0.06, 0.97)))
+	menu.add_theme_color_override("font_color", Color(0.95, 0.90, 0.78, 1.0))
+	menu.add_theme_color_override("font_hover_color", Color(1.0, 0.96, 0.72, 1.0))
+	menu.add_theme_color_override("font_disabled_color", Color(0.70, 0.66, 0.58, 0.7))
+	menu.add_theme_font_size_override("font_size", 15)
 
 
 func _connect_npc_signals() -> void:
