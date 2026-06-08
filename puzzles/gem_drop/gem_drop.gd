@@ -44,6 +44,9 @@ var _human_won_match : bool = false
 ## gold won or lost. Read in [method _on_game_complete] +
 ## [method _return_to_launching_scene] to suppress every gold change.
 var _free_table : bool = false
+## True when the player had NO coin to wager → a friendly, no-stake bonding game (rapport only). Distinct from
+## a lobby-chosen free table only for the result wording.
+var _friendly : bool = false
 
 
 func _ready() -> void:
@@ -60,6 +63,11 @@ func _ready() -> void:
 	# handed to the board so the minimax eval reads from it.
 	var setup : Dictionary = PlayerState.consume_lobby_setup()
 	_free_table = bool(setup.get("free", false))
+	# No coin to wager → a FRIENDLY game: no gold won or lost, just a little rapport with the opponent (Troy
+	# 2026-06-08). Reuses the free-table gold suppression; rapport is granted either way.
+	if PlayerState.total_coins <= 0:
+		_free_table = true
+		_friendly = true
 	var seated : Array[NpcPersonality] = NpcRegistry.profiles_from_paths(setup.get("seated_paths", []))
 	_opponent = seated[0] if not seated.is_empty() else NpcRegistry.pick_one()
 	if _opponent != null:
@@ -157,17 +165,19 @@ func _on_game_complete(winner: int, human_rounds: int, ai_rounds: int) -> void:
 
 	_you_turn_label.visible = false
 	_ai_turn_label.visible = false
+	# Rapport — playing a full match builds a little rapport with the opponent; winning earns a bit more.
+	var gain : int = PLAY_AFFINITY + (WIN_AFFINITY_BONUS if winner == GemDropBoard.HUMAN_PLAYER else 0)
+	var tail : String = "click anywhere or ESC to return"
+	if _friendly:
+		tail = "Friendly game — +%d rapport with %s   ·   %s" % [gain, _opponent_short_name(), tail]
 	if winner == GemDropBoard.HUMAN_PLAYER:
-		_rounds_label.text = "YOU WIN!   %d rounds to %d   ·   click anywhere or ESC to return" % [human_rounds, ai_rounds]
+		_rounds_label.text = "YOU WIN!   %d rounds to %d   ·   %s" % [human_rounds, ai_rounds, tail]
 		if not _free_table:
 			award_winnings(WINNINGS_ON_VICTORY, "Gem Drop winnings")
 		_human_won_match = true
 	else:
-		_rounds_label.text = "%s WINS!   %d rounds to %d   ·   click anywhere or ESC to return" % [_opponent_full_name(), ai_rounds, human_rounds]
-	# Rapport — playing a full match builds a little rapport with the
-	# opponent; winning earns their respect for a bit more.
+		_rounds_label.text = "%s WINS!   %d rounds to %d   ·   %s" % [_opponent_full_name(), ai_rounds, human_rounds, tail]
 	if _opponent != null:
-		var gain : int = PLAY_AFFINITY + (WIN_AFFINITY_BONUS if winner == GemDropBoard.HUMAN_PLAYER else 0)
 		PlayerState.add_affinity(_opponent.npc_name, gain)
 	# Final-line context reflects whether a tiebreaker was needed.
 	if _board.round_number >= GemDropBoard.TIEBREAKER_ROUND:
