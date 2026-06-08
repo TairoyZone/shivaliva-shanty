@@ -117,6 +117,8 @@ func _render() -> void:
 
 	_content.add_child(_header())
 	_content.add_child(_rule())
+	_content.add_child(_abilities_section())   # the "why hire them" info, up top
+	_content.add_child(_rule())
 	_content.add_child(_crew_section())
 	_content.add_child(_rule())
 
@@ -249,6 +251,36 @@ func _promote() -> void:
 
 func _demote() -> void:
 	PlayerState.cycle_crew_rank(_npc_name, -1)
+
+
+# --- abilities (the "why hire them" readout) ---------------------------
+
+func _abilities_section() -> Control:
+
+	var box : VBoxContainer = VBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	box.add_child(_section("Abilities"))
+	for s in CrewSkills.SKILLS:
+		box.add_child(_skill_row(s, CrewSkills.rating(_npc_name, s)))
+	return box
+
+
+func _skill_row(skill: String, value: int) -> Control:
+
+	var row : HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	var l : Label = Label.new()
+	l.text = skill
+	l.add_theme_font_size_override("font_size", 14)
+	l.add_theme_color_override("font_color", INK)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(l)
+	var st : Label = Label.new()
+	st.text = CrewSkills.stars(value)
+	st.add_theme_font_size_override("font_size", 14)
+	st.add_theme_color_override("font_color", Color(0.95, 0.78, 0.30, 1.0))
+	row.add_child(st)
+	return row
 
 
 # --- small builders ----------------------------------------------------

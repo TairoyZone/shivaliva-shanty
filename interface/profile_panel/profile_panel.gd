@@ -55,6 +55,7 @@ func _ready() -> void:
 	_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_root.add_theme_constant_override("separation", 8)
 	scroll.add_child(_root)
+	PlayerState.crew_changed.connect(refresh)   # the roster updates live on hire / promote / dismiss
 	refresh()
 
 
@@ -63,6 +64,7 @@ func refresh() -> void:
 	if _root == null:
 		return
 	for child in _root.get_children():
+		_root.remove_child(child)   # immediate so a crew_changed rebuild never overlaps the old rows for a frame
 		child.queue_free()
 	_root.add_child(_make_header())
 	_root.add_child(_rule())
@@ -70,6 +72,8 @@ func refresh() -> void:
 	_root.add_child(_make_center_column())   # avatar + trophies
 	_root.add_child(_rule())
 	_root.add_child(_make_left_column())     # reputation + fleet
+	_root.add_child(_rule())
+	_root.add_child(_make_crew_section())    # your crew roster
 	_root.add_child(_rule())
 	_root.add_child(_make_skills_column())   # skills
 
@@ -271,6 +275,111 @@ func _make_skills_column() -> Control:
 			if PlayerState.MASTERY_PUZZLES.has(pid):
 				col.add_child(_make_skill_row(String(pid)))
 	return col
+
+
+# --- Crew roster: your whole crew at a glance + rank controls ---------
+
+func _make_crew_section() -> Control:
+
+	var col : VBoxContainer = VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 5)
+	col.add_child(_section_label("Crew   %d" % PlayerState.crew_size()))
+	if PlayerState.crew.is_empty():
+		col.add_child(_muted_line("No crew yet — recruit a Confidant from their Profile."))
+		return col
+	for npc_name in PlayerState.crew:
+		col.add_child(_crew_row(String(npc_name)))
+	return col
+
+
+func _crew_row(npc_name: String) -> Control:
+
+	var card : PanelContainer = PanelContainer.new()
+	card.add_theme_stylebox_override("panel", _card_style())
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var row : HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	card.add_child(row)
+
+	# Colour dot.
+	var dot : Panel = Panel.new()
+	var ds : StyleBoxFlat = StyleBoxFlat.new()
+	ds.bg_color = _npc_color(npc_name)
+	ds.border_color = COLOR_FRAME
+	ds.set_border_width_all(1)
+	ds.set_corner_radius_all(11)
+	dot.add_theme_stylebox_override("panel", ds)
+	dot.custom_minimum_size = Vector2(22, 22)
+	dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(dot)
+
+	# Name + rank · top skill.
+	var v : VBoxContainer = VBoxContainer.new()
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var name_l : Label = Label.new()
+	name_l.text = _given_name(npc_name)
+	name_l.add_theme_font_size_override("font_size", 15)
+	name_l.add_theme_color_override("font_color", COLOR_INK)
+	name_l.clip_text = true
+	v.add_child(name_l)
+	var top : String = CrewSkills.top_skill(npc_name)
+	var sub : Label = Label.new()
+	sub.text = PlayerState.crew_rank(npc_name) + ("   ·   %s" % top if not top.is_empty() else "")
+	sub.add_theme_font_size_override("font_size", 12)
+	sub.add_theme_color_override("font_color", COLOR_INK_SOFT)
+	v.add_child(sub)
+	row.add_child(v)
+
+	# Rank controls.
+	var idx : int = int(PlayerState.crew.get(npc_name, 0))
+	var up : Button = _mini_btn("▲")
+	up.disabled = idx >= PlayerState.CREW_RANKS.size() - 1
+	up.pressed.connect(func() -> void: PlayerState.cycle_crew_rank(npc_name, 1))
+	row.add_child(up)
+	var down : Button = _mini_btn("▼")
+	down.disabled = idx <= 0
+	down.pressed.connect(func() -> void: PlayerState.cycle_crew_rank(npc_name, -1))
+	row.add_child(down)
+	var off : Button = _mini_btn("✕")
+	off.pressed.connect(func() -> void: PlayerState.dismiss_crew(npc_name))
+	row.add_child(off)
+	return card
+
+
+func _npc_color(npc_name: String) -> Color:
+
+	for p in NpcRegistry.all():
+		if p.npc_name == npc_name:
+			return p.portrait_color
+	return Color(0.6, 0.6, 0.7, 1.0)
+
+
+func _mini_btn(text: String) -> Button:
+
+	var b : Button = Button.new()
+	b.text = text
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(30, 28)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b.add_theme_font_size_override("font_size", 14)
+	b.add_theme_color_override("font_color", Color(0.95, 0.88, 0.66, 1.0))
+	for st in ["normal", "hover", "pressed", "disabled"]:
+		var s : StyleBoxFlat = StyleBoxFlat.new()
+		var bg : Color = Color(0.26, 0.18, 0.10, 1.0)
+		if st == "hover":
+			bg = bg.lightened(0.12)
+		elif st == "pressed":
+			bg = bg.darkened(0.10)
+		elif st == "disabled":
+			bg = bg.darkened(0.30)
+		s.bg_color = bg
+		s.border_color = COLOR_FRAME
+		s.set_border_width_all(1)
+		s.set_corner_radius_all(6)
+		b.add_theme_stylebox_override(st, s)
+	return b
 
 
 func _make_skill_row(puzzle_id: String) -> Control:
