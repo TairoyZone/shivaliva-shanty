@@ -1210,7 +1210,11 @@ func hire_crew(npc_name: String) -> bool:
 func dismiss_crew(npc_name: String) -> void:
 
 	if crew.erase(npc_name):
+		for k in voyage_stations.keys():   # a dismissed hand can't keep a station post
+			if String(voyage_stations[k]) == npc_name:
+				voyage_stations.erase(k)
 		crew_changed.emit()
+		voyage_stations_changed.emit()
 		_save()
 
 

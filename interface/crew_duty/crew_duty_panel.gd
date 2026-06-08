@@ -64,6 +64,7 @@ func _ready() -> void:
 	_panel.add_child(_content)
 
 	add_child(EscToClose.new(_close))
+	PlayerState.voyage_stations_changed.connect(_render)   # re-render when an assignment changes (single source)
 	_render()
 	ModalFx.appear(_panel, _dim)
 
@@ -171,8 +172,9 @@ func _station_row(station: String) -> Control:
 
 func _on_pick(station: String, npc_name: String) -> void:
 
+	# Emits voyage_stations_changed → _render (a hand can only hold one post, so assigning may have cleared
+	# another row — the signal rebuilds every row).
 	PlayerState.set_voyage_station(station, npc_name)
-	_render()   # a hand can only hold one post, so assigning may have cleared another row — rebuild all
 
 
 # --- small builders ---------------------------------------------------
