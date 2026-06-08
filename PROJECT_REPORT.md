@@ -1,6 +1,6 @@
 # Shivaliva Shanty — Project Report
 
-_Last updated: 2026-06-08_
+_Last updated: 2026-06-09_
 
 ## What it is
 A single-player-first, retro-charming **puzzle-skill adventure** among floating sky-islands — a
@@ -75,6 +75,44 @@ finished). Adversarially reviewed (3 bugs fixed) + several playtest fixes alread
 - **Inheritance over duplication; scene-per-component.**
 - Build proactively, flag only big design forks; commit freely; **never push without an explicit ask.**
 
+## This session (2026-06-08 → 09) — the ship-owning + crew arc (all committed)
+A Troy-driven depth pass on **owning a ship + running a crew** — a deliberate expansion past the pure polish
+lock, closing the gap where "owning a ship" meant nothing mechanical. Each piece scan-verified; the risky ones
+adversarially reviewed.
+
+- **NPC profiles + the CREW foundation:** an `NpcProfileCard` (portrait · role · your rapport · bio · their
+  favour) opening with an **Abilities** ★ readout (`CrewSkills` — Combat/Sailing/Repair/Cards/Craft, 1–5, tuned
+  distinct per cast) = the "why hire them". **Recruit** a CONFIDANT (rapport ≥ 80, the tier the affinity design
+  already reserved) → a persisted **`crew`** with **ranks** (Deckhand→First Mate) → a **crew roster** on your
+  ★ Profile (promote / demote / dismiss, live).
+- **Duty-stations (full — 6 phases, adversarially reviewed):** assign crew to the voyage's three stations
+  (Sailing→Loft, Repair→Patchworks, Combat→boarding) via a deck **Crew Duty** panel. You man ONE station live;
+  the crew you posted to the others are auto-resolved **by skill into the real voyage code points** — a posted
+  sailor slows the Loft's rise (`sailing_rise_relief`), a carpenter passively seals holes (gated by
+  `mastery_id != "patchworks"` so it never double-dips when you patch by hand), a fighter adds boarding-footing
+  clumps (`voyage_seed_from_lift`).
+- **Captain your OWN ship — the ownership gap closed:** owning a ship was *vanity* ("set sail" ran the jobbing
+  loop on a borrowed hull). Now a **"Captain the Driftpod"** row sails YOUR ship: her name on the deck (you
+  captain; your top hand is the "Mate"), her **persisted hull condition carried in → damaged → written back**
+  on arrival (so the port Patchworks finally mends a hull that gets hurt). Shared
+  `PlayerState.captain_own_voyage`; reviewed (one field-bleed fix on the jobbing reset).
+- **A moored Driftpod you physically walk onto:** a `Dock` pier off Cradle Rock's shore edge with the
+  **`MooredShip`** berthed at it (appears once owned; drawn breaches show her wear) — walk out + **Board** to
+  set sail. Containment is an **editable `CollisionPolygon2D`** in the scene (Troy shaped it on sight); dock +
+  ship sizes are inspector-tunable (`steps`/`step_len`/`plank_width`, `ship_scale`).
+- **Trade system:** click-to-add barter with NPCs (hand items / gold both ways), economy-reviewed (barter
+  never out-pays delivery; the favour gold-tip removed as a renewable tap) + a visual pass (icon slots, coin chip).
+- **Ambient room chat + smarter NPCs:** a new `RoomChat` autoload — scene-wide **"All"** chat where present
+  NPCs may pipe up (a name-mention or a room greeting elicits a reply); **environment awareness** (NPCs know
+  the room they're in); broke-player **friendly Gem Drop** (no stake at zero gold → rapport only).
+- **Chat scope selector (your Valorant idea):** a persistent left chip — **"All ▾"** (the room) / **"→ Name ▾"**
+  (private, in the NPC's colour) — opens a picker of everyone present to choose who you're talking to.
+- **Dev slash-commands** (debug builds only — replaced F-keys that clashed with Godot's editor): `/crew` (seed
+  a test crew: cast → Confidant + 4 hired), `/gold`, `/holes`, `/mend`, `/wreck`, `/help`.
+- **Fixes:** the ★ Profile tab rebuilt as a single vertical column (the 3-column layout kept spilling Skills
+  off the panel); free poker = 1000-chip standard buy-in; mining "to dig" meter moved beside the board + its
+  HUD overlap fixed; no-negative-gold honesty on the Gem-Drop stake.
+
 ## Recent work (2026-06-05 → 08, all committed)
 A. **AI NPC chat — the unique hook (2026-06-07):** chat freely with the cast; in-character LLM replies
    (DeepSeek via a key-safe **proxy**, personality on `NpcPersonality` chat_* fields), routed through the
@@ -122,6 +160,12 @@ C. **Economy guard (2026-06-08):** gold can never go negative; cash play is gate
    placeholder `.wav` synthesised in-engine (no lifted audio); first call site = the gold "coin".
 
 ## What's next
+- **🚢 SHIP-OWNING + CREW (this phase, Troy-driven):** playtest the full loop end-to-end — **recruit** (or
+  `/crew`) → **Crew Duty** assign on the deck → **captain the Driftpod** from the moored ship → feel the
+  station effects + the hull carry/repair. **Tune the duty-station balance** (Repair's 2-holes/leg seal is the
+  strongest knob; Sailing pays off most when you man the Loft live). The dock collision is finalized (Troy
+  shaped it); nudge dock/ship size + position to taste. Possible follow-ups: a self-captain booty-cut bonus,
+  more cast-recruitable depth, a dedicated crew/duty-station UI polish.
 - **⏳ IN PROGRESS — refine the HUD (Troy 2026-06-07):** Troy said "I still need to refine the HUD" —
   the overhaul above is done + reviewed, but he wants more refinement (specifics TBD — ask him). The deck
   HUD, vessel panel, meter bars, pause menu + chart strip are all live; iterate on feel/layout from there.
