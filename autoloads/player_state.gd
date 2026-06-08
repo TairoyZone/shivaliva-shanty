@@ -981,6 +981,65 @@ func active_ship_name() -> String:
 	return ship_name(id) if not id.is_empty() else ""
 
 
+# --- Captain your OWN ship (a self-captained voyage) ------------------
+const SELF_VOYAGE_LEGS_MIN : int = 2
+const SELF_VOYAGE_LEGS_MAX : int = 4
+const SELF_VOYAGE_FOES : Array = ["a sky-brigand sloop", "a marine cutter", "a band of sky-marauders", "a corsair brig"]
+const SELF_VOYAGE_ENCOUNTER_CHANCE : float = 0.5
+
+## Set up a SELF-CAPTAINED voyage on your owned ship, bound for the nearest OTHER island (from
+## [member voyage_home_scene]). Rolls the route + seeds the hull from your ship's persisted condition + marks
+## it self-captained (so the holes write BACK on arrival). Returns the ship-deck scene path to change to (the
+## caller sets voyage_home_scene first + does the scene change), or "" if you own no ship. Shared by the
+## Voyages board's "Captain the Driftpod" row AND the moored-ship Board prop.
+func captain_own_voyage() -> String:
+
+	if not has_ship():
+		return ""
+	var to_cradle : bool = voyage_home_scene.find("frontier_isle") != -1
+	var dest_name : String = "Cradle Rock" if to_cradle else "Driftspar"
+	var dest_scene : String = "res://levels/shore/shore.tscn" if to_cradle else "res://levels/frontier_isle/frontier_isle.tscn"
+	var legs : int = SELF_VOYAGE_LEGS_MIN + randi() % (SELF_VOYAGE_LEGS_MAX - SELF_VOYAGE_LEGS_MIN + 1)
+	var enc : Array = []
+	var pos : Array = []
+	var any_fight : bool = false
+	for _i in legs:
+		if randf() < SELF_VOYAGE_ENCOUNTER_CHANCE:
+			enc.append(SELF_VOYAGE_FOES[randi() % SELF_VOYAGE_FOES.size()])
+			any_fight = true
+		else:
+			enc.append("")
+		pos.append(randf_range(0.28, 0.78))
+	if not any_fight and legs > 0:
+		enc[legs - 1] = SELF_VOYAGE_FOES[randi() % SELF_VOYAGE_FOES.size()]
+	# Your first mate runs the deck while YOU captain — your first recruited hand, else the Skydock master.
+	var mate : String = "Stormy Jericho"
+	if not crew.is_empty():
+		mate = String(crew.keys()[0])
+	var start_holes : int = ship_open_holes()   # read BEFORE voyage_active flips → reads the owned ship's condition
+	pillage_captain = mate
+	pillage_crew = "your crew"
+	pillage_ship_name = active_ship_name()
+	voyage_self_captained = true
+	pillage_destination = dest_name
+	pillage_destination_scene = dest_scene
+	pillage_legs_total = legs
+	pillage_encounters = enc
+	pillage_encounter_pos = pos
+	pillage_leg = 0
+	pillage_log = []
+	pillage_phase = 0
+	voyage_active = true
+	voyage_ship_t = 0.0
+	voyage_open_holes = start_holes
+	voyage_station_state = {}
+	voyage_stations = {}
+	BoardingMelee.clear()
+	pillage_duty_crew = DutyReport.build_roster(mate)
+	last_duty_report = []
+	return "res://levels/ship_deck/ship_deck.tscn"
+
+
 ## Max hull holes for a ship id (its sink ceiling + Patchworks cap).
 func ship_max_holes(ship_id: String) -> int:
 

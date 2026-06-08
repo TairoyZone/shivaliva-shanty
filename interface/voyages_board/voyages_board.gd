@@ -266,39 +266,12 @@ func _make_captain_own_row() -> PanelContainer:
 
 func _on_captain_own() -> void:
 
-	var dest : Dictionary = _destination_island()
-	var legs : int = LEGS_MIN + randi() % (LEGS_MAX - LEGS_MIN + 1)
-	# Seed the voyage hull from YOUR ship's persisted condition BEFORE voyage_active flips (so ship_open_holes
-	# reads the owned ship, not the transient). She sails with the damage she's been carrying.
-	var start_holes : int = PlayerState.ship_open_holes()
-	# Your first mate runs the deck banter while YOU captain — a recruited hand if you have any, else the
-	# Skydock master who saw you off.
-	var mate : String = "Stormy Jericho"
-	if not PlayerState.crew.is_empty():
-		mate = String(PlayerState.crew.keys()[0])
-	PlayerState.pillage_captain = mate
-	PlayerState.pillage_crew = "your crew"
-	PlayerState.pillage_ship_name = PlayerState.active_ship_name()
-	PlayerState.voyage_self_captained = true
-	PlayerState.pillage_destination = String(dest["name"])
-	PlayerState.pillage_destination_scene = String(dest["scene"])
-	PlayerState.pillage_legs_total = legs
-	PlayerState.pillage_encounters = _roll_encounters(legs)
-	PlayerState.pillage_encounter_pos = _roll_encounter_positions(legs)
-	PlayerState.pillage_leg = 0
-	PlayerState.pillage_log = []
-	PlayerState.pillage_phase = 0
-	PlayerState.voyage_active = true
-	PlayerState.voyage_ship_t = 0.0
-	PlayerState.voyage_open_holes = start_holes   # YOUR ship's holes carried into the run
-	PlayerState.voyage_station_state = {}
-	PlayerState.voyage_stations = {}
-	BoardingMelee.clear()
-	PlayerState.pillage_duty_crew = DutyReport.build_roster(mate)
-	PlayerState.last_duty_report = []
+	var scene : String = PlayerState.captain_own_voyage()   # shared self-captain setup (home scene set by the helm)
+	if scene.is_empty():
+		return
 	if get_tree() != null:
 		get_tree().paused = false
-	get_tree().change_scene_to_file(SHIP_DECK_SCENE)
+	get_tree().change_scene_to_file(scene)
 
 
 # --- Fare: direct paid passage (no pillage) --------------------------
