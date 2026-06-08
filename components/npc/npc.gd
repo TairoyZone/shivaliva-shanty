@@ -151,7 +151,7 @@ func interact() -> void:
 	opts.append({"label": "Trade", "action": _open_trade})
 	if NPC_FAVORS.has(npc_name):
 		opts.append({"label": "Favour", "action": _open_favor_modal})
-	opts.append({"label": "Hearts", "action": _open_hearts})
+	opts.append({"label": "Profile", "action": _open_profile})
 	var at : Vector2 = get_global_transform_with_canvas().origin + Vector2(0.0, -36.0)
 	NpcMenu.open(self, at, npc_name, portrait_color, opts)
 	interacted.emit()
@@ -260,6 +260,18 @@ func _on_traded(was_favor: bool) -> void:
 		_favor_handled_this_visit = true
 	else:
 		_traded_this_visit = true
+
+
+# Profile → the NPC's character page (role, your rapport, bio, their favour) + the CREW recruit/rank panel.
+func _open_profile() -> void:
+
+	var persona : NpcPersonality = _resolve_personality()
+	var bio : String = persona.chat_appearance if persona != null else ""
+	var favor : Dictionary = {}
+	if NPC_FAVORS.has(npc_name):
+		var f : Dictionary = NPC_FAVORS[npc_name]
+		favor = {"item": String(f["item"]), "amount": int(f["amount"]), "ask": String(f["ask"])}
+	NpcProfileCard.open(self, {"npc_name": npc_name, "npc_color": portrait_color, "bio": bio, "favor": favor})
 
 
 # Speaker header shown in the dialog overlay — name plus current rapport

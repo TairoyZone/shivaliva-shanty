@@ -98,6 +98,9 @@ const WOOD_TO_GOLD_RATE : float = 1.0
 ## rate rewards the tougher job so it isn't out-earned by easy chopping.
 const ORE_TO_GOLD_RATE : float = 2.0
 const MAX_AFFINITY : int = 100
+## Crew ranks (low → high) the player promotes a recruit through; recruiting needs Confidant rapport.
+const CREW_RANKS : Array[String] = ["Deckhand", "Crewmate", "Officer", "First Mate"]
+const RECRUIT_MIN_AFFINITY : int = 80
 
 # --- Puzzle mastery (per-puzzle proficiency ladder) --------------------
 ## Reskin of YPP's per-puzzle "Standing" — but ABSOLUTE + non-decaying +
@@ -570,6 +573,12 @@ var npc_affinity : Dictionary = {}
 ## "you've helped me N times" warmth + is the hook for future favour
 ## milestones. See [[parlor-social-system]].
 var npc_favor_done : Dictionary = {}
+
+## Your CREW — npc_name → rank INDEX into [constant CREW_RANKS]. Persisted; the foundation for the hire/rank
+## system (the NPC profile recruits + ranks them). You may only recruit a CONFIDANT (rapport ≥
+## [constant RECRUIT_MIN_AFFINITY]), per [constant AFFINITY_TIERS]' design note.
+var crew : Dictionary = {}
+signal crew_changed
 
 ## Favours the player has ACCEPTED but not yet turned in (name → {item,
 ## amount}). Persisted. Surfaced in the Objectives log via
@@ -1134,6 +1143,61 @@ func add_affinity(npc_name: String, amount: int) -> void:
 	_save()
 
 
+# --- Crew (hire + ranks) — the foundation for "start a crew" ------------
+
+## Can the player recruit this NPC? Only a CONFIDANT (the design's "can recruit" tier).
+func can_recruit(npc_name: String) -> bool:
+
+	return get_affinity(npc_name) >= RECRUIT_MIN_AFFINITY
+
+
+func is_in_crew(npc_name: String) -> bool:
+
+	return crew.has(npc_name)
+
+
+## The crew member's rank name, or "" if they're not in your crew.
+func crew_rank(npc_name: String) -> String:
+
+	if not crew.has(npc_name):
+		return ""
+	return CREW_RANKS[clampi(int(crew[npc_name]), 0, CREW_RANKS.size() - 1)]
+
+
+func crew_size() -> int:
+
+	return crew.size()
+
+
+## Recruit an NPC (joins at the lowest rank). No-ops unless they're recruitable + not already aboard.
+func hire_crew(npc_name: String) -> bool:
+
+	if npc_name.is_empty() or crew.has(npc_name) or not can_recruit(npc_name):
+		return false
+	crew[npc_name] = 0
+	crew_changed.emit()
+	_save()
+	return true
+
+
+func dismiss_crew(npc_name: String) -> void:
+
+	if crew.erase(npc_name):
+		crew_changed.emit()
+		_save()
+
+
+## Promote (+1) / demote (-1) a crew member, clamped to the rank ladder. Returns the new rank name.
+func cycle_crew_rank(npc_name: String, dir: int) -> String:
+
+	if not crew.has(npc_name):
+		return ""
+	crew[npc_name] = clampi(int(crew[npc_name]) + dir, 0, CREW_RANKS.size() - 1)
+	crew_changed.emit()
+	_save()
+	return crew_rank(npc_name)
+
+
 ## Record that the player completed a favour for [param npc_name]. Bumps
 ## the lifetime count, persists, and returns the new total (for the
 ## "you've helped me N times" thank-you). Rapport itself is granted
@@ -1489,6 +1553,7 @@ func clear_save() -> void:
 	equipped_weapon = "brawl"
 	npc_affinity = {}
 	npc_favor_done = {}
+	crew = {}
 	active_favors = {}
 	tournaments_won = 0
 	last_scene = ""
@@ -1532,6 +1597,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "equipped_weapon", equipped_weapon)
 	config.set_value(SAVE_SECTION, "npc_affinity", npc_affinity)
 	config.set_value(SAVE_SECTION, "npc_favor_done", npc_favor_done)
+	config.set_value(SAVE_SECTION, "crew", crew)
 	config.set_value(SAVE_SECTION, "active_favors", active_favors)
 	config.set_value(SAVE_SECTION, "tournaments_won", tournaments_won)
 	config.set_value(SAVE_SECTION, "last_scene", last_scene)
@@ -1568,6 +1634,7 @@ func _load() -> void:
 	equipped_weapon = String(config.get_value(SAVE_SECTION, "equipped_weapon", "brawl"))
 	npc_affinity = config.get_value(SAVE_SECTION, "npc_affinity", {})
 	npc_favor_done = config.get_value(SAVE_SECTION, "npc_favor_done", {})
+	crew = config.get_value(SAVE_SECTION, "crew", {})
 	active_favors = config.get_value(SAVE_SECTION, "active_favors", {})
 	tournaments_won = int(config.get_value(SAVE_SECTION, "tournaments_won", 0))
 	last_scene = String(config.get_value(SAVE_SECTION, "last_scene", ""))

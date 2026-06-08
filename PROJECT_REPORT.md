@@ -151,5 +151,4 @@ decisions live in the auto-memory (`…/memory/MEMORY.md`); the code map lives i
 --- DEMO READINESS ---
 = a self-playthrough + a written playtest checklist/script before a friend plays
 --- BIGGER SYSTEMS ---
-= start a crew: hire crew members + assign their ranks
 = dive deeper into the ship-owning system
