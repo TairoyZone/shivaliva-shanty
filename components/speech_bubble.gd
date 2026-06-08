@@ -11,14 +11,15 @@ const FONT_SIZE : int = 17
 var _text : String = ""
 
 
-static func say(npc: Node2D, text: String, y: float = -118.0) -> void:
+static func say(npc: Node2D, text: String, y: float = -118.0) -> SpeechBubble:
 
 	if npc == null or text.is_empty():
-		return
+		return null
 	var b : SpeechBubble = SpeechBubble.new()
 	b._text = text
 	b.position = Vector2(0.0, y)
 	npc.add_child(b)
+	return b
 
 
 func _ready() -> void:

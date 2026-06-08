@@ -1,24 +1,33 @@
 ## RoomChat — AMBIENT scene-wide NPC chat (the "living room" layer). When the player speaks PUBLICLY in the
-## chat box, the NPCs PRESENT in the scene may pipe up: a free main-thread HEURISTIC picks 0–2 responders
-## (personality-weighted chance; a NAME-MENTION is a forced, reliable reply), then a small pool of
-## HTTPRequests fires one short LLM line each (staggered) through NpcBrain's shared transport. Silence is the
-## common, free default ("they may or may not reply"). The private 1-on-1 "Chat" ([ChatBox.start_private_chat])
-## is untouched. Designed via a 4-agent design workflow (2026-06-09). Autoloaded after NpcBrain + ChatBox.
+## chat box, the NPCs PRESENT in the scene may pipe up. A free main-thread HEURISTIC picks responders; the
+## LLM (via NpcBrain's shared transport) writes the lines through a small pool of HTTPRequests, staggered.
 ##
-## THE TWO FEEL KNOBS to tune in playtest: AMBIENT_BASE (room livelier/quieter) + MAX_RESPONDERS.
+## THREE kinds of player line:
+##  • NAME-MENTION ("Kerr, ...")        → that NPC is FORCED to answer (no silence).
+##  • ROOM-ADDRESS (a question, or "everyone/anyone/hello/how is...") → a couple of present NPCs reliably
+##    answer (no silence; at least one is guaranteed) — you spoke TO the room, the room answers.
+##  • OVERHEARD remark                  → NPCs may react or stay quiet (the (silent) gate), weighted by
+##    personality/affinity/proximity/topic — silence is a fine, common, cheap outcome.
+##
+## A rolling ROOM TRANSCRIPT is fed into every reply so NPCs respond IN CONTEXT (and never repeat) + can
+## riff on what was just said. The private 1-on-1 "Chat" ([ChatBox.start_private_chat]) is untouched.
+## Designed via a 4-agent workflow + adversarial review (2026-06-09). FEEL KNOBS: AMBIENT_BASE + ROOM_ADDRESS_BONUS.
 extends Node
 
 
 const POOL_SIZE : int = 3              # concurrent LLM calls cap (hard cost ceiling)
-const MAX_RESPONDERS : int = 2         # responders per general line (a name-mention is always answered, exempt)
-const AMBIENT_BASE : float = 0.20      # baseline reply chance — LOW so the room is mostly quiet by default
-const AMBIENT_MAX : float = 0.78       # a general line is never a guaranteed reply
-const NPC_COOLDOWN_MS : int = 9000     # an NPC that just spoke is off the rolled pool this long (name-mention overrides)
-const ROOM_DEBOUNCE_MS : int = 2200    # ignore a fresh general line within this of the last (anti-spam)
-const STAGGER_S : float = 0.7          # gap between staggered responders, so it reads as turn-taking
+const MAX_RESPONDERS : int = 2         # responders per OVERHEARD line (a room-address gets +1; names are exempt)
+const AMBIENT_BASE : float = 0.35      # baseline reply chance for an overheard line (raised — the room felt dead)
+const AMBIENT_MAX : float = 0.92
+const ROOM_ADDRESS_BONUS : float = 0.45  # added when you clearly address the room (a question / greeting)
+const NPC_COOLDOWN_MS : int = 6000     # an NPC that just spoke is off the rolled pool this long (a name / room-address can still pull them)
+const CONTINUATION_MS : int = 18000    # a recently-spoken NPC keeps answering your plain follow-ups (no re-naming needed) — conversational continuity
+const ROOM_DEBOUNCE_MS : int = 1800    # ignore a fresh OVERHEARD line within this of the last (anti-spam; names/room-address bypass)
+const STAGGER_S : float = 0.6          # gap between staggered responders, so it reads as turn-taking
 const NEAR_RANGE : float = 240.0       # px; within this ≈ max proximity weight
-const MIN_CHARS : int = 4              # a general line shorter than this is ignored (a name-mention bypasses)
-const BANTER_CHAINS : bool = false     # v2: NPCs react to EACH OTHER's lines — wire later, flip this
+const MIN_CHARS : int = 3
+const TRANSCRIPT_MAX : int = 10        # rolling room memory fed into each reply (so they don't repeat / respond in context)
+const BANTER_CHAINS : bool = false     # (vestigial flag — banter now emerges for free from the shared transcript + stagger)
 
 ## Tiny per-NPC interest keywords → a topic nudge (the smith perks up at "blade"). Cheap liveliness.
 const INTERESTS : Dictionary = {
@@ -33,11 +42,12 @@ const INTERESTS : Dictionary = {
 	"Hollow Ellison": ["letter", "old days", "lonely", "far", "quiet", "long-range", "gone"],
 }
 
-var _pool : Array = []                 # [{http, busy, npc, persona, token, directed, fallback, using_direct}]
+var _pool : Array = []                 # [{http, busy, npc, persona, token, answer, fallback, using_direct, thinking}]
 var _cooldowns : Dictionary = {}       # npc_name -> Time.get_ticks_msec() when they last spoke
+var _transcript : Array = []           # [{speaker, text}] rolling room conversation, capped
 var _scene_token : int = 0             # bumped on scene change → invalidates in-flight + staggered work
 var _last_scene : Node = null
-var _last_general_ms : int = -100000
+var _last_overheard_ms : int = -100000
 
 
 func _ready() -> void:
@@ -47,20 +57,20 @@ func _ready() -> void:
 		var h : HTTPRequest = HTTPRequest.new()
 		h.timeout = 20.0
 		add_child(h)
-		var slot : Dictionary = {"http": h, "busy": false, "npc": null, "persona": null,
-			"token": -1, "directed": false, "fallback": [], "using_direct": false}
+		var slot : Dictionary = {"http": h, "busy": false, "npc": null, "persona": null, "token": -1,
+			"answer": false, "fallback": [], "using_direct": false, "thinking": null}
 		h.request_completed.connect(_on_slot_done.bind(slot))
 		_pool.append(slot)
 
 
-# Bump the scene token + cancel stale in-flight on ANY scene change — not only when the player next speaks
-# (so an old room's reply can never pass the token guard after you've walked away in silence).
+# Bump the scene token + cancel stale in-flight + reset the room memory on ANY scene change (not only when
+# the player next speaks) — so an old room's reply can never leak, and a new room is a fresh conversation.
 func _process(_delta: float) -> void:
 
 	_check_scene()
 
 
-## THE ENTRY POINT — ChatBox calls this on the PUBLIC speak path. May wake 0–2 present NPCs.
+## THE ENTRY POINT — ChatBox calls this on the PUBLIC speak path. May wake present NPCs.
 func hear(line: String) -> void:
 
 	if not NpcBrain.ai_enabled:
@@ -72,25 +82,27 @@ func hear(line: String) -> void:
 	var present : Array = _present_npcs()
 	if present.is_empty():
 		return
-	var mentioned : Dictionary = _mentioned_set(text.to_lower(), present)
-	# Substance + debounce gates (a name-mention bypasses BOTH — addressing someone always works).
-	if mentioned.is_empty():
+	var lc : String = text.to_lower()
+	var mentioned : Dictionary = _mentioned_set(lc, present)
+	var room_address : bool = _is_room_address(lc)
+	# Substance + debounce gates — bypassed by a name-mention OR a clear room-address (those always engage).
+	if mentioned.is_empty() and not room_address:
 		if text.length() < MIN_CHARS:
 			return
 		var now : int = Time.get_ticks_msec()
-		if now - _last_general_ms < ROOM_DEBOUNCE_MS:
+		if now - _last_overheard_ms < ROOM_DEBOUNCE_MS:
 			return
-		_last_general_ms = now
-	var responders : Array = _select(text, present, mentioned)
+		_last_overheard_ms = now
+	_record("Traveller", text)   # the player's line goes into the room memory (context for every reply)
+	var responders : Array = _select(present, mentioned, room_address, lc)
 	if responders.is_empty():
 		return
 	var others : PackedStringArray = PackedStringArray()
 	for e in present:
 		others.append(_short(e["persona"].npc_name))
-	_dispatch(responders, text, others, _scene_token)
+	_dispatch(responders, others, _scene_token)
 
 
-# Bump the scene token + cancel stale work when the player changes scene (replies for the old room are dropped).
 func _check_scene() -> void:
 
 	var tree : SceneTree = get_tree()
@@ -98,6 +110,7 @@ func _check_scene() -> void:
 	if sc != _last_scene:
 		_last_scene = sc
 		_scene_token += 1
+		_transcript.clear()   # a new room = a fresh conversation
 		for slot in _pool:
 			if slot["busy"]:
 				slot["http"].cancel_request()
@@ -133,21 +146,32 @@ func _persona_for(npc_node: Node) -> NpcPersonality:
 	return null
 
 
-# --- selection (free, instant, the design's heart) -------------------
+# --- selection (free, instant) ---------------------------------------
 
-func _mentioned_set(line_lc: String, present: Array) -> Dictionary:
+# True when the player is clearly addressing the room (a question, or a greeting / "everyone"-style call).
+func _is_room_address(lc: String) -> bool:
+
+	if lc.find("?") != -1:
+		return true
+	for w in ["everyone", "anyone", "you all", "you guys", "y'all", "folks", "hello", "greetings",
+			"how is", "how are", "what's up", "whats up", "good morn", "good day"]:
+		if lc.find(w) != -1:
+			return true
+	return lc.begins_with("hi") or lc.begins_with("hey") or lc.begins_with("ahoy") or lc.begins_with("yo ")
+
+
+func _mentioned_set(lc: String, present: Array) -> Dictionary:
 
 	var out : Dictionary = {}
 	for e in present:
 		var nm : String = e["persona"].npc_name
 		for key in _name_keys(nm):
-			if _word_in(line_lc, key):
+			if _word_in(lc, key):
 				out[nm] = true
 				break
 	return out
 
 
-# Match keys for an NPC: the full name + each ≥3-letter name word ("hearty brian" → ["hearty brian","hearty","brian"]).
 func _name_keys(npc_name: String) -> Array:
 
 	var keys : Array = [npc_name.to_lower()]
@@ -157,58 +181,86 @@ func _name_keys(npc_name: String) -> Array:
 	return keys
 
 
-# Whole-word match so "broken" doesn't fire "Brian". Names are plain letters → safe to put straight in the regex.
-func _word_in(line_lc: String, key: String) -> bool:
+# Whole-word match so "broken" doesn't fire "Brian". Names are plain letters → safe straight in the regex.
+func _word_in(lc: String, key: String) -> bool:
 
 	var re : RegEx = RegEx.new()
 	if re.compile("\\b" + key + "\\b") != OK:
-		return line_lc.find(key) != -1
-	return re.search(line_lc) != null
+		return lc.find(key) != -1
+	return re.search(lc) != null
 
 
-func _select(line: String, present: Array, mentioned: Dictionary) -> Array:
+func _select(present: Array, mentioned: Dictionary, room_address: bool, lc: String) -> Array:
 
 	var now : int = Time.get_ticks_msec()
-	var line_lc : String = line.to_lower()
 	var player : Node = _player_node()
+	var plain : bool = mentioned.is_empty() and not room_address   # a continuation-style line (a reply, not a broadcast)
 	var forced : Array = []
 	var rolled : Array = []
 	for e in present:
 		var persona : NpcPersonality = e["persona"]
 		var nm : String = persona.npc_name
 		if _in_flight(nm):
-			continue   # already answering a previous line — don't double-fire (even on a name-mention)
+			continue   # already answering a previous line — don't double-fire
 		if mentioned.has(nm):
-			forced.append({"node": e["node"], "persona": persona, "directed": true, "chance": 2.0})
+			forced.append({"node": e["node"], "persona": persona, "answer": true, "chance": 2.0})
+			continue
+		if plain and now - int(_cooldowns.get(nm, -100000)) < CONTINUATION_MS:
+			# You've been talking with them — a plain follow-up CONTINUES the thread (they answer, no cooldown).
+			rolled.append({"node": e["node"], "persona": persona, "answer": true, "chance": 1.5})
 			continue
 		if now - int(_cooldowns.get(nm, -100000)) < NPC_COOLDOWN_MS:
-			continue   # recently spoke → not on the rolled pool (a name-mention would have forced them above)
-		var chance : float = _reply_chance(persona, e["node"], player, line_lc)
+			continue   # recently spoke → off the rolled pool (a name-mention would have forced them above)
+		var chance : float = _reply_chance(persona, e["node"], player, lc)
+		if room_address:
+			chance += ROOM_ADDRESS_BONUS
 		if randf() <= chance:
-			rolled.append({"node": e["node"], "persona": persona, "directed": false, "chance": chance})
+			# A room-address responder ANSWERS (no (silent) option); an overhear MAY stay silent.
+			rolled.append({"node": e["node"], "persona": persona, "answer": room_address, "chance": chance})
 	rolled.sort_custom(func(a, b): return a["chance"] > b["chance"])
-	# Named NPCs always answer (exempt from the cap); fill the rest up to MAX_RESPONDERS with the top rolls.
+	var cap : int = MAX_RESPONDERS + (1 if room_address else 0)   # a greeting/question earns one extra voice
 	var responders : Array = forced.duplicate()
 	for r in rolled:
-		if responders.size() >= MAX_RESPONDERS:
+		if responders.size() >= cap:
 			break
 		responders.append(r)
+	# Guarantee that addressing the room gets AT LEAST one reply (the chattiest present soul answers).
+	if room_address and responders.is_empty():
+		var best : Dictionary = _best_candidate(present, now, player, lc)
+		if not best.is_empty():
+			responders.append(best)
 	return responders
 
 
-func _reply_chance(persona: NpcPersonality, node: Node, player: Node, line_lc: String) -> float:
+func _reply_chance(persona: NpcPersonality, node: Node, player: Node, lc: String) -> float:
 
-	# Derived "talkativeness" — we have no extraversion field, so synthesise: pushy + impatient + blurty.
+	# Derived "talkativeness" — no extraversion field, so synthesise: pushy + impatient + blurty.
 	var talk : float = clampf(0.55 * persona.aggression + 0.30 * (1.0 - persona.patience)
 		+ 0.15 * persona.risk_tolerance, 0.0, 1.0)
 	var p : float = AMBIENT_BASE
 	p += 0.45 * talk
 	p += 0.18 * _affinity01(persona.npc_name)
-	p += 0.20 * _proximity01(node, player)
-	if _hits_interest(persona.npc_name, line_lc):
+	p += 0.15 * _proximity01(node, player)
+	if _hits_interest(persona.npc_name, lc):
 		p += 0.22
 	p += randf_range(-0.06, 0.06)
 	return clampf(p, 0.0, AMBIENT_MAX)
+
+
+# The most-likely present NPC to answer (off-cooldown, not in-flight) — used to guarantee a room-address reply.
+func _best_candidate(present: Array, now: int, player: Node, lc: String) -> Dictionary:
+
+	var best : Dictionary = {}
+	var best_c : float = -1.0
+	for e in present:
+		var nm : String = e["persona"].npc_name
+		if _in_flight(nm) or now - int(_cooldowns.get(nm, -100000)) < NPC_COOLDOWN_MS:
+			continue
+		var c : float = _reply_chance(e["persona"], e["node"], player, lc)
+		if c > best_c:
+			best_c = c
+			best = {"node": e["node"], "persona": e["persona"], "answer": true, "chance": c}
+	return best
 
 
 func _affinity01(npc_name: String) -> float:
@@ -219,104 +271,129 @@ func _affinity01(npc_name: String) -> float:
 func _proximity01(node: Node, player: Node) -> float:
 
 	if player == null or not (node is Node2D) or not (player is Node2D):
-		return 0.5   # neutral when we can't measure
+		return 0.5
 	var d : float = (node as Node2D).global_position.distance_to((player as Node2D).global_position)
 	return clampf(1.0 - d / (NEAR_RANGE * 3.0), 0.0, 1.0)
 
 
-func _hits_interest(npc_name: String, line_lc: String) -> bool:
+func _hits_interest(npc_name: String, lc: String) -> bool:
 
 	for k in INTERESTS.get(npc_name, []):
-		if line_lc.find(String(k)) != -1:
+		if lc.find(String(k)) != -1:
 			return true
 	return false
 
 
 # --- dispatch (staggered LLM calls through the pool) -----------------
 
-func _dispatch(responders: Array, line: String, others: PackedStringArray, token: int) -> void:
+func _dispatch(responders: Array, others: PackedStringArray, token: int) -> void:
 
 	var i : int = 0
 	for r in responders:
-		_fire_after(float(i) * STAGGER_S, r, line, others, token)
+		_fire_after(float(i) * STAGGER_S, r, others, token)
 		i += 1
 
 
-func _fire_after(delay: float, r: Dictionary, line: String, others: PackedStringArray, token: int) -> void:
+func _fire_after(delay: float, r: Dictionary, others: PackedStringArray, token: int) -> void:
 
 	if delay > 0.0:
 		await get_tree().create_timer(delay).timeout
 	if token != _scene_token:
 		return   # scene changed during the stagger — abandon
-	_fire(r, line, others, token)
+	_fire(r, others, token)
 
 
-func _fire(r: Dictionary, line: String, others: PackedStringArray, token: int) -> void:
+func _fire(r: Dictionary, others: PackedStringArray, token: int) -> void:
 
 	var slot : Dictionary = _free_slot()
 	if slot.is_empty():
 		return   # pool saturated → drop this responder (silence is always acceptable)
 	var node : Node = r["node"]
 	var persona : NpcPersonality = r["persona"]
-	var directed : bool = r["directed"]
+	var answer : bool = r["answer"]
 	slot["busy"] = true
 	slot["npc"] = node
 	slot["persona"] = persona
 	slot["token"] = token
-	slot["directed"] = directed
+	slot["answer"] = answer
 	slot["fallback"] = (node.dialog_lines if "dialog_lines" in node else [])
-	# A "…" thinking bubble ONLY for a DIRECTED (named) reply — an overhear that turns out (silent) should
-	# leave no trace, so un-named candidates get no dots.
-	if directed and is_instance_valid(node):
-		SpeechBubble.say(node, "…")
+	# Instant "…" feedback above the NPC the moment we dispatch, so a reply never reads as dead air; the real
+	# line REPLACES it (see _on_slot_done). If they end up (silent), the dots just fade — "considered, stayed quiet".
+	slot["thinking"] = SpeechBubble.say(node, "…") if is_instance_valid(node) else null
 	var system : String = NpcBrain.compose_system(persona, false)   # ambient: no secret, saves tokens
-	var user : String = _user_turn(line, directed, others, _short(persona.npc_name))
+	var user : String = _user_turn(answer, others, _short(persona.npc_name))
 	var payload : Dictionary = NpcBrain.build_payload(system, [{"role": "user", "content": user}])
 	slot["using_direct"] = bool(payload["using_direct"])
 	if slot["http"].request(String(payload["url"]), payload["headers"], HTTPClient.METHOD_POST, String(payload["body"])) != OK:
+		_kill_dots(slot["thinking"])
 		slot["busy"] = false
 		slot["npc"] = null
 		slot["persona"] = null
+		slot["thinking"] = null
 
 
-func _user_turn(line: String, directed: bool, others: PackedStringArray, self_short: String) -> String:
+# The user turn embeds the rolling room transcript so the NPC replies IN CONTEXT (and never repeats).
+func _user_turn(answer: bool, others: PackedStringArray, self_short: String) -> String:
 
-	if directed:
-		return ("A traveller looks at YOU and says aloud: \"%s\". Answer them directly, in character, in one or "
-			+ "two short spoken sentences. No narration, no quotes, no your own name.") % line
 	var nearby : Array = []
 	for o in others:
 		if String(o) != self_short:
 			nearby.append(String(o))
-	var nearby_str : String = ", ".join(nearby) if not nearby.is_empty() else "no one in particular"
-	return ("You're in a room with others nearby (%s). A traveller says aloud, to the room: \"%s\". You OVERHEAR "
-		+ "it — it wasn't necessarily aimed at you. If it's natural for YOU to react, reply in ONE short spoken "
-		+ "sentence, in character. If you'd more likely stay quiet, reply with exactly: (silent). No narration, "
-		+ "no quotes, no your own name.") % [nearby_str, line]
+	var intro : String = ""
+	if not nearby.is_empty():
+		intro = "Others in the room with you: %s.\n" % ", ".join(nearby)
+	var convo : String = _convo_block(self_short)
+	if answer:
+		return (intro + convo + "The traveller's latest line above is addressed to the room (and you). Reply to "
+			+ "it naturally, in character, in a sentence or two that BUILDS on the conversation so far — NEVER "
+			+ "repeat something you've already said. No narration, no quotes, no your own name.")
+	return (intro + convo + "You OVERHEARD the room — the latest line above wasn't necessarily aimed at you. If "
+		+ "it's natural for you to react to it, reply with a short, natural in-character line that builds on the "
+		+ "conversation — NEVER repeat what you or others already said. If you'd more likely stay quiet, reply "
+		+ "with exactly: (silent). No narration, no quotes, no your own name.")
+
+
+func _convo_block(self_short: String) -> String:
+
+	if _transcript.is_empty():
+		return ""
+	var lines : Array = []
+	for e in _transcript:
+		var who : String = String(e["speaker"])
+		if who == self_short:
+			who += " (you)"
+		lines.append("%s: %s" % [who, String(e["text"])])
+	return "Recent conversation in the room (most recent last):\n" + "\n".join(lines) + "\n\n"
 
 
 func _on_slot_done(result: int, code: int, _headers: PackedStringArray, body: PackedByteArray, slot: Dictionary) -> void:
 
 	var node : Node = slot["npc"]
 	var persona : NpcPersonality = slot["persona"]
-	var directed : bool = slot["directed"]
+	var answer : bool = slot["answer"]
 	var token : int = slot["token"]
 	var fallback : Array = slot["fallback"]
 	var using_direct : bool = slot["using_direct"]
+	var thinking : Variant = slot["thinking"]
 	# Free the slot first (so it's reusable even if we early-out below).
 	slot["busy"] = false
 	slot["npc"] = null
 	slot["persona"] = null
+	slot["thinking"] = null
 	if persona == null or token != _scene_token:
+		_kill_dots(thinking)
 		return   # scene changed while in flight → drop
 	var reply : String = ""
 	if result == HTTPRequest.RESULT_SUCCESS and code == 200:
 		reply = NpcBrain.parse_reply(using_direct, body).strip_edges()
 	if reply.is_empty() or _is_silent(reply):
-		# General overhear → silence (graceful). DIRECTED → a canned line (you addressed them; silence reads broken).
-		if directed and not fallback.is_empty():
+		# Addressed (name / room) → a canned line on failure (silence reads broken). Overheard → let the "…"
+		# fade naturally (reads as "they considered it, stayed quiet").
+		if answer and not fallback.is_empty():
+			_kill_dots(thinking)
 			_say(node, persona, String(fallback[randi() % fallback.size()]))
 		return
+	_kill_dots(thinking)
 	_say(node, persona, reply)
 
 
@@ -327,6 +404,20 @@ func _say(node: Node, persona: NpcPersonality, text: String) -> void:
 	SpeechBubble.say(node, text)
 	PlayerState.log_event("%s: %s" % [_short(persona.npc_name), text], persona.portrait_color.lightened(0.35))
 	_cooldowns[persona.npc_name] = Time.get_ticks_msec()   # cool down only when they ACTUALLY spoke (not on silence)
+	_record(_short(persona.npc_name), text)                # their line joins the room memory
+
+
+func _record(speaker: String, text: String) -> void:
+
+	_transcript.append({"speaker": speaker, "text": text})
+	while _transcript.size() > TRANSCRIPT_MAX:
+		_transcript.remove_at(0)
+
+
+func _kill_dots(bubble: Variant) -> void:
+
+	if bubble != null and is_instance_valid(bubble):
+		bubble.queue_free()
 
 
 func _is_silent(reply: String) -> bool:
