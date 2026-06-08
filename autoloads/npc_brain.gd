@@ -227,12 +227,43 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 	parts.append(who)
 	if not persona.chat_locale.is_empty():
 		parts.append("You are at %s." % persona.chat_locale)
+	var here : String = _current_place()
+	if not here.is_empty():
+		parts.append(here)   # environment awareness: the ACTUAL room they're standing in right now
 	if include_secret and not persona.chat_secret.is_empty():
 		parts.append("A secret you hold (do NOT volunteer it; only hint at it, or reveal it, if the player "
 			+ "pointedly digs for it — and the more you trust them, the more willing you are): "
 			+ persona.chat_secret)
 	parts.append(_affinity_block(persona.npc_name))
 	return "\n\n".join(parts)
+
+
+## The CURRENT scene's place — fed into the prompt so NPCs reference their ACTUAL surroundings (Troy 2026-06-08),
+## keyed by the scene file's stem. Sky-canon flavour (see [[sky-canon]]); empty for unknown / puzzle scenes.
+const PLACES : Dictionary = {
+	"tavern": "RIGHT NOW you're in The Inn — a warm tavern: a hearth, a card table (poker + gem-drop), cloudberry tea brewing, travellers passing through. Reference your surroundings naturally when it fits.",
+	"forge_interior": "RIGHT NOW you're in the Forge — Cinder Troy's smithy: roaring coals, an anvil, the ring of hammered steel, the smell of hot iron.",
+	"mine": "RIGHT NOW you're in the Mine — dim ore tunnels: pickaxes, raw ore glinting in the rock, dust in the air.",
+	"workshop_interior": "RIGHT NOW you're in the Workshop — Cogwise Godfrey's tinkering den: gears, half-built contraptions, the tick of clockwork.",
+	"skydock_interior": "RIGHT NOW you're at the Skydock — the sky-harbour: moored ships, coils of rope, crews coming and going, the tang of stardust.",
+	"healers_hut_interior": "RIGHT NOW you're in the Healer's Hut — Mossy Jade's herb-room: drying plants overhead, poultices, a quiet green calm.",
+	"shore": "RIGHT NOW you're on the Shore — the island's edge: open sky, moored skiffs, and the long drop into the Stardust below.",
+	"forest": "RIGHT NOW you're in the Forest — a sky-island wood: tall timber, the thunk of axes, sawdust underfoot.",
+	"frontier_isle": "RIGHT NOW you're on Driftspar — the frontier sky-island: wild, half-explored, hush and open sky.",
+	"ship_deck": "RIGHT NOW you're on the ship's deck, underway — rigging and helm, the Stardust streaming past below.",
+	"player_shanty_interior": "RIGHT NOW you're in the traveller's little shanty — a humble home on Cradle Rock.",
+}
+
+
+func _current_place() -> String:
+
+	var tree : SceneTree = get_tree()
+	if tree == null or tree.current_scene == null:
+		return ""
+	var path : String = tree.current_scene.scene_file_path
+	if path.is_empty():
+		return ""
+	return String(PLACES.get(path.get_file().get_basename(), ""))
 
 
 # RAPPORT context — the player's standing with this NPC shapes their warmth + openness (first step toward
