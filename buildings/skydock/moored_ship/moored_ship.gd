@@ -15,6 +15,12 @@ const COLOR_SAIL : Color = Color(0.92, 0.89, 0.80, 1.0)
 const COLOR_SAIL_SHADE : Color = Color(0.76, 0.72, 0.62, 1.0)
 const COLOR_BREACH : Color = Color(0.08, 0.07, 0.15, 1.0)
 
+## Visual size of the moored ship (tune in the inspector). The interaction range is SEPARATE (the Area2D shape).
+@export var ship_scale : float = 1.8:
+	set(value):
+		ship_scale = value
+		queue_redraw()
+
 
 func _ready() -> void:
 
@@ -73,27 +79,28 @@ func _draw() -> void:
 
 	if not Engine.is_editor_hint() and not PlayerState.has_ship():
 		return
+	var s : float = ship_scale
 	# Side-view sky-ship hull, bow to the right; origin at the deck's mid-base.
 	var hull : PackedVector2Array = PackedVector2Array([
-		Vector2(-52, -22), Vector2(50, -22), Vector2(72, -8),
-		Vector2(44, 12), Vector2(-44, 12), Vector2(-56, -4)])
+		Vector2(-52, -22) * s, Vector2(50, -22) * s, Vector2(72, -8) * s,
+		Vector2(44, 12) * s, Vector2(-44, 12) * s, Vector2(-56, -4) * s])
 	draw_colored_polygon(hull, COLOR_HULL)
 	var outline : PackedVector2Array = hull.duplicate()
 	outline.append(hull[0])
-	draw_polyline(outline, COLOR_HULL_DARK, 2.0)
+	draw_polyline(outline, COLOR_HULL_DARK, 2.0 * s)
 	# Deck trim stripe.
-	draw_line(Vector2(-52, -22), Vector2(50, -22), COLOR_TRIM, 3.0)
+	draw_line(Vector2(-52, -22) * s, Vector2(50, -22) * s, COLOR_TRIM, 3.0 * s)
 	# Breaches (open holes) — dark notches along the hull, so a battered ship LOOKS battered.
 	var holes : int = 0 if Engine.is_editor_hint() else PlayerState.ship_open_holes()
 	for i in holes:
 		var bx : float = -34.0 + float(i) * 20.0
-		draw_rect(Rect2(bx, -8.0, 11.0, 14.0), COLOR_BREACH)
+		draw_rect(Rect2(bx * s, -8.0 * s, 11.0 * s, 14.0 * s), COLOR_BREACH)
 	# Mast + a billowed sail.
-	var mast_top : Vector2 = Vector2(2, -86)
-	draw_line(Vector2(2, -22), mast_top, COLOR_MAST, 4.0)
-	draw_colored_polygon(PackedVector2Array([Vector2(6, -80), Vector2(44, -62), Vector2(6, -34)]), COLOR_SAIL)
-	draw_colored_polygon(PackedVector2Array([Vector2(6, -56), Vector2(44, -62), Vector2(6, -34)]), COLOR_SAIL_SHADE)
-	draw_line(Vector2(6, -80), Vector2(6, -34), COLOR_HULL_DARK, 2.0)
+	var mast_top : Vector2 = Vector2(2, -86) * s
+	draw_line(Vector2(2, -22) * s, mast_top, COLOR_MAST, 4.0 * s)
+	draw_colored_polygon(PackedVector2Array([Vector2(6, -80) * s, Vector2(44, -62) * s, Vector2(6, -34) * s]), COLOR_SAIL)
+	draw_colored_polygon(PackedVector2Array([Vector2(6, -56) * s, Vector2(44, -62) * s, Vector2(6, -34) * s]), COLOR_SAIL_SHADE)
+	draw_line(Vector2(6, -80) * s, Vector2(6, -34) * s, COLOR_HULL_DARK, 2.0 * s)
 	# Pennant atop the mast.
-	draw_line(mast_top, Vector2(2, -94), COLOR_MAST, 3.0)
-	draw_colored_polygon(PackedVector2Array([Vector2(2, -94), Vector2(22, -90), Vector2(2, -86)]), COLOR_TRIM)
+	draw_line(mast_top, Vector2(2, -94) * s, COLOR_MAST, 3.0 * s)
+	draw_colored_polygon(PackedVector2Array([Vector2(2, -94) * s, Vector2(22, -90) * s, Vector2(2, -86) * s]), COLOR_TRIM)

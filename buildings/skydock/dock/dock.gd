@@ -15,17 +15,17 @@ const COLOR_EDGE : Color = Color(0.19, 0.12, 0.05, 1.0)
 const POST_DROP : float = 64.0
 
 ## How many plank-steps the pier runs out (tune to fit the gap).
-@export var steps : int = 5:
+@export var steps : int = 6:
 	set(value):
 		steps = maxi(1, value)
 		queue_redraw()
 ## One plank-step OUT along the pier (iso 2:1, down-right). Bigger = longer pier.
-@export var step_len : Vector2 = Vector2(40.0, 20.0):
+@export var step_len : Vector2 = Vector2(54.0, 27.0):
 	set(value):
 		step_len = value
 		queue_redraw()
 ## Across the pier's width (iso). Bigger = wider walkway.
-@export var plank_width : Vector2 = Vector2(46.0, -23.0):
+@export var plank_width : Vector2 = Vector2(64.0, -32.0):
 	set(value):
 		plank_width = value
 		queue_redraw()
@@ -45,8 +45,9 @@ func _corners() -> Array:
 	return [Vector2.ZERO, plank_width, far + plank_width, far]
 
 
-# Fence the player onto the planks — walls on the two rails (B-C, D-A) + the far end (C-D); OPEN on the top
-# edge (A-B), which faces the island, so you can step on from Cradle Rock but not off into the void.
+# Wall only the VOID sides (the right rail B-C + the far end C-D) so you can't walk off into the stars. The
+# two ISLAND-facing edges (near A-B + left D-A) stay OPEN — fencing them was blocking the way ON from Cradle
+# Rock. (If you can still slip off a side, tell me which and I'll wall it.)
 func _build_walls() -> void:
 
 	var c : Array = _corners()
@@ -54,7 +55,7 @@ func _build_walls() -> void:
 	body.collision_layer = 2   # "Walls" — what the player's body collides against
 	body.collision_mask = 0
 	add_child(body)
-	for edge in [[c[1], c[2]], [c[2], c[3]], [c[3], c[0]]]:   # B-C (right rail), C-D (far end), D-A (left rail)
+	for edge in [[c[1], c[2]], [c[2], c[3]]]:   # B-C (right rail) + C-D (far end) — the void sides only
 		var seg : SegmentShape2D = SegmentShape2D.new()
 		seg.a = edge[0]
 		seg.b = edge[1]

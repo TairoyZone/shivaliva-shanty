@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://buildings/skydock/moored_ship/moored_ship.gd" id="1_ship"]
 
 [sub_resource type="CircleShape2D" id="proximity_shape"]
-radius = 68.0
+radius = 92.0
 
 [node name="MooredShip" type="Area2D"]
 collision_layer = 4
@@ -24,9 +24,9 @@ visible = false
 modulate = Color(0.78, 1, 0.62, 1)
 z_index = 1
 offset_left = -190.0
-offset_top = -132.0
+offset_top = -188.0
 offset_right = 190.0
-offset_bottom = -108.0
+offset_bottom = -164.0
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 16
