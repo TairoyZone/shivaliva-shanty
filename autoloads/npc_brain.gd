@@ -139,52 +139,60 @@ func _post() -> void:
 	_trim_history()
 	_busy = true
 	thinking_started.emit()
-	_using_direct = not _dev_key.is_empty()
-	var url : String
-	var headers : PackedStringArray
-	var body : String
-	if _using_direct:
-		# DEV-DIRECT: call the OpenAI-compatible LLM (DeepSeek) straight from the game — no proxy/terminal.
-		# The system prompt folds into the first message (OpenAI shape).
-		var oai : Array = [{"role": "system", "content": _system_prompt()}]
-		oai.append_array(_messages)
-		url = _dev_url
-		headers = PackedStringArray(["Content-Type: application/json", "Authorization: Bearer " + _dev_key])
-		body = JSON.stringify({"model": _dev_model, "messages": oai,
-			"max_tokens": REPLY_MAX_TOKENS, "temperature": 0.8})
-	else:
-		# Release path: POST to the proxy (it holds the key + picks the provider).
-		url = endpoint
-		headers = PackedStringArray(["Content-Type: application/json"])
-		if not _secret.is_empty():
-			headers.append("x-shanty-key: " + _secret)
-		body = JSON.stringify({"system": _system_prompt(), "messages": _messages, "max_tokens": REPLY_MAX_TOKENS})
-	var err : int = _http.request(url, headers, HTTPClient.METHOD_POST, body)
+	var p : Dictionary = build_payload(_system_prompt(), _messages)
+	_using_direct = bool(p["using_direct"])
+	var err : int = _http.request(String(p["url"]), p["headers"], HTTPClient.METHOD_POST, String(p["body"]))
 	if err != OK:
 		_busy = false
 		chat_failed.emit("request error %d" % err)
 
 
-# Compose the per-NPC system prompt — the part you tweak via the .tres chat fields. Empty fields are
-# skipped, so a half-filled persona still works.
+## Build the HTTP payload for one chat turn — the ONE place the proxy-vs-dev-direct transport lives (shared by
+## the private path AND RoomChat's ambient pool). Returns {using_direct, url, headers, body}.
+func build_payload(system: String, messages: Array) -> Dictionary:
+
+	if not _dev_key.is_empty():
+		# DEV-DIRECT (OpenAI shape): the system prompt folds into the first message.
+		var oai : Array = [{"role": "system", "content": system}]
+		oai.append_array(messages)
+		return {"using_direct": true, "url": _dev_url,
+			"headers": PackedStringArray(["Content-Type: application/json", "Authorization: Bearer " + _dev_key]),
+			"body": JSON.stringify({"model": _dev_model, "messages": oai, "max_tokens": REPLY_MAX_TOKENS, "temperature": 0.8})}
+	# Release path: POST to the proxy (it holds the key + picks the provider).
+	var headers : PackedStringArray = PackedStringArray(["Content-Type: application/json"])
+	if not _secret.is_empty():
+		headers.append("x-shanty-key: " + _secret)
+	return {"using_direct": false, "url": endpoint, "headers": headers,
+		"body": JSON.stringify({"system": system, "messages": messages, "max_tokens": REPLY_MAX_TOKENS})}
+
+
+# The private path's system prompt. Delegates to compose_system (shared with RoomChat's ambient overhears).
 func _system_prompt() -> String:
 
 	if _persona == null:
 		return WORLD_RULES
+	return compose_system(_persona, true)
+
+
+## Build the persona system prompt for ANY persona — WORLD_RULES + who-you-are + locale + (secret) + the live
+## rapport block. The private path passes include_secret=true; RoomChat's ambient overhears pass false (saves
+## tokens — a passing remark shouldn't risk leaking a secret). The part you tweak via the .tres chat fields.
+func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
+
 	var parts : PackedStringArray = PackedStringArray([WORLD_RULES])
-	var who : String = "You are %s." % _persona.npc_name
-	if not _persona.chat_appearance.is_empty():
-		who += " " + _persona.chat_appearance
-	if not _persona.chat_persona.is_empty():
-		who += " " + _persona.chat_persona
+	var who : String = "You are %s." % persona.npc_name
+	if not persona.chat_appearance.is_empty():
+		who += " " + persona.chat_appearance
+	if not persona.chat_persona.is_empty():
+		who += " " + persona.chat_persona
 	parts.append(who)
-	if not _persona.chat_locale.is_empty():
-		parts.append("You are at %s." % _persona.chat_locale)
-	if not _persona.chat_secret.is_empty():
+	if not persona.chat_locale.is_empty():
+		parts.append("You are at %s." % persona.chat_locale)
+	if include_secret and not persona.chat_secret.is_empty():
 		parts.append("A secret you hold (do NOT volunteer it; only hint at it, or reveal it, if the player "
 			+ "pointedly digs for it — and the more you trust them, the more willing you are): "
-			+ _persona.chat_secret)
-	parts.append(_affinity_block(_persona.npc_name))
+			+ persona.chat_secret)
+	parts.append(_affinity_block(persona.npc_name))
 	return "\n\n".join(parts)
 
 
@@ -230,15 +238,7 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 	if response_code != 200:
 		chat_failed.emit("proxy returned %d" % response_code)
 		return
-	var json : JSON = JSON.new()
-	if json.parse(body.get_string_from_utf8()) != OK:
-		chat_failed.emit("bad response")
-		return
-	var data : Variant = json.get_data()
-	if typeof(data) != TYPE_DICTIONARY:
-		chat_failed.emit("bad response")
-		return
-	var reply : String = _extract_reply(data).strip_edges()
+	var reply : String = parse_reply(_using_direct, body).strip_edges()
 	if reply.is_empty():
 		chat_failed.emit("empty reply")
 		return
@@ -246,11 +246,17 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 	npc_replied.emit(reply)
 
 
-# Pull the reply text — the proxy returns {reply}; dev-direct gets the raw OpenAI
-# {choices:[{message:{content}}]} shape.
-func _extract_reply(data: Dictionary) -> String:
+## Pull the reply text from a raw response body — the proxy returns {reply}; dev-direct gets the OpenAI
+## {choices:[{message:{content}}]} shape. Shared by the private path + RoomChat. "" on any parse failure.
+func parse_reply(using_direct: bool, body: PackedByteArray) -> String:
 
-	if _using_direct:
+	var json : JSON = JSON.new()
+	if json.parse(body.get_string_from_utf8()) != OK:
+		return ""
+	var data : Variant = json.get_data()
+	if typeof(data) != TYPE_DICTIONARY:
+		return ""
+	if using_direct:
 		var choices : Variant = data.get("choices", [])
 		if choices is Array and not choices.is_empty() and choices[0] is Dictionary:
 			var msg : Variant = (choices[0] as Dictionary).get("message", {})

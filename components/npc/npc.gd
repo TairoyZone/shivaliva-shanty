@@ -97,6 +97,7 @@ func _ready() -> void:
 	_apply_tint()
 	_setup_name_tag()
 	if not Engine.is_editor_hint():
+		add_to_group("npc")   # so RoomChat can find present cast for ambient scene chat
 		Juice.bob(self, 2.5, randf_range(1.7, 2.5))   # a gentle idle breathe; varied dur desyncs the cast
 
 

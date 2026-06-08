@@ -266,6 +266,7 @@ func _send(raw: String) -> void:
 	if player != null and player.has_method("speak"):
 		player.speak(text)
 	PlayerState.log_event("You: %s" % text, CHAT_COLOR)
+	RoomChat.hear(text)   # ambient: NPCs present in the room may pipe up (the private path never reaches here)
 	if _input != null:
 		_input.release_focus()   # back to the game so WASD moves again
 
