@@ -47,10 +47,10 @@ func _ready() -> void:
 	panel.anchor_bottom = 0.5
 	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	panel.offset_left = -210.0
-	panel.offset_top = -150.0
-	panel.offset_right = 210.0
-	panel.offset_bottom = 150.0
+	panel.offset_left = -235.0
+	panel.offset_top = -205.0
+	panel.offset_right = 235.0
+	panel.offset_bottom = 205.0
 	add_child(panel)
 	_panel = panel
 
@@ -71,6 +71,7 @@ func _ready() -> void:
 	vbox.add_child(_make_toggle("Sound effects", Audio.sfx_enabled, Audio.set_sfx_enabled))
 	vbox.add_child(_make_toggle("Show chat", ChatBox.chat_visible, ChatBox.set_chat_visible))
 	vbox.add_child(_make_toggle("AI NPC chat", NpcBrain.ai_enabled, NpcBrain.set_ai_enabled))
+	vbox.add_child(_make_key_field())
 
 	var spacer : Control = Control.new()
 	spacer.custom_minimum_size = Vector2(0.0, 10.0)
@@ -117,6 +118,36 @@ func _make_toggle(text: String, on: bool, setter: Callable) -> CheckButton:
 	cb.add_theme_color_override("font_color", Color(0.95, 0.9, 0.78, 1.0))
 	cb.toggled.connect(func(pressed: bool) -> void: setter.call(pressed))
 	return cb
+
+
+# Paste-your-key field (DeepSeek) — the course-simple path: saved to user://settings.cfg (per-machine, never
+# shipped), works on the very next reply, no proxy / env var / restart. Leave blank for the public build.
+func _make_key_field() -> Control:
+
+	var box : VBoxContainer = VBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	var lbl : Label = Label.new()
+	lbl.text = "NPC AI key (DeepSeek)"
+	lbl.add_theme_font_size_override("font_size", 16)
+	lbl.add_theme_color_override("font_color", Color(0.9, 0.83, 0.62, 1.0))
+	box.add_child(lbl)
+	var le : LineEdit = LineEdit.new()
+	le.secret = true
+	le.placeholder_text = "✓ key set — paste a new one to change" if NpcBrain.has_dev_key() else "Paste sk-…  (saved locally, never shipped)"
+	le.add_theme_font_size_override("font_size", 14)
+	le.text_submitted.connect(func(t: String) -> void: _save_key(le, t))
+	le.focus_exited.connect(func() -> void: _save_key(le, le.text))
+	box.add_child(le)
+	return box
+
+
+func _save_key(le: LineEdit, text: String) -> void:
+
+	if text.strip_edges().is_empty():
+		return
+	NpcBrain.set_dev_key(text)
+	le.text = ""
+	le.placeholder_text = "✓ key set — paste a new one to change"
 
 
 func _panel_style() -> StyleBoxFlat:
