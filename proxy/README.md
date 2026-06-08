@@ -44,18 +44,21 @@ Local Ollama needs no key at all (`ollama serve` running, then set `LLM_URL`/`MO
 
 ## Deploy it for the demo
 
-Any host that runs a Node script works (Render, Railway, Fly.io, a small VPS — free tiers exist):
+**→ Full step-by-step in [DEPLOY.md](DEPLOY.md) (tailored for Render).** Short version — any host that runs a
+Node script works (Render, Railway, Fly.io, a small VPS; free tiers exist):
 
-1. Push this `proxy/` folder (or just `server.js`).
-2. Start command: `node server.js`
-3. Set env vars on the host: `LLM_API_KEY` (**required**, your key — only ever here), plus the provider
-   row's `LLM_URL`/`MODEL` if not DeepSeek. Recommended guards:
-   - `SHARED_SECRET` — a random string; if set, the game must send it (`[npc_chat] secret` in
-     `user://settings.cfg`). Stops casual drive-by abuse. Not bulletproof — also keep `MAX_TOKENS_CAP` low.
+1. Push this `proxy/` folder. Start command: `npm start` (or `node server.js`); health check: `/health`.
+2. Set env vars on the host: `LLM_API_KEY` (**required**, your key — only ever here), plus the provider
+   row's `LLM_URL`/`MODEL` if not DeepSeek. The public-distribution guards (defaults are sane):
+   - `SHARED_SECRET` — the game must send it (`[npc_chat] secret` in `user://settings.cfg`). Casual-abuse guard.
+   - `ADMIN_SECRET` — gates the **kill switch** + stats: `POST /admin/disable|enable`, `GET /admin/stats`.
+   - `DAILY_TOKEN_BUDGET` / `RATE_LIMIT_RPM` / `IP_DAILY_CAP` / `MAX_TOKENS_CAP` — cost + flood guards.
    - `ALLOWED_ORIGIN` — for an HTML5/web Itch build, set to the page origin (CORS).
-   - `MAX_TOKENS_CAP` — hard reply-length ceiling (default 400) — your main cost dial.
-4. Point the game at it: set `[npc_chat] endpoint = https://your-proxy.example.com/chat` in
-   `user://settings.cfg` (and `secret = ...` if you set one).
+3. Point the game at it: set `DEFAULT_ENDPOINT` in `autoloads/npc_brain.gd` to `https://your-proxy/chat`
+   (and `[npc_chat] secret` in `user://settings.cfg`), then export.
+
+**The real cost ceiling is the provider balance** — make a fresh key and only top up a small amount; the
+in-memory budget/limits reset on restart, but your balance can't. See DEPLOY.md Step 0.
 
 ## Contract (game ↔ proxy)
 

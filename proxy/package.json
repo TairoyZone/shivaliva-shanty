@@ -1,0 +1,9 @@
+{
+  "name": "shivaliva-npc-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NPC-chat proxy for Shivaliva Shanty — holds the LLM key server-side so the game never ships it.",
+  "type": "commonjs",
+  "engines": { "node": ">=18" },
+  "scripts": { "start": "node server.js" }
+}
