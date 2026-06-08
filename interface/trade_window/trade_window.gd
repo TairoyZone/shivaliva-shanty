@@ -76,13 +76,14 @@ func _ready() -> void:
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_panel.offset_left = -330.0
-	_panel.offset_top = -235.0
+	_panel.offset_top = -248.0
 	_panel.offset_right = 330.0
-	_panel.offset_bottom = 235.0
+	_panel.offset_bottom = 248.0
 	add_child(_panel)
 
 	_content = VBoxContainer.new()
 	_content.add_theme_constant_override("separation", 12)
+	_content.alignment = BoxContainer.ALIGNMENT_CENTER   # vertically centre content (kills the dead space, esp. on the short result screen)
 	_panel.add_child(_content)
 
 	# FAVOUR mode pre-loads the ask (the offer is fixed — confirming is the handover).
@@ -234,21 +235,26 @@ func _render() -> void:
 func _your_column() -> Control:
 
 	var box : VBoxContainer = _column_box("You")
-	# Current offer.
+	# Current offer — framed item slots (+ a gold-gift chip).
 	box.add_child(_sub("Offering"))
+	var offer : HBoxContainer = _slot_strip()
 	var offered : bool = false
 	for id in _offer_items:
 		offered = true
-		var fixed : bool = not _favor.is_empty()   # favour offer is fixed
-		box.add_child(_offer_row("%s ×%d" % [_item_name(String(id)), int(_offer_items[id])], String(id), fixed))
+		var sid : String = String(id)
+		var removable : bool = _favor.is_empty()   # a favour offer is fixed
+		offer.add_child(_slot_button(sid, "×%d" % int(_offer_items[id]),
+			_drop_item.bind(sid) if removable else Callable(), removable))
 	if _offer_gold > 0:
-		box.add_child(_make_caption("Gift: %d gold" % _offer_gold))
+		offer.add_child(_gold_chip(_offer_gold))
 	if not offered and _offer_gold <= 0:
-		box.add_child(_make_caption("(nothing yet)"))
+		offer.add_child(_make_caption("(nothing yet)"))
+	box.add_child(offer)
 
-	# Add-from-bag controls (general mode only — a favour offer is fixed).
+	# Add-from-bag slots (general mode only — a favour offer is fixed).
 	if _favor.is_empty():
 		box.add_child(_sub("Add from your bag"))
+		var bag : HBoxContainer = _slot_strip()
 		var any_item : bool = false
 		for id in PlayerState.ITEM_DEFS:
 			var sid : String = String(id)
@@ -257,12 +263,10 @@ func _your_column() -> Control:
 				continue
 			any_item = true
 			var spare : int = have - int(_offer_items.get(sid, 0))
-			var b : Button = _make_walnut_button("+ %s  (%d)" % [_item_name(sid), spare], Color(0.82, 0.95, 0.7, 1.0))
-			b.disabled = spare <= 0
-			b.pressed.connect(_add_item.bind(sid))
-			box.add_child(b)
+			bag.add_child(_slot_button(sid, "+ (%d)" % spare, _add_item.bind(sid) if spare > 0 else Callable(), spare > 0))
 		if not any_item:
-			box.add_child(_make_caption("Your bag is empty."))
+			bag.add_child(_make_caption("Bag empty"))
+		box.add_child(bag)
 		box.add_child(_gold_gift_row())
 	return box
 
@@ -271,11 +275,14 @@ func _their_column() -> Control:
 
 	var box : VBoxContainer = _column_box(_npc_name)
 	box.add_child(_sub("Offers you"))
-	box.add_child(_make_caption("%d gold" % _npc_gold))
+	var offer : HBoxContainer = _slot_strip()
+	if _npc_gold > 0:
+		offer.add_child(_gold_chip(_npc_gold))
+	if offer.get_child_count() == 0:
+		offer.add_child(_make_caption("their thanks" if _npc_rapport > 0 else "—"))
+	box.add_child(offer)
 	if _npc_rapport > 0:
 		box.add_child(_make_caption("+%d rapport" % _npc_rapport))
-	if _npc_gold <= 0 and _npc_rapport <= 0:
-		box.add_child(_make_caption("—"))
 	return box
 
 
@@ -292,10 +299,10 @@ func _ready_row() -> Control:
 	npc_state.add_theme_color_override("font_color", Color(0.7, 0.92, 0.66, 1.0) if _npc_willing else Color(0.8, 0.75, 0.6, 1.0))
 	row.add_child(npc_state)
 
-	var ready : Button = _make_walnut_button("I'm Ready  ✔", Color(0.82, 1.0, 0.66, 1.0))
-	ready.disabled = not _npc_willing
-	ready.pressed.connect(_confirm)
-	row.add_child(ready)
+	var ready_btn : Button = _make_walnut_button("I'm Ready  ✔", Color(0.82, 1.0, 0.66, 1.0))
+	ready_btn.disabled = not _npc_willing
+	ready_btn.pressed.connect(_confirm)
+	row.add_child(ready_btn)
 
 	var reject : Button = _make_walnut_button("Reject", Color(0.95, 0.78, 0.6, 1.0))
 	reject.pressed.connect(_close)
@@ -307,6 +314,9 @@ func _show_done(title: String, note: String) -> void:
 
 	if is_instance_valid(_dim):
 		_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE   # only the Done button / ESC closes the result — not a stray click
+	# Shrink the (trade-sized) panel down to the short result so it isn't a big empty box.
+	_panel.offset_top = -120.0
+	_panel.offset_bottom = 120.0
 	for c in _content.get_children():
 		c.queue_free()
 	_add_title(title)
@@ -337,17 +347,107 @@ func _column_box(header: String) -> VBoxContainer:
 	return box
 
 
-func _offer_row(text: String, item_id: String, fixed: bool) -> Control:
+func _slot_strip() -> HBoxContainer:
 
-	var row : HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_child(_make_caption(text))
-	if not fixed:
-		var minus : Button = _make_walnut_button("−", Color(0.95, 0.8, 0.6, 1.0))
-		minus.pressed.connect(_drop_item.bind(item_id))
-		row.add_child(minus)
-	return row
+	var h : HBoxContainer = HBoxContainer.new()
+	h.add_theme_constant_override("separation", 8)
+	h.alignment = BoxContainer.ALIGNMENT_CENTER
+	return h
+
+
+# A framed item slot (the item ICON + a tiny label) — clickable if on_click is valid (add from bag / remove
+# from your offer). The icon is set mouse-IGNORE (deferred, since the icon re-asserts STOP in its _ready) so
+# the click lands on the slot, not the icon.
+func _slot_button(item_id: String, sub: String, on_click: Callable, enabled: bool) -> Control:
+
+	var holder : VBoxContainer = VBoxContainer.new()
+	holder.alignment = BoxContainer.ALIGNMENT_CENTER
+	holder.add_theme_constant_override("separation", 2)
+	var btn : Button = Button.new()
+	btn.custom_minimum_size = Vector2(54.0, 54.0)
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.disabled = not enabled
+	for st in ["normal", "hover", "pressed", "disabled"]:
+		btn.add_theme_stylebox_override(st, _slot_style(st))
+	if on_click.is_valid():
+		btn.pressed.connect(on_click)
+	var icon : Control = _item_icon(item_id)
+	icon.position = Vector2(7.0, 7.0)
+	icon.size = Vector2(40.0, 40.0)
+	icon.set_deferred("mouse_filter", Control.MOUSE_FILTER_IGNORE)
+	btn.add_child(icon)
+	holder.add_child(btn)
+	holder.add_child(_tiny(sub))
+	return holder
+
+
+# A gold "coin" chip showing an amount.
+func _gold_chip(amount: int) -> Control:
+
+	var holder : VBoxContainer = VBoxContainer.new()
+	holder.alignment = BoxContainer.ALIGNMENT_CENTER
+	holder.add_theme_constant_override("separation", 2)
+	var chip : PanelContainer = PanelContainer.new()
+	chip.custom_minimum_size = Vector2(54.0, 54.0)
+	chip.add_theme_stylebox_override("panel", _gold_style())
+	var num : Label = Label.new()
+	num.text = str(amount)
+	num.add_theme_font_size_override("font_size", 21)
+	num.add_theme_color_override("font_color", Color(0.24, 0.17, 0.05, 1.0))
+	num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	num.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	chip.add_child(num)
+	holder.add_child(chip)
+	holder.add_child(_tiny("gold"))
+	return holder
+
+
+func _item_icon(item_id: String) -> Control:
+
+	if item_id == PlayerState.ITEM_WOOD:
+		return WoodIcon.new()
+	if item_id == PlayerState.ITEM_ORE:
+		return OreIcon.new()
+	var ph : ColorRect = ColorRect.new()
+	ph.color = Color(0.5, 0.5, 0.55, 1.0)
+	return ph
+
+
+func _slot_style(state: String) -> StyleBoxFlat:
+
+	var s : StyleBoxFlat = StyleBoxFlat.new()
+	var bg : Color = Color(0.12, 0.13, 0.17, 1.0)
+	if state == "hover":
+		bg = bg.lightened(0.16)
+	elif state == "pressed":
+		bg = bg.darkened(0.10)
+	elif state == "disabled":
+		bg = bg.darkened(0.18)
+	s.bg_color = bg
+	s.border_color = Color(0.52, 0.57, 0.68, 0.9) if state != "disabled" else Color(0.4, 0.42, 0.5, 0.5)
+	s.set_border_width_all(2)
+	s.set_corner_radius_all(7)
+	return s
+
+
+func _gold_style() -> StyleBoxFlat:
+
+	var s : StyleBoxFlat = StyleBoxFlat.new()
+	s.bg_color = Color(0.92, 0.78, 0.32, 1.0)
+	s.border_color = Color(1.0, 0.92, 0.6, 0.9)
+	s.set_border_width_all(2)
+	s.set_corner_radius_all(27)   # round → a coin
+	return s
+
+
+func _tiny(text: String) -> Label:
+
+	var l : Label = Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_color_override("font_color", Color(0.8, 0.78, 0.66, 1.0))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	return l
 
 
 func _gold_gift_row() -> Control:
@@ -386,6 +486,8 @@ func _add_title(text: String) -> void:
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	l.add_theme_constant_override("outline_size", 4)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD
+	l.custom_minimum_size = Vector2(600.0, 0.0)
 	_content.add_child(l)
 
 
