@@ -195,7 +195,10 @@ func _setup_phase() -> void:
 			# Holding at the node: the captain waits for your WORD to set sail (you set sail first, THEN
 			# crew her on the way — manning a station no longer casts off).
 			if PlayerState.pillage_leg <= 0:
-				_say("Welcome aboard, hand! Give the word at the HELM when you're ready to set sail for %s." % _destination())
+				if PlayerState.voyage_self_captained:
+					_say("The %s is all yours, Cap'n! Give the word at the HELM when you're ready to set sail for %s." % [PlayerState.pillage_ship_name, _destination()])
+				else:
+					_say("Welcome aboard, hand! Give the word at the HELM when you're ready to set sail for %s." % _destination())
 			else:
 				_say("Holding at the waypoint — give the word at the HELM to set sail on toward %s." % _destination())
 			_refresh_chart(false)
@@ -679,7 +682,9 @@ func _say(line: String) -> void:
 		for c in _captain_anchor.get_children():
 			c.queue_free()   # only the latest line shows (don't stack bubbles on rapid phase changes)
 		SpeechBubble.say(_captain_anchor, line)
-	PlayerState.log_event("Cap'n %s: %s" % [_captain_name(), line], Color(0.98, 0.90, 0.62))
+	# On your OWN ship YOU'RE the captain — the deck voice is your first MATE, not a "Cap'n".
+	var speaker : String = "Mate %s" % _captain_name() if PlayerState.voyage_self_captained else "Cap'n %s" % _captain_name()
+	PlayerState.log_event("%s: %s" % [speaker, line], Color(0.98, 0.90, 0.62))
 
 
 # Refresh the consolidated VESSEL panel — both meter bars from live ship state. HULL = open holes (segmented,

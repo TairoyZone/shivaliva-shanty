@@ -209,6 +209,11 @@ var voyage_open_holes : int = 0
 ## by their [CrewSkills] rating. Wiped in [method clear_voyage]. See [[voyage-loop-research]].
 var voyage_stations : Dictionary = {}
 signal voyage_stations_changed
+## TRANSIENT (not saved): true while you're sailing YOUR OWN ship (captained the Driftpod) rather than jobbing
+## a crew. Seeds the voyage holes from your ship's persisted condition + writes them BACK on voyage end.
+var voyage_self_captained : bool = false
+## TRANSIENT (not saved): the display name of the ship this voyage (your owned ship's name when self-captained).
+var pillage_ship_name : String = ""
 ## TRANSIENT (not saved): the last line the deck captain spoke — so re-entering the deck in the SAME
 ## phase doesn't re-announce/re-log the identical line (the deck is a fresh node each re-entry). Reset
 ## by clear_voyage so a new voyage greets you again. See ship_deck.gd `_say`.
@@ -500,6 +505,18 @@ func sink_voyage() -> Dictionary:
 # arrived or bailed) or a straight fare is taken, so nothing stale bleeds into the next run.
 func clear_voyage() -> void:
 
+	# A SELF-CAPTAINED run writes its final hull state BACK to your owned ship's persisted condition (so the
+	# Driftpod actually accrues + keeps the damage you took, and the port Patchworks has something to mend).
+	# Done FIRST, while voyage_open_holes still holds the run's final holes (a sink already maxed it via wreck).
+	if voyage_self_captained:
+		var sid : String = active_ship_id()
+		if not sid.is_empty():
+			var cond : Dictionary = ship_condition.get(sid, {})
+			cond["open_holes"] = clampi(voyage_open_holes, 0, ship_max_holes(sid))
+			ship_condition[sid] = cond
+			_save()
+	voyage_self_captained = false
+	pillage_ship_name = ""
 	voyage_active = false
 	voyage_ship_t = 0.0
 	pillage_phase = 0
@@ -946,6 +963,22 @@ func buy_ship(ship_id: String, gold_cost: int) -> bool:
 func active_ship_id() -> String:
 
 	return String(owned_ships[0]) if not owned_ships.is_empty() else ""
+
+
+## Display names for owned ships (the catalog names). Falls back to a capitalised id.
+const SHIP_NAMES : Dictionary = {"driftpod": "Driftpod", "cloud_cutter": "Cloud Cutter", "sky_galleon": "Sky Galleon"}
+
+## The display name for a ship id (e.g. "driftpod" → "Driftpod").
+func ship_name(ship_id: String) -> String:
+
+	return String(SHIP_NAMES.get(ship_id, ship_id.capitalize()))
+
+
+## The display name of your active (first) owned ship — "" if none owned.
+func active_ship_name() -> String:
+
+	var id : String = active_ship_id()
+	return ship_name(id) if not id.is_empty() else ""
 
 
 ## Max hull holes for a ship id (its sink ceiling + Patchworks cap).

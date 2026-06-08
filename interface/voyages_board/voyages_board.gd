@@ -133,6 +133,9 @@ func _show_list() -> void:
 	_clear_content()
 	_content.add_child(_make_title("VOYAGES — PILLAGING WITH A CREW"))
 	_content.add_child(_make_caption("Sign on with a crew for FREE — pillage the high skies for a cut of the booty. Or pay fare below for a straight ride."))
+	# YOUR ship leads when you own one — captain the Driftpod yourself; the jobbing crews + fare follow.
+	if PlayerState.has_ship():
+		_content.add_child(_make_captain_own_row())
 	# FREE crew rows lead (no gold needed at zero gold); the paid fare ride sits last as the alternative.
 	for crew in CREWS:
 		_content.add_child(_make_crew_row(crew))
@@ -231,6 +234,65 @@ func _on_accept(crew: Dictionary) -> void:
 	BoardingMelee.clear()
 	# Lay in the crew for the duty report: this captain + real cast hands at the stations.
 	PlayerState.pillage_duty_crew = DutyReport.build_roster(String(crew["captain"]))
+	PlayerState.last_duty_report = []
+	if get_tree() != null:
+		get_tree().paused = false
+	get_tree().change_scene_to_file(SHIP_DECK_SCENE)
+
+
+# --- Captain your OWN ship (shown only when you own one) -------------
+
+func _make_captain_own_row() -> PanelContainer:
+
+	var row_panel : PanelContainer = PanelContainer.new()
+	row_panel.add_theme_stylebox_override("panel", _row_style())
+	var row : HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	row_panel.add_child(row)
+	var info : Label = Label.new()
+	info.text = "Captain the %s — YOUR ship.\nShe sails on her own hull (and keeps the wear). Bound for %s." % [
+		PlayerState.active_ship_name(), String(_destination_island()["name"])]
+	info.add_theme_font_size_override("font_size", 16)
+	info.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(info)
+	var sail : Button = _make_button("Set sail", Color(0.80, 1.0, 0.66, 1.0))
+	sail.pressed.connect(_on_captain_own)
+	row.add_child(sail)
+	return row_panel
+
+
+func _on_captain_own() -> void:
+
+	var dest : Dictionary = _destination_island()
+	var legs : int = LEGS_MIN + randi() % (LEGS_MAX - LEGS_MIN + 1)
+	# Seed the voyage hull from YOUR ship's persisted condition BEFORE voyage_active flips (so ship_open_holes
+	# reads the owned ship, not the transient). She sails with the damage she's been carrying.
+	var start_holes : int = PlayerState.ship_open_holes()
+	# Your first mate runs the deck banter while YOU captain — your top recruited hand if any, else the
+	# Skydock master who saw you off.
+	var mate : String = "Stormy Jericho"
+	if not PlayerState.crew.is_empty():
+		mate = String(PlayerState.crew.keys()[0])
+	PlayerState.pillage_captain = mate
+	PlayerState.pillage_crew = "your crew"
+	PlayerState.pillage_ship_name = PlayerState.active_ship_name()
+	PlayerState.voyage_self_captained = true
+	PlayerState.pillage_destination = String(dest["name"])
+	PlayerState.pillage_destination_scene = String(dest["scene"])
+	PlayerState.pillage_legs_total = legs
+	PlayerState.pillage_encounters = _roll_encounters(legs)
+	PlayerState.pillage_encounter_pos = _roll_encounter_positions(legs)
+	PlayerState.pillage_leg = 0
+	PlayerState.pillage_log = []
+	PlayerState.pillage_phase = 0
+	PlayerState.voyage_active = true
+	PlayerState.voyage_ship_t = 0.0
+	PlayerState.voyage_open_holes = start_holes   # YOUR ship's holes carried into the run
+	PlayerState.voyage_station_state = {}
+	PlayerState.voyage_stations = {}
+	BoardingMelee.clear()
+	PlayerState.pillage_duty_crew = DutyReport.build_roster(mate)
 	PlayerState.last_duty_report = []
 	if get_tree() != null:
 		get_tree().paused = false
