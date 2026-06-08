@@ -49,6 +49,7 @@ var _http : HTTPRequest
 var _persona : NpcPersonality = null
 var _messages : Array = []             # [{role, content}] rolling history for the active conversation
 var _busy : bool = false
+var _offline_warned : bool = false   # one-shot "AI offline" notice so a transport outage never masquerades as dumb canned replies
 
 
 func _ready() -> void:
@@ -95,6 +96,24 @@ func set_ai_enabled(on: bool) -> void:
 func is_busy() -> bool:
 
 	return _busy
+
+
+## A request reached the LLM and got a real reply → the transport is up.
+func note_online() -> void:
+
+	_offline_warned = false
+
+
+## A request FAILED (network/non-200) → the LLM is unreachable. Surface it ONCE in the log so a dead proxy /
+## unset key doesn't look like "the NPCs are dumb" (they're just falling back to canned lines). Shared by the
+## private path + RoomChat's ambient pool.
+func note_offline() -> void:
+
+	if _offline_warned:
+		return
+	_offline_warned = true
+	PlayerState.log_event("⚠ NPC AI offline — replies are canned. Start your proxy or set SHANTY_NPC_KEY (see proxy/README).",
+		Color(0.98, 0.7, 0.38))
 
 
 ## Begin a fresh conversation with [param persona] (an [NpcPersonality]). Clears prior history.
@@ -233,15 +252,18 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 
 	_busy = false
 	if result != HTTPRequest.RESULT_SUCCESS:
+		note_offline()
 		chat_failed.emit("network result %d (proxy unreachable?)" % result)
 		return
 	if response_code != 200:
+		note_offline()
 		chat_failed.emit("proxy returned %d" % response_code)
 		return
 	var reply : String = parse_reply(_using_direct, body).strip_edges()
 	if reply.is_empty():
 		chat_failed.emit("empty reply")
 		return
+	note_online()
 	_messages.append({"role": "assistant", "content": reply})
 	npc_replied.emit(reply)
 

@@ -386,6 +386,9 @@ func _on_slot_done(result: int, code: int, _headers: PackedStringArray, body: Pa
 	var reply : String = ""
 	if result == HTTPRequest.RESULT_SUCCESS and code == 200:
 		reply = NpcBrain.parse_reply(using_direct, body).strip_edges()
+		NpcBrain.note_online()
+	else:
+		NpcBrain.note_offline()   # surfaces the "AI offline" notice once (so canned fallbacks aren't mistaken for dumb AI)
 	if reply.is_empty() or _is_silent(reply):
 		# Addressed (name / room) → a canned line on failure (silence reads broken). Overheard → let the "…"
 		# fade naturally (reads as "they considered it, stayed quiet").
