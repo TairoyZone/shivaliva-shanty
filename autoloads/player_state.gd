@@ -129,8 +129,8 @@ const ITEM_ORE : String = "ore"
 ## chose a "tight" backpack (small stacks) so space pressure is felt
 ## early and expansion matters.
 const ITEM_DEFS : Dictionary = {
-	"wood": {"name": "Wood", "max_stack": 50},
-	"ore": {"name": "Ore", "max_stack": 50},
+	"wood": {"name": "Wood", "max_stack": 50, "value": 1},   # value = the canonical delivery sale rate (WOOD_TO_GOLD_RATE),
+	"ore": {"name": "Ore", "max_stack": 50, "value": 2},     # so NPC barter can never out-pay the dedicated delivery sinks
 }
 ## Fallback stack cap for any item missing from ITEM_DEFS.
 const DEFAULT_MAX_STACK : int = 50
@@ -689,6 +689,12 @@ func _max_stack(item_id: String) -> int:
 	return int(def.get("max_stack", DEFAULT_MAX_STACK))
 
 
+## The gold value of one unit of an item — drives NPC barter (what they'll pay) + future shoppes.
+func item_value(item_id: String) -> int:
+
+	return int((ITEM_DEFS.get(item_id, {}) as Dictionary).get("value", 1))
+
+
 ## Total count of [param item_id] across every slot.
 func item_count(item_id: String) -> int:
 
@@ -1187,6 +1193,31 @@ func turn_in_favor(npc_name: String, item_id: String, amount: int, affinity: int
 	_suppress_save = false
 	_save()
 	return count
+
+
+## Atomically run a completed trade with an NPC: hand over the player's offered items (+ an optional gold
+## gift), receive the NPC's gold, and gain rapport — batched into ONE save. SELF-VALIDATING: bails with no
+## mutation (returns false) if the player can't cover the offer, so it's safe even unpaused (co-op later).
+## (Player↔player trades reuse this per side.)
+func execute_trade(give_items: Dictionary, give_gold: int, get_gold: int, npc_name: String, rapport: int) -> bool:
+
+	for id in give_items:
+		if item_count(String(id)) < int(give_items[id]):
+			return false
+	if give_gold > total_coins:
+		return false
+	_suppress_save = true
+	for id in give_items:
+		remove_item(String(id), int(give_items[id]))
+	if give_gold > 0:
+		add_coins(-give_gold, "Trade gift")
+	if get_gold > 0:
+		add_coins(get_gold, "Trade with %s" % npc_name)
+	if rapport > 0 and not npc_name.is_empty():
+		add_affinity(npc_name, rapport)
+	_suppress_save = false
+	_save()
+	return true
 
 
 # --- Tournament flow ---------------------------------------------------

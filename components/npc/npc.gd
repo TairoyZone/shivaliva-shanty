@@ -85,6 +85,10 @@ const NAME_TAG_NEAR_COLOR : Color = Color(0.98, 0.85, 0.40, 1.0)
 # implicitly because the NPC node is rebuilt on every scene load.
 var _granted_affinity_this_visit : bool = false
 
+# Per-visit gates (reset because the Npc node is rebuilt on every scene load) so trade/favour rewards can't be farmed.
+var _traded_this_visit : bool = false
+var _favor_handled_this_visit : bool = false
+
 # Open guard for the favour modal.
 var _favor_modal : FavorModal = null
 
@@ -144,6 +148,7 @@ func interact() -> void:
 	# Click an NPC → a RADIAL options menu (YPP-style), NOT a dialogue box. The favour is just ONE option
 	# here, never demanded to your face. See [NpcMenu] / [[Official:Communications]].
 	var opts : Array = [{"label": "Chat", "action": _chat}, {"label": "Spar", "action": _challenge}]
+	opts.append({"label": "Trade", "action": _open_trade})
 	if NPC_FAVORS.has(npc_name):
 		opts.append({"label": "Favour", "action": _open_favor_modal})
 	opts.append({"label": "Hearts", "action": _open_hearts})
@@ -214,10 +219,22 @@ func _open_favor_modal() -> void:
 	if is_instance_valid(_favor_modal):
 		return
 	var favor : Dictionary = NPC_FAVORS[npc_name]
+	var item_id : String = String(favor["item"])
+	var amount : int = int(favor["amount"])
+	# Got the goods? Hand them over AS A TRADE — the favour handover IS a trade (Troy 2026-06-08). Otherwise
+	# the ask/accept modal.
+	if PlayerState.item_count(item_id) >= amount:
+		if _favor_handled_this_visit:
+			_talk()   # already helped this visit — a flavour line, not another favour grant (once-per-visit)
+			return
+		TradeWindow.open(self, {"npc_name": npc_name, "npc_color": portrait_color, "on_traded": _on_traded,
+			"favor": {"item_id": item_id, "amount": amount, "affinity": FAVOR_AFFINITY,
+				"ask": String(favor["ask"]), "thanks": String(favor["thanks"])}})
+		return
 	_favor_modal = FavorModal.create({
 		"npc_name": npc_name,
-		"item_id": String(favor["item"]),
-		"amount": int(favor["amount"]),
+		"item_id": item_id,
+		"amount": amount,
 		"ask": String(favor["ask"]),
 		"thanks": String(favor["thanks"]),
 		"affinity": FAVOR_AFFINITY,
@@ -225,6 +242,24 @@ func _open_favor_modal() -> void:
 	})
 	_favor_modal.closed.connect(func() -> void: _favor_modal = null)
 	add_child(_favor_modal)
+
+
+# Trade → the YPP-style trade window: offer goods from your bag, the NPC pays fair gold (+ a bonus for an
+# item they especially want) + rapport. The favour handover routes here too. See [TradeWindow].
+func _open_trade() -> void:
+
+	var liked : String = String((NPC_FAVORS.get(npc_name, {}) as Dictionary).get("item", ""))
+	TradeWindow.open(self, {"npc_name": npc_name, "npc_color": portrait_color, "liked_item": liked,
+		"grant_rapport": not _traded_this_visit, "on_traded": _on_traded})
+
+
+# A successful trade flips the per-visit gate so trade/favour rewards can't be farmed by re-trading this visit.
+func _on_traded(was_favor: bool) -> void:
+
+	if was_favor:
+		_favor_handled_this_visit = true
+	else:
+		_traded_this_visit = true
 
 
 # Speaker header shown in the dialog overlay — name plus current rapport
