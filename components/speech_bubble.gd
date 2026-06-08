@@ -55,10 +55,12 @@ func _ready() -> void:
 		return
 	pill.position = Vector2(-pill.size.x * 0.5, -pill.size.y)
 	modulate.a = 1.0
-	# Pop in, hold, fade, free.
+	# Pop in, hold, fade, free. The hold scales with the line LENGTH so longer (chattier AI) replies stay up
+	# long enough to read, while one-liners still clear quickly.
+	var hold : float = clampf(_text.length() * 0.05, 3.0, 9.0)
 	var tw : Tween = create_tween()
 	tw.tween_property(self, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_interval(2.6)
+	tw.tween_interval(hold)
 	tw.tween_property(self, "modulate:a", 0.0, 0.5).set_trans(Tween.TRANS_SINE)
 	tw.tween_callback(queue_free)
 

@@ -135,7 +135,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			closest = m
 	if closest != null:
 		closest.interact()
-		get_viewport().set_input_as_handled()
+		# interact() may change the scene (door / puzzle / spar), detaching us — so get_viewport() can be
+		# null on the next line. Guard it.
+		var vp : Viewport = get_viewport()
+		if vp != null:
+			vp.set_input_as_handled()
 
 
 func _on_InteractionZone_area_entered(area: Area2D) -> void:

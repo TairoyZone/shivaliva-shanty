@@ -8,8 +8,8 @@ extends CanvasLayer
 
 ## Lines shown at once before the oldest is dropped.
 const MAX_LINES : int = 6
-## Seconds a line holds at full opacity before it fades out.
-const LINGER : float = 5.0
+## Seconds a line holds at full opacity before it fades out. (Bumped for the longer AI chat lines.)
+const LINGER : float = 8.0
 const FADE : float = 1.2
 
 var _box : VBoxContainer
