@@ -195,5 +195,9 @@ func _return_to_launching_scene() -> void:
 	# (a tournament bracket reads it to advance).
 	PlayerState.last_gem_drop_won = _human_won_match
 	if not _human_won_match and not _free_table and PLAY_COST_ON_EXIT > 0:
-		PlayerState.add_coins(-PLAY_COST_ON_EXIT, "Gem Drop stake")
+		# Only ever lose what you actually HAVE — a broke player loses nothing and sees no phantom "-5" toast
+		# (the clamp used to take 0 but still logged the intended -5). Earn loop stays open at zero gold.
+		var loss : int = mini(PLAY_COST_ON_EXIT, PlayerState.total_coins)
+		if loss > 0:
+			PlayerState.add_coins(-loss, "Gem Drop stake")
 	super._return_to_launching_scene()
