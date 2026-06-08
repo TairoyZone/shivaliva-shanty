@@ -362,6 +362,17 @@ func resolve_voyage_leg(is_fight: bool, won: bool, lift: int, swaps: int, master
 		# ship + drives the Loft's Stardust rise on later legs (more holes ⇒ floods faster). [[ship-condition-research]]
 		add_hole(2 if not won else 1)
 
+	# A posted REPAIR hand seals holes you didn't patch BY HAND this leg — skipped when you manned the Patchworks
+	# live (mastery_id=="patchworks"), whose block-blast already closed holes (no double-dip). Lands BEFORE the
+	# next leg's _push_effective_rise reads the hole count, so the relief bites immediately. r3-4 seals 1, r5 → 2.
+	if mastery_id != "patchworks":
+		var repair_rating : int = voyage_station_skill("Repair")
+		var sealed : int = (2 if repair_rating >= 5 else (1 if repair_rating >= 3 else 0))
+		if sealed > 0:
+			close_hole(sealed)
+			log_event("%s patched %d hole%s below decks" % [
+				voyage_station_npc("Repair"), sealed, "" if sealed == 1 else "s"], Color(0.7, 0.95, 0.8))
+
 	# This leg's duty rating is a RATE — lift banked per swap THIS stretch (the caller passes the
 	# per-leg delta on a continuous crossing). Both lift + swaps are logged so the end divvy can
 	# rate the WHOLE voyage (voyage_duty_score01).
@@ -404,7 +415,11 @@ func resolve_voyage_leg(is_fight: bool, won: bool, lift: int, swaps: int, master
 func voyage_seed_from_lift(lift: int) -> int:
 
 	@warning_ignore("integer_division")
-	return clampi(lift / SEED_PER_LIFT_DIV, 0, SEED_CAP)
+	var base : int = clampi(lift / SEED_PER_LIFT_DIV, 0, SEED_CAP)
+	# A posted COMBAT hand sharpens arrival footing — each rating point above 3 pre-buries the foe one more
+	# clump (r4 → +1, r5 → +2), past the usual lift cap. Consumed in boarding_melee / skirmish_duel footing.
+	var combat : int = maxi(0, voyage_station_skill("Combat") - 3)
+	return clampi(base + combat, 0, SEED_CAP + 2)
 
 
 # The pooled plunder logged across the voyage so far — the sum of the per-battle cuts BEFORE the
