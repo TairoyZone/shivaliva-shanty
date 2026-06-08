@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://buildings/skydock/moored_ship/moored_ship.gd" id="1_ship"]
 
 [sub_resource type="CircleShape2D" id="proximity_shape"]
-radius = 130.0
+radius = 68.0
 
 [node name="MooredShip" type="Area2D"]
 collision_layer = 4
