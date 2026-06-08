@@ -43,7 +43,7 @@ func _ready() -> void:
 	# none of that can execute against editor state.
 	if Engine.is_editor_hint():
 		return
-	custom_minimum_size = Vector2(600.0, 440.0)
+	custom_minimum_size = Vector2(480.0, 440.0)   # match the other tabs' proven width so the window fits it
 	var scroll : ScrollContainer = ScrollContainer.new()
 	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -116,7 +116,7 @@ func _make_left_column() -> Control:
 
 	var col : VBoxContainer = VBoxContainer.new()
 	col.add_theme_constant_override("separation", 4)
-	col.custom_minimum_size = Vector2(156, 0)
+	col.custom_minimum_size = Vector2(132, 0)
 
 	col.add_child(_section_label("Reputation"))
 	var cast : Array[NpcPersonality] = NpcRegistry.all()
@@ -168,7 +168,7 @@ func _make_center_column() -> Control:
 
 	var col : VBoxContainer = VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)
-	col.custom_minimum_size = Vector2(180, 0)
+	col.custom_minimum_size = Vector2(132, 0)
 
 	# Framed avatar.
 	var frame : PanelContainer = PanelContainer.new()
@@ -182,7 +182,7 @@ func _make_center_column() -> Control:
 	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	# A circular avatar via clip_children masking (borrow) — the procedural bust clipped to a circle.
 	var avatar : ProfileAvatar = ProfileAvatar.new()
-	frame.add_child(CircleClip.wrap(avatar, 168.0))
+	frame.add_child(CircleClip.wrap(avatar, 116.0))
 	col.add_child(frame)
 
 	# Trophy COLLECTION — only trophies you've CLAIMED in the Ayo! tab show here (Troy 2026-06-08). An
@@ -257,7 +257,7 @@ func _make_skills_column() -> Control:
 	var col : VBoxContainer = VBoxContainer.new()
 	col.add_theme_constant_override("separation", 4)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.custom_minimum_size = Vector2(196, 0)
+	col.custom_minimum_size = Vector2(176, 0)
 	col.add_child(_section_label("Skills"))
 	for group in SKILL_GROUPS:
 		col.add_child(_category_label(String(group["label"])))
