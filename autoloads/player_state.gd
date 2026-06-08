@@ -1145,7 +1145,8 @@ func add_affinity(npc_name: String, amount: int) -> void:
 
 # --- Crew (hire + ranks) — the foundation for "start a crew" ------------
 
-## Can the player recruit this NPC? Only a CONFIDANT (the design's "can recruit" tier).
+## Can the player recruit this NPC? Only a CONFIDANT (the design's "can recruit" tier). NOTE: this gates the
+## moment of HIRE only — a crew member stays aboard even if rapport later dips (earn-and-keep, no decay).
 func can_recruit(npc_name: String) -> bool:
 
 	return get_affinity(npc_name) >= RECRUIT_MIN_AFFINITY

@@ -35,6 +35,7 @@ var _favor : Dictionary = {}
 var _panel : PanelContainer
 var _dim : ColorRect
 var _content : VBoxContainer
+var _was_paused : bool = false
 
 
 static func open(host: Node, config: Dictionary) -> void:
@@ -48,7 +49,8 @@ static func open(host: Node, config: Dictionary) -> void:
 	c._color = config.get("npc_color", Color(0.6, 0.6, 0.7, 1.0))
 	c._bio = String(config.get("bio", ""))
 	c._locale = String(config.get("locale", ""))
-	c._favor = (config.get("favor", {}) as Dictionary).duplicate()
+	var fav : Variant = config.get("favor", {})
+	c._favor = (fav as Dictionary).duplicate() if fav is Dictionary else {}
 	host.get_tree().root.add_child(c)
 
 
@@ -57,14 +59,20 @@ func _ready() -> void:
 	layer = 36
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_to_group(GROUP)
+	_was_paused = get_tree().paused
 	get_tree().paused = true
 
 	_dim = ColorRect.new()
 	_dim.color = Color(0, 0, 0, 0.55)
 	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	_dim.gui_input.connect(func(e: InputEvent) -> void: if e is InputEventMouseButton and e.pressed: _close())
+	# LEFT-click only — a mouse-WHEEL notch over the dim is also an InputEventMouseButton, and would otherwise
+	# close the card while the player is trying to scroll it.
+	_dim.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and (e as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+			_close())
 	add_child(_dim)
+	PlayerState.crew_changed.connect(_render)   # any crew change re-renders (single source of truth)
 
 	_panel = PanelContainer.new()
 	_panel.add_theme_stylebox_override("panel", _panel_style())
@@ -96,7 +104,7 @@ func _ready() -> void:
 func _exit_tree() -> void:
 
 	if get_tree() != null:
-		get_tree().paused = false
+		get_tree().paused = _was_paused
 
 
 # --- render -----------------------------------------------------------
@@ -104,6 +112,7 @@ func _exit_tree() -> void:
 func _render() -> void:
 
 	for c in _content.get_children():
+		_content.remove_child(c)   # immediate removal so the rebuild never overlaps the old rows for a frame
 		c.queue_free()
 
 	_content.add_child(_header())
@@ -133,7 +142,7 @@ func _render() -> void:
 	if not _favor.is_empty():
 		_content.add_child(_rule())
 		_content.add_child(_section("Could use a hand"))
-		_content.add_child(_body("Wants %d %s — drop by for a Favour to help." % [int(_favor["amount"]), _item_name()]))
+		_content.add_child(_body("Wants %d %s — drop by for a Favour to help." % [int(_favor.get("amount", 0)), _item_name()]))
 
 	_content.add_child(_gap(6))
 	var row : HBoxContainer = HBoxContainer.new()
@@ -197,13 +206,16 @@ func _crew_section() -> Control:
 	box.add_child(_section("Crew"))
 	if PlayerState.is_in_crew(_npc_name):
 		_content_note(box, "Aboard your crew  ·  %s" % PlayerState.crew_rank(_npc_name), INK)
+		var idx : int = int(PlayerState.crew.get(_npc_name, 0))
 		var row : HBoxContainer = HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 		row.add_theme_constant_override("separation", 8)
 		var up : Button = _btn("Promote ▲", Color(0.82, 1.0, 0.66, 1.0))
+		up.disabled = idx >= PlayerState.CREW_RANKS.size() - 1
 		up.pressed.connect(_promote)
 		row.add_child(up)
 		var down : Button = _btn("Demote ▼", Color(0.95, 0.84, 0.56, 1.0))
+		down.disabled = idx <= 0
 		down.pressed.connect(_demote)
 		row.add_child(down)
 		var off : Button = _btn("Dismiss", Color(0.95, 0.72, 0.6, 1.0))
@@ -228,19 +240,15 @@ func _crew_section() -> Control:
 
 func _hire() -> void:
 	PlayerState.hire_crew(_npc_name)
-	_render()
 
 func _dismiss() -> void:
 	PlayerState.dismiss_crew(_npc_name)
-	_render()
 
 func _promote() -> void:
 	PlayerState.cycle_crew_rank(_npc_name, 1)
-	_render()
 
 func _demote() -> void:
 	PlayerState.cycle_crew_rank(_npc_name, -1)
-	_render()
 
 
 # --- small builders ----------------------------------------------------
@@ -334,10 +342,8 @@ func _close() -> void:
 
 
 func _do_close() -> void:
-	if get_tree() != null:
-		get_tree().paused = false
 	closed.emit()
-	queue_free()
+	queue_free()   # frees → _exit_tree restores the prior pause state
 
 
 func _panel_style() -> StyleBoxFlat:
@@ -365,6 +371,8 @@ func _btn(text: String, font_color: Color) -> Button:
 			bg = bg.lightened(0.10)
 		elif st == "pressed":
 			bg = bg.darkened(0.12)
+		elif st == "disabled":
+			bg = bg.darkened(0.32)
 		s.bg_color = bg
 		s.border_color = Color(0.78, 0.58, 0.24, 1.0)
 		s.set_border_width_all(2)

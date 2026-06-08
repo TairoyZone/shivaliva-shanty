@@ -64,7 +64,9 @@ func _ready() -> void:
 	_dim.color = Color(0, 0, 0, 0.55)
 	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	_dim.gui_input.connect(func(e: InputEvent) -> void: if e is InputEventMouseButton and e.pressed: _close())
+	_dim.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and (e as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+			_close())   # LEFT only — a wheel notch is also a mouse button and shouldn't dismiss
 	add_child(_dim)
 
 	_panel = PanelContainer.new()
