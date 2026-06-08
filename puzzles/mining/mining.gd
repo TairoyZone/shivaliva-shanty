@@ -36,6 +36,7 @@ var _running_ore : int = 0
 var _ore_committed : bool = false
 ## Ore the backpack couldn't hold when the haul was committed (bag full).
 var _overflow_lost : int = 0
+var _meter_count : Label = null
 
 
 func _ready() -> void:
@@ -48,7 +49,7 @@ func _ready() -> void:
 		+ "• Clear the rock UNDER an ore chunk to dig it down to the floor — chunks are the only thing that scores\n"
 		+ "• Dig several chunks in one move for a combo bonus\n"
 		+ "• Big clears drop a TOOL — frame it (the cursor shrinks to 1x1) and click to use it\n"
-		+ "• Empty the 'TO DIG' meter to finish the shift")
+		+ "• Empty the 'CHUNKS' meter beside the board (one pip per chunk left) to finish the shift")
 	_board.ore_changed.connect(_on_ore_changed)
 	_board.progress_changed.connect(_on_progress_changed)
 	_board.combo_landed.connect(_on_combo_landed)
@@ -82,6 +83,8 @@ func _on_progress_changed(remaining: int, target: int) -> void:
 		var pip : ColorRect = _pips[i]
 		pip.color = (Color(0.96, 0.78, 0.32, 1.0) if lit
 			else Color(0.22, 0.20, 0.16, 1.0))
+	if _meter_count != null:
+		_meter_count.text = "%d left" % remaining
 
 
 # --- Progress meter (the "banana column" reskin) ---------------------
@@ -90,15 +93,18 @@ func _build_progress_meter(target: int) -> void:
 
 	var panel : PanelContainer = PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", _meter_style())
-	panel.anchor_left = 1.0
-	panel.anchor_right = 1.0
+	# Sit the meter RIGHT BESIDE the board so it reads as the board's own goal tracker (the Board node is at
+	# x=464 and is COLS*CELL = 352 wide → its right edge is 816; +16 gap). Was floating at the screen edge,
+	# unclear + overlapping the panel rail.
+	panel.anchor_left = 0.0
+	panel.anchor_right = 0.0
 	panel.anchor_top = 0.5
 	panel.anchor_bottom = 0.5
-	panel.offset_left = -180.0   # shifted left to clear the right-edge UserPanel (Sunshine Widget) rail
-	panel.offset_right = -88.0
+	panel.offset_left = 832.0
+	panel.offset_right = 924.0
 	panel.offset_top = -180.0
 	panel.offset_bottom = 180.0
-	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	panel.grow_horizontal = Control.GROW_DIRECTION_END
 	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui.add_child(panel)
@@ -108,7 +114,7 @@ func _build_progress_meter(target: int) -> void:
 	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(vbox)
 	var title : Label = Label.new()
-	title.text = "TO DIG"
+	title.text = "CHUNKS"
 	title.add_theme_font_size_override("font_size", 16)
 	title.add_theme_color_override("font_color", Color(0.82, 0.88, 1.0, 1.0))
 	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
@@ -124,6 +130,16 @@ func _build_progress_meter(target: int) -> void:
 		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vbox.add_child(pip)
 		_pips.append(pip)
+	# A plain count under the pips so the meter is unmistakable: how many ore chunks are still left to dig out.
+	_meter_count = Label.new()
+	_meter_count.text = "%d left" % target
+	_meter_count.add_theme_font_size_override("font_size", 15)
+	_meter_count.add_theme_color_override("font_color", Color(0.96, 0.86, 0.5, 1.0))
+	_meter_count.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	_meter_count.add_theme_constant_override("outline_size", 3)
+	_meter_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_meter_count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(_meter_count)
 
 
 func _meter_style() -> StyleBoxFlat:
