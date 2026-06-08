@@ -41,8 +41,6 @@ const COLOR_NEUTRAL : Color = Color(1.0, 0.92, 0.55, 1.0)
 
 @onready var _purse : PanelContainer = %Purse
 @onready var _coin_label : Label = %CoinLabel
-@onready var _journal_button : Button = %JournalButton
-@onready var _journal_panel : JournalPanel = %JournalPanel
 
 ## What's currently rendered in the label — may lag behind
 ## [member PlayerState.total_coins] mid-tween. Tweens animate
@@ -51,7 +49,6 @@ var _displayed : int = 0
 var _count_tween : Tween
 var _bounce_tween : Tween
 var _shake_tween : Tween
-var _journal_modulate_tween : Tween   # tweens the "!" badge bright/dim so the state change shows, never pops
 ## Most-recent total received from [signal PlayerState.coins_changed]
 ## while this HUD was hidden (i.e. inside a puzzle scene). -1 means
 ## "no deferred change." Flushed by [method flush_pending_change] when
@@ -82,21 +79,8 @@ func _ready() -> void:
 	# The bag BUMPS when the inventory changes (you picked up wood/ore). If that happened while hidden
 	# (inside a puzzle), replay it on return so the gain isn't silent (see flush_pending_wood_change).
 	PlayerState.inventory_changed.connect(_on_inventory_changed)
-	# Journal button — wire the click and keep its "!" badge in sync with
-	# whether any quest is still open (recompute on every input to a goal).
-	_journal_button.pressed.connect(_toggle_journal)
-	# Give the journal button the same 3-state brass styling as the quick-menu column below it — the .tscn
-	# assigned ONE inert style to normal/hover/pressed, so it gave no hover/press affordance. Unifies the
-	# right-side column (keeps the bold "!" font from the .tscn).
-	for i in 3:
-		_journal_button.add_theme_stylebox_override(["normal", "hover", "pressed"][i], _menu_btn_style(i))
-	PlayerState.objective_changed.connect(_refresh_journal)
-	PlayerState.coins_changed.connect(_refresh_journal)
-	PlayerState.ships_changed.connect(_refresh_journal)
-	PlayerState.lumber_stock_changed.connect(_refresh_journal)
-	_refresh_journal()
-	# (The old right-side quick-menu was removed 2026-06-07 — its functions live in the user panel's LEFT tab
-	# rail now: Tutorial / Backpack / Hearts / Profile + a Jobs launcher. See InventoryPanel.)
+	# (The old right-side quick-menu + the "!" journal popup were retired — their functions live in the user
+	# panel's tab rail now: Ayo! · Objectives · Tutorials · Backpack · Hearts · Profile + a Jobs launcher.)
 	# Self-heal: if coins changed while hidden (inside a puzzle), replay
 	# the purse animation the moment the HUD becomes visible again —
 	# rather than depending on a caller remembering to flush. (Audit
@@ -111,41 +95,6 @@ func _ready() -> void:
 func _on_purse_resized() -> void:
 
 	_purse.pivot_offset = _purse.size * 0.5
-
-
-# Keep the journal button's "!" badge bright when a quest is still open,
-# dim when everything's done. If the journal is open, refresh its list in
-# place so live gold/lumber progress updates as the player reads.
-# Connected to coins_changed / lumber_stock_changed (which pass an int) —
-# Godot lets a zero-arg callable bind to a signal with extra args.
-func _refresh_journal(_unused = null) -> void:
-
-	if is_instance_valid(_journal_button):
-		# TWEEN the bright/dim so the badge lighting up (new objective) / dimming (all done) SHOWS as a
-		# transition, never an instant pop (animate-everything). Only re-tween when the target changes, since
-		# this fires on every gold/lumber tick.
-		var target : Color = (Color(1, 1, 1, 1) if PlayerState.has_active_quests()
-			else Color(0.72, 0.72, 0.72, 0.8))
-		if not _journal_button.modulate.is_equal_approx(target):
-			if _journal_modulate_tween != null and _journal_modulate_tween.is_valid():
-				_journal_modulate_tween.kill()
-			_journal_modulate_tween = create_tween()
-			_journal_modulate_tween.tween_property(_journal_button, "modulate", target, 0.25) \
-				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	if is_instance_valid(_journal_panel):
-		_journal_panel.refresh_if_open()
-
-
-# Open / close the Journal. Won't stack over the open backpack, and is
-# disabled while the HUD is hidden (inside a puzzle).
-func _toggle_journal() -> void:
-
-	ChatBox.drop_focus()   # a mouse click on a HUD button leaves the chat bar (no stuck focus / world-freeze)
-	if not visible:
-		return
-	if UserPanel.is_open():
-		return
-	_journal_panel.toggle()
 
 
 # R opens the backpack straight to its Hearts tab — the Stardew-style
@@ -165,36 +114,12 @@ func _open_inventory_tab(tab: String) -> void:
 		return
 	if Overlay.is_active and not UserPanel.is_open():
 		return
-	if _journal_panel.is_open():
-		return
 	if UserPanel.is_open() and UserPanel.current_tab() == tab:
 		UserPanel.close()
 	else:
 		UserPanel.open(tab)
 
 
-# The journal "!" button reuses this brass style (the right-side quick-menu that also used it was removed
-# 2026-06-07 — its icons moved to the user panel's left tab rail).
-# state: 0 = normal, 1 = hover, 2 = pressed.
-func _menu_btn_style(state: int) -> StyleBoxFlat:
-
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	var bg : Color = Color(0.18, 0.11, 0.06, 0.94)
-	if state == 1:
-		bg = Color(0.27, 0.17, 0.09, 0.97)
-	elif state == 2:
-		bg = Color(0.13, 0.08, 0.04, 0.97)
-	s.bg_color = bg
-	s.border_color = Palette.BRASS_FRAME   # the ONE brass source of truth (was a hand-typed duplicate)
-	s.set_border_width_all(2)
-	s.set_corner_radius_all(10)
-	s.content_margin_left = 14
-	s.content_margin_right = 14
-	s.content_margin_top = 6
-	s.content_margin_bottom = 6
-	s.shadow_color = Color(0, 0, 0, 0.35)
-	s.shadow_size = 4
-	return s
 
 
 # --- Inventory open/close --------------------------------------------
@@ -248,7 +173,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_on_escape()          # ESC: close whatever's open, else open the pause menu (Troy 2026-06-07)
 		get_viewport().set_input_as_handled()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_J:
-		_toggle_journal()
+		UserPanel.open("objectives")   # J → the Objectives tab (the "!" journal popup was retired)
 		get_viewport().set_input_as_handled()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_I:
 		_toggle_inventory()   # the backpack key the docs have always promised (alongside ESC)
@@ -263,16 +188,12 @@ func _unhandled_input(event: InputEvent) -> void:
 func _on_visibility_changed() -> void:
 
 	if not visible:
-		# Safety: never leave a panel open while the HUD is hidden (e.g. entering a puzzle) — it would
-		# reappear when the HUD shows again. Close the journal AND the backpack (mirrors each other).
-		if is_instance_valid(_journal_panel) and _journal_panel.is_open():
-			_journal_panel.close()
+		# Safety: never leave the panel open while the HUD is hidden (e.g. entering a puzzle).
 		if is_instance_valid(UserPanel) and UserPanel.is_open():
 			UserPanel.close()
 		return
 	flush_pending_change()
 	flush_pending_wood_change()
-	_refresh_journal()
 
 
 ## A trophy was just earned — pop the notification on the tree ROOT so it shows even while

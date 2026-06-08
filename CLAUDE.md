@@ -30,7 +30,7 @@ Compatibility, 1280×720. No build step — run `main.tscn`, or any `puzzles/*/<
 - **ESC closes every window**: ANY exitable window/modal MUST close on **ESC**. Don't hand-roll a handler
   per panel — drop the ONE reusable `components/esc_to_close/` node in: `add_child(EscToClose.new(_close))`
   (it processes-always, consumes the key, and no-ops while its modal is hidden). Audit every new
-  panel/card/menu/shop/dialog for it. (The HUD ESC chain + pause_menu/journal own their own ESC.)
+  panel/card/menu/shop/dialog for it. (The HUD ESC chain + pause_menu own their own ESC.)
 - **Inheritance over duplication**: every gameplay category has a base class; concrete variants
   override only what differs. Never re-implement a foundation.
 - **Scene-per-component**: each visual game piece is its own `.tscn` so art can be swapped later
@@ -73,11 +73,15 @@ main.gd/.tscn     entry point / title → resume or new session
   `last_position`, `request_spawn_at_anchor(name)`/`consume_anchor()`, the one-shot
   `puzzle_return_scene`, and `voyage_phase`. Persisted via `_save()`/`_load()` (ConfigFile). Mutate
   mastery ONLY via `record_puzzle_result`.
-- **`HUD`** (`interface/hud.tscn`) — overworld HUD: gold purse, backpack button, objective banner,
-  quick-access menu. Hidden by the title + every `PuzzleScene`. **E** opens the backpack; **ESC** runs a
-  priority chain (`_on_escape`): close the open backpack → close the chat Log → else open the **`PauseMenu`**
-  (`interface/pause_menu/`, a `PROCESS_MODE_ALWAYS` modal that pauses + holds Resume / Options / Quit to
-  Title). The Journal owns its own ESC (it pauses + processes-always).
+- **`HUD`** (`interface/hud.tscn`) — overworld HUD: just the gold purse now (the right-side quick-menu + the
+  "!" journal popup were retired into the **Sunshine Widget** user panel — see `InventoryPanel`). Hidden by
+  the title + every `PuzzleScene`. **E**/**I** open the panel (Backpack); **R** → Hearts; **J** → Objectives;
+  **ESC** runs a priority chain (`_on_escape`): close the open panel → close the chat Log → else open the
+  **`PauseMenu`** (`interface/pause_menu/`, a `PROCESS_MODE_ALWAYS` modal: Resume / Options / Quit to Title).
+- **`UserPanel`** (`interface/user_panel/`, autoload) — the **Sunshine Widget**: a foldable right-edge tab
+  rail wrapping `InventoryPanel` (Ayo! · Objectives · Tutorials · Backpack · Hearts · Profile + a Jobs
+  launcher). Shown in the overworld AND inside puzzles; Tutorials shows only the current scene's how-to;
+  trophies are earned → claimed in **Ayo!** → shown on the Profile shelf.
 - **`Overlay`** (`interface/overlay.tscn`) — the NPC dialog overlay.
 
 ---

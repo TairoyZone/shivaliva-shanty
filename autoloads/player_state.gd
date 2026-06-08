@@ -1036,7 +1036,7 @@ func current_objective() -> Dictionary:
 
 ## The player's quest log, as an ordered Array of {title, detail, done}.
 ## Derived purely from progress flags (no stored quest state), so quests
-## tick themselves done. Drives the [JournalPanel]. Add entries here as the
+## tick themselves done. Drives the user panel's Objectives tab. Add entries here as the
 ## game grows; keep the first-ship line as the spine for now.
 func current_quests() -> Array:
 
