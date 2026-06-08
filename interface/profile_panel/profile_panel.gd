@@ -43,15 +43,14 @@ func _ready() -> void:
 	# none of that can execute against editor state.
 	if Engine.is_editor_hint():
 		return
-	custom_minimum_size = Vector2(480.0, 440.0)   # match the other tabs' proven width so the window fits it
-	var scroll : ScrollContainer = ScrollContainer.new()
-	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	add_child(scroll)
+	custom_minimum_size = Vector2(540.0, 440.0)
+	# A VBox anchored to FILL this view — the columns are then bounded by the panel width (the old wrapping
+	# ScrollContainer let the columns overflow horizontally, pushing Skills off-screen under the rail). The
+	# profile content is short, so no scroll is needed.
 	_root = VBoxContainer.new()
+	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.add_theme_constant_override("separation", 10)
-	_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_root)
+	add_child(_root)
 	refresh()
 
 
