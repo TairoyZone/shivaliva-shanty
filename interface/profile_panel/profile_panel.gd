@@ -43,7 +43,7 @@ func _ready() -> void:
 	# none of that can execute against editor state.
 	if Engine.is_editor_hint():
 		return
-	custom_minimum_size = Vector2(668.0, 440.0)
+	custom_minimum_size = Vector2(600.0, 440.0)
 	var scroll : ScrollContainer = ScrollContainer.new()
 	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -257,7 +257,7 @@ func _make_skills_column() -> Control:
 	var col : VBoxContainer = VBoxContainer.new()
 	col.add_theme_constant_override("separation", 4)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.custom_minimum_size = Vector2(272, 0)
+	col.custom_minimum_size = Vector2(196, 0)
 	col.add_child(_section_label("Skills"))
 	for group in SKILL_GROUPS:
 		col.add_child(_category_label(String(group["label"])))
@@ -285,35 +285,38 @@ func _make_skill_row(puzzle_id: String) -> Control:
 		var next_t : int = int(thresholds[tier_idx + 1])
 		ratio = clampf(float(best - here) / float(maxi(1, next_t - here)), 0.0, 1.0)
 
+	# A COMPACT 2-row card so it can never force the column (and thus the panel) wide: name + best score on
+	# top, progress bar + tier badge below.
 	var card : PanelContainer = PanelContainer.new()
 	card.add_theme_stylebox_override("panel", _card_style())
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var row : HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	card.add_child(row)
+	var vb : VBoxContainer = VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 4)
+	card.add_child(vb)
 
-	var col : VBoxContainer = VBoxContainer.new()
-	col.add_theme_constant_override("separation", 3)
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(col)
+	var top : HBoxContainer = HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	vb.add_child(top)
 	var name_label : Label = Label.new()
 	name_label.text = display_name
 	name_label.add_theme_font_size_override("font_size", 15)
 	name_label.add_theme_color_override("font_color", COLOR_INK)
-	name_label.clip_text = true   # never let a long skill name force the card wider than its column (overflow → clip)
-	col.add_child(name_label)
-	col.add_child(_make_progress_bar(ratio))
-
-	row.add_child(_make_tier_badge(String(tier["name"]), tier_idx))
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.clip_text = true   # a long name clips rather than forcing the card wider
+	top.add_child(name_label)
 	var best_label : Label = Label.new()
 	best_label.text = "—" if best <= 0 else str(best)
-	best_label.add_theme_font_size_override("font_size", 16)
+	best_label.add_theme_font_size_override("font_size", 14)
 	best_label.add_theme_color_override("font_color", COLOR_INK_SOFT)
-	best_label.custom_minimum_size = Vector2(30, 0)
-	best_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	best_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(best_label)
+	top.add_child(best_label)
+
+	var bot : HBoxContainer = HBoxContainer.new()
+	bot.add_theme_constant_override("separation", 8)
+	vb.add_child(bot)
+	var bar : Control = _make_progress_bar(ratio)
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bot.add_child(bar)
+	bot.add_child(_make_tier_badge(String(tier["name"]), tier_idx))
 	return card
 
 
