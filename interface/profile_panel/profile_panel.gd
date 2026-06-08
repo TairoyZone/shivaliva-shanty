@@ -43,7 +43,7 @@ func _ready() -> void:
 	# none of that can execute against editor state.
 	if Engine.is_editor_hint():
 		return
-	custom_minimum_size = Vector2(724.0, 440.0)
+	custom_minimum_size = Vector2(668.0, 440.0)
 	var scroll : ScrollContainer = ScrollContainer.new()
 	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -67,7 +67,7 @@ func refresh() -> void:
 	rule.custom_minimum_size = Vector2(0, 2)
 	_root.add_child(rule)
 	var cols : HBoxContainer = HBoxContainer.new()
-	cols.add_theme_constant_override("separation", 14)
+	cols.add_theme_constant_override("separation", 10)
 	cols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_root.add_child(cols)
 	cols.add_child(_make_left_column())
@@ -116,7 +116,7 @@ func _make_left_column() -> Control:
 
 	var col : VBoxContainer = VBoxContainer.new()
 	col.add_theme_constant_override("separation", 4)
-	col.custom_minimum_size = Vector2(176, 0)
+	col.custom_minimum_size = Vector2(156, 0)
 
 	col.add_child(_section_label("Reputation"))
 	var cast : Array[NpcPersonality] = NpcRegistry.all()
@@ -168,7 +168,7 @@ func _make_center_column() -> Control:
 
 	var col : VBoxContainer = VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)
-	col.custom_minimum_size = Vector2(212, 0)
+	col.custom_minimum_size = Vector2(180, 0)
 
 	# Framed avatar.
 	var frame : PanelContainer = PanelContainer.new()
@@ -257,7 +257,7 @@ func _make_skills_column() -> Control:
 	var col : VBoxContainer = VBoxContainer.new()
 	col.add_theme_constant_override("separation", 4)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.custom_minimum_size = Vector2(300, 0)
+	col.custom_minimum_size = Vector2(272, 0)
 	col.add_child(_section_label("Skills"))
 	for group in SKILL_GROUPS:
 		col.add_child(_category_label(String(group["label"])))
@@ -299,8 +299,9 @@ func _make_skill_row(puzzle_id: String) -> Control:
 	row.add_child(col)
 	var name_label : Label = Label.new()
 	name_label.text = display_name
-	name_label.add_theme_font_size_override("font_size", 16)
+	name_label.add_theme_font_size_override("font_size", 15)
 	name_label.add_theme_color_override("font_color", COLOR_INK)
+	name_label.clip_text = true   # never let a long skill name force the card wider than its column (overflow → clip)
 	col.add_child(name_label)
 	col.add_child(_make_progress_bar(ratio))
 
@@ -309,7 +310,7 @@ func _make_skill_row(puzzle_id: String) -> Control:
 	best_label.text = "—" if best <= 0 else str(best)
 	best_label.add_theme_font_size_override("font_size", 16)
 	best_label.add_theme_color_override("font_color", COLOR_INK_SOFT)
-	best_label.custom_minimum_size = Vector2(40, 0)
+	best_label.custom_minimum_size = Vector2(30, 0)
 	best_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	best_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(best_label)
@@ -365,16 +366,16 @@ func _make_tier_badge(tier_name: String, tier_idx: int) -> Control:
 	s.border_color = c.lightened(0.22)
 	s.set_border_width_all(2)
 	s.set_corner_radius_all(8)
-	s.content_margin_left = 8
-	s.content_margin_right = 8
+	s.content_margin_left = 6
+	s.content_margin_right = 6
 	s.content_margin_top = 4
 	s.content_margin_bottom = 4
 	badge.add_theme_stylebox_override("panel", s)
-	badge.custom_minimum_size = Vector2(82, 0)
+	badge.custom_minimum_size = Vector2(72, 0)
 	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var label : Label = Label.new()
 	label.text = tier_name
-	label.add_theme_font_size_override("font_size", 14)
+	label.add_theme_font_size_override("font_size", 13)
 	label.add_theme_color_override("font_color", Color(1, 1, 1, 0.96))
 	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
 	label.add_theme_constant_override("outline_size", 3)
