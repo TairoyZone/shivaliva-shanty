@@ -281,7 +281,9 @@ func _station_is_resolving() -> bool:
 # holes are only opened when the leg resolves — after _ready already ran). See [[ship-condition-research]].
 func _push_effective_rise() -> void:
 
-	_board.set_effective_rise(LoftBoard.RISE_BASE + LoftBoard.HOLE_RISE_PER_HOLE * float(PlayerState.ship_open_holes()))
+	var rise : float = LoftBoard.RISE_BASE + LoftBoard.HOLE_RISE_PER_HOLE * float(PlayerState.ship_open_holes())
+	rise = maxf(LoftBoard.RISE_BASE, rise - PlayerState.sailing_rise_relief())   # a posted Sailing hand keeps her aloft
+	_board.set_effective_rise(rise)
 	_update_hull_label()
 
 

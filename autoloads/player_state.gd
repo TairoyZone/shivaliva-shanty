@@ -86,6 +86,10 @@ const VOYAGE_MAX_HOLES : int = 4
 ## open hole raises the embark level a touch (a battered hull begins closer to the bite).
 const STARDUST_BASE_START : float = 3.0
 const STARDUST_START_PER_HOLE : float = 0.6
+## A posted SAILING crew member keeps her aloft: each rating point shaves this off the Loft's per-move rise
+## (live, floored at RISE_BASE) AND off the embark Stardust start. The reward for crewing a good sailor.
+const SAILING_RISE_RELIEF_PER_RATING : float = 0.025
+const SAILING_START_RELIEF_PER_RATING : float = 0.2
 ## Gold paid per wood delivered at the Workshop drop-off. 1:1 is
 ## intentional — Gem Drop tops out at +10 per match, a clean Lumberjacking
 ## session yields ~10-30 wood, so 1:1 puts wages in the same earning band
@@ -977,7 +981,8 @@ func wreck_active_ship() -> void:
 ## baseline (trivially aloft); a battered hull starts higher (closer to the bite). Read on embark.
 func ship_stardust_start() -> float:
 
-	return STARDUST_BASE_START + float(ship_open_holes()) * STARDUST_START_PER_HOLE
+	var relief : float = SAILING_START_RELIEF_PER_RATING * float(voyage_station_skill("Sailing"))
+	return maxf(1.0, STARDUST_BASE_START + float(ship_open_holes()) * STARDUST_START_PER_HOLE - relief)
 
 
 # Write the active ship's open-hole count (clamped 0..max), then persist.
@@ -1239,6 +1244,12 @@ func voyage_station_skill(station: String) -> int:
 	if who.is_empty() or not is_in_crew(who):
 		return 0
 	return CrewSkills.rating(who, station)
+
+
+## The per-move Loft rise RELIEF from a posted Sailing hand (0 if none). Subtracted in loft.gd _push_effective_rise.
+func sailing_rise_relief() -> float:
+
+	return SAILING_RISE_RELIEF_PER_RATING * float(voyage_station_skill("Sailing"))
 
 
 ## Record that the player completed a favour for [param npc_name]. Bumps
