@@ -257,6 +257,12 @@ func _send(raw: String) -> void:
 		_input.clear()
 	if text.is_empty():
 		return
+	# DEV slash-commands (debug builds only): typed in the chat box — /crew, /gold, /holes, /mend, /wreck, /help.
+	if text.begins_with("/") and OS.is_debug_build():
+		DevCheats.run_command(text)
+		if _input != null:
+			_input.release_focus()
+		return
 	if _in_private:
 		_send_private(text)
 		return

@@ -1,35 +1,47 @@
-## DevCheats — DEV-ONLY test shortcuts, gated to debug builds (OS.is_debug_build()) so they NEVER fire in a
-## release export. Autoload. Keys:
-##   F10 — seed a CREW: the whole cast → Confidant rapport + 4 hands hired (Jericho/Sailing, Godfrey/Repair,
-##         Kerr/Combat, Mia), so duty-stations + the roster are testable without grinding rapport to 80.
-##   F9  — +1000 gold (for fares / poker buy-ins).
-##   F8  — open 3 hull holes on the ACTIVE voyage ship (test the Repair seal + the Loft's hole-driven flood);
-##         only does anything mid-voyage.
-## Built 2026-06-08 to playtest the crew/ship-owning systems.
+## DevCheats — DEV-ONLY test commands, run via SLASH-COMMANDS typed in the chat box (the "Say something…" bar).
+## Gated to debug builds: the ChatBox only routes a leading "/" here when OS.is_debug_build(), so they vanish
+## from a release export. Commands:
+##   /crew       — seed a CREW: the whole cast → Confidant rapport + 4 hired (Jericho/Sailing, Godfrey/Repair,
+##                 Kerr/Combat, Mia), so the crew/duty-stations systems are testable without grinding rapport.
+##   /gold [n]   — +n gold (default 1000), for fares / poker buy-ins.
+##   /holes [n]  — open n hull holes on the ACTIVE ship (the voyage ship mid-run, else your owned ship; default 3).
+##   /mend       — fully mend the active ship (seal all holes).
+##   /wreck      — wreck the active ship (max holes) — to feel the holed Loft / set up a sink.
+##   /help       — list the commands.
+## (Function-key cheats were dropped — F8/F9 etc. collide with Godot's editor shortcuts.) Built 2026-06-08.
 extends Node
 
 
-func _unhandled_key_input(event: InputEvent) -> void:
+func run_command(text: String) -> void:
 
-	if not OS.is_debug_build():
+	var parts : PackedStringArray = text.strip_edges().split(" ", false)
+	if parts.is_empty():
 		return
-	if not (event is InputEventKey and event.pressed and not event.echo):
-		return
-	match event.keycode:
-		KEY_F10:
+	var cmd : String = String(parts[0]).to_lower()
+	var arg : int = 0
+	if parts.size() > 1 and String(parts[1]).is_valid_int():
+		arg = int(parts[1])
+	match cmd:
+		"/crew":
 			_seed_crew()
-			get_viewport().set_input_as_handled()
-		KEY_F9:
-			PlayerState.add_coins(1000, "DEV: +1000 gold")
-			PlayerState.log_event("DEV (F9): +1000 gold", Color(1, 0.9, 0.5))
-			get_viewport().set_input_as_handled()
-		KEY_F8:
-			if PlayerState.voyage_active:
-				PlayerState.add_hole(3)
-				PlayerState.log_event("DEV (F8): opened 3 hull holes on the active ship", Color(1, 0.6, 0.5))
-			else:
-				PlayerState.log_event("DEV (F8): no voyage active — holes only on the pillage ship", Color(0.8, 0.8, 0.8))
-			get_viewport().set_input_as_handled()
+		"/gold":
+			var amt : int = arg if arg > 0 else 1000
+			PlayerState.add_coins(amt, "DEV: +%d gold" % amt)
+			_note("+%d gold" % amt)
+		"/holes":
+			var n : int = arg if arg > 0 else 3
+			PlayerState.add_hole(n)
+			_note("opened %d hull hole%s on the active ship" % [n, "" if n == 1 else "s"])
+		"/mend":
+			PlayerState.close_hole(99)
+			_note("mended the hull — all holes sealed")
+		"/wreck":
+			PlayerState.wreck_active_ship()
+			_note("WRECKED the active ship — max holes")
+		"/help", "/?", "/commands":
+			_note("/crew · /gold [n] · /holes [n] · /mend · /wreck")
+		_:
+			_note("unknown command '%s' — try /help" % cmd)
 
 
 func _seed_crew() -> void:
@@ -38,6 +50,9 @@ func _seed_crew() -> void:
 		PlayerState.add_affinity(p.npc_name, PlayerState.MAX_AFFINITY)   # → 100 (Confidant): all recruitable
 	for who in ["Stormy Jericho", "Cogwise Godfrey", "Flint Kerr", "Spritely Mia"]:
 		PlayerState.hire_crew(who)
-	PlayerState.log_event(
-		"DEV (F10): cast at Confidant + 4 hired — start a voyage, then open Crew Duty on the deck",
-		Color(1, 0.9, 0.5))
+	_note("cast at Confidant + 4 hired — start a voyage, then open Crew Duty on the deck")
+
+
+func _note(msg: String) -> void:
+
+	PlayerState.log_event("DEV: %s" % msg, Color(1.0, 0.9, 0.5))
