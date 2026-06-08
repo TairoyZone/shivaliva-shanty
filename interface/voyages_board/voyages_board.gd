@@ -231,6 +231,8 @@ func _on_accept(crew: Dictionary) -> void:
 	PlayerState.voyage_open_holes = 0
 	PlayerState.voyage_station_state = {}
 	PlayerState.voyage_stations = {}   # never inherit a prior run's crew duty assignments
+	PlayerState.voyage_self_captained = false   # a JOBBED run is never self-captained — never write a borrowed
+	PlayerState.pillage_ship_name = ""          # hull's holes back onto your OWNED ship
 	BoardingMelee.clear()
 	# Lay in the crew for the duty report: this captain + real cast hands at the stations.
 	PlayerState.pillage_duty_crew = DutyReport.build_roster(String(crew["captain"]))
@@ -269,7 +271,7 @@ func _on_captain_own() -> void:
 	# Seed the voyage hull from YOUR ship's persisted condition BEFORE voyage_active flips (so ship_open_holes
 	# reads the owned ship, not the transient). She sails with the damage she's been carrying.
 	var start_holes : int = PlayerState.ship_open_holes()
-	# Your first mate runs the deck banter while YOU captain — your top recruited hand if any, else the
+	# Your first mate runs the deck banter while YOU captain — a recruited hand if you have any, else the
 	# Skydock master who saw you off.
 	var mate : String = "Stormy Jericho"
 	if not PlayerState.crew.is_empty():
