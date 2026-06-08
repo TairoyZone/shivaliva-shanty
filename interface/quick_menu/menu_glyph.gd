@@ -9,7 +9,7 @@ const GOLD : Color = Color(0.96, 0.86, 0.50, 1.0)
 const DARK : Color = Color(0.0, 0.0, 0.0, 0.55)
 const HANDLE : Color = Color(0.55, 0.38, 0.18, 1.0)
 
-@export_enum("bag", "heart", "star", "jobs", "book", "bell") var kind : String = "bag":
+@export_enum("bag", "heart", "star", "jobs", "book", "bell", "scroll") var kind : String = "bag":
 	set(value):
 		kind = value
 		queue_redraw()
@@ -31,6 +31,8 @@ func _draw() -> void:
 			_book(c)
 		"bell":
 			_bell(c)
+		"scroll":
+			_scroll(c)
 
 
 func _bag(c: Vector2) -> void:
@@ -90,3 +92,13 @@ func _bell(c: Vector2) -> void:
 		c + Vector2(-7.0, -2.0), c + Vector2(7.0, -2.0), c + Vector2(9.0, 5.0), c + Vector2(-9.0, 5.0)]), GOLD)
 	draw_line(c + Vector2(-9.0, 5.0), c + Vector2(9.0, 5.0), DARK, 1.4)   # rim
 	draw_circle(c + Vector2(0.0, 8.0), 1.8, GOLD)   # clapper
+
+
+func _scroll(c: Vector2) -> void:
+
+	# A quest scroll (the Objectives tab): a parchment sheet with rods + a couple of writing lines.
+	draw_rect(Rect2(c.x - 6.0, c.y - 6.0, 12.0, 12.0), GOLD)
+	draw_line(c + Vector2(-8.5, -6.0), c + Vector2(8.5, -6.0), GOLD, 2.6)   # top rod
+	draw_line(c + Vector2(-8.5, 6.0), c + Vector2(8.5, 6.0), GOLD, 2.6)     # bottom rod
+	draw_line(c + Vector2(-3.5, -2.0), c + Vector2(3.5, -2.0), DARK, 1.1)
+	draw_line(c + Vector2(-3.5, 1.5), c + Vector2(3.5, 1.5), DARK, 1.1)

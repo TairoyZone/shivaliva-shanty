@@ -35,6 +35,7 @@ const OVERWORLD_HELP : String = ("Around the islands\n\n"
 ## The left tab rail, top→down. Each: tab id · MenuGlyph kind · hover tip.
 const RAIL_TABS : Array = [
 	{"tab": "ayo", "glyph": "bell", "tip": "Ayo! — claim your trophies + notices"},
+	{"tab": "objectives", "glyph": "scroll", "tip": "Objectives — your current goals"},
 	{"tab": "tutorial", "glyph": "book", "tip": "Tutorials — how to play"},
 	{"tab": "items", "glyph": "bag", "tip": "Backpack — your items  (E)"},
 	{"tab": "relationships", "glyph": "heart", "tip": "Hearties — your bonds with the cast  (R)"},
@@ -58,6 +59,9 @@ var _tutorial_page : Control
 var _ayo_page : Control
 var _ayo_list : VBoxContainer
 var _ayo_badge : Label
+## The Objectives tab — your current goals (from PlayerState.current_quests), folded in from the journal.
+var _obj_page : Control
+var _obj_list : VBoxContainer
 ## The Tutorial tab's body label — shows the CURRENT context's how-to (the puzzle you're in, or the
 ## overworld controls), set via [method set_puzzle_help]. Never the whole library.
 var _current_help_label : Label
@@ -81,6 +85,8 @@ func _ready() -> void:
 		PlayerState.inventory_changed.connect(_on_inventory_changed)
 		PlayerState.trophy_earned.connect(_on_trophies_changed)
 		PlayerState.trophy_claimed.connect(_on_trophies_changed)
+		PlayerState.objective_changed.connect(_on_objectives_changed)
+		PlayerState.coins_changed.connect(_on_objectives_changed)
 		_update_ayo_badge()
 
 
@@ -137,6 +143,10 @@ func _build_skeleton() -> void:
 	# Ayo! page — claim earned trophies + notices.
 	_ayo_page = _build_ayo_page()
 	vbox.add_child(_ayo_page)
+
+	# Objectives page — your current goals (folded in from the journal).
+	_obj_page = _build_objectives_page()
+	vbox.add_child(_obj_page)
 
 	# Items page — a WEAPON equip bar above the backpack slot grid.
 	_items_page = VBoxContainer.new()
@@ -419,6 +429,93 @@ func _make_badge() -> Label:
 	return b
 
 
+# --- Objectives tab (your current goals; folded in from the journal) --
+
+func _build_objectives_page() -> Control:
+
+	var scroll : ScrollContainer = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(480.0, 392.0)
+	scroll.visible = false
+	_obj_list = VBoxContainer.new()
+	_obj_list.add_theme_constant_override("separation", 10)
+	_obj_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_obj_list)
+	return scroll
+
+
+func _refresh_objectives() -> void:
+
+	if _obj_list == null:
+		return
+	for c in _obj_list.get_children():
+		c.queue_free()
+	var head : Label = Label.new()
+	head.text = "Objectives"
+	head.add_theme_font_size_override("font_size", 22)
+	head.add_theme_color_override("font_color", COLOR_TITLE)
+	_obj_list.add_child(head)
+	var shown : int = 0
+	for quest in PlayerState.current_quests():
+		if bool(quest.get("done", false)):   # only what's still open, like the journal
+			continue
+		_obj_list.add_child(_make_quest_card(quest))
+		shown += 1
+	if shown == 0:
+		var none : Label = Label.new()
+		none.text = "All caught up! Wander Cradle Rock and talk to the folk — some may ask a small favour."
+		none.add_theme_font_size_override("font_size", 14)
+		none.add_theme_color_override("font_color", Color(0.85, 0.78, 0.62, 1.0))
+		none.autowrap_mode = TextServer.AUTOWRAP_WORD
+		none.custom_minimum_size = Vector2(440.0, 0.0)
+		_obj_list.add_child(none)
+
+
+func _make_quest_card(quest: Dictionary) -> Control:
+
+	var card : PanelContainer = PanelContainer.new()
+	var s : StyleBoxFlat = StyleBoxFlat.new()
+	s.bg_color = Color(0.22, 0.15, 0.08, 0.95)
+	s.border_color = Palette.BRASS_FRAME
+	s.set_border_width_all(2)
+	s.set_corner_radius_all(8)
+	s.set_content_margin_all(10)
+	card.add_theme_stylebox_override("panel", s)
+	var row : HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	card.add_child(row)
+	var marker : Label = Label.new()
+	marker.text = "!"
+	marker.add_theme_font_size_override("font_size", 22)
+	marker.add_theme_color_override("font_color", Color(0.96, 0.74, 0.24, 1.0))
+	marker.custom_minimum_size = Vector2(20.0, 0.0)
+	marker.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(marker)
+	var col : VBoxContainer = VBoxContainer.new()
+	col.add_theme_constant_override("separation", 3)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(col)
+	var title : Label = Label.new()
+	title.text = String(quest.get("title", ""))
+	title.add_theme_font_size_override("font_size", 16)
+	title.add_theme_color_override("font_color", COLOR_TITLE)
+	col.add_child(title)
+	var detail : Label = Label.new()
+	detail.text = String(quest.get("detail", ""))
+	detail.add_theme_font_size_override("font_size", 13)
+	detail.add_theme_color_override("font_color", Color(0.85, 0.78, 0.62, 1.0))
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD
+	detail.custom_minimum_size = Vector2(380.0, 0.0)
+	col.add_child(detail)
+	return card
+
+
+func _on_objectives_changed(_a = null) -> void:
+
+	if _current_tab == "objectives":
+		_refresh_objectives()
+
+
 func _build_tutorial_page() -> Control:
 
 	var scroll : ScrollContainer = ScrollContainer.new()
@@ -572,6 +669,8 @@ func _switch_tab(tab: String) -> void:
 		_tutorial_page.visible = (tab == "tutorial")
 	if _ayo_page != null:
 		_ayo_page.visible = (tab == "ayo")
+	if _obj_page != null:
+		_obj_page.visible = (tab == "objectives")
 	if _items_page != null:
 		_items_page.visible = (tab == "items")
 	if _hearts_view != null:
@@ -603,6 +702,9 @@ func _refresh() -> void:
 		return
 	if _current_tab == "ayo":
 		_refresh_ayo()
+		return
+	if _current_tab == "objectives":
+		_refresh_objectives()
 		return
 	if _current_tab == "relationships":
 		if _hearts_view != null:
