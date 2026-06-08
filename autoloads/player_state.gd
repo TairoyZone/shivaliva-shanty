@@ -200,6 +200,11 @@ var ship_condition : Dictionary = {}
 ## THIS, not the persisted owned-ship `ship_condition`, so the Loft / the Patchworks station / the sink
 ## all act on the ship you're actually crewing (YPP-style). Reset when a voyage ends. See [[ship-condition-research]].
 var voyage_open_holes : int = 0
+## TRANSIENT (not saved): per-leg DUTY-STATION assignments — station key ("Sailing"/"Repair"/"Combat") → the
+## recruited crew npc manning it. You man one station live each leg; the crew at the OTHER two are auto-resolved
+## by their [CrewSkills] rating. Wiped in [method clear_voyage]. See [[voyage-loop-research]].
+var voyage_stations : Dictionary = {}
+signal voyage_stations_changed
 ## TRANSIENT (not saved): the last line the deck captain spoke — so re-entering the deck in the SAME
 ## phase doesn't re-announce/re-log the identical line (the deck is a fresh node each re-entry). Reset
 ## by clear_voyage so a new voyage greets you again. See ship_deck.gd `_say`.
@@ -495,6 +500,7 @@ func clear_voyage() -> void:
 	voyage_leg_swaps0 = 0
 	voyage_boarding_seed = 0   # don't bleed a stale footing seed into the next (maybe friendly) Skirmish
 	voyage_open_holes = 0      # the pillage SHIP's holes are transient — the next voyage's ship starts fresh
+	voyage_stations = {}       # drop stale crew assignments (a dismissed hand mustn't bleed into the next run)
 	last_deck_say = ""         # so the next voyage's captain greets you again instead of staying silent
 	# (Your OWNED ship's persisted condition (`ship_condition`) is separate + survives, repaired at the
 	# Skydock's Patchworks post. The in-voyage Patchworks station mends the CURRENT pillage ship.)
@@ -1197,6 +1203,42 @@ func cycle_crew_rank(npc_name: String, dir: int) -> String:
 	crew_changed.emit()
 	_save()
 	return crew_rank(npc_name)
+
+
+# --- Voyage duty-stations (assign crew to a station; their skill carries it) ---
+
+## Assign [param npc_name] (or "" to clear) to a voyage station ("Sailing"/"Repair"/"Combat"). Only a recruited
+## crew member may man a station, and no one mans two — assigning moves them. Transient (not saved).
+func set_voyage_station(station: String, npc_name: String) -> void:
+
+	if not (station in CrewSkills.STATIONS):
+		return
+	if npc_name.is_empty():
+		voyage_stations.erase(station)
+	else:
+		if not is_in_crew(npc_name):
+			return
+		for k in voyage_stations.keys():
+			if String(voyage_stations[k]) == npc_name and k != station:
+				voyage_stations.erase(k)
+		voyage_stations[station] = npc_name
+	voyage_stations_changed.emit()
+
+
+## The crew member manning [param station], or "" if unmanned.
+func voyage_station_npc(station: String) -> String:
+
+	return String(voyage_stations.get(station, ""))
+
+
+## The skill rating (1–5) carrying [param station] this voyage — 0 if unmanned or the assigned hand is no
+## longer in your crew (a dismissed-but-still-assigned name doesn't keep helping).
+func voyage_station_skill(station: String) -> int:
+
+	var who : String = voyage_station_npc(station)
+	if who.is_empty() or not is_in_crew(who):
+		return 0
+	return CrewSkills.rating(who, station)
 
 
 ## Record that the player completed a favour for [param npc_name]. Bumps

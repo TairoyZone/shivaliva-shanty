@@ -10,6 +10,13 @@ extends RefCounted
 ## Sailing = the Loft, Repair = the Patchworks, Cards = Poker/Gem Drop, Craft = gathering + their trade.
 const SKILLS : Array[String] = ["Combat", "Sailing", "Repair", "Cards", "Craft"]
 
+## The three skills that are VOYAGE DUTY STATIONS — the player assigns a crew member to each, and that hand's
+## rating carries the station they aren't manning (Sailing→Loft, Repair→Patchworks, Combat→boarding).
+const STATIONS : Array[String] = ["Sailing", "Repair", "Combat"]
+
+## Which puzzle/leg-job each station maps to, for UI labels.
+const STATION_POST : Dictionary = {"Sailing": "the Loft", "Repair": "the Patchworks", "Combat": "boarding"}
+
 ## Per-NPC ratings (1–5). Tuned so every cast member has a distinct reason to hire them (Jericho the ace
 ## sailor, Godfrey the fixer, Geneva the card sharp, Kerr the fighter-smith, …).
 const ABILITIES : Dictionary = {
