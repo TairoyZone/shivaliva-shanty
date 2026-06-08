@@ -29,6 +29,7 @@ ChatBox="*res://autoloads/chat_box.gd"
 NpcBrain="*res://autoloads/npc_brain.gd"
 RoomChat="*res://autoloads/room_chat.gd"
 UserPanel="*res://interface/user_panel/user_panel.gd"
+DevCheats="*res://autoloads/dev_cheats.gd"
 
 [display]
 

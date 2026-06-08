@@ -150,5 +150,3 @@ decisions live in the auto-memory (`…/memory/MEMORY.md`); the code map lives i
 = deploy the proxy to a free Node host before the public demo (see proxy/README.md)
 --- DEMO READINESS ---
 = a self-playthrough + a written playtest checklist/script before a friend plays
---- BIGGER SYSTEMS ---
-= dive deeper into the ship-owning system
