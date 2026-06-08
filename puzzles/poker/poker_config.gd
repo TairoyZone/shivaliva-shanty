@@ -20,6 +20,12 @@ const DEFAULT_TURN_TIME : int = 20
 ## House cut taken off each CONTESTED pot before payout (a gold sink). 0 on free tables.
 const RAKE_FRACTION : float = 0.05
 
+## FREE TABLE (rapport-only, no gold at stake) = plain STANDARD poker: EVERYONE starts with the same stack,
+## with the blinds that suit it, No Limit, NO stake/structure choice. (Troy 2026-06-08: a free table is just
+## standard poker — same 1000 chips for all.) 1000 chips at 10/20 blinds = a healthy 50 big blinds.
+const FREE_TABLE_STACK : int = 1000
+const FREE_TABLE_MIN_BET : int = 20
+
 
 static func structure_name(s: int) -> String:
 
@@ -63,6 +69,19 @@ static func make_default() -> Dictionary:
 		"seats": 6,
 		"turn_time": DEFAULT_TURN_TIME,
 		"buy_in": 0,
+	}
+
+
+## The standard FREE-table config — fixed No-Limit, 10/20 blinds, a 1000-chip stack for EVERYONE. No stake
+## or structure variety (a free table is just standard poker). Seat count carries over from the lobby.
+static func free_config(seats: int) -> Dictionary:
+
+	return {
+		"structure": BetStructure.NO_LIMIT,
+		"min_bet": FREE_TABLE_MIN_BET,
+		"seats": clampi(seats, SEAT_MIN, SEAT_MAX),
+		"turn_time": DEFAULT_TURN_TIME,
+		"buy_in": FREE_TABLE_STACK,
 	}
 
 

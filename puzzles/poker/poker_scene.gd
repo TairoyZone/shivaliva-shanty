@@ -135,6 +135,8 @@ func _ready() -> void:
 	var setup : Dictionary = PlayerState.consume_lobby_setup()
 	_free_table = bool(setup.get("free", false))
 	_config = PokerConfig.normalize(setup.get("table_config", _config))
+	if _free_table:
+		_config = PokerConfig.free_config(int(_config.get("seats", 6)))   # free = standard poker, fixed stake/blinds
 	_table_seats = clampi(int(_config["seats"]), 2, 10)
 	_occupant.resize(_table_seats)
 	_occupant.fill(-1)
@@ -230,7 +232,7 @@ func _on_sit_here(k: int) -> void:
 
 	_pending_seat = k
 	if _free_table:
-		_seat_human(k, PokerConfig.buy_in_max(int(_config["min_bet"])))
+		_seat_human(k, PokerConfig.FREE_TABLE_STACK)   # free = standard 1000 chips for everyone
 	else:
 		_show_buy_in_dialog()
 
@@ -257,7 +259,8 @@ func _on_invite(k: int) -> void:
 
 func _seat_npc(k: int, profile: NpcPersonality) -> void:
 
-	var ai : PokerPlayer = PokerPlayer.new(profile.npc_name, _roll_buy_in(int(_config["min_bet"])), false)
+	var ai_chips : int = PokerConfig.FREE_TABLE_STACK if _free_table else _roll_buy_in(int(_config["min_bet"]))
+	var ai : PokerPlayer = PokerPlayer.new(profile.npc_name, ai_chips, false)
 	ai.portrait_color = profile.portrait_color
 	ai.personality = profile
 	_board.add_player(ai)

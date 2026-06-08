@@ -192,9 +192,10 @@ func _build_create_panel() -> void:
 	else:
 		_body.add_child(_make_caption("%d players (heads-up)" % min_s))
 
-	# Poker: configure the bet structure + stake (which sets blinds + buy-in range), each a DROPDOWN.
-	# Other games have no extra config.
-	if _is_poker():
+	# Poker CASH table: configure the bet structure + stake (which sets blinds + buy-in range), each a DROPDOWN.
+	# A FREE table is plain standard poker (fixed 1000 chips, 10/20 blinds, No Limit) — no stake/structure
+	# choice (Troy 2026-06-08). Other games have no extra config.
+	if _is_poker() and not _create_free:
 		var struct_items : Array = []
 		for s in 3:
 			struct_items.append(PokerConfig.structure_name(s))
@@ -218,7 +219,11 @@ func _build_create_panel() -> void:
 	_body.add_child(free_check)
 
 	var note : String
-	if _create_free:
+	if _create_free and _is_poker():
+		note = "Free table — standard poker: %d chips each, blinds %d/%d. No gold won or lost, just rapport." % [
+			PokerConfig.FREE_TABLE_STACK, PokerConfig.small_blind(PokerConfig.FREE_TABLE_MIN_BET),
+			PokerConfig.big_blind(PokerConfig.FREE_TABLE_MIN_BET)]
+	elif _create_free:
 		note = "No gold for the buy-in — playing free. No gold won or lost, just rapport." \
 			if _create_locked_free else "Free table — no gold won or lost, just rapport."
 	elif _is_poker():

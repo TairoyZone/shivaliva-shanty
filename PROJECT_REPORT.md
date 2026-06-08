@@ -145,11 +145,6 @@ _This report is a living snapshot — regenerate it as the project moves. Deeper
 decisions live in the auto-memory (`…/memory/MEMORY.md`); the code map lives in `CLAUDE.md`._
 
 # TROY's TODO (next session) #
-= [✓ done 2026-06-08] NPC chat affinity-into-prompt · Options on/off toggle · Ayo! trophy-claim · context Tutorials · no-negative-gold
---- FINISH THE PANEL (today's work) ---
-= Sunshine Widget — PLAYTEST it inside a puzzle: does the right rail/pane overlap the board or a puzzle's UI? tune size + position
-= Sunshine Widget — decide "always-show done right" (a narrow always-docked pane) vs the current foldable rail
-= Sunshine Widget — (optional) fold Objectives in as another tab
 --- NPC CHAT ---
 = persona-tuning pass on the .tres Chat/AI fields once you've talked to the whole cast
 = deploy the proxy to a free Node host before the public demo (see proxy/README.md)
