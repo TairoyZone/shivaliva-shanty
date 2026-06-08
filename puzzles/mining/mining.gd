@@ -94,8 +94,8 @@ func _build_progress_meter(target: int) -> void:
 	panel.anchor_right = 1.0
 	panel.anchor_top = 0.5
 	panel.anchor_bottom = 0.5
-	panel.offset_left = -116.0
-	panel.offset_right = -24.0
+	panel.offset_left = -180.0   # shifted left to clear the right-edge UserPanel (Sunshine Widget) rail
+	panel.offset_right = -88.0
 	panel.offset_top = -180.0
 	panel.offset_bottom = 180.0
 	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
