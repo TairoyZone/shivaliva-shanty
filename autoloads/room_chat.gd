@@ -23,7 +23,6 @@ const ROOM_ADDRESS_BONUS : float = 0.45  # added when you clearly address the ro
 const NPC_COOLDOWN_MS : int = 6000     # an NPC that just spoke is off the rolled pool this long (a name / room-address can still pull them)
 const CONTINUATION_MS : int = 18000    # a recently-spoken NPC keeps answering your plain follow-ups (no re-naming needed) — conversational continuity
 const ROOM_DEBOUNCE_MS : int = 1800    # ignore a fresh OVERHEARD line within this of the last (anti-spam; names/room-address bypass)
-const STAGGER_S : float = 0.6          # gap between staggered responders, so it reads as turn-taking
 const NEAR_RANGE : float = 240.0       # px; within this ≈ max proximity weight
 const MIN_CHARS : int = 3
 const TRANSCRIPT_MAX : int = 10        # rolling room memory fed into each reply (so they don't repeat / respond in context)
@@ -48,6 +47,7 @@ var _transcript : Array = []           # [{speaker, text}] rolling room conversa
 var _scene_token : int = 0             # bumped on scene change → invalidates in-flight + staggered work
 var _last_scene : Node = null
 var _last_overheard_ms : int = -100000
+var _queue : Array = []                # responders waiting their TURN — fired one at a time so each sees the prior reply (awareness)
 
 
 func _ready() -> void:
@@ -111,6 +111,7 @@ func _check_scene() -> void:
 		_last_scene = sc
 		_scene_token += 1
 		_transcript.clear()   # a new room = a fresh conversation
+		_queue.clear()        # drop any responders still waiting their turn from the old room
 		for slot in _pool:
 			if slot["busy"]:
 				slot["http"].cancel_request()
@@ -284,23 +285,34 @@ func _hits_interest(npc_name: String, lc: String) -> bool:
 	return false
 
 
-# --- dispatch (staggered LLM calls through the pool) -----------------
+# --- dispatch (one TURN at a time, so each responder sees the prior reply → real awareness) ----------
 
 func _dispatch(responders: Array, others: PackedStringArray, token: int) -> void:
 
-	var i : int = 0
 	for r in responders:
-		_fire_after(float(i) * STAGGER_S, r, others, token)
-		i += 1
+		_queue.append({"r": r, "others": others, "token": token})
+	_pump()
 
 
-func _fire_after(delay: float, r: Dictionary, others: PackedStringArray, token: int) -> void:
+# Fire the next queued responder — but only once the previous one has finished, so its reply is already in
+# the transcript and the next NPC can react to it (turn-taking, not everyone barking over each other).
+func _pump() -> void:
 
-	if delay > 0.0:
-		await get_tree().create_timer(delay).timeout
-	if token != _scene_token:
-		return   # scene changed during the stagger — abandon
-	_fire(r, others, token)
+	if _any_busy() or _queue.is_empty():
+		return
+	var job : Dictionary = _queue.pop_front()
+	if int(job["token"]) != _scene_token:
+		_pump()   # stale (scene changed) — skip to the next
+		return
+	_fire(job["r"], job["others"], int(job["token"]))
+
+
+func _any_busy() -> bool:
+
+	for slot in _pool:
+		if slot["busy"]:
+			return true
+	return false
 
 
 func _fire(r: Dictionary, others: PackedStringArray, token: int) -> void:
@@ -330,6 +342,7 @@ func _fire(r: Dictionary, others: PackedStringArray, token: int) -> void:
 		slot["npc"] = null
 		slot["persona"] = null
 		slot["thinking"] = null
+		_pump()   # this one failed to even send — move on to the next in the turn
 
 
 # The user turn embeds the rolling room transcript so the NPC replies IN CONTEXT (and never repeats).
@@ -344,13 +357,14 @@ func _user_turn(answer: bool, others: PackedStringArray, self_short: String) -> 
 		intro = "Others in the room with you: %s.\n" % ", ".join(nearby)
 	var convo : String = _convo_block(self_short)
 	if answer:
-		return (intro + convo + "The traveller's latest line above is addressed to the room (and you). Reply to "
-			+ "it naturally, in character, in a sentence or two that BUILDS on the conversation so far — NEVER "
-			+ "repeat something you've already said. No narration, no quotes, no your own name.")
-	return (intro + convo + "You OVERHEARD the room — the latest line above wasn't necessarily aimed at you. If "
-		+ "it's natural for you to react to it, reply with a short, natural in-character line that builds on the "
-		+ "conversation — NEVER repeat what you or others already said. If you'd more likely stay quiet, reply "
-		+ "with exactly: (silent). No narration, no quotes, no your own name.")
+		return (intro + convo + "The traveller's latest line above is addressed to the room (and you). Reply naturally, "
+			+ "in character, in a sentence or two that BUILDS on the conversation — you may answer or riff on what "
+			+ "ANOTHER person above just said, not only the traveller. NEVER repeat something you've already said. "
+			+ "No narration, no quotes, no your own name.")
+	return (intro + convo + "You OVERHEARD the room — the latest line above wasn't necessarily aimed at you. If it's "
+		+ "natural to react (to the traveller OR to what another person above just said), reply with a short, natural "
+		+ "in-character line that builds on the conversation — NEVER repeat what you or others already said. If you'd "
+		+ "more likely stay quiet, reply with exactly: (silent). No narration, no quotes, no your own name.")
 
 
 func _convo_block(self_short: String) -> String:
@@ -382,7 +396,8 @@ func _on_slot_done(result: int, code: int, _headers: PackedStringArray, body: Pa
 	slot["thinking"] = null
 	if persona == null or token != _scene_token:
 		_kill_dots(thinking)
-		return   # scene changed while in flight → drop
+		_pump()
+		return   # scene changed while in flight → drop, but keep the turn moving
 	var reply : String = ""
 	if result == HTTPRequest.RESULT_SUCCESS and code == 200:
 		reply = NpcBrain.parse_reply(using_direct, body).strip_edges()
@@ -395,9 +410,11 @@ func _on_slot_done(result: int, code: int, _headers: PackedStringArray, body: Pa
 		if answer and not fallback.is_empty():
 			_kill_dots(thinking)
 			_say(node, persona, String(fallback[randi() % fallback.size()]))
+		_pump()
 		return
 	_kill_dots(thinking)
 	_say(node, persona, reply)
+	_pump()   # the next queued responder can now react to what was just said
 
 
 func _say(node: Node, persona: NpcPersonality, text: String) -> void:

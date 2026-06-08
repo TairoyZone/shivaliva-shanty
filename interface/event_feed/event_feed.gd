@@ -46,6 +46,14 @@ func _on_event_logged(text: String, color: Color) -> void:
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.92))
 	l.add_theme_constant_override("outline_size", 3)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Wrap long lines (a chat reply can be a paragraph) — snug for short events, capped so a long one never
+	# runs off the right edge of the screen.
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD
+	var font : Font = l.get_theme_font("font")
+	if font == null:
+		font = ThemeDB.fallback_font
+	var natural : float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 15).x
+	l.custom_minimum_size = Vector2(minf(natural + 4.0, 600.0), 0.0)
 	pill.add_child(l)
 	_box.add_child(pill)
 	# Drop the oldest line(s) past the cap — remove_child is immediate (queue_free is deferred, so a
