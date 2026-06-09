@@ -260,6 +260,10 @@ func _end_duel(player_won: bool) -> void:
 	_duel_over = true
 	# Report the outcome so a Voyage boarding fight can read win/loss on return.
 	PlayerState.last_skirmish_won = player_won
+	# Battle MEMORY: log the head-to-head against this cast member (skipped for a nameless sparring partner) so
+	# they remember the result — drives post-fight banter + chat awareness. See [[npc-battle-memory]].
+	if _opponent_profile != null:
+		PlayerState.record_battle(_opponent_profile.npc_name, player_won)
 	# The LOSER's board floods red (defeat); the winner just freezes (stop).
 	if player_won:
 		_player_board.stop()

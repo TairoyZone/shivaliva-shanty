@@ -103,6 +103,7 @@ func _ready() -> void:
 	if not Engine.is_editor_hint():
 		add_to_group("npc")   # so RoomChat can find present cast for ambient scene chat
 		Juice.bob(self, 2.5, randf_range(1.7, 2.5))   # a gentle idle breathe; varied dur desyncs the cast
+		_maybe_post_fight_banter()   # if the player just dueled THIS NPC, they greet the return with a reaction
 
 
 # Repurpose the inherited proximity tooltip into a PERMANENT name tag —
@@ -216,6 +217,44 @@ func _challenge() -> void:
 	PlayerState.request_spawn_at_anchor(name)
 	Audio.play_sfx("whoosh")
 	get_tree().change_scene_to_file(SKIRMISH_DUEL_SCENE)
+
+
+# POST-FIGHT BANTER — if the player just finished a duel against THIS NPC, greet their return to the world with
+# a quick reaction bubble (a sore concession if they lost, a gloat if they won). Fires ONCE per duel: the
+# recent_duel dict is the live autoload ref, so marking "bantered" consumes it for every NPC. The richer,
+# personality-aware acknowledgement lives in the AI chat (NpcBrain._battle_block); this is the immediate beat.
+func _maybe_post_fight_banter() -> void:
+
+	var rd : Dictionary = PlayerState.recent_duel
+	if rd.is_empty() or String(rd.get("npc", "")) != npc_name or bool(rd.get("bantered", false)):
+		return
+	rd["bantered"] = true   # consume — mutates the shared autoload dict so it can't re-fire on a later reload
+	var player_won : bool = bool(rd.get("player_won", false))
+	await get_tree().create_timer(0.5).timeout   # let the scene settle so it reads as "noticing you walk back"
+	if not is_instance_valid(self) or not is_inside_tree():
+		return
+	SpeechBubble.say(self, _banter_line(player_won))
+
+
+# A canned post-fight line. [param player_won] = the player beat this NPC (so the NPC CONCEDES); else they GLOAT.
+func _banter_line(player_won: bool) -> String:
+
+	var concede : Array[String] = [
+		"Gah! You bested me that round. Don't let it go to your head.",
+		"...Well struck. The win was yours, fair and true.",
+		"Pah — beginner's luck. I'll have you next time.",
+		"You got me. Aye, you got me. Good fight, that.",
+		"Hmph. Enjoy it while it lasts — I'm only just warmed up.",
+	]
+	var gloat : Array[String] = [
+		"Ha! Better luck next time, eh?",
+		"That's how it's done. Come back when you've sharpened up.",
+		"A valiant effort — but that round was mine.",
+		"Down you go! No shame in it; few can best me.",
+		"Heh, good scrap. Train up and try me again.",
+	]
+	var pool : Array[String] = concede if player_won else gloat
+	return pool[randi() % pool.size()]
 
 
 # Open this NPC's favour offer. The modal is self-contained — it checks

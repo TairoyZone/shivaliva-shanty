@@ -635,6 +635,17 @@ var active_favors : Dictionary = {}
 var pending_challenges : Array = []
 signal challenges_changed
 
+## Head-to-head Skirmish RECORD per NPC, the player's perspective: npc_name -> {wins, losses} (wins = times the
+## PLAYER beat that NPC; losses = times that NPC beat the player). Persisted — battle MEMORY so the cast knows
+## the score (fed into chat context so an NPC never denies a defeat it actually suffered + the NPC profile shows
+## the tally). Mutate ONLY via [method record_battle]. See [[npc-battle-memory]].
+var npc_battle_record : Dictionary = {}
+## One-shot record of the MOST RECENT duel — {npc, player_won} — set on duel end, NOT persisted (transient,
+## lives in the autoload across the scene cut back to the overworld). Drives the post-fight banter bubble + a
+## "this was just now" freshness note in chat. Overwritten by the next duel; cleared on New Game.
+var recent_duel : Dictionary = {}
+signal battle_record_changed
+
 ## Lifetime tournaments won (champion count). Persisted — an earn-only
 ## achievement stat. Bumped via [method record_tournament_win].
 var tournaments_won : int = 0
@@ -1627,6 +1638,34 @@ func clear_challenge(npc_name: String) -> void:
 		_save()
 
 
+## Record the outcome of a Skirmish duel against [param npc_name] (player's perspective: [param player_won] =
+## the player beat this NPC). Bumps the persisted head-to-head tally + stamps [member recent_duel] so the NPC
+## delivers post-fight banter and the chat AI knows the fresh result. No-op for a nameless sparring partner.
+func record_battle(npc_name: String, player_won: bool) -> void:
+
+	if npc_name.is_empty():
+		return
+	var rec : Dictionary = npc_battle_record.get(npc_name, {"wins": 0, "losses": 0})
+	if player_won:
+		rec["wins"] = int(rec.get("wins", 0)) + 1
+	else:
+		rec["losses"] = int(rec.get("losses", 0)) + 1
+	npc_battle_record[npc_name] = rec
+	# Stamp with a monotonic tick so chat can tell "just now" from "a while ago" (freshness decays). Not
+	# persisted, so the tick is always same-session-valid (recent_duel is blank on a fresh boot).
+	recent_duel = {"npc": npc_name, "player_won": player_won, "ts": Time.get_ticks_msec()}
+	battle_record_changed.emit()
+	_save()
+
+
+## The head-to-head duel tally with [param npc_name], the player's perspective: {wins, losses} (wins = the
+## player's wins over this NPC). Always returns both keys (0 if never fought). Read by chat + the NPC profile.
+func battle_record(npc_name: String) -> Dictionary:
+
+	var rec : Dictionary = npc_battle_record.get(npc_name, {})
+	return {"wins": int(rec.get("wins", 0)), "losses": int(rec.get("losses", 0))}
+
+
 ## Mark all CURRENTLY-earned trophies as already-seen WITHOUT announcing — called once on
 ## load so existing trophies (or a pre-system save) never spam toasts; only live earns notify.
 func _seed_trophies_seen() -> void:
@@ -1752,6 +1791,8 @@ func clear_save() -> void:
 	crew = {}
 	active_favors = {}
 	pending_challenges = []
+	npc_battle_record = {}
+	recent_duel = {}
 	tournaments_won = 0
 	last_scene = ""
 	last_position = Vector2.ZERO
@@ -1797,6 +1838,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "crew", crew)
 	config.set_value(SAVE_SECTION, "active_favors", active_favors)
 	config.set_value(SAVE_SECTION, "pending_challenges", pending_challenges)
+	config.set_value(SAVE_SECTION, "npc_battle_record", npc_battle_record)
 	config.set_value(SAVE_SECTION, "tournaments_won", tournaments_won)
 	config.set_value(SAVE_SECTION, "last_scene", last_scene)
 	config.set_value(SAVE_SECTION, "last_position_x", last_position.x)
@@ -1835,6 +1877,7 @@ func _load() -> void:
 	crew = config.get_value(SAVE_SECTION, "crew", {})
 	active_favors = config.get_value(SAVE_SECTION, "active_favors", {})
 	pending_challenges = config.get_value(SAVE_SECTION, "pending_challenges", [])
+	npc_battle_record = config.get_value(SAVE_SECTION, "npc_battle_record", {})
 	tournaments_won = int(config.get_value(SAVE_SECTION, "tournaments_won", 0))
 	last_scene = String(config.get_value(SAVE_SECTION, "last_scene", ""))
 	last_position = Vector2(

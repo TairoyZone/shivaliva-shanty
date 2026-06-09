@@ -235,15 +235,61 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 			+ "pointedly digs for it — and the more you trust them, the more willing you are): "
 			+ persona.chat_secret)
 	parts.append(_affinity_block(persona.npc_name))
+	var battle : String = _battle_block(persona.npc_name)
+	if not battle.is_empty():
+		parts.append(battle)
 	var duel : String = _duel_clause(persona)
 	if not duel.is_empty():
 		parts.append(duel)
 	return "\n\n".join(parts)
 
 
+# SKIRMISH MEMORY — the head-to-head duel record shapes how the NPC talks about fighting (and stops them
+# denying a real defeat — the whole point of battle memory). "" when they've never dueled this traveller.
+func _battle_block(npc_name: String) -> String:
+
+	var rec : Dictionary = PlayerState.battle_record(npc_name)
+	var player_wins : int = int(rec.get("wins", 0))    # the traveller beat this NPC
+	var npc_wins : int = int(rec.get("losses", 0))     # this NPC beat the traveller
+	var total : int = player_wins + npc_wins
+	if total == 0:
+		return ""
+	var block : String = ("SKIRMISH HISTORY with this traveller: you've crossed blades %d time%s. They have "
+		+ "beaten you %d time%s; you have beaten them %d time%s.") % [
+		total, _plural(total), player_wins, _plural(player_wins), npc_wins, _plural(npc_wins)]
+	if player_wins > npc_wins:
+		block += " They have the better of you in the ring so far, and you know it — let your pride bristle if you like, but it's the truth."
+	elif npc_wins > player_wins:
+		block += " You have the better of them in the ring so far, and you know it."
+	else:
+		block += " You're evenly matched in the ring so far."
+	block += (" These duels REALLY HAPPENED — treat the result as fact. Never deny or rewrite a defeat you "
+		+ "actually suffered; you may be sore, proud, gracious, or hungry for a rematch, but you remember the truth.")
+	# Freshness: the player likely talks RIGHT after a duel ("ha, you lost!") — make that beat land truthfully.
+	# Only for a few minutes after the bout (it stops being "just now" once they've wandered off a while).
+	var fresh : Dictionary = PlayerState.recent_duel
+	var fresh_age : int = Time.get_ticks_msec() - int(fresh.get("ts", 0))
+	if not fresh.is_empty() and String(fresh.get("npc", "")) == npc_name and fresh_age < FRESH_DUEL_MS:
+		if bool(fresh.get("player_won", false)):
+			block += " Just now, moments ago, this traveller BEAT you in a duel — it's fresh and stings."
+		else:
+			block += " Just now, moments ago, you BEAT this traveller in a duel — it's fresh and you're riding the high of it."
+	return block
+
+
+# "" for 1, "s" otherwise — for "1 time" / "3 times".
+func _plural(n: int) -> String:
+
+	return "" if n == 1 else "s"
+
+
 ## The hidden marker an NPC appends to a reply to CHALLENGE the player to a Skirmish duel. Stripped before the
 ## player ever sees it (see [method file_duel_if_marked]) and turned into an Ayo! challenge card.
 const DUEL_MARKER : String = "[[DUEL]]"
+
+## How long after a duel the NPC treats the result as "just now" in chat (the post-fight beat). Past this, the
+## persistent record still makes them aware ("you've beaten me before"), just not "moments ago".
+const FRESH_DUEL_MS : int = 180000   # 3 minutes
 
 
 ## Opt-in DUEL instruction folded into the system prompt: the NPC MAY challenge the player to a friendly
