@@ -719,10 +719,10 @@ func _refresh_vitals() -> void:
 func _active_max_holes() -> int:
 
 	if PlayerState.voyage_active:
-		return PlayerState.VOYAGE_MAX_HOLES
+		return PlayerState.voyage_max_holes()   # class-aware: your own hull's cap when self-captained
 	var id : String = PlayerState.active_ship_id()
 	if id.is_empty():
-		return PlayerState.SHIP_MAX_HOLES_DEFAULT
+		return PlayerState.VOYAGE_MAX_HOLES
 	return PlayerState.ship_max_holes(id)
 
 
@@ -844,11 +844,17 @@ func _draw() -> void:
 	# Gunwale rail + upright posts along it.
 	draw_polyline(deck + PackedVector2Array([deck[0]]), RAIL, 5.0)
 	_draw_rail_posts(deck)
-	# A few rail cannons as fixed edge dressing (symmetric guns). The STATIONS, masts, chest + flavour props
-	# are now PLACEABLE DeckProp scenes in ship_deck.tscn (scene-per-component) — drag them in the editor.
-	for gy in [4.5, 8.0, 11.5]:
-		_draw_cannon(_iso(0.7, gy))
-		_draw_cannon(_iso(float(GW) - 0.7, gy))
+	# Rail cannons as edge dressing — the ARMAMENT scales with the class on a self-captained run (a
+	# skiff mounts one pair, the galleon five), so your own hull reads richer as you upgrade. A jobbed
+	# hull keeps the stock three. The STATIONS, masts, chest + flavour props are PLACEABLE DeckProp
+	# scenes in ship_deck.tscn (scene-per-component) — drag them in the editor.
+	var cannon_rows : Array = [4.5, 8.0, 11.5]
+	# (Editor-guarded: _draw also runs in the editor for @tool, where the PlayerState autoload isn't live.)
+	if not Engine.is_editor_hint() and PlayerState.voyage_self_captained and not PlayerState.pillage_ship_id.is_empty():
+		cannon_rows = ShipClasses.get_def(PlayerState.pillage_ship_id).get("cannon_rows", cannon_rows)
+	for gy in cannon_rows:
+		_draw_cannon(_iso(0.7, float(gy)))
+		_draw_cannon(_iso(float(GW) - 0.7, float(gy)))
 	# (The active-station halos are now real pulsing [Glow] nodes — see _build_glows / _update_glows. Crew +
 	# the station/mast/chest props are real nodes added in _add_crew / placed in the .tscn.)
 

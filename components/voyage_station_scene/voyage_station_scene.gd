@@ -105,7 +105,7 @@ func _refresh_hull_meter(bar: MeterBar) -> void:
 	if bar == null:
 		return
 	var holes : int = PlayerState.ship_open_holes()
-	var maxh : int = maxi(PlayerState.VOYAGE_MAX_HOLES, 1)
+	var maxh : int = maxi(PlayerState.voyage_max_holes(), 1)
 	bar.segments = maxh
 	bar.set_value(float(holes), float(maxh))
 	bar.set_caption("sound" if holes <= 0 else ("%d hole%s" % [holes, "" if holes == 1 else "s"]))

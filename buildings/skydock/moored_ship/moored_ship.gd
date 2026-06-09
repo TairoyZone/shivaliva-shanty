@@ -47,13 +47,9 @@ func interact() -> void:
 		return
 	if not PlayerState.has_ship():
 		return
-	var tree : SceneTree = get_tree()
-	if tree.current_scene != null:
-		PlayerState.voyage_home_scene = tree.current_scene.scene_file_path   # where to step off when you disembark
-	var scene : String = PlayerState.captain_own_voyage()
-	if scene.is_empty():
-		return
-	tree.change_scene_to_file(scene)
+	# The berth is the ship-management hub now: sail her, swap the active hull, re-christen, or sell
+	# (Troy 2026-06-10, the elaborate-ship-system pass). Sailing itself lives in the modal's Sail row.
+	DockBerthModal.open(self)
 
 
 func set_tooltip_visible(value: bool) -> void:
@@ -71,7 +67,10 @@ func _refresh_tooltip_text() -> void:
 		return
 	var holes : int = PlayerState.ship_open_holes()
 	var cond : String = "she's sound" if holes <= 0 else ("%d hole%s open" % [holes, "" if holes == 1 else "s"])
-	_tooltip.text = "Board the %s — set sail (%s)   [Click]" % [PlayerState.active_ship_name(), cond]
+	var fleet : int = PlayerState.owned_ships.size()
+	var extra : String = ("  ·  fleet of %d" % fleet) if fleet > 1 else ""
+	_tooltip.text = "The %s, a %s (%s)%s — her berth   [Click]" % [PlayerState.active_ship_name(),
+		ShipClasses.display(PlayerState.active_ship_id()), cond, extra]
 	_tooltip.modulate = Color(0.78, 1.0, 0.62, 1.0)
 
 
@@ -79,7 +78,12 @@ func _draw() -> void:
 
 	if not Engine.is_editor_hint() and not PlayerState.has_ship():
 		return
-	var s : float = ship_scale
+	# The berthed hull DRAWS AS HER CLASS — a skiff is visibly smaller than a galleon, and the mast
+	# count climbs with the class (1/2/3). The editor previews the Cloud Cutter (mid class).
+	var sid : String = "" if Engine.is_editor_hint() else PlayerState.active_ship_id()
+	var def : Dictionary = ShipClasses.get_def(sid)
+	var s : float = ship_scale * float(def.get("moor_scale", 1.0))
+	var masts : int = int(def.get("masts", 2))
 	# Side-view sky-ship hull, bow to the right; origin at the deck's mid-base.
 	var hull : PackedVector2Array = PackedVector2Array([
 		Vector2(-52, -22) * s, Vector2(50, -22) * s, Vector2(72, -8) * s,
@@ -90,17 +94,33 @@ func _draw() -> void:
 	draw_polyline(outline, COLOR_HULL_DARK, 2.0 * s)
 	# Deck trim stripe.
 	draw_line(Vector2(-52, -22) * s, Vector2(50, -22) * s, COLOR_TRIM, 3.0 * s)
-	# Breaches (open holes) — dark notches along the hull, so a battered ship LOOKS battered.
+	# Breaches (open holes) — dark notches spread along the hull, so a battered ship LOOKS battered
+	# (spacing fits the class's full hull cap, so a galleon's nine wounds all land on the planks).
 	var holes : int = 0 if Engine.is_editor_hint() else PlayerState.ship_open_holes()
+	var cap : int = maxi(int(def.get("max_holes", 4)), 1)
 	for i in holes:
-		var bx : float = -34.0 + float(i) * 20.0
+		var bx : float = lerpf(-38.0, 46.0, float(i) / float(maxi(cap - 1, 1)))
 		draw_rect(Rect2(bx * s, -8.0 * s, 11.0 * s, 14.0 * s), COLOR_BREACH)
-	# Mast + a billowed sail.
-	var mast_top : Vector2 = Vector2(2, -86) * s
-	draw_line(Vector2(2, -22) * s, mast_top, COLOR_MAST, 4.0 * s)
-	draw_colored_polygon(PackedVector2Array([Vector2(6, -80) * s, Vector2(44, -62) * s, Vector2(6, -34) * s]), COLOR_SAIL)
-	draw_colored_polygon(PackedVector2Array([Vector2(6, -56) * s, Vector2(44, -62) * s, Vector2(6, -34) * s]), COLOR_SAIL_SHADE)
-	draw_line(Vector2(6, -80) * s, Vector2(6, -34) * s, COLOR_HULL_DARK, 2.0 * s)
-	# Pennant atop the mast.
-	draw_line(mast_top, Vector2(2, -94) * s, COLOR_MAST, 3.0 * s)
-	draw_colored_polygon(PackedVector2Array([Vector2(2, -94) * s, Vector2(22, -90) * s, Vector2(2, -86) * s]), COLOR_TRIM)
+	# Masts + billowed sails — one per class mast, spread along the deck (the tallest amidships).
+	var mast_xs : Array = [2.0]
+	if masts == 2:
+		mast_xs = [-22.0, 18.0]
+	elif masts >= 3:
+		mast_xs = [-32.0, 2.0, 32.0]
+	for m in masts:
+		var mx : float = float(mast_xs[mini(m, mast_xs.size() - 1)])
+		var height : float = 86.0 if absf(mx) < 10.0 else 70.0   # the centre mast stands tallest
+		var top : Vector2 = Vector2(mx, -height) * s
+		draw_line(Vector2(mx, -22) * s, top, COLOR_MAST, 4.0 * s)
+		var sail_top : float = -height + 6.0
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(mx + 4.0, sail_top) * s, Vector2(mx + 42.0, sail_top + 18.0) * s, Vector2(mx + 4.0, -34) * s]), COLOR_SAIL)
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(mx + 4.0, sail_top + 24.0) * s, Vector2(mx + 42.0, sail_top + 18.0) * s, Vector2(mx + 4.0, -34) * s]), COLOR_SAIL_SHADE)
+		draw_line(Vector2(mx + 4.0, sail_top) * s, Vector2(mx + 4.0, -34) * s, COLOR_HULL_DARK, 2.0 * s)
+	# Pennant atop the centre (tallest) mast.
+	var pmx : float = float(mast_xs[1 if mast_xs.size() >= 3 else 0])
+	var ptop : Vector2 = Vector2(pmx, -86.0 if absf(pmx) < 10.0 else -70.0) * s
+	draw_line(ptop, ptop + Vector2(0, -8) * s, COLOR_MAST, 3.0 * s)
+	draw_colored_polygon(PackedVector2Array([
+		ptop + Vector2(0, -8) * s, ptop + Vector2(20, -4) * s, ptop]), COLOR_TRIM)

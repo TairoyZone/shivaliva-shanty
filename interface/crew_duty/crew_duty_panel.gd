@@ -62,7 +62,9 @@ func _render() -> void:
 	_content.add_child(title)
 
 	var sub : Label = Label.new()
-	sub.text = "Post a hand to each station — they carry it by their skill while you man another."
+	var berths : int = PlayerState.voyage_crew_berths()
+	sub.text = "Post a hand to a station — they carry it by their skill while you man another.\nBerths %d / %d — her class carries only so many hands." % [
+		PlayerState.voyage_stations.size(), berths]
 	sub.add_theme_font_size_override("font_size", 13)
 	sub.add_theme_color_override("font_color", INK_SOFT)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -116,8 +118,14 @@ func _station_row(station: String) -> Control:
 	lab.add_child(post_l)
 	row.add_child(lab)
 
-	# Crew picker — "— unmanned —" + each recruited hand with their rating for THIS station.
+	# Crew picker — "— unmanned —" + each recruited hand with their rating for THIS station. An
+	# UNMANNED station greys out once the class's berths are full (you can still re-pick manned ones).
+	var berths_full : bool = PlayerState.voyage_station_npc(station).is_empty() \
+		and PlayerState.voyage_stations.size() >= PlayerState.voyage_crew_berths()
 	var pick : OptionButton = OptionButton.new()
+	pick.disabled = berths_full
+	if berths_full:
+		pick.tooltip_text = "Her berths are full — clear another station first."
 	pick.focus_mode = Control.FOCUS_NONE
 	pick.custom_minimum_size = Vector2(212, 34)
 	pick.size_flags_vertical = Control.SIZE_SHRINK_CENTER

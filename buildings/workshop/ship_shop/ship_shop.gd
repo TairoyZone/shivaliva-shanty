@@ -10,25 +10,8 @@ class_name ShipShop
 extends Interactable
 
 
-## The catalog — small → large. ALL gold-only (the one earned currency).
-## ids persist in owned_ships; keep them stable.
-const SHIPS : Array = [
-	{
-		"id": "driftpod", "name": "Driftpod",
-		"gold": 750,
-		"blurb": "A one-seat skiff for short hops between nearby rocks.",
-	},
-	{
-		"id": "cloudcutter", "name": "Cloud Cutter",
-		"gold": 3000,
-		"blurb": "A nimble cutter — room for a small crew and some cargo.",
-	},
-	{
-		"id": "skygalleon", "name": "Sky Galleon",
-		"gold": 10000,
-		"blurb": "A great hull built for long voyages across the void.",
-	},
-]
+# The catalog lives in ShipClasses.DEFS (components/ships/ — the single source of truth for
+# prices, blurbs AND the per-class stats), so the shop can never drift from the mechanics.
 
 # --- Visual placeholder (a drafting desk with a ship blueprint) -------
 const DESK_HALF_WIDTH : float = 46.0
@@ -136,35 +119,40 @@ func _rebuild_rows() -> void:
 		return
 	for child in _rows_vbox.get_children():
 		child.queue_free()
-	for ship in SHIPS:
-		_rows_vbox.add_child(_make_ship_row(ship))
+	for ship_id in ShipClasses.DEFS:
+		_rows_vbox.add_child(_make_ship_row(String(ship_id)))
 
 
-func _make_ship_row(ship: Dictionary) -> Control:
+func _make_ship_row(ship_id: String) -> Control:
 
+	var def : Dictionary = ShipClasses.get_def(ship_id)
 	var row : PanelContainer = PanelContainer.new()
 	row.add_theme_stylebox_override("panel", _build_row_style())
 	var hbox : HBoxContainer = HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 16)
 	row.add_child(hbox)
-	# Left: name + blurb + cost.
+	# Left: name + blurb + the class STATS (why a bigger hull costs more) + cost.
 	var info : VBoxContainer = VBoxContainer.new()
 	info.custom_minimum_size = Vector2(360.0, 0.0)
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(info)
-	_add_label(info, String(ship["name"]), 20, Color(0.98, 0.88, 0.5, 1.0))
-	_add_label(info, String(ship["blurb"]), 14, Color(0.86, 0.78, 0.6, 1.0))
-	_add_label(info, "%d gold" % int(ship["gold"]), 15, Color(0.80, 0.92, 1.0, 1.0))
+	var owned : bool = PlayerState.owns_ship(ship_id)
+	var shown_name : String = String(def["display"])
+	if owned and PlayerState.ship_name(ship_id) != shown_name:
+		shown_name += "  —  the %s" % PlayerState.ship_name(ship_id)   # her christened name, proudly
+	_add_label(info, shown_name, 20, Color(0.98, 0.88, 0.5, 1.0))
+	_add_label(info, String(def["blurb"]), 14, Color(0.86, 0.78, 0.6, 1.0))
+	_add_label(info, ShipClasses.stat_line(ship_id), 13, Color(0.72, 0.86, 0.72, 1.0))
+	_add_label(info, "%d gold" % int(def["gold"]), 15, Color(0.80, 0.92, 1.0, 1.0))
 	# Right: Buy / Owned / can't-afford button.
-	var owned : bool = PlayerState.owns_ship(String(ship["id"]))
-	var can_buy : bool = PlayerState.can_buy_ship(String(ship["id"]), int(ship["gold"]))
+	var can_buy : bool = PlayerState.can_buy_ship(ship_id, int(def["gold"]))
 	var btn : Button
 	if owned:
 		btn = _make_walnut_button("Owned", Color(0.7, 0.9, 0.7, 1.0))
 		btn.disabled = true
 	elif can_buy:
 		btn = _make_walnut_button("Buy", Color(0.78, 1.0, 0.62, 1.0))
-		btn.pressed.connect(_on_buy_pressed.bind(ship))
+		btn.pressed.connect(_on_buy_pressed.bind(ship_id))
 	else:
 		btn = _make_walnut_button("Can't afford", Color(0.9, 0.6, 0.5, 1.0))
 		btn.disabled = true
@@ -173,10 +161,13 @@ func _make_ship_row(ship: Dictionary) -> Control:
 	return row
 
 
-func _on_buy_pressed(ship: Dictionary) -> void:
+func _on_buy_pressed(ship_id: String) -> void:
 
-	PlayerState.buy_ship(String(ship["id"]), int(ship["gold"]))
-	# ships_changed fires → _rebuild_rows updates the buttons.
+	if not PlayerState.buy_ship(ship_id, ShipClasses.gold_cost(ship_id)):
+		return
+	# ships_changed fires → _rebuild_rows updates the buttons. Then the christening beat:
+	# she's YOURS — name her (skippable; she keeps the class name until christened).
+	ShipChristening.open(self, ship_id)
 
 
 func _on_close_pressed() -> void:

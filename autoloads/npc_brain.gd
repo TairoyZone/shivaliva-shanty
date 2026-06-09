@@ -528,6 +528,8 @@ func _voyage_block() -> String:
 	var lead : String = "RIGHT NOW you're aboard a sky-ship underway on a pillaging voyage"
 	if not PlayerState.pillage_ship_name.is_empty():
 		lead += " — the %s" % PlayerState.pillage_ship_name
+		if not PlayerState.pillage_ship_id.is_empty():
+			lead += ", a %s" % ShipClasses.display(PlayerState.pillage_ship_id)   # her class, chat-accurate
 	bits.append(lead + ".")
 	var dest : String = PlayerState.pillage_destination
 	if not dest.is_empty():

@@ -74,7 +74,7 @@ position = Vector2(0, 520)
 position = Vector2(152, 600)
 
 [node name="MooredShip" parent="YSortNode2D" unique_id=1587267638 instance=ExtResource("13_ship")]
-position = Vector2(256, 720)
+position = Vector2(312, 744)
 
 [node name="ToForest" parent="YSortNode2D" unique_id=332582226 instance=ExtResource("10_door")]
 y_sort_enabled = true

@@ -76,11 +76,9 @@ const STARTING_GOLD : int = 0
 const FIRST_SHIP_NAME : String = "Driftpod"
 const FIRST_SHIP_GOLD : int = 750
 const FIRST_SHIP_LUMBER : int = 0   # MVP: the first ship (Driftpod) is GOLD-ONLY (Troy 2026-06-03)
-## Max simultaneous HULL HOLES per ship class (keyed by the stored lowercase ship id) — the sink
-## ceiling + the Patchworks cap. Bigger ships scale up later; an unlisted id defaults to 4.
-const SHIP_MAX_HOLES : Dictionary = {"driftpod": 4}
-const SHIP_MAX_HOLES_DEFAULT : int = 4
-## Max holes the CURRENT pillage ship can take before she founders (the voyage-ship cap).
+# Per-class hull caps live in ShipClasses.DEFS (components/ships/ — the single source of truth).
+## Max holes the JOBBED pillage ship can take before she founders (someone else's stock hull). A
+## SELF-captained run uses your own ship's class cap instead — see voyage_max_holes().
 const VOYAGE_MAX_HOLES : int = 4
 ## A perfect hull starts the Loft at this Stardust (= the Loft's BASELINE, trivially aloft); each
 ## open hole raises the embark level a touch (a battered hull begins closer to the bite).
@@ -193,6 +191,12 @@ var total_ore : int :
 ## sailing arc that uses them is far future); persisted. See
 ## [method buy_ship] / [method owns_ship].
 var owned_ships : Array = []
+## Christened names, keyed by ship id ("driftpod" → "Skylark"). Set at purchase (the shipwright's
+## christening) or later at the dock. An unchristened ship falls back to her class name. Persisted.
+var ship_custom_names : Dictionary = {}
+## Which owned ship is ACTIVE — the one berthed at the dock, sailed on a self-captained voyage, and
+## whose hull the condition helpers track. "" or a sold id falls back to the first owned. Persisted.
+var active_ship : String = ""
 
 ## Persistent per-ship CONDITION, keyed by ship id → {"open_holes": int}. The ACTIVE ship's holes
 ## drive the Loft's Stardust rise (more holes ⇒ floods faster) + the sink; the Patchworks seals them.
@@ -214,6 +218,12 @@ signal voyage_stations_changed
 var voyage_self_captained : bool = false
 ## TRANSIENT (not saved): the display name of the ship this voyage (your owned ship's name when self-captained).
 var pillage_ship_name : String = ""
+## TRANSIENT (not saved): the OWNED-ship id this self-captained voyage sails ("" on a jobbed run). The
+## write-back in clear_voyage targets THIS id — never active_ship_id(), which could in principle drift.
+var pillage_ship_id : String = ""
+## TRANSIENT (not saved): the hold multiplier scaling this voyage's plunder pool (the class "hold" stat
+## on a self-captained run; 1.0 jobbed). Applied in voyage_total_gold so the chart pool shows it live.
+var voyage_booty_mult : float = 1.0
 ## TRANSIENT (not saved): the last line the deck captain spoke — so re-entering the deck in the SAME
 ## phase doesn't re-announce/re-log the identical line (the deck is a fresh node each re-entry). Reset
 ## by clear_voyage so a new voyage greets you again. See ship_deck.gd `_say`.
@@ -441,7 +451,9 @@ func voyage_total_gold() -> int:
 	var t : int = 0
 	for r in pillage_log:
 		t += int(r.get("gold", 0))
-	return t
+	# The class "hold" stat: a bigger hull carries home a bigger pool (×1.0 jobbed / Driftpod,
+	# ×1.3 Cloud Cutter, ×1.6 Sky Galleon). Applied here so the chart's live pool shows it too.
+	return roundi(float(t) * voyage_booty_mult)
 
 
 # The OVERALL duty score (0..1) across the WHOLE voyage so far — total lift per total swap, the
@@ -525,7 +537,9 @@ func clear_voyage() -> void:
 	# Driftpod actually accrues + keeps the damage you took, and the port Patchworks has something to mend).
 	# Done FIRST, while voyage_open_holes still holds the run's final holes (a sink already maxed it via wreck).
 	if voyage_self_captained:
-		var sid : String = active_ship_id()
+		# Write to the ship that SAILED (pillage_ship_id), not active_ship_id() — identical today (the
+		# dock refuses swaps mid-voyage), but correct by construction. Falls back for safety.
+		var sid : String = pillage_ship_id if not pillage_ship_id.is_empty() else active_ship_id()
 		if not sid.is_empty():
 			var cond : Dictionary = ship_condition.get(sid, {})
 			cond["open_holes"] = clampi(voyage_open_holes, 0, ship_max_holes(sid))
@@ -533,6 +547,8 @@ func clear_voyage() -> void:
 			_save()
 	voyage_self_captained = false
 	pillage_ship_name = ""
+	pillage_ship_id = ""
+	voyage_booty_mult = 1.0
 	voyage_active = false
 	voyage_ship_t = 0.0
 	pillage_phase = 0
@@ -984,8 +1000,10 @@ func buy_ship(ship_id: String, gold_cost: int) -> bool:
 
 	if not can_buy_ship(ship_id, gold_cost):
 		return false
-	add_coins(-gold_cost, "Bought the %s" % ship_id.capitalize())
+	add_coins(-gold_cost, "Bought the %s" % ShipClasses.display(ship_id))
 	owned_ships.append(ship_id)
+	if active_ship.is_empty() or not owned_ships.has(active_ship):
+		active_ship = ship_id   # your first hull berths as the active ship; later buys swap at the dock
 	ships_changed.emit()
 	objective_changed.emit()
 	_save()
@@ -996,31 +1014,77 @@ func buy_ship(ship_id: String, gold_cost: int) -> bool:
 # See [[ship-condition-research]]. Holes are persistent hull damage on the ACTIVE ship; combat opens
 # them (fight legs), the Patchworks seals them, and they drive how fast the Loft's Stardust floods in.
 
-## The ship a voyage uses right now. MVP: the first (only) owned ship. "" if none owned.
+## The ship a voyage uses right now: the chosen ACTIVE ship, falling back to the first owned
+## (covers old saves + a just-sold active). "" if none owned.
 func active_ship_id() -> String:
 
+	if not active_ship.is_empty() and owned_ships.has(active_ship):
+		return active_ship
 	return String(owned_ships[0]) if not owned_ships.is_empty() else ""
 
 
-## Display names for owned ships (the catalog names). Falls back to a capitalised id.
-const SHIP_NAMES : Dictionary = {"driftpod": "Driftpod", "cloud_cutter": "Cloud Cutter", "sky_galleon": "Sky Galleon"}
-
-## The display name for a ship id (e.g. "driftpod" → "Driftpod").
+## The display name for a ship id — her CHRISTENED name when she has one, else the class name
+## from ShipClasses (e.g. "driftpod" → "Skylark" or "Driftpod").
 func ship_name(ship_id: String) -> String:
 
-	return String(SHIP_NAMES.get(ship_id, ship_id.capitalize()))
+	var custom : String = String(ship_custom_names.get(ship_id, ""))
+	return custom if not custom.is_empty() else ShipClasses.display(ship_id)
 
 
-## The display name of your active (first) owned ship — "" if none owned.
+## The display name of your active owned ship — "" if none owned.
 func active_ship_name() -> String:
 
 	var id : String = active_ship_id()
 	return ship_name(id) if not id.is_empty() else ""
 
 
+## Christen (or re-christen) an owned ship. Empty/whitespace clears back to the class name.
+func christen_ship(ship_id: String, new_name: String) -> void:
+
+	if not owns_ship(ship_id):
+		return
+	var trimmed : String = new_name.strip_edges().left(24)
+	if trimmed.is_empty():
+		ship_custom_names.erase(ship_id)
+	else:
+		ship_custom_names[ship_id] = trimmed
+	ships_changed.emit()
+	_save()
+
+
+## Make an owned ship the ACTIVE one (the dock berth swap). No-op mid-voyage — the hull
+## write-back targets the ship that sailed, so the fleet can't be juggled under a live run.
+func set_active_ship(ship_id: String) -> void:
+
+	if voyage_active or not owns_ship(ship_id) or ship_id == active_ship_id():
+		return
+	active_ship = ship_id
+	ships_changed.emit()
+	_save()
+
+
+## Sell an owned ship back to the shipwright for ShipClasses.sell_price (half the catalog price).
+## Her condition + christened name go with her. Refuses mid-voyage. Returns the gold refunded, -1 on refusal.
+func sell_ship(ship_id: String) -> int:
+
+	if voyage_active or not owns_ship(ship_id):
+		return -1
+	var price : int = ShipClasses.sell_price(ship_id)
+	var sold_name : String = ship_name(ship_id)
+	owned_ships.erase(ship_id)
+	ship_condition.erase(ship_id)
+	ship_custom_names.erase(ship_id)
+	if active_ship == ship_id:
+		active_ship = String(owned_ships[0]) if not owned_ships.is_empty() else ""
+	add_coins(price, "Sold the %s" % sold_name)
+	ships_changed.emit()
+	objective_changed.emit()
+	_save()
+	return price
+
+
 # --- Captain your OWN ship (a self-captained voyage) ------------------
-const SELF_VOYAGE_LEGS_MIN : int = 2
-const SELF_VOYAGE_LEGS_MAX : int = 4
+# Route length is CLASS-driven now (ShipClasses legs_min/legs_max — a skiff hops, a galleon ranges).
 const SELF_VOYAGE_FOES : Array = ["a sky-brigand sloop", "a marine cutter", "a band of sky-marauders", "a corsair brig"]
 const SELF_VOYAGE_ENCOUNTER_CHANCE : float = 0.5
 
@@ -1036,7 +1100,11 @@ func captain_own_voyage() -> String:
 	var to_cradle : bool = voyage_home_scene.find("frontier_isle") != -1
 	var dest_name : String = "Cradle Rock" if to_cradle else "Driftspar"
 	var dest_scene : String = "res://levels/shore/shore.tscn" if to_cradle else "res://levels/frontier_isle/frontier_isle.tscn"
-	var legs : int = SELF_VOYAGE_LEGS_MIN + randi() % (SELF_VOYAGE_LEGS_MAX - SELF_VOYAGE_LEGS_MIN + 1)
+	var sid : String = active_ship_id()
+	var def : Dictionary = ShipClasses.get_def(sid)
+	var legs_min : int = int(def.get("legs_min", 2))
+	var legs_max : int = int(def.get("legs_max", 4))
+	var legs : int = legs_min + randi() % maxi(legs_max - legs_min + 1, 1)
 	var enc : Array = []
 	var pos : Array = []
 	var any_fight : bool = false
@@ -1057,6 +1125,8 @@ func captain_own_voyage() -> String:
 	pillage_captain = mate
 	pillage_crew = "your crew"
 	pillage_ship_name = active_ship_name()
+	pillage_ship_id = sid                                  # the hull that sails is the hull written back
+	voyage_booty_mult = ShipClasses.booty_mult(sid)        # the class hold scales the whole pool
 	voyage_self_captained = true
 	pillage_destination = dest_name
 	pillage_destination_scene = dest_scene
@@ -1077,10 +1147,25 @@ func captain_own_voyage() -> String:
 	return "res://levels/ship_deck/ship_deck.tscn"
 
 
-## Max hull holes for a ship id (its sink ceiling + Patchworks cap).
+## Max hull holes for a ship id (its sink ceiling + Patchworks cap) — the class "hull" stat.
 func ship_max_holes(ship_id: String) -> int:
 
-	return int(SHIP_MAX_HOLES.get(ship_id, SHIP_MAX_HOLES_DEFAULT))
+	return ShipClasses.max_holes(ship_id)
+
+
+## The CURRENT voyage's hull cap: your own ship's class hull when self-captained, the stock
+## jobbed-ship cap otherwise. The Loft's sink bar + the hull gauge + the wreck all key off this.
+func voyage_max_holes() -> int:
+
+	if voyage_self_captained and not pillage_ship_id.is_empty():
+		return ShipClasses.max_holes(pillage_ship_id)
+	return VOYAGE_MAX_HOLES
+
+
+## Open holes on a SPECIFIC owned ship's persisted condition (the dock berth lists every hull).
+func ship_holes_of(ship_id: String) -> int:
+
+	return int((ship_condition.get(ship_id, {}) as Dictionary).get("open_holes", 0))
 
 
 ## Open holes on the ACTIVE ship (0 with no ship / no damage yet).
@@ -1114,7 +1199,7 @@ func close_hole(n: int = 1) -> void:
 func wreck_active_ship() -> void:
 
 	if voyage_active:
-		_set_open_holes(VOYAGE_MAX_HOLES)
+		_set_open_holes(voyage_max_holes())
 		return
 	var id : String = active_ship_id()
 	if not id.is_empty():
@@ -1133,7 +1218,7 @@ func ship_stardust_start() -> float:
 func _set_open_holes(value: int) -> void:
 
 	if voyage_active:
-		voyage_open_holes = clampi(value, 0, VOYAGE_MAX_HOLES)   # the pillage ship (transient, not saved)
+		voyage_open_holes = clampi(value, 0, voyage_max_holes())   # the pillage ship (transient, not saved)
 		return
 	var id : String = active_ship_id()
 	if id.is_empty():
@@ -1360,8 +1445,18 @@ func cycle_crew_rank(npc_name: String, dir: int) -> String:
 
 # --- Voyage duty-stations (assign crew to a station; their skill carries it) ---
 
+## How many of YOUR crew this voyage's ship can berth (the class "crew slots" stat on a self-captained
+## run — a Driftpod posts 1 hand, the Sky Galleon all stations). Outside a class-bound run, no cap.
+func voyage_crew_berths() -> int:
+
+	if voyage_self_captained and not pillage_ship_id.is_empty():
+		return ShipClasses.crew_slots(pillage_ship_id)
+	return CrewSkills.STATIONS.size()
+
+
 ## Assign [param npc_name] (or "" to clear) to a voyage station ("Sailing"/"Repair"/"Combat"). Only a recruited
-## crew member may man a station, and no one mans two — assigning moves them. Transient (not saved).
+## crew member may man a station, no one mans two (assigning moves them), and the ship's class caps how many
+## hands she BERTHS in total. Transient (not saved).
 func set_voyage_station(station: String, npc_name: String) -> void:
 
 	if not (station in CrewSkills.STATIONS):
@@ -1370,6 +1465,11 @@ func set_voyage_station(station: String, npc_name: String) -> void:
 		voyage_stations.erase(station)
 	else:
 		if not is_in_crew(npc_name):
+			return
+		# A MOVE (already posted somewhere) never raises the count; a fresh posting must fit the berths.
+		var already_posted : bool = voyage_stations.values().has(npc_name)
+		if not already_posted and voyage_station_npc(station).is_empty() \
+				and voyage_stations.size() >= voyage_crew_berths():
 			return
 		for k in voyage_stations.keys():
 			if String(voyage_stations[k]) == npc_name and k != station:
@@ -1804,6 +1904,8 @@ func clear_save() -> void:
 	trophies_claimed = []
 	owned_ships = []
 	ship_condition = {}
+	ship_custom_names = {}
+	active_ship = ""
 	owned_weapons = ["brawl"]
 	equipped_weapon = "brawl"
 	npc_affinity = {}
@@ -1851,6 +1953,8 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "trophies_claimed", trophies_claimed)
 	config.set_value(SAVE_SECTION, "owned_ships", owned_ships)
 	config.set_value(SAVE_SECTION, "ship_condition", ship_condition)
+	config.set_value(SAVE_SECTION, "ship_custom_names", ship_custom_names)
+	config.set_value(SAVE_SECTION, "active_ship", active_ship)
 	config.set_value(SAVE_SECTION, "owned_weapons", owned_weapons)
 	config.set_value(SAVE_SECTION, "equipped_weapon", equipped_weapon)
 	config.set_value(SAVE_SECTION, "npc_affinity", npc_affinity)
@@ -1890,6 +1994,8 @@ func _load() -> void:
 	trophies_claimed = config.get_value(SAVE_SECTION, "trophies_claimed", [])
 	owned_ships = config.get_value(SAVE_SECTION, "owned_ships", [])
 	ship_condition = config.get_value(SAVE_SECTION, "ship_condition", {})
+	ship_custom_names = config.get_value(SAVE_SECTION, "ship_custom_names", {})
+	active_ship = String(config.get_value(SAVE_SECTION, "active_ship", ""))
 	owned_weapons = config.get_value(SAVE_SECTION, "owned_weapons", ["brawl"])
 	equipped_weapon = String(config.get_value(SAVE_SECTION, "equipped_weapon", "brawl"))
 	npc_affinity = config.get_value(SAVE_SECTION, "npc_affinity", {})
