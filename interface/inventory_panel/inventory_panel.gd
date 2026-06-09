@@ -514,6 +514,12 @@ func _on_objectives_changed(_a = null) -> void:
 
 	if _current_tab == "objectives":
 		_refresh_objectives()
+	# A New Game (clear_save) emits objective_changed — recompute the trophy badge so a prior run's unclaimed
+	# count doesn't linger on the fresh save (it only refreshed on trophy_earned/claimed before). Also keeps it
+	# honest as gold changes (which can newly earn a coin-trophy).
+	_update_ayo_badge()
+	if _current_tab == "ayo":
+		_refresh_ayo()
 
 
 func _build_tutorial_page() -> Control:
