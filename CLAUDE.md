@@ -53,7 +53,8 @@ Integer division needs `@warning_ignore("integer_division")`. Avoid shadowing ba
 autoloads/        PlayerState — the data spine (singleton)
 interface/        HUD, Overlay (singletons) + all UI panels (inventory, profile, lobby, …)
 components/       reusable bases + parts: interactable, puzzle, npc, building, bed,
-                  puzzle_scene, state_machine, parlor_table, trophies, npc/ (personality + registry)
+                  modal (the pop-up base — EVERY centered panel/window extends it), puzzle_scene,
+                  state_machine, parlor_table, trophies, npc/ (personality + registry + crew_skills)
 levels/           walkable overworld scenes (extend BaseLocation): shore, tavern, forest, mine,
                   *_interior, frontier_isle(Driftspar), door/
 buildings/        building props + their interiors' work-sites (forge, workshop, skydock, …)
