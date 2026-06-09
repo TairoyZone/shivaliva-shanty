@@ -98,3 +98,9 @@ extends Resource
 @export_multiline var chat_secret : String = ""
 ## Where they are, in-world (defaults to Cradle Rock). Grounds the NPC so replies fit the setting.
 @export var chat_locale : String = "Cradle Rock, a floating sky-island"
+## How readily this NPC throws down a friendly SKIRMISH duel during chat (the unique-hook challenge path).
+## 0 = a pacifist who never challenges (a healer); 1 = a scrapper who'll spar at the lightest provocation (a
+## swordsman). They ALWAYS take the player up on an explicit challenge — this only biases SPONTANEOUS ones.
+## At 0 the duel marker is omitted from the prompt entirely, so they cannot start a fight. See
+## [NpcBrain._duel_clause]; the marker is stripped before display + filed as an Ayo! challenge.
+@export_range(0.0, 1.0) var duel_appetite : float = 0.12

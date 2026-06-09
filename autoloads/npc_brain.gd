@@ -235,7 +235,54 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 			+ "pointedly digs for it — and the more you trust them, the more willing you are): "
 			+ persona.chat_secret)
 	parts.append(_affinity_block(persona.npc_name))
+	var duel : String = _duel_clause(persona)
+	if not duel.is_empty():
+		parts.append(duel)
 	return "\n\n".join(parts)
+
+
+## The hidden marker an NPC appends to a reply to CHALLENGE the player to a Skirmish duel. Stripped before the
+## player ever sees it (see [method file_duel_if_marked]) and turned into an Ayo! challenge card.
+const DUEL_MARKER : String = "[[DUEL]]"
+
+
+## Opt-in DUEL instruction folded into the system prompt: the NPC MAY challenge the player to a friendly
+## Skirmish bout by appending [member DUEL_MARKER] at the very end of a spoken line. Frequency is biased by the
+## persona's [member NpcPersonality.duel_appetite]; at 0 the clause is omitted entirely so a pacifist can never
+## start a fight. The marker is stripped + filed before display, so the player only ever sees the spoken words.
+func _duel_clause(persona: NpcPersonality) -> String:
+
+	var appetite : float = clampf(persona.duel_appetite, 0.0, 1.0)
+	if appetite <= 0.0:
+		return ""   # a pacifist NPC — never offer the marker, so they can't start a fight
+	var bias : String
+	if appetite < 0.25:
+		bias = "You are NOT a scrapper — only offer a bout if strongly provoked, insulted, or pointedly goaded."
+	elif appetite < 0.6:
+		bias = "You're game for a friendly bout now and then — offer one if the moment turns competitive or boastful."
+	else:
+		bias = "You're a born scrapper — happy to throw down at the lightest provocation, or just for the sport of it."
+	return ("DUELS: Folk here settle scores and show off with friendly SKIRMISH bouts (sky-pirate sparring — "
+		+ "for sport and pride, never real harm). " + bias + " If the traveller explicitly proposes, accepts, or "
+		+ "dares you into a duel, you MUST take them up on it. ONLY when you are challenging them or accepting "
+		+ "their challenge, append this exact marker as the very last thing in your reply, after your spoken "
+		+ "words: " + DUEL_MARKER + " The traveller never sees the marker — speak naturally and never mention it. "
+		+ "Do NOT use it in ordinary, calm, or friendly chat.")
+
+
+## If [param text] carries the hidden duel marker, file a Skirmish challenge from [param npc_name] (it lands in
+## the Ayo! tab) and STRIP the marker so the player only sees the spoken line. Tolerant of casing / inner
+## whitespace. Returns the cleaned text. Shared by the private path AND RoomChat's ambient pool.
+func file_duel_if_marked(text: String, npc_name: String) -> String:
+
+	if npc_name.is_empty():
+		return text
+	var re : RegEx = RegEx.new()
+	re.compile("(?i)\\[\\[\\s*duel\\s*\\]\\]")
+	if re.search(text) == null:
+		return text
+	PlayerState.add_challenge(npc_name)
+	return re.sub(text, "", true).strip_edges()
 
 
 ## The CURRENT scene's place — fed into the prompt so NPCs reference their ACTUAL surroundings (Troy 2026-06-08),
@@ -315,6 +362,11 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		chat_failed.emit("empty reply")
 		return
 	note_online()
+	if _persona != null:
+		var cleaned : String = file_duel_if_marked(reply, _persona.npc_name)
+		if cleaned.is_empty() and cleaned != reply:
+			cleaned = "Then it's settled — meet me when you're ready to throw down."   # marker-only line
+		reply = cleaned
 	_messages.append({"role": "assistant", "content": reply})
 	npc_replied.emit(reply)
 
