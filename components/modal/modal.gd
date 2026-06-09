@@ -42,6 +42,11 @@ func _modal_content_separation() -> int:
 func _modal_scrollable() -> bool:
 	return false
 
+## false → the modal manages its OWN ESC (skip the standard EscToClose) — e.g. PauseMenu, which guards the
+## Options sub-panel stacked over it.
+func _modal_esc_to_close() -> bool:
+	return true
+
 func _modal_panel_style() -> StyleBoxFlat:
 	var s : StyleBoxFlat = StyleBoxFlat.new()
 	s.bg_color = Color(0.18, 0.11, 0.06, 0.97)
@@ -105,7 +110,8 @@ func _ready() -> void:
 	else:
 		_panel.add_child(_content)
 
-	add_child(EscToClose.new(_close))
+	if _modal_esc_to_close():
+		add_child(EscToClose.new(_close))
 	_build_content()
 	ModalFx.appear(_panel, _dim)
 

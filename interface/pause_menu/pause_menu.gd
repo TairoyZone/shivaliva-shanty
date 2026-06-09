@@ -4,13 +4,10 @@
 ## ESC-to-resume, added to the root via PauseMenu.open(host) (won't stack). Built procedurally
 ## (placeholder-first). The HUD drives opening; closing whatever's already open takes priority over it.
 class_name PauseMenu
-extends CanvasLayer
+extends Modal
 
 const GROUP : StringName = &"pause_menu"
 const GOLD : Color = Color(0.96, 0.86, 0.5, 1.0)
-
-var _panel : PanelContainer   # pop-in / dismiss target
-var _dim : ColorRect
 
 
 ## Open the pause menu (added to the tree root + pauses). No-op if one is already showing.
@@ -23,46 +20,31 @@ static func open(host: Node) -> void:
 	host.get_tree().root.add_child(PauseMenu.new())
 
 
-func _ready() -> void:
+# --- Modal config -----------------------------------------------------
 
-	layer = 80   # above the HUD (10) + chat (12), below the OptionsPanel (90) it can open
-	process_mode = Node.PROCESS_MODE_ALWAYS
-	add_to_group(GROUP)
-	_build()
-	if get_tree() != null:
-		get_tree().paused = true
-	ModalFx.appear(_panel, _dim)   # fade + pop in (animate-everything)
+func _modal_layer() -> int:
+	return 80   # above the HUD (10) + chat (12), below the OptionsPanel (90) it can open
+
+func _modal_group() -> StringName:
+	return GROUP
+
+func _modal_size() -> Vector2:
+	return Vector2(380.0, 340.0)
+
+func _modal_content_separation() -> int:
+	return 14
+
+func _modal_dim_alpha() -> float:
+	return 0.6
+
+func _modal_esc_to_close() -> bool:
+	return false   # PauseMenu handles ESC itself (_unhandled_input) so the Options panel can stack over it
+
+func _modal_panel_style() -> StyleBoxFlat:
+	return _panel_style()
 
 
-func _build() -> void:
-
-	# Dim backdrop — a click outside the panel resumes.
-	var dim : ColorRect = ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.6)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	dim.gui_input.connect(_on_dim_input)
-	add_child(dim)
-	_dim = dim
-
-	var panel : PanelContainer = PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", _panel_style())
-	panel.anchor_left = 0.5
-	panel.anchor_top = 0.5
-	panel.anchor_right = 0.5
-	panel.anchor_bottom = 0.5
-	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	panel.offset_left = -190.0
-	panel.offset_top = -170.0
-	panel.offset_right = 190.0
-	panel.offset_bottom = 170.0
-	add_child(panel)
-	_panel = panel
-
-	var vbox : VBoxContainer = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 14)
-	panel.add_child(vbox)
+func _build_content() -> void:
 
 	var title : Label = Label.new()
 	title.text = "Paused"
@@ -71,17 +53,17 @@ func _build() -> void:
 	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	title.add_theme_constant_override("outline_size", 4)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(title)
+	_content.add_child(title)
 
 	var spacer : Control = Control.new()
 	spacer.custom_minimum_size = Vector2(0.0, 8.0)
-	vbox.add_child(spacer)
+	_content.add_child(spacer)
 
-	vbox.add_child(_make_button("Resume", Color(0.86, 0.94, 0.82, 1.0), Color(0.16, 0.22, 0.14, 0.94),
+	_content.add_child(_make_button("Resume", Color(0.86, 0.94, 0.82, 1.0), Color(0.16, 0.22, 0.14, 0.94),
 		Color(0.46, 0.66, 0.36, 1.0), _close))
-	vbox.add_child(_make_button("⚙  Options", Color(0.80, 0.86, 0.96, 1.0), Color(0.14, 0.13, 0.20, 0.94),
+	_content.add_child(_make_button("⚙  Options", Color(0.80, 0.86, 0.96, 1.0), Color(0.14, 0.13, 0.20, 0.94),
 		Color(0.40, 0.42, 0.58, 1.0), func() -> void: OptionsPanel.open(self)))
-	vbox.add_child(_make_button("⏻  Quit to Title", Color(0.92, 0.72, 0.52, 1.0), Color(0.20, 0.12, 0.07, 0.94),
+	_content.add_child(_make_button("⏻  Quit to Title", Color(0.92, 0.72, 0.52, 1.0), Color(0.20, 0.12, 0.07, 0.94),
 		Color(0.55, 0.38, 0.18, 1.0), _on_quit_to_title))
 
 	var hint : Label = Label.new()
@@ -89,7 +71,7 @@ func _build() -> void:
 	hint.add_theme_font_size_override("font_size", 14)
 	hint.add_theme_color_override("font_color", Color(0.8, 0.68, 0.42, 0.85))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(hint)
+	_content.add_child(hint)
 
 
 func _make_button(text: String, fg: Color, bg: Color, border: Color, action: Callable) -> Button:
@@ -144,24 +126,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		var vp : Viewport = get_viewport()
 		if vp != null:
 			vp.set_input_as_handled()
-
-
-func _on_dim_input(event: InputEvent) -> void:
-
-	if event is InputEventMouseButton and event.pressed:
-		_close()
-
-
-func _close() -> void:
-
-	ModalFx.dismiss(self, _panel, _dim, _do_close)   # scale + fade out, THEN really close
-
-
-func _do_close() -> void:
-
-	if get_tree() != null:
-		get_tree().paused = false
-	queue_free()
 
 
 # Return to the title — PlayerState autosaves on every change + records last_scene, so main.tscn resumes
