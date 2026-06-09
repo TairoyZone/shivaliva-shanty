@@ -221,6 +221,33 @@ func bind_to(player: PokerPlayer, with_cards: bool = true) -> void:
 		hole_cards = player.hole_cards
 
 
+# --- Table chat: present this NPC seat to RoomChat + the chat box's "→ Name" scope (which both scan the "npc"
+# group) so the player can banter with the cast AT the poker table — reuses the overworld chat plumbing
+# untouched. The seat is a Node2D, so reply bubbles float above it like any overworld NPC.
+var npc_name : String = ""           # what RoomChat / the scope menu key on (a cast member's display name)
+var _chat_persona : NpcPersonality = null
+
+
+## Mark this seat as a chat-able cast member: join the "npc" group + expose [member npc_name] + [method
+## open_chat]. Called by the poker scene for NON-human seats only, so the room/private chat treats a seated
+## NPC exactly like an overworld one.
+func enable_table_chat(persona: NpcPersonality) -> void:
+
+	if persona == null:
+		return
+	_chat_persona = persona
+	npc_name = persona.npc_name
+	if not is_in_group("npc"):
+		add_to_group("npc")
+
+
+## Open a private AI chat with this seated NPC — the chat box's scope menu (and RoomChat) call this.
+func open_chat() -> void:
+
+	if _chat_persona != null:
+		ChatBox.start_private_chat(_chat_persona, self)
+
+
 ## World-space position of one of the two hole-card slots, relative to
 ## this seat's parent. Used by the scene controller to compute where
 ## animated cards should land.

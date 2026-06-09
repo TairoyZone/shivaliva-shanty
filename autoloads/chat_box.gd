@@ -33,6 +33,7 @@ var _private_persona : NpcPersonality = null
 var _private_npc : Node = null          # the Npc node, for floating reply bubbles (may go invalid on scene change)
 var _private_fallback : Array = []      # the NPC's canned lines — used if a request fails
 var _npc_signals_connected : bool = false
+var _last_scene : Node = null           # to end a private chat when the scene changes (the NPC node is freed)
 
 
 func _ready() -> void:
@@ -508,13 +509,22 @@ func _autoscroll() -> void:
 # (the EventFeed still streams the live events there). Releasing focus when hidden frees game input.
 func _process(_delta: float) -> void:
 
-	var should : bool = chat_visible and HUD != null and HUD.visible
+	# Shows in the walkable overworld (mirrors the HUD) AND in any scene that opts in via the "chat_scene"
+	# group (e.g. the poker table — a PuzzleScene where the HUD is hidden but we still want table banter).
+	var sc : Node = get_tree().current_scene if get_tree() != null else null
+	var should : bool = chat_visible and ((HUD != null and HUD.visible) or (sc != null and sc.is_in_group("chat_scene")))
 	if should != visible:
 		visible = should
 		if not visible and is_typing():
 			_input.release_focus()
 	if _in_private and not visible:
 		_exit_private()   # left the walkable scene (puzzle / title) — end the conversation cleanly
+	# End a private chat on ANY scene change too — the NPC node (e.g. a poker seat) is freed by the swap, so
+	# the conversation can't continue (covers poker → overworld, where the bar stays visible across the cut).
+	if sc != _last_scene:
+		_last_scene = sc
+		if _in_private:
+			_exit_private()
 	# The open log shows the same lines as the transient EventFeed + shares the lower-left corner, so hide
 	# the feed while the log is open (avoids the same line rendering twice).
 	var feed_visible : bool = not (visible and _log_open)

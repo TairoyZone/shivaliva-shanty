@@ -236,6 +236,9 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 	var pronoun_roster : String = _cast_pronouns_block()
 	if not pronoun_roster.is_empty():
 		parts.append(pronoun_roster)   # so NPCs use each other's correct pronouns instead of guessing
+	var voyage : String = _voyage_block()
+	if not voyage.is_empty():
+		parts.append(voyage)   # mid-pillage: the live ship + route facts, so the crew talks about it accurately
 	if include_secret and not persona.chat_secret.is_empty():
 		parts.append("A secret you hold (do NOT volunteer it; only hint at it, or reveal it, if the player "
 			+ "pointedly digs for it — and the more you trust them, the more willing you are): "
@@ -477,6 +480,59 @@ func _cast_pronouns_block() -> String:
 		return ""
 	return ("THE CAST — always use the correct pronouns for each person below; NEVER guess someone's gender:\n"
 		+ ", ".join(lines) + ".")
+
+
+# VOYAGE AWARENESS — when the player is mid-pillage, fold the LIVE ship + route facts into the prompt so the
+# crew (and anyone aboard) talks about the voyage accurately — where she's bound, which stop, the hull's
+# state — instead of guessing. "" when not sailing (no cost to normal port chat). Reads transient PlayerState
+# voyage fields. See [[voyage-loop-research]] + [[ship-condition-research]].
+func _voyage_block() -> String:
+
+	if not PlayerState.voyage_active:
+		return ""
+	var bits : PackedStringArray = PackedStringArray()
+	var lead : String = "RIGHT NOW you're aboard a sky-ship underway on a pillaging voyage"
+	if not PlayerState.pillage_ship_name.is_empty():
+		lead += " — the %s" % PlayerState.pillage_ship_name
+	bits.append(lead + ".")
+	var dest : String = PlayerState.pillage_destination
+	if not dest.is_empty():
+		var leg : int = PlayerState.pillage_leg + 1
+		var total : int = maxi(PlayerState.pillage_legs_total, 1)
+		bits.append("She's bound for %s — stop %d of %d on the run." % [dest, leg, total])
+	# Your role + WHO ELSE is aboard (the full crew, each named with the station they're working).
+	if PlayerState.voyage_self_captained:
+		bits.append("You're captaining her yourself.")
+	else:
+		bits.append("You signed on as a hand for this run.")
+	var aboard : PackedStringArray = PackedStringArray()
+	for e in PlayerState.pillage_duty_crew:
+		if not (e is Dictionary) or bool(e.get("is_player", false)):
+			continue
+		var nm : String = String(e.get("name", ""))
+		if nm.is_empty():
+			continue
+		var duty : String = String(e.get("duty", ""))
+		var role : String = (" (%s)" % duty) if not duty.is_empty() else ""
+		# Only badge a separate captain when you're NOT the one captaining (self-captained → the "captain"
+		# roster slot is just your navigating mate).
+		var tag : String = "Captain " if (nm == PlayerState.pillage_captain and not PlayerState.voyage_self_captained) else ""
+		aboard.append("%s%s%s" % [tag, nm, role])
+	if not aboard.is_empty():
+		bits.append("Aboard with you: " + ", ".join(aboard) + ".")
+	var holes : int = PlayerState.voyage_open_holes
+	if holes <= 0:
+		bits.append("The hull is sound and dry.")
+	elif holes <= 2:
+		bits.append("The hull's taken a hole or two — a little stardust seeping in, nothing dire yet.")
+	else:
+		bits.append("The hull is badly holed (%d breaches) and taking on stardust fast — she sorely needs patching." % holes)
+	# Trouble on this very stretch (a pre-rolled encounter on the current leg).
+	var enc : Array = PlayerState.pillage_encounters
+	var li : int = PlayerState.pillage_leg
+	if li >= 0 and li < enc.size() and not String(enc[li]).is_empty():
+		bits.append("Word is %s lies in wait on this stretch — a boarding fight may be at hand." % String(enc[li]))
+	return "VOYAGE: " + " ".join(bits)
 
 
 # RAPPORT context — the player's standing with this NPC shapes their warmth + openness (first step toward

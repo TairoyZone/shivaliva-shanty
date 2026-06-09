@@ -126,6 +126,7 @@ var _returning : bool = false              # leaving the table — pay out / rec
 func _ready() -> void:
 
 	super._ready()
+	add_to_group("chat_scene")   # opt this puzzle into the chat bar (normally HUD-hidden) so you can banter at the table
 	set_help_text("Hold 'em Poker — Texas Hold'em\n\n"
 		+ "• Click action buttons (Fold / Check / Call / Bet / Raise / All-In)\n"
 		+ "• Slide the bet amount on raises\n"
@@ -282,6 +283,8 @@ func _make_seat_widget(i: int) -> void:
 	seat.position = _seat_position(_display_of_player[i], _table_seats)
 	seat.bind_to(_board.players[i])
 	seat.hole_cards_face_up = _board.players[i].is_human
+	if _board.players[i].personality != null:
+		seat.enable_table_chat(_board.players[i].personality)   # a cast member → chat-able at the table
 	_seats.append(seat)
 
 
