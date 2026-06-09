@@ -232,9 +232,7 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 	var here : String = _current_place()
 	if not here.is_empty():
 		parts.append(here)   # environment awareness: the ACTUAL room they're standing in right now
-	var directory : String = _directory_block(persona.npc_name)
-	if not directory.is_empty():
-		parts.append(directory)   # who's-where grounding so directions are real, not invented
+	parts.append(ISLAND_GAZETTEER)   # world-map grounding so directions/whereabouts are real, not invented
 	if include_secret and not persona.chat_secret.is_empty():
 		parts.append("A secret you hold (do NOT volunteer it; only hint at it, or reveal it, if the player "
 			+ "pointedly digs for it — and the more you trust them, the more willing you are): "
@@ -441,23 +439,25 @@ func _current_place() -> String:
 	return String(PLACES.get(path.get_file().get_basename(), ""))
 
 
-# WHO'S-WHERE DIRECTORY — Cradle Rock is small, so every NPC knows where the rest of the cast is usually
-# found. Built from each persona's chat_locale (the ONE source of truth — edit a .tres, the directory follows),
-# excluding the speaker. Folded into the prompt so "where is Troy / the forge?" gets a REAL answer instead of an
-# invented contract (Troy 2026-06-09). [param self_name] = the speaker, skipped from their own directory.
-func _directory_block(self_name: String) -> String:
-
-	var lines : PackedStringArray = PackedStringArray()
-	for p in NpcRegistry.all():
-		if p.npc_name == self_name or p.chat_locale.is_empty():
-			continue
-		lines.append("- %s: %s" % [p.npc_name, p.chat_locale])
-	if lines.is_empty():
-		return ""
-	return ("WHO'S WHERE ON CRADLE ROCK — the island is small, so you know where folk are usually found. If the "
-		+ "traveller asks where someone is, or how to reach a place or workshop, answer plainly from this list. "
-		+ "Do NOT invent whereabouts, contracts, or journeys that aren't here; if you truly don't know, say so "
-		+ "simply.\n" + "\n".join(lines))
+# CRADLE ROCK GAZETTEER — the island's key spots AND who's usually at each, so every NPC gives REAL directions
+# (to people AND to places: the mine, forest, shore, Driftspar) instead of inventing them (Troy 2026-06-09).
+# CURATED on purpose — one small, MVP-locked island; keep it in sync with the actual map + cast if either
+# changes. Folded into every chat prompt (private + ambient) as shared world knowledge.
+const ISLAND_GAZETTEER : String = (
+	"CRADLE ROCK — the island's key spots and who's usually there. Use this for ANY directions or whereabouts; "
+	+ "do NOT invent places, buildings, people, or journeys that aren't here, and if you truly don't know, say "
+	+ "so plainly.\n"
+	+ "- The Inn (a warm tavern): Hearty Brian and his wife Merry Geneva run it — hearth, cloudberry tea, and a card table for poker and gem-drop.\n"
+	+ "- The Forge: Cinder Troy's smithy — roaring coals, the anvil, ore worked into steel; Flint Kerr the bladesmith works the forge too.\n"
+	+ "- The Mine: dim ore tunnels — where folk dig ore.\n"
+	+ "- The Forest: tall sky-island timber — where wood is cut.\n"
+	+ "- The Skydock: the sky-harbour, Stormy Jericho's post — moored ships, where voyages set sail, and the Patchworks for mending a hull.\n"
+	+ "- The Workshop: Cogwise Godfrey's tinkering den of gears and half-built contraptions.\n"
+	+ "- The Healer's Hut and gardens: Mossy Jade's green refuge of herbs and flowers.\n"
+	+ "- The Square: Spritely Mia's whittling stump, where she carves her charms.\n"
+	+ "- The quiet edge: where Hollow Ellison keeps to himself.\n"
+	+ "- The Shore: the island's rim — the dock where ships moor, and the long drop into the Stardust below.\n"
+	+ "- Driftspar: a wild, half-explored frontier sky-island, reached by sailing out from the Skydock.")
 
 
 # RAPPORT context — the player's standing with this NPC shapes their warmth + openness (first step toward
