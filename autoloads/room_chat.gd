@@ -22,6 +22,7 @@ const AMBIENT_MAX : float = 0.92
 const ROOM_ADDRESS_BONUS : float = 0.45  # added when you clearly address the room (a question / greeting)
 const NPC_COOLDOWN_MS : int = 6000     # an NPC that just spoke is off the rolled pool this long (a name / room-address can still pull them)
 const CONTINUATION_MS : int = 18000    # a recently-spoken NPC keeps answering your plain follow-ups (no re-naming needed) — conversational continuity
+const DUEL_PROPOSAL_MS : int = 18000   # after the player dares the room, an NPC reply that ACCEPTS within this files a duel (the marker-independent fallback)
 const ROOM_DEBOUNCE_MS : int = 1800    # ignore a fresh OVERHEARD line within this of the last (anti-spam; names/room-address bypass)
 const NEAR_RANGE : float = 240.0       # px; within this ≈ max proximity weight
 const MIN_CHARS : int = 3
@@ -47,6 +48,7 @@ var _transcript : Array = []           # [{speaker, text}] rolling room conversa
 var _scene_token : int = 0             # bumped on scene change → invalidates in-flight + staggered work
 var _last_scene : Node = null
 var _last_overheard_ms : int = -100000
+var _last_proposal_ms : int = -100000   # when the player last dared the room to a duel (arms the accept-fallback window)
 var _queue : Array = []                # responders waiting their TURN — fired one at a time so each sees the prior reply (awareness)
 
 
@@ -83,6 +85,8 @@ func hear(line: String) -> void:
 	if present.is_empty():
 		return
 	var lc : String = text.to_lower()
+	if NpcBrain.is_duel_proposal(lc):
+		_last_proposal_ms = Time.get_ticks_msec()   # arm the duel-accept fallback window (see _on_slot_done)
 	var mentioned : Dictionary = _mentioned_set(lc, present)
 	var room_address : bool = _is_room_address(lc)
 	# Substance + debounce gates — bypassed by a name-mention OR a clear room-address (those always engage).
@@ -360,11 +364,11 @@ func _user_turn(answer: bool, others: PackedStringArray, self_short: String) -> 
 		return (intro + convo + "The traveller's latest line above is addressed to the room (and you). Reply naturally, "
 			+ "in character, in a sentence or two that BUILDS on the conversation — you may answer or riff on what "
 			+ "ANOTHER person above just said, not only the traveller. NEVER repeat something you've already said. "
-			+ "No narration, no quotes, no your own name.")
+			+ "No narration, no quotes, no your own name — EXCEPT the hidden [[DUEL]] control tag, which you MUST still append (after your words) if you are accepting or proposing a duel; the player never sees it.")
 	return (intro + convo + "You OVERHEARD the room — the latest line above wasn't necessarily aimed at you. If it's "
 		+ "natural to react (to the traveller OR to what another person above just said), reply with a short, natural "
 		+ "in-character line that builds on the conversation — NEVER repeat what you or others already said. If you'd "
-		+ "more likely stay quiet, reply with exactly: (silent). No narration, no quotes, no your own name.")
+		+ "more likely stay quiet, reply with exactly: (silent). No narration, no quotes, no your own name — EXCEPT the hidden [[DUEL]] control tag, which you MUST still append (after your words) if you are accepting or proposing a duel; the player never sees it.")
 
 
 func _convo_block(self_short: String) -> String:
@@ -410,6 +414,13 @@ func _on_slot_done(result: int, code: int, _headers: PackedStringArray, body: Pa
 		if cleaned.is_empty() and cleaned != reply:
 			cleaned = "Reckon it's time we settled this — meet me when you're ready."   # marker-only line
 		reply = cleaned
+		# Deterministic fallback: if the player recently dared the room and THIS NPC's OWN reply accepts (and
+		# doesn't decline), file it — covers the model agreeing in words but dropping the tag. Per-responder, so
+		# a spectator's line never files; add_challenge dedups so the marker + fallback can't double-file.
+		if persona.duel_appetite > 0.0 and Time.get_ticks_msec() - _last_proposal_ms < DUEL_PROPOSAL_MS:
+			var rlc : String = reply.to_lower()
+			if NpcBrain.reply_accepts_duel(rlc) and not NpcBrain.reply_declines_duel(rlc):
+				PlayerState.add_challenge(persona.npc_name)
 	if reply.is_empty() or _is_silent(reply):
 		# Addressed (name / room) → a canned line on failure (silence reads broken). Overheard → let the "…"
 		# fade naturally (reads as "they considered it, stayed quiet").

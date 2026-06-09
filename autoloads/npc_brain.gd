@@ -31,7 +31,9 @@ const WORLD_RULES : String = (
 	+ "sky-pirates and skyfarers, NOT sailors on water. Far below the islands lies THE STARDUST, a "
 	+ "bottomless abyss. Stay fully in character at all times. NEVER mention being an AI, a model, or "
 	+ "anything from the real world, and never break the fourth wall. Keep replies SHORT and spoken — 1 to "
-	+ "3 sentences, no narration, no asterisks, no markdown, no emoji. Speak naturally to the traveller "
+	+ "3 sentences, no narration, no asterisks, no markdown, no emoji. (ONE exception to 'no markup': certain "
+	+ "hidden control tags written in DOUBLE SQUARE BRACKETS, like [[DUEL]], are GAME SIGNALS, not markup — "
+	+ "when an instruction tells you to emit one you MUST, and the player never sees it.) Speak naturally to the traveller "
 	+ "before you, and don't invent major world events that would contradict a simple island life.")
 
 signal npc_replied(text: String)     # a reply came back (also appended to history)
@@ -301,19 +303,27 @@ func _duel_clause(persona: NpcPersonality) -> String:
 	var appetite : float = clampf(persona.duel_appetite, 0.0, 1.0)
 	if appetite <= 0.0:
 		return ""   # a pacifist NPC — never offer the marker, so they can't start a fight
+	# The bias governs SPONTANEOUS challenges only; the explicit-challenge rule below is appetite-independent.
 	var bias : String
 	if appetite < 0.25:
-		bias = "You are NOT a scrapper — only offer a bout if strongly provoked, insulted, or pointedly goaded."
+		bias = "You rarely start fights yourself — only bring up a bout if you're strongly provoked, insulted, or pointedly goaded."
 	elif appetite < 0.6:
-		bias = "You're game for a friendly bout now and then — offer one if the moment turns competitive or boastful."
+		bias = "You're game for a friendly bout now and then — bring one up if the moment turns competitive or boastful."
 	else:
 		bias = "You're a born scrapper — happy to throw down at the lightest provocation, or just for the sport of it."
-	return ("DUELS: Folk here settle scores and show off with friendly SKIRMISH bouts (sky-pirate sparring — "
-		+ "for sport and pride, never real harm). " + bias + " If the traveller explicitly proposes, accepts, or "
-		+ "dares you into a duel, you MUST take them up on it. ONLY when you are challenging them or accepting "
-		+ "their challenge, append this exact marker as the very last thing in your reply, after your spoken "
-		+ "words: " + DUEL_MARKER + " The traveller never sees the marker — speak naturally and never mention it. "
-		+ "Do NOT use it in ordinary, calm, or friendly chat.")
+	return ("DUELS: Folk here settle scores and show off with friendly SKIRMISH bouts — sky-pirate sparring, for "
+		+ "sport and pride, never real harm. " + bias + " This only governs whether YOU bring up a fight on your "
+		+ "own; it does NOT override the next rule. EXPLICIT CHALLENGES (always, no matter how scrappy you are): "
+		+ "if the traveller proposes, dares, or accepts a duel, you MUST take them up on it in your spoken reply. "
+		+ "To actually START the bout you must ALSO append the hidden control tag " + DUEL_MARKER + " somewhere in "
+		+ "your reply (ideally at the very end, after your spoken words). The tag is invisible game-machinery — it "
+		+ "is stripped out before the traveller ever sees it, so speak naturally and NEVER mention the brackets. "
+		+ "CRITICAL: accepting in words ALONE starts no fight — without the " + DUEL_MARKER + " tag your agreement "
+		+ "is empty and nothing happens, so whenever you agree to or call for a bout, the tag MUST be there. "
+		+ "Example of accepting a challenge: \"Fine. Name your stakes, stranger. " + DUEL_MARKER + "\" — the words "
+		+ "are spoken aloud; the tag is silent. Only append the tag to YOUR OWN acceptance or challenge — never "
+		+ "when you are merely commenting on, or spectating, someone else's bout. Do NOT use it in ordinary, calm, "
+		+ "or friendly chat.")
 
 
 ## If [param text] carries the hidden duel marker, file a Skirmish challenge from [param npc_name] (it lands in
@@ -324,11 +334,80 @@ func file_duel_if_marked(text: String, npc_name: String) -> String:
 	if npc_name.is_empty():
 		return text
 	var re : RegEx = RegEx.new()
-	re.compile("(?i)\\[\\[\\s*duel\\s*\\]\\]")
+	# Tolerate the variants a model actually produces: 1-or-2 of [ ( { < ... ] ) } > around the word "duel"
+	# (so [DUEL], ((duel)), [[DUEL!]], [[DUEL: yes]], <duel> all match), but not bare prose.
+	re.compile("(?i)[\\[({<]{1,2}\\s*duel\\b[^\\])}>\\n]*[\\])}>]{1,2}")
 	if re.search(text) == null:
 		return text
 	PlayerState.add_challenge(npc_name)
-	return re.sub(text, "", true).strip_edges()
+	var cleaned : String = re.sub(text, "", true)
+	cleaned = cleaned.replace("*", "")   # strip orphaned bold/emphasis a wrapped tag (**[[DUEL]]**) leaves behind
+	return cleaned.strip_edges()
+
+
+# --- Deterministic duel detection (the model-independent fallback) --------------------------------------
+# The marker above is the fast-path; these keyword classifiers make a challenge file even when the model agrees
+# in WORDS but drops the tag (it kept treating [[DUEL]] as banned markup). The player's text is fully under our
+# control, so an explicit player challenge + a non-declining NPC acceptance files regardless of the model.
+# Lowercase substring matching (pass text.to_lower()). See the duel-marker-reliability review + [[ayo-tidings-inbox]].
+const DUEL_NOUNS : Array[String] = ["duel", "spar", "skirmish", "bout", "throw down", "throwdown"]
+const DUEL_NEGATIONS : Array[String] = ["no ", "not ", "won't", "wont", "don't", "dont", "never ", "can't",
+	"cant", "rather not", "no thanks"]
+const DUEL_PROPOSAL_PHRASES : Array[String] = [
+	"fight me", "duel me", "spar me", "spar with", "i challenge", "i'll fight you", "ill fight you",
+	"i'll take you on", "ill take you on", "take you on", "want to fight", "wanna fight", "want to duel",
+	"wanna duel", "want to spar", "wanna spar", "care to spar", "care for a bout", "care for a duel",
+	"up for a duel", "up for a bout", "up for a spar", "let's fight", "lets fight", "let's duel", "lets duel",
+	"let's spar", "lets spar", "let's throw down", "lets throw down", "throw down with me", "square up",
+	"settle this", "settle it", "cross blades", "invite me into a duel", "challenge you to a duel",
+	"challenge you to a spar"]
+const DUEL_ACCEPT_PHRASES : Array[String] = [
+	"name the stakes", "name your stakes", "you're on", "youre on", "i'll take you", "ill take you",
+	"i accept", "i'll fight", "ill fight", "i'll spar", "ill spar", "i'll duel", "ill duel", "let's go then",
+	"lets go then", "meet me when", "meet me at", "i'll keep it short", "ill keep it short", "i'll sharpen",
+	"ill sharpen", "have at you", "draw your blade", "draw your steel", "raise your blade", "raise your steel",
+	"then it's settled", "then its settled", "settled then", "i'll show you", "ill show you", "come at me",
+	"step up then", "very well, then", "fine — i'll", "fine, i'll", "fine. i'll", "let's settle this",
+	"lets settle this", "i'm game", "im game", "you want a bout", "you'll get your bout", "youll get your bout"]
+const DUEL_DECLINE_PHRASES : Array[String] = [
+	"not today", "another time", "some other time", "maybe later", "not in the mood", "no thanks",
+	"no thank you", "i'll pass", "ill pass", "i pass", "not right now", "perhaps another", "i'd rather not",
+	"id rather not", "not interested", "leave it", "let it go", "no quarrel", "i won't fight", "i wont fight",
+	"i won't duel", "i wont duel", "can't fight", "cant fight", "too old for", "no time for that",
+	"i'll have no part", "ill have no part", "spare me", "not my way", "i'm no fighter", "im no fighter"]
+
+
+# Substring-any helper for the duel classifiers.
+func _any_phrase(lc: String, phrases: Array) -> bool:
+
+	for p in phrases:
+		if lc.find(String(p)) != -1:
+			return true
+	return false
+
+
+## Does the PLAYER's line propose / dare a duel? Requires a second-person/imperative frame, with a negation
+## veto so "don't duel me" / "no thanks" never count. Pass text.to_lower().
+func is_duel_proposal(lc: String) -> bool:
+
+	if _any_phrase(lc, DUEL_NEGATIONS):
+		return false
+	if _any_phrase(lc, DUEL_PROPOSAL_PHRASES):
+		return true
+	var directed : bool = lc.find("you") != -1 or lc.find(" me") != -1 or lc.begins_with("me")
+	return directed and _any_phrase(lc, DUEL_NOUNS)
+
+
+## Does an NPC's reply ACCEPT or issue a bout (a first-person-commitment idiom)? Pass text.to_lower().
+func reply_accepts_duel(lc: String) -> bool:
+
+	return _any_phrase(lc, DUEL_ACCEPT_PHRASES)
+
+
+## Does an NPC's reply DECLINE? A hard veto that always beats an accept match. Pass text.to_lower().
+func reply_declines_duel(lc: String) -> bool:
+
+	return _any_phrase(lc, DUEL_DECLINE_PHRASES)
 
 
 ## The CURRENT scene's place — fed into the prompt so NPCs reference their ACTUAL surroundings (Troy 2026-06-08),
@@ -413,6 +492,14 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		if cleaned.is_empty() and cleaned != reply:
 			cleaned = "Then it's settled — meet me when you're ready to throw down."   # marker-only line
 		reply = cleaned
+		# Deterministic fallback: the model often agrees in words but drops the tag. If the PLAYER explicitly
+		# proposed a duel and this NPC's reply accepts (and doesn't decline), file it anyway — the chat partner
+		# is the unambiguous target. add_challenge dedups, so this never double-files with the marker above.
+		if _persona.duel_appetite > 0.0 and not _messages.is_empty():
+			var player_lc : String = String(_messages.back().get("content", "")).to_lower()
+			var reply_lc : String = reply.to_lower()
+			if is_duel_proposal(player_lc) and reply_accepts_duel(reply_lc) and not reply_declines_duel(reply_lc):
+				PlayerState.add_challenge(_persona.npc_name)
 	_messages.append({"role": "assistant", "content": reply})
 	npc_replied.emit(reply)
 
