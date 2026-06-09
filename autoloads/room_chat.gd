@@ -413,6 +413,7 @@ func _on_slot_done(result: int, code: int, _headers: PackedStringArray, body: Pa
 		var cleaned : String = NpcBrain.file_duel_if_marked(reply, persona.npc_name)
 		if cleaned.is_empty() and cleaned != reply:
 			cleaned = "Reckon it's time we settled this — meet me when you're ready."   # marker-only line
+		cleaned = NpcBrain.file_offense_if_marked(cleaned, persona.npc_name)   # grudge tag → rapport hit, stripped
 		reply = cleaned
 		# Deterministic fallback: if the player recently dared the room and THIS NPC's OWN reply accepts (and
 		# doesn't decline), file it — covers the model agreeing in words but dropping the tag. Per-responder, so

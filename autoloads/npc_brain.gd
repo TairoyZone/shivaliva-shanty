@@ -331,6 +331,13 @@ func _plural(n: int) -> String:
 ## player ever sees it (see [method file_duel_if_marked]) and turned into an Ayo! challenge card.
 const DUEL_MARKER : String = "[[DUEL]]"
 
+## The hidden marker an NPC appends when the player genuinely OFFENDS them (insults, cruelty, harassment) —
+## the NPC's own in-character judgment, not a profanity filter. Stripped before display (see
+## [method file_offense_if_marked]); each lands a rapport hit, so a pattern of it sours them toward
+## Wary → Disliked → Despised (NPCs can HATE you — Troy 2026-06-10).
+const OFFENSE_MARKER : String = "[[OFFENDED]]"
+const OFFENSE_HIT : int = 4
+
 ## How long after a duel the NPC treats the result as "just now" in chat (the post-fight beat). Past this, the
 ## persistent record still makes them aware ("you've beaten me before"), just not "moments ago".
 const FRESH_DUEL_MS : int = 180000   # 3 minutes
@@ -384,6 +391,23 @@ func file_duel_if_marked(text: String, npc_name: String) -> String:
 	PlayerState.add_challenge(npc_name)
 	var cleaned : String = re.sub(text, "", true)
 	cleaned = cleaned.replace("*", "")   # strip orphaned bold/emphasis a wrapped tag (**[[DUEL]]**) leaves behind
+	return cleaned.strip_edges()
+
+
+## If [param text] carries the hidden OFFENSE marker — the NPC's own judgment that the player crossed a line —
+## land the rapport hit and STRIP the marker. A pattern of offense sours them: Wary → Disliked → Despised.
+## Same tolerant matching as the duel marker. Returns the cleaned text. Shared by both reply paths.
+func file_offense_if_marked(text: String, npc_name: String) -> String:
+
+	if npc_name.is_empty():
+		return text
+	var re : RegEx = RegEx.new()
+	re.compile("(?i)[\\[({<]{1,2}\\s*offended\\b[^\\])}>\\n]*[\\])}>]{1,2}")
+	if re.search(text) == null:
+		return text
+	PlayerState.add_affinity(npc_name, -OFFENSE_HIT)
+	var cleaned : String = re.sub(text, "", true)
+	cleaned = cleaned.replace("*", "")
 	return cleaned.strip_edges()
 
 
@@ -586,11 +610,29 @@ func _affinity_block(npc_name: String) -> String:
 			guide = "You and this traveller are friends — relaxed, warm and glad to see them."
 		"Acquaintance":
 			guide = "You've crossed paths a few times — friendly, but still feeling them out."
+		"Wary":
+			guide = ("Something about this traveller rubs you wrong — they've been rude to you before. You're short, "
+				+ "guarded and unsmiling with them; civil, but you keep your distance and offer nothing extra.")
+		"Disliked":
+			guide = ("You DISLIKE this traveller — they've insulted or mistreated you, and you haven't forgotten. Be "
+				+ "cold, curt and unhelpful beyond bare courtesy; don't pretend warmth you don't feel, and feel free "
+				+ "to tell them plainly why, if they ask. A real, repeated effort to make amends can slowly thaw you.")
+		"Despised":
+			guide = ("You DESPISE this traveller — they've truly earned your contempt. Be icy or openly scornful (in "
+				+ "words only, never violence outside a fair duel); brush them off, want nothing to do with them. You "
+				+ "do not forgive easily, and pretty words alone won't fix it.")
 		_:
 			guide = "You barely know this traveller — courteous but a touch guarded and reserved; warm up only if they're genuinely kind."
 	var block : String = "RAPPORT with this traveller: %s (%d/100). %s" % [tier, aff, guide]
 	if helped > 0:
 		block += " They've done you a good turn %d time%s — you remember their kindness." % [helped, "" if helped == 1 else "s"]
+	# GRUDGES ARE REAL — the NPC's own judgment can sour rapport, via the hidden offense tag (stripped
+	# before display, same plumbing as [[DUEL]]). Honest, not trigger-happy: banter must stay safe.
+	block += (" If in THIS exchange the traveller is genuinely rude, cruel, crude or harassing toward you "
+		+ "(insults, mockery of a real loss, unwanted advances), respond in character — you don't have to take "
+		+ "it kindly — and append the hidden tag " + OFFENSE_MARKER + " to the END of your reply (the player "
+		+ "never sees the tag; it marks that they've soured you). Be honest, not touchy: friendly banter, jokes "
+		+ "and teasing are NOT offense. The lower your rapport already is, the shorter your patience runs.")
 	return block
 
 
@@ -624,6 +666,9 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		var cleaned : String = file_duel_if_marked(reply, _persona.npc_name)
 		if cleaned.is_empty() and cleaned != reply:
 			cleaned = "Then it's settled — meet me when you're ready to throw down."   # marker-only line
+		cleaned = file_offense_if_marked(cleaned, _persona.npc_name)
+		if cleaned.is_empty():
+			cleaned = "…"   # an offense-marker-only reply still shows the cold silence
 		reply = cleaned
 		# Deterministic fallback: the model often agrees in words but drops the tag. If the PLAYER explicitly
 		# proposed a duel and this NPC's reply accepts (and doesn't decline), file it anyway — the chat partner

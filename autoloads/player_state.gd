@@ -100,6 +100,8 @@ const WOOD_TO_GOLD_RATE : float = 1.0
 ## rate rewards the tougher job so it isn't out-earned by easy chopping.
 const ORE_TO_GOLD_RATE : float = 2.0
 const MAX_AFFINITY : int = 100
+## Rapport's floor — NPCs can genuinely HATE a player who earns it (chat offense, spurned duels).
+const MIN_AFFINITY : int = -100
 ## Crew ranks (low → high) the player promotes a recruit through; recruiting needs Confidant rapport.
 const CREW_RANKS : Array[String] = ["Deckhand", "Crewmate", "Officer", "First Mate"]
 const RECRUIT_MIN_AFFINITY : int = 80
@@ -144,11 +146,17 @@ const DEFAULT_MAX_STACK : int = 50
 const INVENTORY_START_CAPACITY : int = 6
 # Tier thresholds (inclusive lower bound). Used for dialogue gating +
 # the eventual hire/crew system — Confidant is the "can recruit" tier.
+# Rapport runs NEGATIVE too (Troy 2026-06-10: "NPCs can hate players") — treat them badly enough
+# and they sour: Wary → Disliked → Despised. Hate colours CHAT + favours only, never the core earn
+# loop (the parlor LAW: affinity gates bonuses, not earning).
 const AFFINITY_TIERS : Array = [
 	{"min": 80, "name": "Confidant"},
 	{"min": 50, "name": "Friend"},
 	{"min": 20, "name": "Acquaintance"},
 	{"min": 0,  "name": "Stranger"},
+	{"min": -24, "name": "Wary"},
+	{"min": -59, "name": "Disliked"},
+	{"min": -100, "name": "Despised"},
 ]
 
 # Permanent state — written to disk.
@@ -1367,15 +1375,15 @@ func affinity_tier(npc_name: String) -> String:
 	return "Stranger"
 
 
-## Raise (or lower) rapport with an NPC, clamped to [0, MAX_AFFINITY].
-## Emits [signal affinity_changed] + persists when the value actually
-## moves. No-ops on empty name or zero delta.
+## Raise (or lower) rapport with an NPC, clamped to [MIN_AFFINITY, MAX_AFFINITY] — rapport can go
+## NEGATIVE (an NPC genuinely soured on the player). Emits [signal affinity_changed] + persists when
+## the value actually moves. No-ops on empty name or zero delta.
 func add_affinity(npc_name: String, amount: int) -> void:
 
 	if npc_name.is_empty() or amount == 0:
 		return
 	var old_val : int = get_affinity(npc_name)
-	var new_val : int = clampi(old_val + amount, 0, MAX_AFFINITY)
+	var new_val : int = clampi(old_val + amount, MIN_AFFINITY, MAX_AFFINITY)
 	if new_val == old_val:
 		return
 	npc_affinity[npc_name] = new_val

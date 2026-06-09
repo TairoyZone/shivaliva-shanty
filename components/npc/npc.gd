@@ -150,7 +150,9 @@ func interact() -> void:
 	# here, never demanded to your face. See [NpcMenu] / [[Official:Communications]].
 	var opts : Array = [{"label": "Chat", "action": _chat}, {"label": "Spar", "action": _challenge}]
 	opts.append({"label": "Trade", "action": _open_trade})
-	if NPC_FAVORS.has(npc_name):
+	# A SOURED NPC (negative rapport) entrusts you with no favours — hate withholds the BONUS loop only;
+	# chat/trade/spar (the core) stay open, per the parlor LAW. Make amends and the option returns.
+	if NPC_FAVORS.has(npc_name) and PlayerState.get_affinity(npc_name) >= 0:
 		opts.append({"label": "Favour", "action": _open_favor_modal})
 	opts.append({"label": "Profile", "action": _open_profile})
 	var at : Vector2 = get_global_transform_with_canvas().origin + Vector2(0.0, -36.0)

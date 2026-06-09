@@ -145,7 +145,9 @@ func _make_left_column() -> Control:
 			closest_aff = aff
 			closest_name = profile.npc_name
 	col.add_child(_kv_line("Renown", _renown_word(friends, acquaintances, cast.size())))
-	col.add_child(_kv_line("Friends", "%d of %d" % [friends, cast.size()]))
+	# Just the count — no "of 9". Befriending the whole cast is NOT the game's point (Troy 2026-06-10);
+	# some folk you'll never win over, and some may come to hate you.
+	col.add_child(_kv_line("Friends", "%d" % friends))
 	if closest_aff > 0:
 		col.add_child(_kv_line("Closest", "%s (%s)" % [
 			_given_name(closest_name), PlayerState.affinity_tier(closest_name)]))

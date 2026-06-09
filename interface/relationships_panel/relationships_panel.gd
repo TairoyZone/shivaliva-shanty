@@ -17,10 +17,8 @@ const COLOR_HEART : Color = Color(0.88, 0.32, 0.44, 1.0)
 ## Heart pips in the meter; each = MAX_AFFINITY / HEARTS rapport points.
 const HEARTS : int = 10
 
-## Min rapport for an NPC to appear here. The Hearties tab is your FRIENDS list — only islanders you've
-## built positive rapport with, NOT the whole cast (Troy 2026-06-06). Talk to / help an NPC and they show
-## up. 1 = any positive rapport; bump toward the "Friend" tier (50) if you want it stricter.
-const FRIENDS_MIN_AFFINITY : int = 1
+# (Visibility rule: any NON-ZERO rapport shows — positive friendships AND soured standings, in red.
+# The whole untouched cast stays hidden. See refresh().)
 
 var _list : VBoxContainer
 
@@ -54,11 +52,12 @@ func refresh() -> void:
 		return
 	for child in _list.get_children():
 		child.queue_free()
-	# Only show islanders you've actually befriended (positive rapport) — the Hearties tab is your FRIENDS
-	# list, not a roster of the whole cast. Empty until you talk to / help someone.
+	# Show islanders with any REAL standing — befriended (positive rapport) AND soured (negative: they
+	# remember what you did, and so should you). Untouched (0) stay hidden — it's a relationships list,
+	# not a roster of the whole cast. Empty until you talk to / help (or wrong) someone.
 	var shown : int = 0
 	for profile in NpcRegistry.all():
-		if PlayerState.get_affinity(profile.npc_name) < FRIENDS_MIN_AFFINITY:
+		if PlayerState.get_affinity(profile.npc_name) == 0:
 			continue
 		_list.add_child(_make_npc_card(profile))
 		shown += 1
@@ -95,7 +94,9 @@ func _make_npc_card(profile: NpcPersonality) -> Control:
 	var sub : Label = Label.new()
 	sub.text = "%s   ·   %s" % [tier, _favour_note(who)]
 	sub.add_theme_font_size_override("font_size", 14)
-	sub.add_theme_color_override("font_color", COLOR_INK_SOFT)
+	# A soured standing reads in RED — Wary/Disliked/Despised is a warning, not a friendship.
+	sub.add_theme_color_override("font_color",
+		Color(0.92, 0.45, 0.38, 1.0) if affinity < 0 else COLOR_INK_SOFT)
 	col.add_child(sub)
 
 	var hearts : Label = Label.new()
