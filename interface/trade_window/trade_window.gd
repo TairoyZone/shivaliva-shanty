@@ -5,10 +5,8 @@
 ## Built 2026-06-08; player↔player reuses the same window per side once co-op netcode lands. Modal family
 ## styling (clones [FavorModal]). See [[parlor-social-system]] + the YPP Trade article.
 class_name TradeWindow
-extends CanvasLayer
+extends Modal
 
-
-signal closed
 
 const GROUP : StringName = &"trade_window"
 const LIKED_RATE : float = 1.0      # the NPC pays the FULL (delivery-equal) price for an item they want...
@@ -30,10 +28,6 @@ var _npc_willing : bool = false
 var _npc_note : String = ""
 var _executed : bool = false
 
-var _panel : PanelContainer
-var _dim : ColorRect
-var _content : VBoxContainer
-
 
 static func open(host: Node, config: Dictionary) -> void:
 
@@ -53,55 +47,29 @@ static func open(host: Node, config: Dictionary) -> void:
 	host.get_tree().root.add_child(w)
 
 
-func _ready() -> void:
+# --- Modal config -----------------------------------------------------
 
-	layer = 36
-	process_mode = Node.PROCESS_MODE_ALWAYS
-	add_to_group(GROUP)
-	get_tree().paused = true
+func _modal_group() -> StringName:
+	return GROUP
 
-	_dim = ColorRect.new()
-	_dim.color = Color(0, 0, 0, 0.55)
-	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	_dim.gui_input.connect(func(e: InputEvent) -> void:
-		if e is InputEventMouseButton and e.pressed and (e as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
-			_close())   # LEFT only — a wheel notch is also a mouse button and shouldn't dismiss
-	add_child(_dim)
+func _modal_size() -> Vector2:
+	return Vector2(660.0, 496.0)
 
-	_panel = PanelContainer.new()
-	_panel.add_theme_stylebox_override("panel", _panel_style())
-	_panel.anchor_left = 0.5
-	_panel.anchor_top = 0.5
-	_panel.anchor_right = 0.5
-	_panel.anchor_bottom = 0.5
-	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_panel.offset_left = -330.0
-	_panel.offset_top = -248.0
-	_panel.offset_right = 330.0
-	_panel.offset_bottom = 248.0
-	add_child(_panel)
+func _modal_content_separation() -> int:
+	return 12
 
-	_content = VBoxContainer.new()
-	_content.add_theme_constant_override("separation", 12)
-	_content.alignment = BoxContainer.ALIGNMENT_CENTER   # vertically centre content (kills the dead space, esp. on the short result screen)
-	_panel.add_child(_content)
+func _modal_panel_style() -> StyleBoxFlat:
+	return _panel_style()
 
+
+func _build_content() -> void:
+
+	_content.alignment = BoxContainer.ALIGNMENT_CENTER   # vertically centre (kills dead space on the short result screen)
 	# FAVOUR mode pre-loads the ask (the offer is fixed — confirming is the handover).
 	if not _favor.is_empty():
 		_offer_items[String(_favor["item_id"])] = int(_favor["amount"])
-
 	_evaluate()
 	_render()
-	add_child(EscToClose.new(_close))
-	ModalFx.appear(_panel, _dim)
-
-
-func _exit_tree() -> void:
-
-	if get_tree() != null:
-		get_tree().paused = false
 
 
 # --- evaluation (the NPC's barter brain) -------------------------------
@@ -544,19 +512,6 @@ func _short() -> String:
 
 	var parts : PackedStringArray = _npc_name.split(" ", false)
 	return parts[parts.size() - 1] if parts.size() > 0 else _npc_name
-
-
-func _close() -> void:
-
-	ModalFx.dismiss(self, _panel, _dim, _do_close)
-
-
-func _do_close() -> void:
-
-	if get_tree() != null:
-		get_tree().paused = false
-	closed.emit()
-	queue_free()
 
 
 func _panel_style() -> StyleBoxFlat:
