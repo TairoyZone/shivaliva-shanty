@@ -49,7 +49,7 @@ func _ready() -> void:
 		+ "• Clear the rock UNDER an ore chunk to dig it down to the floor — chunks are the only thing that scores\n"
 		+ "• Dig several chunks in one move for a combo bonus\n"
 		+ "• Big clears drop a TOOL — frame it (the cursor shrinks to 1x1) and click to use it\n"
-		+ "• Empty the 'CHUNKS' meter beside the board (one pip per chunk left) to finish the shift")
+		+ "• Fill the 'TO GET' meter beside the board (one pip per chunk you dig) to finish the shift")
 	_board.ore_changed.connect(_on_ore_changed)
 	_board.progress_changed.connect(_on_progress_changed)
 	_board.combo_landed.connect(_on_combo_landed)
@@ -77,14 +77,15 @@ func _refresh_dug(extracted: int) -> void:
 
 func _on_progress_changed(remaining: int, target: int) -> void:
 
-	_refresh_dug(target - remaining)
+	var extracted : int = target - remaining
+	_refresh_dug(extracted)
 	for i in _pips.size():
-		var lit : bool = i < remaining
+		var lit : bool = i >= target - extracted   # FILL from the bottom up as chunks are dug (was: drained)
 		var pip : ColorRect = _pips[i]
 		pip.color = (Color(0.96, 0.78, 0.32, 1.0) if lit
 			else Color(0.22, 0.20, 0.16, 1.0))
 	if _meter_count != null:
-		_meter_count.text = "%d left" % remaining
+		_meter_count.text = "%d / %d" % [extracted, target]
 
 
 # --- Progress meter (the "banana column" reskin) ---------------------
@@ -114,7 +115,7 @@ func _build_progress_meter(target: int) -> void:
 	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(vbox)
 	var title : Label = Label.new()
-	title.text = "CHUNKS"
+	title.text = "TO GET"
 	title.add_theme_font_size_override("font_size", 16)
 	title.add_theme_color_override("font_color", Color(0.82, 0.88, 1.0, 1.0))
 	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
@@ -126,13 +127,13 @@ func _build_progress_meter(target: int) -> void:
 	for i in target:
 		var pip : ColorRect = ColorRect.new()
 		pip.custom_minimum_size = Vector2(44.0, 30.0)
-		pip.color = Color(0.96, 0.78, 0.32, 1.0)
+		pip.color = Color(0.22, 0.20, 0.16, 1.0)   # starts EMPTY — fills in as you dig chunks out
 		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vbox.add_child(pip)
 		_pips.append(pip)
-	# A plain count under the pips so the meter is unmistakable: how many ore chunks are still left to dig out.
+	# A plain count under the pips so the meter is unmistakable: chunks dug so far, out of the target.
 	_meter_count = Label.new()
-	_meter_count.text = "%d left" % target
+	_meter_count.text = "0 / %d" % target
 	_meter_count.add_theme_font_size_override("font_size", 15)
 	_meter_count.add_theme_color_override("font_color", Color(0.96, 0.86, 0.5, 1.0))
 	_meter_count.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
