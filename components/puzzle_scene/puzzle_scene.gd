@@ -71,12 +71,12 @@ func _build_leave_button() -> void:
 	var btn : Button = Button.new()
 	btn.text = "← Leave"
 	btn.focus_mode = Control.FOCUS_NONE
-	btn.anchor_top = 1.0
-	btn.anchor_bottom = 1.0
+	# Top-LEFT corner (moved off the bottom 2026-06-09 so it never sits under the chat bar). Default Button
+	# anchors are (0,0) = top-left, so just positive offsets down from the top.
 	btn.offset_left = 20.0
-	btn.offset_top = -56.0
+	btn.offset_top = 16.0
 	btn.offset_right = 140.0
-	btn.offset_bottom = -16.0
+	btn.offset_bottom = 56.0
 	btn.add_theme_font_size_override("font_size", 18)
 	# Walnut/brass styling to match the tavern UI. Same box for normal /
 	# hover / pressed with small tint shifts so it reads as a real button.

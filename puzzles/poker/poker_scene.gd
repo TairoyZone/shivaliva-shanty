@@ -388,7 +388,9 @@ func _set_stake_banner() -> void:
 	banner.text = "Hold 'em  ·  %s  ·  blinds %d/%d" % [
 		PokerConfig.structure_name(int(_config["structure"])),
 		PokerConfig.small_blind(min_bet), PokerConfig.big_blind(min_bet)]
-	($UI/TopBanner as Control).offset_right = 400.0   # widen the fixed banner to fit the stake line
+	var _banner : Control = $UI/TopBanner as Control
+	_banner.offset_left = 152.0    # clear the top-left Leave button (PuzzleScene's, now at x20..140)
+	_banner.offset_right = 560.0   # widen the fixed banner to fit the stake line
 
 
 # One UNIFORM scale for EVERY seat — the human is never bigger than the opponents (they're equals).
