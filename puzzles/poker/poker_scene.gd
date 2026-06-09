@@ -662,10 +662,14 @@ func _on_community_dealt(all_community: Array[Card]) -> void:
 	# at once (and _on_hand_complete waits on `animation_done` so the result
 	# panel can't jump the gun mid-reveal).
 	_animating = true
+	var already : int = _community.revealed_count()   # streets already on the felt — don't re-reveal them
 	var first_stage : bool = true
 	for n in [3, 4, 5]:
 		if all_community.size() < n:
 			break
+		if n <= already:
+			continue   # already shown — skip it. (Calling set_cards(3) at the river would hide slots 3+4 and
+			# reset _revealed_count, so the next set_cards(4) re-deals the TURN before the river. The bug.)
 		# Beat between streets, taken BEFORE revealing the next one. This order
 		# is load-bearing: a tween started before a longer `await` finishes
 		# DURING that wait, so a subsequent `await tw.finished` would block on a

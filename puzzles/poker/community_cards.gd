@@ -75,6 +75,13 @@ func set_cards(cards: Array[Card]) -> Tween:
 	return tw
 
 
+## How many community cards are currently on the felt — so a caller can skip re-revealing a street that's
+## already shown (calling set_cards with a SMALLER count would hide + re-deal the later cards).
+func revealed_count() -> int:
+
+	return _revealed_count
+
+
 # Hide every slot — used at the start of a hand.
 func clear() -> void:
 
