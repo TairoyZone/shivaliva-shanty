@@ -101,7 +101,7 @@ func _build_hud() -> void:
 	var layer : CanvasLayer = CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	_make_label(layer, "The Patchworks", Vector2(160.0, 26.0), 30, Color(0.98, 0.86, 0.5), HORIZONTAL_ALIGNMENT_LEFT, 320.0)   # clear the top-left Leave button
+	_make_label(layer, "The Patchworks", Vector2(40.0, 26.0), 30, Color(0.98, 0.86, 0.5), HORIZONTAL_ALIGNMENT_LEFT, 320.0)
 	_score_label = _make_label(layer, "0", Vector2(960.0, 26.0), 28, Color(0.98, 0.9, 0.55), HORIZONTAL_ALIGNMENT_RIGHT, 280.0)
 	_combo_label = _make_label(layer, "", Vector2(960.0, 64.0), 20, Color(0.78, 1.0, 0.68), HORIZONTAL_ALIGNMENT_RIGHT, 280.0)
 	_flash_label = _make_label(layer, "", Vector2(440.0, 40.0), 44, Color(1.0, 0.95, 0.6), HORIZONTAL_ALIGNMENT_CENTER, 400.0)

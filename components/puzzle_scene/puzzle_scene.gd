@@ -56,6 +56,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		_return_to_launching_scene()
 
 
+## Override → true to dock the Leave button at the TOP-left instead of the default BOTTOM-left — for scenes
+## where the bottom-left is occupied (e.g. poker, whose chat bar lives there).
+func _leave_at_top_left() -> bool:
+	return false
+
+
 # Persistent "Leave" button, bottom-left, on its own high CanvasLayer so
 # it sits above the puzzle's own UI. Replaces the old instant-ESC exit:
 # leaving is now an explicit click. Leaving mid-hand forfeits whatever's
@@ -71,12 +77,18 @@ func _build_leave_button() -> void:
 	var btn : Button = Button.new()
 	btn.text = "← Leave"
 	btn.focus_mode = Control.FOCUS_NONE
-	# Top-LEFT corner (moved off the bottom 2026-06-09 so it never sits under the chat bar). Default Button
-	# anchors are (0,0) = top-left, so just positive offsets down from the top.
+	# BOTTOM-left corner by default — its long-standing home, which every puzzle's HUD is laid out around.
+	# Chat scenes (poker) override _leave_at_top_left() so the bottom-left chat bar doesn't collide with it.
 	btn.offset_left = 20.0
-	btn.offset_top = 16.0
 	btn.offset_right = 140.0
-	btn.offset_bottom = 56.0
+	if _leave_at_top_left():
+		btn.offset_top = 16.0
+		btn.offset_bottom = 56.0
+	else:
+		btn.anchor_top = 1.0
+		btn.anchor_bottom = 1.0
+		btn.offset_top = -56.0
+		btn.offset_bottom = -16.0
 	btn.add_theme_font_size_override("font_size", 18)
 	# Walnut/brass styling to match the tavern UI. Same box for normal /
 	# hover / pressed with small tint shifts so it reads as a real button.

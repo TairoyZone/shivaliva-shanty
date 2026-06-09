@@ -419,7 +419,7 @@ func _build_ui() -> void:
 	title.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
 	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	title.add_theme_constant_override("outline_size", 4)
-	title.position = Vector2(155.0, 18.0)   # clear the top-left Leave button (x20..140)
+	title.position = Vector2(40.0, 18.0)
 	_ui.add_child(title)
 
 	for c in _combatants:

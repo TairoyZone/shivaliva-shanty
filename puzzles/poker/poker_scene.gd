@@ -127,6 +127,10 @@ var _pending_seat : int = -1               # the seat being bought into (held ac
 var _returning : bool = false              # leaving the table — pay out / record mastery ONCE
 
 
+func _leave_at_top_left() -> bool:
+	return true   # poker's chat bar owns the bottom-left, so the Leave button sits top-left here
+
+
 func _ready() -> void:
 
 	super._ready()
@@ -393,8 +397,10 @@ func _set_stake_banner() -> void:
 		PokerConfig.structure_name(int(_config["structure"])),
 		PokerConfig.small_blind(min_bet), PokerConfig.big_blind(min_bet)]
 	var _banner : Control = $UI/TopBanner as Control
-	_banner.offset_left = 152.0    # clear the top-left Leave button (PuzzleScene's, now at x20..140)
-	_banner.offset_right = 560.0   # widen the fixed banner to fit the stake line
+	_banner.anchor_left = 1.0      # TOP-RIGHT: clears the top-left Leave button; the right-edge rail starts at x1222
+	_banner.anchor_right = 1.0
+	_banner.offset_left = -498.0
+	_banner.offset_right = -88.0
 
 
 # One UNIFORM scale for EVERY seat — the human is never bigger than the opponents (they're equals).
