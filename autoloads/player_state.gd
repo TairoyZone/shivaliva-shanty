@@ -458,16 +458,25 @@ func voyage_duty_score01() -> float:
 	return clampf((float(lift_sum) / float(swap_sum)) / DUTY_RATE_FOR_TOP, 0.0, 1.0)
 
 
-# The voyage's overall duty RATING index (0 Booched .. 5 Incredible) — for the haul card.
+# The voyage's overall duty RATING index (0 Booched .. 5 Incredible) — for the haul card. Returns the OFF_DUTY
+# sentinel if you manned NO station the whole run (a passenger, not a botcher — watched legs record 0/0 swaps).
 func voyage_duty_rating_index() -> int:
 
+	var swap_sum : int = 0
+	for r in pillage_log:
+		swap_sum += int(r.get("swaps", 0))
+	if swap_sum <= 0:
+		return DutyReport.OFF_DUTY
 	return DutyReport.rating_index(voyage_duty_score01())
 
 
-# The divvy multiplier your overall duty earns (×0.5 Booched .. ×2.0 Incredible).
+# The divvy multiplier your overall duty earns (×0.5 Booched .. ×2.0 Incredible). A pure passenger (manned
+# nothing) gets a fair PAR cut (×1.0) — no duty bonus, but not the Booched penalty either.
 func voyage_duty_multiplier() -> float:
 
 	var idx : int = voyage_duty_rating_index()
+	if idx == DutyReport.OFF_DUTY:
+		return 1.0
 	return DUTY_DIVVY_MULT[clampi(idx, 0, DUTY_DIVVY_MULT.size() - 1)]
 
 

@@ -68,8 +68,11 @@ func _ready() -> void:
 	_add(col, "BOOTY DIVVY", 14, Color(0.70, 0.78, 0.92, 1.0), 2)
 	if pool > 0:
 		_add(col, "Plunder pool:  %d gold" % pool, 15, Color(0.80, 0.84, 0.92, 1.0), 2)
-		_add(col, "Crew duty:  %s   ×%.1f" % [DutyReport.rating_name(rating_idx), mult], 16,
-			DutyReport.rating_color(rating_idx), 2)
+		if rating_idx < 0:   # a pure passenger — manned nothing all run; a par cut, not a botch
+			_add(col, "Crew duty:  off duty   ×%.1f" % mult, 16, Color(0.62, 0.66, 0.74, 1.0), 2)
+		else:
+			_add(col, "Crew duty:  %s   ×%.1f" % [DutyReport.rating_name(rating_idx), mult], 16,
+				DutyReport.rating_color(rating_idx), 2)
 		col.add_child(_spacer(4))
 	_add(col, "%d gold" % final_cut, 40, Color(0.99, 0.84, 0.36, 1.0), 4)
 	_add(col, "your cut of the plunder" if final_cut > 0 else "no plunder this run", 14,
