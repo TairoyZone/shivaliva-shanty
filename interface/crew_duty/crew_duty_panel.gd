@@ -1,9 +1,9 @@
 ## CrewDutyPanel — assign your recruited crew to the voyage's three duty STATIONS (Sailing→the Loft,
 ## Repair→the Patchworks, Combat→boarding). You man one station live each leg; the crew you post to the OTHER
-## two carry them by their CrewSkills rating. Opened from the deck's "Crew Duty" button. Cool deck-themed modal
-## (dim + panel + ESC + ModalFx). Writes PlayerState.voyage_stations via set_voyage_station. Built 2026-06-08.
+## two carry them by their CrewSkills rating. Opened from the deck's "Crew Duty" button. A cool deck-themed
+## [Modal] (the dim + panel + ESC + ModalFx + pause come from the base). Writes PlayerState.voyage_stations.
 class_name CrewDutyPanel
-extends CanvasLayer
+extends Modal
 
 
 const GROUP : StringName = &"crew_duty_panel"
@@ -11,12 +11,6 @@ const INK : Color = Color(0.88, 0.93, 1.0, 1.0)
 const INK_SOFT : Color = Color(0.68, 0.76, 0.90, 1.0)
 const HEADER : Color = Color(0.62, 0.82, 1.0, 1.0)
 const FRAME : Color = Color(0.42, 0.58, 0.82, 1.0)
-const STARS : Color = Color(0.98, 0.86, 0.45, 1.0)
-
-var _panel : PanelContainer
-var _dim : ColorRect
-var _content : VBoxContainer
-var _was_paused : bool = false
 
 
 static func open(host: Node) -> void:
@@ -28,51 +22,28 @@ static func open(host: Node) -> void:
 	host.get_tree().root.add_child(CrewDutyPanel.new())
 
 
-func _ready() -> void:
+# --- Modal config -----------------------------------------------------
 
-	layer = 36
-	process_mode = Node.PROCESS_MODE_ALWAYS
-	add_to_group(GROUP)
-	_was_paused = get_tree().paused
-	get_tree().paused = true
+func _modal_group() -> StringName:
+	return GROUP
 
-	_dim = ColorRect.new()
-	_dim.color = Color(0, 0, 0, 0.55)
-	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	_dim.gui_input.connect(func(e: InputEvent) -> void:
-		if e is InputEventMouseButton and e.pressed and (e as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
-			_close())
-	add_child(_dim)
+func _modal_size() -> Vector2:
+	return Vector2(500.0, 420.0)
 
-	_panel = PanelContainer.new()
-	_panel.add_theme_stylebox_override("panel", _panel_style())
-	_panel.anchor_left = 0.5
-	_panel.anchor_top = 0.5
-	_panel.anchor_right = 0.5
-	_panel.anchor_bottom = 0.5
-	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_panel.offset_left = -250.0
-	_panel.offset_top = -210.0
-	_panel.offset_right = 250.0
-	_panel.offset_bottom = 210.0
-	add_child(_panel)
+func _modal_panel_style() -> StyleBoxFlat:
+	var s : StyleBoxFlat = StyleBoxFlat.new()
+	s.bg_color = Color(0.09, 0.13, 0.21, 0.97)
+	s.border_color = FRAME
+	s.set_border_width_all(3)
+	s.set_corner_radius_all(14)
+	s.set_content_margin_all(20)
+	return s
 
-	_content = VBoxContainer.new()
-	_content.add_theme_constant_override("separation", 10)
-	_panel.add_child(_content)
 
-	add_child(EscToClose.new(_close))
+func _build_content(content: VBoxContainer) -> void:
+
 	PlayerState.voyage_stations_changed.connect(_render)   # re-render when an assignment changes (single source)
 	_render()
-	ModalFx.appear(_panel, _dim)
-
-
-func _exit_tree() -> void:
-
-	if get_tree() != null:
-		get_tree().paused = _was_paused
 
 
 # --- render -----------------------------------------------------------
@@ -189,24 +160,6 @@ func _rule() -> Control:
 	r.color = Color(FRAME.r, FRAME.g, FRAME.b, 0.5)
 	r.custom_minimum_size = Vector2(0, 2)
 	return r
-
-
-func _close() -> void:
-	ModalFx.dismiss(self, _panel, _dim, _do_close)
-
-
-func _do_close() -> void:
-	queue_free()   # frees → _exit_tree restores the prior pause state
-
-
-func _panel_style() -> StyleBoxFlat:
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.09, 0.13, 0.21, 0.97)
-	s.border_color = FRAME
-	s.set_border_width_all(3)
-	s.set_corner_radius_all(14)
-	s.set_content_margin_all(20)
-	return s
 
 
 func _card_style() -> StyleBoxFlat:
