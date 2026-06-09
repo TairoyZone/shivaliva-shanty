@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Hollow Ellison"
+pronouns = "he/him"
 duel_appetite = 0.7
 chat_appearance = "A tall, gaunt figure in a faded long-coat, soft-spoken, with eyes that seem to look somewhere far off."
 chat_persona = "Quiet, melancholy and lonely, but loyal to the few who reach you — a deadly long-range duelist who'd rather speak of old days than fight. You talk in low, sparse, weighted sentences, often trailing off."

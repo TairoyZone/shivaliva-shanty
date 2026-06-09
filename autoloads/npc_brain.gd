@@ -233,6 +233,9 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 	if not here.is_empty():
 		parts.append(here)   # environment awareness: the ACTUAL room they're standing in right now
 	parts.append(ISLAND_GAZETTEER)   # world-map grounding so directions/whereabouts are real, not invented
+	var pronoun_roster : String = _cast_pronouns_block()
+	if not pronoun_roster.is_empty():
+		parts.append(pronoun_roster)   # so NPCs use each other's correct pronouns instead of guessing
 	if include_secret and not persona.chat_secret.is_empty():
 		parts.append("A secret you hold (do NOT volunteer it; only hint at it, or reveal it, if the player "
 			+ "pointedly digs for it — and the more you trust them, the more willing you are): "
@@ -458,6 +461,22 @@ const ISLAND_GAZETTEER : String = (
 	+ "- The quiet edge: where Hollow Ellison keeps to himself.\n"
 	+ "- The Shore: the island's rim — the dock where ships moor, and the long drop into the Stardust below.\n"
 	+ "- Driftspar: a wild, half-explored frontier sky-island, reached by sailing out from the Skydock.")
+
+
+# CAST PRONOUN ROSTER — the cast's pronouns, built from each persona's `pronouns` field (the ONE source of
+# truth — set it on a .tres, the roster follows). Folded into the prompt so NPCs refer to EACH OTHER with the
+# right gender instead of guessing (Troy 2026-06-09: Jericho was being called "she"). "" if none are set.
+func _cast_pronouns_block() -> String:
+
+	var lines : PackedStringArray = PackedStringArray()
+	for p in NpcRegistry.all():
+		if p.pronouns.is_empty():
+			continue
+		lines.append("%s (%s)" % [p.npc_name, p.pronouns])
+	if lines.is_empty():
+		return ""
+	return ("THE CAST — always use the correct pronouns for each person below; NEVER guess someone's gender:\n"
+		+ ", ".join(lines) + ".")
 
 
 # RAPPORT context — the player's standing with this NPC shapes their warmth + openness (first step toward

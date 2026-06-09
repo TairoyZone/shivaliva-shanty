@@ -104,3 +104,6 @@ extends Resource
 ## At 0 the duel marker is omitted from the prompt entirely, so they cannot start a fight. See
 ## [NpcBrain._duel_clause]; the marker is stripped before display + filed as an Ayo! challenge.
 @export_range(0.0, 1.0) var duel_appetite : float = 0.12
+## Pronouns this NPC goes by — folded into the chat prompt as a cast roster so the OTHER NPCs refer to them
+## correctly (the AI otherwise guesses, and guesses wrong). See [NpcBrain._cast_pronouns_block].
+@export_enum("he/him", "she/her", "they/them") var pronouns : String = "they/them"
