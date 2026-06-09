@@ -285,7 +285,8 @@ func _build_ayo_page() -> Control:
 	return scroll
 
 
-# Rebuild the Ayo! list: earned-but-unclaimed trophies as Claim cards (or an all-caught-up line).
+# Rebuild the Ayo! list: pending duel challenges (Accept / Reject) + earned-but-unclaimed trophies as Claim
+# cards (or an all-caught-up line). Challenges show FIRST — someone's waiting on your answer.
 func _refresh_ayo() -> void:
 
 	if _ayo_list == null:
@@ -297,21 +298,129 @@ func _refresh_ayo() -> void:
 	head.add_theme_font_size_override("font_size", 22)
 	head.add_theme_color_override("font_color", COLOR_TITLE)
 	_ayo_list.add_child(head)
+	var challenges : Array = PlayerState.pending_challenges
 	var ids : Array = PlayerState.unclaimed_trophy_ids()
-	if ids.is_empty():
+	if challenges.is_empty() and ids.is_empty():
 		var none : Label = Label.new()
 		none.text = "No new tidings — you're all caught up."
 		none.add_theme_font_size_override("font_size", 14)
 		none.add_theme_color_override("font_color", Color(0.8, 0.72, 0.56, 1.0))
 		_ayo_list.add_child(none)
 		return
+	if not challenges.is_empty():
+		_ayo_list.add_child(_ayo_subhead("You've been challenged to a duel!", Color(1.0, 0.74, 0.55, 1.0)))
+		for nm in challenges.duplicate():   # duplicate — Reject mutates the live array mid-loop
+			_ayo_list.add_child(_make_challenge_card(String(nm)))
+	if not ids.is_empty():
+		_ayo_list.add_child(_ayo_subhead("New trophies earned — claim them!", Color(0.86, 0.78, 0.6, 1.0)))
+		for id in ids:
+			_ayo_list.add_child(_make_claim_card(String(id)))
+
+
+func _ayo_subhead(text: String, col: Color) -> Label:
+
 	var sub : Label = Label.new()
-	sub.text = "New trophies earned — claim them!"
+	sub.text = text
 	sub.add_theme_font_size_override("font_size", 14)
-	sub.add_theme_color_override("font_color", Color(0.86, 0.78, 0.6, 1.0))
-	_ayo_list.add_child(sub)
-	for id in ids:
-		_ayo_list.add_child(_make_claim_card(String(id)))
+	sub.add_theme_color_override("font_color", col)
+	return sub
+
+
+# A duel-challenge notice: "<NPC> wants to spar" with Accept (launch the Skirmish duel) + Reject (decline).
+func _make_challenge_card(npc_name: String) -> Control:
+
+	var prof : NpcPersonality = NpcRegistry.by_name(npc_name)
+	var tint : Color = prof.portrait_color if prof != null else Color(0.8, 0.5, 0.4, 1.0)
+	var card : PanelContainer = PanelContainer.new()
+	var s : StyleBoxFlat = StyleBoxFlat.new()
+	s.bg_color = Color(0.24, 0.12, 0.10, 0.96)   # a warm combat tint, distinct from the trophy card
+	s.border_color = tint.lerp(Palette.BRASS_FRAME, 0.4)
+	s.set_border_width_all(2)
+	s.set_corner_radius_all(8)
+	s.set_content_margin_all(10)
+	card.add_theme_stylebox_override("panel", s)
+	var hb : HBoxContainer = HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 10)
+	card.add_child(hb)
+	var swords : MenuGlyph = MenuGlyph.new()
+	swords.kind = "swords"
+	swords.custom_minimum_size = Vector2(34.0, 34.0)
+	swords.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hb.add_child(swords)
+	var col : VBoxContainer = VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hb.add_child(col)
+	var nm : Label = Label.new()
+	nm.text = "%s wants to spar!" % npc_name
+	nm.add_theme_font_size_override("font_size", 16)
+	nm.add_theme_color_override("font_color", tint.lightened(0.35))
+	col.add_child(nm)
+	var ds : Label = Label.new()
+	ds.text = "A friendly Skirmish bout — your board against theirs."
+	ds.add_theme_font_size_override("font_size", 13)
+	ds.add_theme_color_override("font_color", Color(0.85, 0.78, 0.62, 1.0))
+	ds.autowrap_mode = TextServer.AUTOWRAP_WORD
+	ds.custom_minimum_size = Vector2(220.0, 0.0)
+	col.add_child(ds)
+	var btns : VBoxContainer = VBoxContainer.new()
+	btns.add_theme_constant_override("separation", 6)
+	btns.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hb.add_child(btns)
+	var accept : Button = _challenge_button("Accept", Color(0.20, 0.30, 0.14, 0.95), Color(0.55, 0.82, 0.42, 0.8))
+	accept.pressed.connect(_on_accept_challenge.bind(npc_name))
+	btns.add_child(accept)
+	var reject : Button = _challenge_button("Reject", Color(0.30, 0.16, 0.14, 0.95), Color(0.78, 0.45, 0.40, 0.8))
+	reject.pressed.connect(_on_reject_challenge.bind(npc_name))
+	btns.add_child(reject)
+	return card
+
+
+# A small pill button for the challenge card (Accept / Reject), tinted by bg/border.
+func _challenge_button(text: String, bg: Color, border: Color) -> Button:
+
+	var b : Button = Button.new()
+	b.text = text
+	b.focus_mode = Control.FOCUS_NONE
+	b.add_theme_font_size_override("font_size", 14)
+	b.add_theme_color_override("font_color", border.lightened(0.35))
+	for st in ["normal", "hover", "pressed"]:
+		var bs : StyleBoxFlat = StyleBoxFlat.new()
+		var c : Color = bg
+		if st == "hover":
+			c = c.lightened(0.12)
+		elif st == "pressed":
+			c = c.darkened(0.10)
+		bs.bg_color = c
+		bs.border_color = border
+		bs.set_border_width_all(1)
+		bs.set_corner_radius_all(7)
+		bs.content_margin_left = 16.0
+		bs.content_margin_right = 16.0
+		bs.content_margin_top = 5.0
+		bs.content_margin_bottom = 5.0
+		b.add_theme_stylebox_override(st, bs)
+	return b
+
+
+# Accept → seat this NPC as the Skirmish opponent + launch the duel (mirrors the radial "Spar" / Spar post).
+func _on_accept_challenge(npc_name: String) -> void:
+
+	var prof : NpcPersonality = NpcRegistry.by_name(npc_name)
+	PlayerState.clear_challenge(npc_name)   # consume the notice either way
+	if prof == null:
+		return   # unknown name (renamed cast?) — just drop the stale challenge
+	PlayerState.skirmish_opponent = prof.resource_path
+	Audio.play_sfx("whoosh")
+	close()   # fold the panel before the scene cut (the duel returns to the launching scene)
+	get_tree().change_scene_to_file("res://puzzles/skirmish/skirmish_duel.tscn")
+
+
+# Reject → decline the bout (clears the notice; a small rapport ding — turning down a duel stings a little).
+func _on_reject_challenge(npc_name: String) -> void:
+
+	PlayerState.add_affinity(npc_name, -3)
+	PlayerState.clear_challenge(npc_name)   # challenges_changed → _on_trophies_changed refreshes the list + badge
+	Audio.play_sfx("click")
 
 
 func _make_claim_card(id: String) -> Control:

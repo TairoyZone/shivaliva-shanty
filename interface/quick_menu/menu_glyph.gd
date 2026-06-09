@@ -9,7 +9,7 @@ const GOLD : Color = Color(0.96, 0.86, 0.50, 1.0)
 const DARK : Color = Color(0.0, 0.0, 0.0, 0.55)
 const HANDLE : Color = Color(0.55, 0.38, 0.18, 1.0)
 
-@export_enum("bag", "heart", "star", "jobs", "book", "bell", "scroll") var kind : String = "bag":
+@export_enum("bag", "heart", "star", "jobs", "book", "bell", "scroll", "swords") var kind : String = "bag":
 	set(value):
 		kind = value
 		queue_redraw()
@@ -33,6 +33,8 @@ func _draw() -> void:
 			_bell(c)
 		"scroll":
 			_scroll(c)
+		"swords":
+			_swords(c)
 
 
 func _bag(c: Vector2) -> void:
@@ -102,3 +104,15 @@ func _scroll(c: Vector2) -> void:
 	draw_line(c + Vector2(-8.5, 6.0), c + Vector2(8.5, 6.0), GOLD, 2.6)     # bottom rod
 	draw_line(c + Vector2(-3.5, -2.0), c + Vector2(3.5, -2.0), DARK, 1.1)
 	draw_line(c + Vector2(-3.5, 1.5), c + Vector2(3.5, 1.5), DARK, 1.1)
+
+
+func _swords(c: Vector2) -> void:
+
+	# Crossed sabres (the duel-challenge card): two steel blades crossing, hilts + pommels at the bottom.
+	var steel : Color = Color(0.82, 0.86, 0.92, 1.0)
+	draw_line(c + Vector2(-7.0, 7.5), c + Vector2(7.5, -7.5), steel, 2.4)   # blade ↗ (hilt bottom-left)
+	draw_line(c + Vector2(7.0, 7.5), c + Vector2(-7.5, -7.5), steel, 2.4)   # blade ↖ (hilt bottom-right)
+	draw_line(c + Vector2(-9.0, 5.5), c + Vector2(-5.0, 9.5), HANDLE, 2.2)  # left guard
+	draw_line(c + Vector2(9.0, 5.5), c + Vector2(5.0, 9.5), HANDLE, 2.2)    # right guard
+	draw_circle(c + Vector2(-7.5, 8.0), 1.8, GOLD)   # left pommel
+	draw_circle(c + Vector2(7.5, 8.0), 1.8, GOLD)    # right pommel

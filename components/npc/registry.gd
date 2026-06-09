@@ -34,6 +34,16 @@ static func all() -> Array[NpcPersonality]:
 	return out
 
 
+## Find a cast member's [NpcPersonality] by display name (e.g. "Flint Kerr"). Null if no match. Used to
+## resolve a stored challenge name back to its profile (for the Ayo! duel launch) without a scene reference.
+static func by_name(npc_name: String) -> NpcPersonality:
+
+	for profile in all():
+		if profile.npc_name == npc_name:
+			return profile
+	return null
+
+
 ## Returns [param count] randomly-picked profiles, optionally
 ## [param exclude]-ing any already-chosen ones. Used by the poker
 ## scene to seat three random opponents and by the gem-drop scene to
