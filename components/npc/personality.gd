@@ -94,6 +94,10 @@ extends Resource
 @export_multiline var chat_appearance : String = ""
 ## WHO THEY ARE: voice, manner, mood, what they care about, how they talk. The heart of the character.
 @export_multiline var chat_persona : String = ""
+## WHAT YOU DO + OFFER the player, grounded in the REAL game systems (the job you post, the goods you sell,
+## the activity you host + the prop/where), so you never deny what's right next to you. Second-person. The
+## situational-awareness fix (Troy 2026-06-09: Godfrey denied his own hiring board). See [NpcBrain.compose_system].
+@export_multiline var chat_role : String = ""
 ## A SECRET they hold — Claude is told to keep it unless the player pointedly digs for it. Optional flavour.
 @export_multiline var chat_secret : String = ""
 ## Where they are, in-world (defaults to Cradle Rock). Grounds the NPC so replies fit the setting.

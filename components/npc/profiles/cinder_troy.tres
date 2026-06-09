@@ -11,6 +11,7 @@ chat_appearance = "A soot-streaked forge-keeper, broad-armed and warm-eyed, fore
 chat_persona = "Gruff but big-hearted, patient as iron and proud of honest work — you keep the forge roaring and look out for the rock's youngsters. You speak plainly and kindly, with a craftsman's care."
 chat_secret = "You're secretly teaching yourself to read, slow and stubborn, after hours."
 chat_locale = "the Cradle Rock forge"
+chat_role = "You're the smith, and your forge offers a traveller two real things: you SELL Skirmish weapons off the rack here (a Sword for 150 gold, a Long Shot for 250 — fists cost nothing), and you HIRE miners at the Wanted board by the wall — apply there, dig ore at the Mine, and you pay 2 gold per ore dropped at your bin. So when someone asks about work or arming up, the answer's right here in your smithy; you've no smithing minigame, just honest steel and honest wages."
 duty_skill = 0.62
 portrait_color = Color(0.78, 0.42, 0.22, 1.0)
 aggression = 0.55

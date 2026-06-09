@@ -227,6 +227,8 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 	if not persona.chat_persona.is_empty():
 		who += " " + persona.chat_persona
 	parts.append(who)
+	if not persona.chat_role.is_empty():
+		parts.append("WHAT YOU DO + OFFER (this is real and right here — never deny it): " + persona.chat_role)
 	if not persona.chat_locale.is_empty():
 		parts.append("You are at %s." % persona.chat_locale)
 	var here : String = _current_place()
@@ -428,17 +430,17 @@ func reply_declines_duel(lc: String) -> bool:
 ## The CURRENT scene's place — fed into the prompt so NPCs reference their ACTUAL surroundings (Troy 2026-06-08),
 ## keyed by the scene file's stem. Sky-canon flavour (see [[sky-canon]]); empty for unknown / puzzle scenes.
 const PLACES : Dictionary = {
-	"tavern": "RIGHT NOW you're in The Inn — a warm tavern: a hearth, a card table (poker + gem-drop), cloudberry tea brewing, travellers passing through. Reference your surroundings naturally when it fits.",
-	"forge_interior": "RIGHT NOW you're in the Forge — Cinder Troy's smithy: roaring coals, an anvil, the ring of hammered steel, the smell of hot iron.",
-	"mine": "RIGHT NOW you're in the Mine — dim ore tunnels: pickaxes, raw ore glinting in the rock, dust in the air.",
-	"workshop_interior": "RIGHT NOW you're in the Workshop — Cogwise Godfrey's tinkering den: gears, half-built contraptions, the tick of clockwork.",
-	"skydock_interior": "RIGHT NOW you're at the Skydock — the sky-harbour: moored ships, coils of rope, crews coming and going, the tang of stardust.",
-	"healers_hut_interior": "RIGHT NOW you're in the Healer's Hut — Mossy Jade's herb-room: drying plants overhead, poultices, a quiet green calm.",
+	"tavern": "RIGHT NOW you're in The Inn — a warm tavern: a hearth, cloudberry tea brewing, and two game tables running — a POKER table and a GEM-DROP table (sit at one to join a table of regulars or start your own, free or for gold). Against the wall is the TOURNAMENT BOARD (gem-drop brackets, 30 gold to enter) and a SPAR post for picking a friendly Skirmish bout. Hearty Brian and Merry Geneva run the place. Reference your surroundings naturally when it fits.",
+	"forge_interior": "RIGHT NOW you're in the Forge — Cinder Troy's smithy: roaring coals, an anvil, the ring of hammered steel. A WEAPON RACK along the wall sells Skirmish arms for gold (a Sword, a Long Shot), a WANTED board hires miners (apply, dig at the Mine, 2 gold per ore), and an ORE BIN beside it takes delivered ore. Cinder Troy keeps the place.",
+	"mine": "RIGHT NOW you're in the Mine — dim ore tunnels: pickaxes, raw ore glinting in the rock, dust in the air. A DIG station works the ore (the forage puzzle); this is where the Forge's hired miners earn their 2 gold per ore.",
+	"workshop_interior": "RIGHT NOW you're in the Workshop — Cogwise Godfrey's tinkering den: gears, half-built contraptions, the tick of clockwork. A WANTED board on the wall hires lumberjacks (apply, chop at the Grove, 1 gold per log), a DRAFTING DESK takes orders for spacecraft built for gold (a Driftpod, a Cloud Cutter, a Sky Galleon), and a LUMBER PILE takes delivered wood. Cogwise Godfrey works here.",
+	"skydock_interior": "RIGHT NOW you're at the Skydock — the sky-harbour: moored ships, coils of rope, the tang of stardust. The SHIP'S HELM here opens the Voyages board (sign onto a crew and job a pillaging run, or captain your own ship if you own one), and the PATCHWORKS workbench mends a holed hull for ship-owners. Stormy Jericho is the skydock master.",
+	"healers_hut_interior": "RIGHT NOW you're in the Healer's Hut — Mossy Jade's herb-room: drying plants overhead, poultices, a quiet green calm. It's a place of rest and remedies, not trade — no shop or service to buy here, just Jade's care.",
 	"shore": "RIGHT NOW you're on the Shore — the island's edge: open sky, moored skiffs, and the long drop into the Stardust below.",
-	"forest": "RIGHT NOW you're in the Forest — a sky-island wood: tall timber, the thunk of axes, sawdust underfoot.",
+	"forest": "RIGHT NOW you're in The Grove — a sky-island wood of tall timber, the thunk of axes, sawdust underfoot. A CUTTING station fells the trees; this is where the Workshop's hired lumberjacks earn their 1 gold per log.",
 	"frontier_isle": "RIGHT NOW you're on Driftspar — the frontier sky-island: wild, half-explored, hush and open sky.",
 	"ship_deck": "RIGHT NOW you're on the ship's deck, underway — rigging and helm, the Stardust streaming past below.",
-	"player_shanty_interior": "RIGHT NOW you're in the traveller's little shanty — a humble home on Cradle Rock.",
+	"player_shanty_interior": "RIGHT NOW you're in the traveller's little shanty — a humble home on Cradle Rock, a cot in the corner.",
 }
 
 
@@ -458,18 +460,17 @@ func _current_place() -> String:
 # CURATED on purpose — one small, MVP-locked island; keep it in sync with the actual map + cast if either
 # changes. Folded into every chat prompt (private + ambient) as shared world knowledge.
 const ISLAND_GAZETTEER : String = (
-	"CRADLE ROCK — the island's key spots and who's usually there. Use this for ANY directions or whereabouts; "
-	+ "do NOT invent places, buildings, people, or journeys that aren't here, and if you truly don't know, say "
-	+ "so plainly.\n"
-	+ "- The Inn (a warm tavern): Hearty Brian and his wife Merry Geneva run it — hearth, cloudberry tea, and a card table for poker and gem-drop.\n"
-	+ "- The Forge: Cinder Troy's smithy — roaring coals, the anvil, ore worked into steel; Flint Kerr the bladesmith works the forge too.\n"
-	+ "- The Mine: dim ore tunnels — where folk dig ore.\n"
-	+ "- The Forest: tall sky-island timber — where wood is cut.\n"
-	+ "- The Skydock: the sky-harbour, Stormy Jericho's post — moored ships, where voyages set sail, and the Patchworks for mending a hull.\n"
-	+ "- The Workshop: Cogwise Godfrey's tinkering den of gears and half-built contraptions.\n"
-	+ "- The Healer's Hut and gardens: Mossy Jade's green refuge of herbs and flowers.\n"
-	+ "- The Square: Spritely Mia's whittling stump, where she carves her charms.\n"
-	+ "- The quiet edge: where Hollow Ellison keeps to himself.\n"
+	"CRADLE ROCK — the island's key spots, who's there, and what they offer. Use this for ANY directions or "
+	+ "whereabouts; do NOT invent places, buildings, people, or journeys that aren't here, and if you truly "
+	+ "don't know, say so plainly.\n"
+	+ "- The Inn (a warm tavern): Hearty Brian and his wife Merry Geneva run it — hearth, cloudberry tea, the poker and gem-drop tables (sit to play a hand, free or for gold), a tournament board for gem-drop brackets, and a Spar post for friendly bouts.\n"
+	+ "- The Forge: Cinder Troy's smithy — he SELLS Skirmish weapons for gold and HIRES miners at his Wanted board (dig at the Mine, 2 gold per ore).\n"
+	+ "- The Mine: dim ore tunnels — where folk dig ore; the work-site for the Forge's mining job.\n"
+	+ "- The Grove (the Forest): tall sky-island timber — where wood is cut; the work-site for the Workshop's lumberjacking job.\n"
+	+ "- The Skydock: the sky-harbour, Stormy Jericho's post — take the helm to job a pillaging crew or captain your own voyage, plus the Patchworks for mending a hull. (Ships are BOUGHT at the Workshop, not here.)\n"
+	+ "- The Workshop: Cogwise Godfrey's tinkering den — he HIRES lumberjacks at his Wanted board (cut at the Grove, 1 gold per log) and BUILDS + sells spacecraft for gold at his drafting desk.\n"
+	+ "- The Healer's Hut and gardens: Mossy Jade's green refuge of herbs and flowers — care and remedies, nothing for sale.\n"
+	+ "- Also AT THE INN: Spritely Mia the cook (whittles charms as gifts, not goods); Flint Kerr the bladesmith + keenest scrapper (the one to Spar — but Cinder Troy, not Kerr, sells the blades); and Hollow Ellison the loremaster + long-range duelist by the fire (good for a story, or a hard Spar if pressed).\n"
 	+ "- The Shore: the island's rim — the dock where ships moor, and the long drop into the Stardust below.\n"
 	+ "- Driftspar: a wild, half-explored frontier sky-island, reached by sailing out from the Skydock.")
 
