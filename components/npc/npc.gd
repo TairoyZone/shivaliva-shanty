@@ -38,7 +38,7 @@ const SKIRMISH_DUEL_SCENE : String = "res://puzzles/skirmish/skirmish_duel.tscn"
 ## giving an NPC a favour is a one-entry edit. See [[parlor-social-system]].
 const NPC_FAVORS : Dictionary = {
 	"Hearty Brian": {"item": "wood", "amount": 4,
-		"ask": "Ahoy! The inn's hearth is near burned down to embers — could you spare a few logs to keep it roaring?",
+		"ask": "Oh, hello there! The inn's hearth has burned down to embers — could you spare a few logs to keep it going?",
 		"thanks": "Bless you! The common room'll be warm tonight. You're alright, friend."},
 	"Stormy Jericho": {"item": "ore", "amount": 3,
 		"ask": "Hmph. My gear's seized up and I'm an ingot's worth of ore short. ...Bring me some, would you?",

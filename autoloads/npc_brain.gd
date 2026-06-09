@@ -36,6 +36,23 @@ const WORLD_RULES : String = (
 	+ "when an instruction tells you to emit one you MUST, and the player never sees it.) Speak naturally to the traveller "
 	+ "before you, and don't invent major world events that would contradict a simple island life.")
 
+# HOW THE CAST TALKS — the single biggest lever on voice. The setting is sky-pirate, but the PEOPLE are plain,
+# modern, distinct humans. This forbids the generic "ahoy/ye/matey" dialect the model defaults to, sets a low
+# reading bar (the player's first language may not be English), and tells each NPC to let their OWN personality
+# (folded in below) drive the cadence so two characters never sound alike. (Troy 2026-06-10: "talk like a pirate
+# … english is not my first language … make them more human." Reconciles with sky-canon: keep the NOUNS, drop
+# the accent — "pirate world, human voices.")
+const VOICE_RULES : String = (
+	"HOW YOU TALK (read this carefully — it matters most): Speak in PLAIN, simple, modern everyday English that a "
+	+ "young player, or someone whose first language is NOT English, can read easily. Short sentences. Common, "
+	+ "everyday words — if a simpler word does the job, use it. Do NOT use old-timey pirate or sailor talk: never "
+	+ "'ahoy', 'ye', 'yer', 'matey', 'arr', 'aye', 'nay', 'savvy', 'lad', 'lass', 'me hearty', and never drop "
+	+ "letters ('liftin'', 'cap'n') or swap 'be' for 'is'/'are'. These folk are real, modern people who happen to "
+	+ "live on a sky-island — they do not talk like a pirate cartoon. Keep the world's NOUNS (a ship, a voyage, a "
+	+ "pillage, the Stardust, the Skydock) — that's just what things are called here — but everything else is plain "
+	+ "speech. Above all, let YOUR OWN personality (described below) drive how you sound — your rhythm, your mood, "
+	+ "your word choice — so you come across as one specific person. Two different characters must never sound alike.")
+
 signal npc_replied(text: String)     # a reply came back (also appended to history)
 signal chat_failed(reason: String)   # the request failed — caller should fall back to canned lines
 signal thinking_started               # a request went out — show a "…" / typing state
@@ -211,7 +228,7 @@ func build_payload(system: String, messages: Array) -> Dictionary:
 func _system_prompt() -> String:
 
 	if _persona == null:
-		return WORLD_RULES
+		return WORLD_RULES + "\n\n" + VOICE_RULES
 	return compose_system(_persona, true)
 
 
@@ -220,7 +237,7 @@ func _system_prompt() -> String:
 ## tokens — a passing remark shouldn't risk leaking a secret). The part you tweak via the .tres chat fields.
 func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 
-	var parts : PackedStringArray = PackedStringArray([WORLD_RULES])
+	var parts : PackedStringArray = PackedStringArray([WORLD_RULES, VOICE_RULES])
 	var who : String = "You are %s." % persona.npc_name
 	if not persona.chat_appearance.is_empty():
 		who += " " + persona.chat_appearance

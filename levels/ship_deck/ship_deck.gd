@@ -952,15 +952,15 @@ func _duty_lines(duty: String) -> Array[String]:
 
 	match duty:
 		"Navigating":
-			return ["Ahoy! Welcome aboard, hand.", "Keep the Loft singing and we'll make way.",
-				"When a ship swings in, get to the helm and board 'em!"]
+			return ["Welcome aboard. Glad to have the extra hands.", "Keep the Loft running and we'll make good time.",
+				"When a ship swings in, get to the helm and board them!"]
 		"Sailing":
-			return ["Trimmin' the sails to catch the drift.", "Mind the Stardust don't catch us nappin'."]
+			return ["Trimming the sails to catch the drift.", "Keep an eye out — the Stardust doesn't wait."]
 		"Gunnery":
-			return ["Cannons loaded, powder dry.", "Point me at a brigand, aye?"]
+			return ["Cannons loaded, powder dry.", "Point me at a brigand and I'll do the rest."]
 		"Carpentry":
-			return ["Patchin' her up where she creaks.", "She'll hold. Mostly."]
-	return ["Ahoy.", "Just keepin' busy."]
+			return ["Patching her up where she creaks.", "She'll hold. Mostly."]
+	return ["Just keeping busy.", "All quiet for now."]
 
 
 func _add_npc(parent: Node, who: String, pos: Vector2, tint: Color, lines: Array[String]) -> void:

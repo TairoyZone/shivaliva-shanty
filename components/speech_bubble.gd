@@ -1,5 +1,5 @@
 ## SpeechBubble — a single line of speech that floats above a character inside a rounded bg BUBBLE
-## (YPP-style, see [[chatbox-comms-reference]]) and fades. Add it: SpeechBubble.say(node, "Ahoy!").
+## (YPP-style, see [[chatbox-comms-reference]]) and fades. Add it: SpeechBubble.say(node, "Hello!").
 ## Used by NPC Talk + the player's chat. A child of the node, so it rides their position; the bubble
 ## sizes to the text (snug for short lines, wraps long ones); self-fades + frees. Placeholder-first.
 class_name SpeechBubble
