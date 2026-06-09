@@ -130,10 +130,15 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # Return to the title — PlayerState autosaves on every change + records last_scene, so main.tscn resumes
 # the player here on next launch. clear_voyage() drops any in-flight pillage (transient, not saved).
+# This modal lives under the tree ROOT (see open()), so a scene change does NOT free it — we must drop it
+# ourselves or it strands on top of the title. _was_paused is forced false so _exit_tree can't re-pause the
+# title we're heading to.
 func _on_quit_to_title() -> void:
 
 	if get_tree() == null:
 		return
-	get_tree().paused = false
 	PlayerState.clear_voyage()
+	_was_paused = false
+	get_tree().paused = false
+	queue_free()   # root-parented → the scene swap won't reap it; remove it so it can't linger over the title
 	get_tree().change_scene_to_file("res://main.tscn")
