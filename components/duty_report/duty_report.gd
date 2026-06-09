@@ -12,6 +12,9 @@ extends RefCounted
 
 
 const RATINGS : Array[String] = ["Booched", "Poor", "Fine", "Good", "Excellent", "Incredible"]
+## Sentinel rating index for a hand who did NOT work a station this leg (you WATCHED the crew sail) — shown as
+## "off duty", NOT a rating. Distinguishes "didn't do it" from "did it badly" (Booched). See [method snapshot].
+const OFF_DUTY : int = -1
 const RATING_COLORS : Array[Color] = [
 	Color(0.88, 0.34, 0.30, 1.0),   # Booched — red
 	Color(0.95, 0.58, 0.28, 1.0),   # Poor — orange
@@ -99,22 +102,26 @@ static func build_roster(captain_name: String) -> Array:
 # Snapshot this leg's report from the roster: rate the player from `player_score01` (a 0..1
 # performance score — lift-per-swap, computed by the caller), sim each crewmate from their
 # skill. Each entry: {name, duty, rating_idx, is_player, tint}.
-static func snapshot(roster: Array, player_score01: float) -> Array:
+static func snapshot(roster: Array, player_score01: float, player_duty: String = "", player_manned: bool = true) -> Array:
 
 	var report : Array = []
 	for m in roster:
+		var is_player : bool = bool(m.get("is_player", false))
 		var idx : int
-		if bool(m.get("is_player", false)):
-			idx = rating_index(clampf(player_score01, 0.0, 1.0))
+		if is_player:
+			# Off duty (watched) → the OFF_DUTY sentinel, NOT a 0/Booched rating.
+			idx = rating_index(clampf(player_score01, 0.0, 1.0)) if player_manned else OFF_DUTY
 		else:
 			var score : float = clampf(float(m.get("skill", FALLBACK_SKILL)) \
 				+ randf_range(-VARIANCE, VARIANCE), 0.0, 1.0)
 			idx = rating_index(score)
 		report.append({
 			"name": String(m.get("name", "")),
-			"duty": String(m.get("duty", "")),
+			# The player's duty reflects what they actually manned THIS leg (Loft vs Patchworks); fall back to
+			# the roster's fixed duty for the AI crew (or if the caller didn't pass one).
+			"duty": (player_duty if (is_player and not player_duty.is_empty()) else String(m.get("duty", ""))),
 			"rating_idx": idx,
-			"is_player": bool(m.get("is_player", false)),
+			"is_player": is_player,
 			"tint": m.get("tint", Color.WHITE),
 		})
 	return report

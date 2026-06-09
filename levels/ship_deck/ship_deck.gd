@@ -278,14 +278,14 @@ func _deck_board_now() -> void:
 # path for when you're on the deck — e.g. you bailed the Loft mid-crossing.)
 func _resolve_boarding() -> void:
 
-	_after_resolve(PlayerState.resolve_voyage_leg(true, PlayerState.last_skirmish_won,
-		PlayerState.last_loft_lift, PlayerState.last_loft_swaps))
+	# Deck-side resolve = you WATCHED this leg (never manned a station) → off duty, not a botch (player_manned=false).
+	_after_resolve(PlayerState.resolve_voyage_leg(true, PlayerState.last_skirmish_won, 0, 0, "loft", -1, false))
 
 
 func _resolve_calm() -> void:
 
-	_after_resolve(PlayerState.resolve_voyage_leg(false, true,
-		PlayerState.last_loft_lift, PlayerState.last_loft_swaps))
+	# Deck-side resolve = you WATCHED this leg (never manned a station) → off duty, not a botch (player_manned=false).
+	_after_resolve(PlayerState.resolve_voyage_leg(false, true, 0, 0, "loft", -1, false))
 
 
 func _after_resolve(r: Dictionary) -> void:

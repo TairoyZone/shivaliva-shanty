@@ -354,8 +354,14 @@ const DUTY_RATE_FOR_TOP : float = 12.0
 # Resolve one voyage leg (shared by the Loft cockpit and the ship deck): bank the cut, snapshot
 # the duty report (your row rated on lift-per-swap), log the leg, and advance / mark arrival.
 # Returns {arrived:bool, cut:int, outcome_line:String}.
-func resolve_voyage_leg(is_fight: bool, won: bool, lift: int, swaps: int, mastery_id: String = "loft", mastery_score: int = -1) -> Dictionary:
+func resolve_voyage_leg(is_fight: bool, won: bool, lift: int, swaps: int, mastery_id: String = "loft", mastery_score: int = -1, player_manned: bool = true) -> Dictionary:
 
+	# If the player WATCHED this leg (never manned a station — the deck-side resolve), they did NO duty: zero
+	# their lift/swaps so the report reads "off duty" (not Booched) and the overall duty isn't skewed by stale
+	# carry-over from a leg they DID man. (Troy 2026-06-09: "booched" with no job taken.)
+	if not player_manned:
+		lift = 0
+		swaps = 0
 	# Gold = your CUT OF THE PLUNDER from DEFEATING a crew (pirates / marines), the YPP way — NOT
 	# a payout for reaching a waypoint. A calm stretch is just sailing: no fight, no plunder. Each
 	# fight adds a FLAT cut to the POOL (pillage_log); the WHOLE pool is then scaled by your overall
@@ -383,7 +389,8 @@ func resolve_voyage_leg(is_fight: bool, won: bool, lift: int, swaps: int, master
 	# rate the WHOLE voyage (voyage_duty_score01).
 	var score01 : float = clampf((float(lift) / maxf(1.0, float(swaps))) / DUTY_RATE_FOR_TOP, 0.0, 1.0)
 	if not pillage_duty_crew.is_empty():
-		last_duty_report = DutyReport.snapshot(pillage_duty_crew, score01)
+		var player_duty : String = "The Patchworks" if mastery_id == "patchworks" else DutyReport.PLAYER_DUTY
+		last_duty_report = DutyReport.snapshot(pillage_duty_crew, score01, player_duty, player_manned)
 	# A leg feeds its STATION's high-water-mark mastery (Loft legs → Lofting by lift; Patchworks legs →
 	# Patchworks by board score). Defaults to Lofting/lift. Silent — no mid-voyage toast.
 	record_puzzle_result(mastery_id, mastery_score if mastery_score >= 0 else lift)

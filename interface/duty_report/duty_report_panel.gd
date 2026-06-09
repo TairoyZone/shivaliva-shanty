@@ -135,9 +135,13 @@ func _row(grid: GridContainer, entry: Dictionary) -> void:
 
 	var idx : int = int(entry.get("rating_idx", 0))
 	var rate : Label = Label.new()
-	rate.text = DutyReport.rating_name(idx)
+	if idx < 0:
+		rate.text = "— off duty"   # watched the crew sail this leg; didn't man a station (not a botch)
+		rate.add_theme_color_override("font_color", Color(0.62, 0.66, 0.74, 1.0))
+	else:
+		rate.text = DutyReport.rating_name(idx)
+		rate.add_theme_color_override("font_color", DutyReport.rating_color(idx))
 	rate.add_theme_font_size_override("font_size", 17)
-	rate.add_theme_color_override("font_color", DutyReport.rating_color(idx))
 	rate.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
 	rate.add_theme_constant_override("outline_size", 2)
 	grid.add_child(rate)
