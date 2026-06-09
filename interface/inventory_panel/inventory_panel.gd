@@ -897,8 +897,9 @@ func _make_weapon_slot(weapon_id: String) -> Control:
 	s.set_border_width_all(3 if equipped else 2)
 	s.set_corner_radius_all(6)
 	panel.add_theme_stylebox_override("panel", s)
-	panel.tooltip_text = "Unarmed — just your fists" if is_default else "%s\n%s" % [
-		SkirmishWeapon.display_name(weapon_id), String(SkirmishWeapon.DESCRIPTIONS.get(weapon_id, ""))]
+	panel.tooltip_text = "Unarmed — just your fists\nClick to fight bare-knuckle" if is_default else "%s\n%s\n%s" % [
+		SkirmishWeapon.display_name(weapon_id), String(SkirmishWeapon.DESCRIPTIONS.get(weapon_id, "")),
+		"Click again to unarm" if equipped else "Click to equip"]
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.gui_input.connect(_on_weapon_input.bind(weapon_id))
 	if not is_default:   # the unarmed/fists slot stays EMPTY — no icon
@@ -927,7 +928,12 @@ func _make_weapon_slot(weapon_id: String) -> Control:
 func _on_weapon_input(event: InputEvent, weapon_id: String) -> void:
 
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		PlayerState.equip_weapon(weapon_id)
+		# Click to EQUIP; click the EQUIPPED one again to UNEQUIP — back to bare fists (Troy 2026-06-10:
+		# gear is a choice made here in the bag, never forced).
+		if PlayerState.equipped_weapon == weapon_id and weapon_id != SkirmishWeapon.DEFAULT_WEAPON:
+			PlayerState.equip_weapon(SkirmishWeapon.DEFAULT_WEAPON)
+		else:
+			PlayerState.equip_weapon(weapon_id)
 		_refresh()
 
 
