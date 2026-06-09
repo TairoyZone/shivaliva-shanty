@@ -102,7 +102,6 @@ func place_collapsed_top(parent: CanvasLayer) -> void:
 
 	_collapsible = true
 	_collapsed = true
-	mouse_filter = Control.MOUSE_FILTER_STOP   # CLICK the strip to toggle open/folded — it STAYS as you leave it
 	anchor_left = 0.5
 	anchor_right = 0.5
 	anchor_top = 0.0
@@ -112,10 +111,12 @@ func place_collapsed_top(parent: CanvasLayer) -> void:
 	offset_top = 14.0
 	offset_bottom = 14.0 + COLLAPSED_H
 	parent.add_child(self)
-	# _ready (run on add_child) sets custom_minimum_size = SIZE (116 tall), which would FORCE the box to
-	# full height and leave the collapsed strip floating in a big empty panel. Clear it so the offsets +
-	# the hover tween control the height instead.
+	# _ready (run on add_child) sets custom_minimum_size = SIZE (116 tall) AND mouse_filter = IGNORE — override
+	# BOTH here, AFTER add_child: clear the min-size so the offsets + the tween control the height, and set the
+	# filter to STOP so the strip actually CATCHES the click to toggle open/folded. (Setting STOP *before*
+	# add_child silently lost — _ready's IGNORE clobbered it, so the chart could never expand. The bug.)
 	custom_minimum_size = Vector2.ZERO
+	mouse_filter = Control.MOUSE_FILTER_STOP   # CLICK the strip to toggle open/folded — it STAYS as you leave it
 
 
 # CLICK the strip to TOGGLE it open/folded — it stays that way until you click again (Troy 2026-06-07:
