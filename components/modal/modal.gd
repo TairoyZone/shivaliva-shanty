@@ -51,8 +51,8 @@ func _modal_panel_style() -> StyleBoxFlat:
 	s.set_content_margin_all(22)
 	return s
 
-## Build the modal's UI into [param content] (== [member _content]). Called once, after the scaffolding is up.
-func _build_content(content: VBoxContainer) -> void:
+## Build the modal's UI into [member _content]. Called once, after the scaffolding is up.
+func _build_content() -> void:
 	pass
 
 
@@ -95,15 +95,18 @@ func _ready() -> void:
 	if _modal_scrollable():
 		var scroll : ScrollContainer = ScrollContainer.new()
 		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-		scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
-		_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_panel.add_child(scroll)
-		scroll.add_child(_content)
+		var pad : MarginContainer = MarginContainer.new()   # keep the content clear of the vertical scrollbar
+		pad.add_theme_constant_override("margin_right", 14)
+		pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll.add_child(pad)
+		_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pad.add_child(_content)
 	else:
 		_panel.add_child(_content)
 
 	add_child(EscToClose.new(_close))
-	_build_content(_content)
+	_build_content()
 	ModalFx.appear(_panel, _dim)
 
 

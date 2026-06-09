@@ -40,7 +40,7 @@ func _modal_panel_style() -> StyleBoxFlat:
 	return s
 
 
-func _build_content(content: VBoxContainer) -> void:
+func _build_content() -> void:
 
 	PlayerState.voyage_stations_changed.connect(_render)   # re-render when an assignment changes (single source)
 	_render()

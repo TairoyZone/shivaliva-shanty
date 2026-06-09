@@ -65,7 +65,7 @@ func _modal_panel_style() -> StyleBoxFlat:
 	return _panel_style()
 
 
-func _build_content(content: VBoxContainer) -> void:
+func _build_content() -> void:
 
 	PlayerState.crew_changed.connect(_render)   # any crew change re-renders (single source of truth)
 	_render()
