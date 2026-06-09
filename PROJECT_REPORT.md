@@ -9,6 +9,19 @@ Compatibility, 1280×720, no build step** (run `main.tscn`, or any `puzzles/*/<n
 Windows / OneDrive, git-backed. Sky-pirates among floating islands (not sailors on water) — every water
 term is reskinned to a sky/Stardust equivalent ("the Stardust" = the abyss below).
 
+## Dev journey + velocity (the numbers)
+_Recompute these from git each report — first-commit date, `git rev-list --count HEAD`, `.gd`/`.tscn` line counts._
+- **Started: ~2026-05-24/25** (first locked design calls) → **~17 days** as of 2026-06-10.
+- **240 commits** (git baseline 2026-06-03; **7 intense build days** Jun 3·5·6·7·8·9·10, ~34/day).
+- **~32,300 lines of hand-built game** — **~29,247 GDScript** across **167 `.gd` files** + **~3,049 lines** across **83 scenes**.
+- **Scope:** a walkable iso overworld + a 9-NPC cast · **7 full mini-games** (each a Board+Scene engine w/ AI +
+  animation + mastery) · the **voyage meta-system** (deck, set-sail routes, charts, duty reports, a LIVE
+  background boarding melee, sinkable ships) · **AI-powered NPC chat** (LLM via a key-safe proxy — a novel hook,
+  now situationally aware) · crew/ship-owning · economy/mastery/trophies/save-load/onboarding/HUD · a social parlor.
+- **What it'd take a normal person:** this scope is realistically **~10–14 months** of solid solo-dev work
+  (7 polished mini-games alone ≈ 4–6 months) — **1.5–2+ years for most hobbyists** (many never finish). Troy
+  did it in **~17 days → roughly a 20–30× pace.**
+
 ## Status: MVP LOCKED → polishing for a public demo
 **Locked 2026-06-05:** the core loop is done. **7 puzzles is the final count — no more puzzles.** The
 work now is **polish + solidify** for a public **demo on Itch.io** (Troy is lining up playtesters). The
