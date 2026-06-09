@@ -3,10 +3,8 @@
 ## The CREW section is the foundation for "start a crew": recruit a CONFIDANT, then promote / demote / dismiss
 ## them (all via PlayerState's crew model). Modal family (dim + panel + ESC + ModalFx). Built 2026-06-08.
 class_name NpcProfileCard
-extends CanvasLayer
+extends Modal
 
-
-signal closed
 
 const GROUP : StringName = &"npc_profile_card"
 const INK : Color = Color(0.95, 0.88, 0.66, 1.0)
@@ -32,11 +30,6 @@ var _bio : String = ""
 var _locale : String = ""
 var _favor : Dictionary = {}
 
-var _panel : PanelContainer
-var _dim : ColorRect
-var _content : VBoxContainer
-var _was_paused : bool = false
-
 
 static func open(host: Node, config: Dictionary) -> void:
 
@@ -54,57 +47,28 @@ static func open(host: Node, config: Dictionary) -> void:
 	host.get_tree().root.add_child(c)
 
 
-func _ready() -> void:
+# --- Modal config -----------------------------------------------------
 
-	layer = 36
-	process_mode = Node.PROCESS_MODE_ALWAYS
-	add_to_group(GROUP)
-	_was_paused = get_tree().paused
-	get_tree().paused = true
+func _modal_group() -> StringName:
+	return GROUP
 
-	_dim = ColorRect.new()
-	_dim.color = Color(0, 0, 0, 0.55)
-	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	# LEFT-click only — a mouse-WHEEL notch over the dim is also an InputEventMouseButton, and would otherwise
-	# close the card while the player is trying to scroll it.
-	_dim.gui_input.connect(func(e: InputEvent) -> void:
-		if e is InputEventMouseButton and e.pressed and (e as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
-			_close())
-	add_child(_dim)
+func _modal_size() -> Vector2:
+	return Vector2(460.0, 504.0)
+
+func _modal_scrollable() -> bool:
+	return true
+
+func _modal_content_separation() -> int:
+	return 8
+
+func _modal_panel_style() -> StyleBoxFlat:
+	return _panel_style()
+
+
+func _build_content(content: VBoxContainer) -> void:
+
 	PlayerState.crew_changed.connect(_render)   # any crew change re-renders (single source of truth)
-
-	_panel = PanelContainer.new()
-	_panel.add_theme_stylebox_override("panel", _panel_style())
-	_panel.anchor_left = 0.5
-	_panel.anchor_top = 0.5
-	_panel.anchor_right = 0.5
-	_panel.anchor_bottom = 0.5
-	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_panel.offset_left = -230.0
-	_panel.offset_top = -252.0
-	_panel.offset_right = 230.0
-	_panel.offset_bottom = 252.0
-	add_child(_panel)
-
-	var scroll : ScrollContainer = ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_panel.add_child(scroll)
-	_content = VBoxContainer.new()
-	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_content.add_theme_constant_override("separation", 8)
-	scroll.add_child(_content)
-
-	add_child(EscToClose.new(_close))
 	_render()
-	ModalFx.appear(_panel, _dim)
-
-
-func _exit_tree() -> void:
-
-	if get_tree() != null:
-		get_tree().paused = _was_paused
 
 
 # --- render -----------------------------------------------------------
@@ -367,15 +331,6 @@ func _item_name() -> String:
 func _short() -> String:
 	var parts : PackedStringArray = _npc_name.split(" ", false)
 	return parts[parts.size() - 1] if parts.size() > 0 else _npc_name
-
-
-func _close() -> void:
-	ModalFx.dismiss(self, _panel, _dim, _do_close)
-
-
-func _do_close() -> void:
-	closed.emit()
-	queue_free()   # frees → _exit_tree restores the prior pause state
 
 
 func _panel_style() -> StyleBoxFlat:
