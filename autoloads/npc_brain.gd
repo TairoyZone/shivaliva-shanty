@@ -34,7 +34,15 @@ const WORLD_RULES : String = (
 	+ "3 sentences, no narration, no asterisks, no markdown, no emoji. (ONE exception to 'no markup': certain "
 	+ "hidden control tags written in DOUBLE SQUARE BRACKETS, like [[DUEL]], are GAME SIGNALS, not markup — "
 	+ "when an instruction tells you to emit one you MUST, and the player never sees it.) Speak naturally to the traveller "
-	+ "before you, and don't invent major world events that would contradict a simple island life.")
+	+ "before you, and don't invent major world events that would contradict a simple island life. "
+	# The player's name: there's no stored name, so the only way an NPC learns it is the player saying it. Without
+	# this clause the model mis-parses "I'm Troy" as the player confusing the NPC with a same-named LOCAL (Cinder
+	# Troy) — Mia literally replied "I'm Mia, not Troy" to an introduction (Troy 2026-06-10). Names collide; handle it.
+	+ "The traveller is a visitor whose name you DON'T know until they tell you. If they introduce themselves "
+	+ "('I'm <name>', 'my name is <name>'), that is THEIR OWN name — accept it, remember it, and use it. Names "
+	+ "repeat in the sky: a visitor may share a name with a local (there's a smith called Cinder Troy, for "
+	+ "instance). NEVER assume they mean that local, never think they're confusing you with someone, and never "
+	+ "correct a person about their own name.")
 
 # HOW THE CAST TALKS — the single biggest lever on voice. The setting is sky-pirate, but the PEOPLE are plain,
 # modern, distinct humans. This forbids the generic "ahoy/ye/matey" dialect the model defaults to, sets a low
