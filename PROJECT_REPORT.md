@@ -1,6 +1,6 @@
 # Shivaliva Shanty — Project Report
 
-_Last updated: 2026-06-09_
+_Last updated: 2026-06-10_
 
 ## What it is
 A single-player-first, retro-charming **puzzle-skill adventure** among floating sky-islands — a
@@ -29,7 +29,8 @@ onboarding, not new content.
 
 ## The world + economy
 - **Cradle Rock** (the playable island): shore, tavern, forest, mine, interiors, the Skydock. A locked
-  **8-NPC cast** (Brian, Jericho, Kerr, Troy, Godfrey, Mia, Jade, Ellison) with jobs + puzzle pipelines.
+  **9-NPC cast** (Brian, Jericho, Kerr, Cinder Troy, Godfrey, Mia, Jade, Ellison, Geneva) with jobs + puzzle
+  pipelines. Each persona now carries pronouns + a grounded `chat_role` (what they do/offer in the real systems).
 - **Economy:** ONE earned currency = **gold**. Earn-and-keep — no decay, no upkeep, no premium
   currency, no pay-to-win. (Legally safe *only* while gold stays earn-only — never real-money-purchasable.)
 - **Multiplayer direction (decided, not yet built):** co-op (Stardew-style, ~4–8p, one shared world) +
@@ -75,7 +76,39 @@ finished). Adversarially reviewed (3 bugs fixed) + several playtest fixes alread
 - **Inheritance over duplication; scene-per-component.**
 - Build proactively, flag only big design forks; commit freely; **never push without an explicit ask.**
 
-## This session (2026-06-08 → 09) — the ship-owning + crew arc (all committed)
+## This session (2026-06-09) — the NPC-CHAT DEPTH arc + UI/bug polish (all committed)
+A massive Troy-driven pass making the **AI-chat hook the game's soul** — the cast now reacts to the live
+moment AND knows the world — plus a wave of UI-placement fixes and voyage bug-fixes. Each piece scan-verified;
+the two riskiest (duel reliability, poker live-awareness) adversarially reviewed via multi-agent workflows.
+
+- **NPCs CHALLENGE you to a duel via chat → the Ayo! inbox:** chat a cast member (public/private) and if it
+  turns competitive they can challenge you to a Skirmish duel; it lands in the **Ayo!** tab (Accept → the duel,
+  Reject → a small rapport ding). Made RELIABLE (a red-team workflow): filing no longer depends on the AI
+  emitting a hidden `[[DUEL]]` tag (the no-markup rule suppressed it) — a deterministic proposal/accept
+  classifier fires it too, per-responder so only the accepter is filed. Per-NPC `duel_appetite`.
+- **Battle memory:** a persisted per-NPC head-to-head W/L (`npc_battle_record`) folded into chat so NPCs own
+  the score + never deny a real defeat, + a post-fight banter bubble. In-code only (no UI).
+- **★ STANDING PRINCIPLE — live situational awareness:** any scene implements `npc_chat_context(npc_name)` →
+  folded into the prompt. Built for **POKER**: the seated cast read the live hand (every stack, the pot, the
+  board, their OWN cards, the recent action — raises/folds/all-ins/busts) and react in real time. Hidden-info
+  safe (only the asker's own cards), adversarially reviewed (16 agents).
+- **Poker TABLE CHAT:** the chat bar now shows at the felt (a `chat_scene` group un-hides it) + each seated
+  `PokerSeat` joins the `npc` group → chat the cast at the table, public or private.
+- **World grounding + role/offer uplift (no more contradictions):** `ISLAND_GAZETTEER` (every spot + who's
+  there + what they offer) + per-room `PLACES` props + per-NPC **`chat_role`** (real job/offer, grounded in
+  the systems) so NPCs stop denying their own hiring board / helm / shop (Godfrey + Jericho fixed). + `pronouns`
+  per NPC (Jericho "she"→he). Shop PRICES kept OUT of the dialogue — the shop UI is the source of truth (no drift).
+- **UI placement pass:** Leave button back to **bottom-left** by default (only poker top-left — its chat bar
+  owns the bottom); poker stake banner → top-right; Mine headers centered above the board; the Mine "TO GET"
+  meter starts empty + fills as you dig; swept EVERY puzzle HUD for the Leave overlap (one global change).
+- **Voyage bug-fixes:** (1) **poker → back-to-voyage** — `clear_voyage` clears the stale `puzzle_return_scene`
+  that warped you into the over voyage on a puzzle Leave; (2) **duty report "Booched"** — a leg you WATCHED
+  (never manned) now reads **"off duty"** (not a botch), labels the station you actually manned (Loft vs
+  Patchworks), and doesn't skew the overall duty; a pure-passenger run reads "off duty" + a fair ×1.0 par cut.
+- Earlier in the session: poker river-card re-deal fix, the Ayo! badge lingering after New Game, and
+  **Operation Marie Kondo** (a reusable `Modal` base + dead-voyage-system delete).
+
+## Prior session (2026-06-08 → 09) — the ship-owning + crew arc (all committed)
 A Troy-driven depth pass on **owning a ship + running a crew** — a deliberate expansion past the pure polish
 lock, closing the gap where "owning a ship" meant nothing mechanical. Each piece scan-verified; the risky ones
 adversarially reviewed.
@@ -160,7 +193,12 @@ C. **Economy guard (2026-06-08):** gold can never go negative; cash play is gate
    placeholder `.wav` synthesised in-engine (no lifted audio); first call site = the gold "coin".
 
 ## What's next
-- **🚢 SHIP-OWNING + CREW (this phase, Troy-driven):** playtest the full loop end-to-end — **recruit** (or
+- **💬 NPC-CHAT DEPTH (this session's arc):** playtest the cast live now that the AI is online — confirm
+  Godfrey/Jericho point you to their board/helm (not deny them), poker NPCs react to the live hand, and a
+  chat-driven duel lands in Ayo!. **Tune `duel_appetite`** (how often NPCs challenge) once it's felt. NEXT
+  situation-aware scenes (the principle generalizes): gem-drop / skirmish duels (the foe reacting to the
+  board), the boarding deck. ⚠️ Deploy the proxy before any friend plays an export (NPC chat is dead otherwise).
+- **🚢 SHIP-OWNING + CREW (Troy-driven):** playtest the full loop end-to-end — **recruit** (or
   `/crew`) → **Crew Duty** assign on the deck → **captain the Driftpod** from the moored ship → feel the
   station effects + the hull carry/repair. **Tune the duty-station balance** (Repair's 2-holes/leg seal is the
   strongest knob; Sailing pays off most when you man the Loft live). The dock collision is finalized (Troy
@@ -189,8 +227,11 @@ _This report is a living snapshot — regenerate it as the project moves. Deeper
 decisions live in the auto-memory (`…/memory/MEMORY.md`); the code map lives in `CLAUDE.md`._
 
 # TROY's TODO (next session) #
---- NPC CHAT ---
-= persona-tuning pass on the .tres Chat/AI fields once you've talked to the whole cast
+--- NPC CHAT (each persona now has chat_role + pronouns; situational awareness live) ---
+= talk to the whole cast end-to-end + tune duel_appetite (challenge frequency) + the persona chat_* fields by feel
+= confirm shop prices read right in the UI (chat no longer quotes them — shop UI is the source of truth)
 = deploy the proxy to a free Node host before the public demo (see proxy/README.md)
 --- DEMO READINESS ---
 = a self-playthrough + a written playtest checklist/script before a friend plays
+--- KNOWN, DEFERRED (not bugs) ---
+= confirm Kerr + Ellison genders read right everywhere (Kerr he/him, Ellison she/her — fixed today)
