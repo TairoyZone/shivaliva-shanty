@@ -538,6 +538,10 @@ func clear_voyage() -> void:
 	voyage_open_holes = 0      # the pillage SHIP's holes are transient — the next voyage's ship starts fresh
 	voyage_stations = {}       # drop stale crew assignments (a dismissed hand mustn't bleed into the next run)
 	last_deck_say = ""         # so the next voyage's captain greets you again instead of staying silent
+	# The voyage stations set puzzle_return_scene to the ship deck so a station returns there. Once the voyage
+	# ENDS it must be cleared, or it leaks: a puzzle launched later (e.g. poker from the Inn) would read the
+	# stale deck path on Leave and warp the player back into the (now-over) voyage. (Troy 2026-06-09 bug.)
+	puzzle_return_scene = ""
 	# (Your OWNED ship's persisted condition (`ship_condition`) is separate + survives, repaired at the
 	# Skydock's Patchworks post. The in-voyage Patchworks station mends the CURRENT pillage ship.)
 	# A boarding melee still in flight (you stepped away, never rejoined, then bailed) is abandoned too.
