@@ -47,9 +47,9 @@ signal ore_changed(new_total: int)
 ## ore stock. Drives the visible OrePile prop inside the Forge.
 signal ore_stock_changed(new_total: int)
 ## Fires when the player's current onboarding objective MIGHT have changed
-## (got hired, bought a ship). The HUD objective banner listens + recomputes
-## via [method current_objective]. (Coin/lumber progress updates ride the
-## existing coins_changed / lumber_stock_changed signals.)
+## (got hired, bought a ship). The InventoryPanel's Objectives tab listens +
+## recomputes via [method current_objective]. (Coin/lumber progress updates ride
+## the existing coins_changed / lumber_stock_changed signals.)
 signal objective_changed
 ## Fires when the player buys a spacecraft. The ship-shop modal listens
 ## to refresh its rows (Buy → Owned).

@@ -1,7 +1,8 @@
 ## ShoppeJobsBoard — a YPP "Shoppe Jobs"-style notice board listing the labour puzzles you can take on
 ## (Mining + Woodcutting). Each row shows the trade + its wage and a "Go" that takes you TO the work-site
 ## (the Mine / the Forest), dropped next to the sign — you walk up + click it to start. A self-freeing modal
-## CanvasLayer; opened from the HUD quick menu. Modelled on [VoyagesBoard]. See [[ypp-template]].
+## CanvasLayer; opened from the InventoryPanel Jobs tab (part of the Sunshine Widget user panel).
+## Modelled on [VoyagesBoard]. See [[ypp-template]].
 class_name ShoppeJobsBoard
 extends CanvasLayer
 
