@@ -5,7 +5,7 @@
 ## A pause-tree CanvasLayer that owns its own input — chrome cloned from the other
 ## modals. The chosen captain/crew ride onto the deck via PlayerState.
 class_name VoyagesBoard
-extends CanvasLayer
+extends Modal
 
 
 const SHIP_DECK_SCENE : String = "res://levels/ship_deck/ship_deck.tscn"
@@ -68,62 +68,26 @@ const CREWS : Array = [
 	{"ship": "Haughty Eel", "crew": "Calm Guardians", "captain": "Hollow Ellison", "cut": 75},
 ]
 
-var _content : VBoxContainer
-var _panel : PanelContainer   # pop-in / dismiss target
-var _dim : ColorRect
 
 
-func _ready() -> void:
+# --- Modal config -----------------------------------------------------
 
-	layer = 40
-	process_mode = Node.PROCESS_MODE_ALWAYS
-	_build()
-	get_tree().paused = true
+func _modal_layer() -> int:
+	return 40
+
+func _modal_size() -> Vector2:
+	return Vector2(680.0, 500.0)
+
+func _modal_content_separation() -> int:
+	return 12
+
+func _modal_panel_style() -> StyleBoxFlat:
+	return _panel_style()
 
 
-func _exit_tree() -> void:
+func _build_content() -> void:
 
-	if get_tree() != null:
-		get_tree().paused = false
-
-
-func _build() -> void:
-
-	var dim : ColorRect = ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.55)
-	dim.anchor_right = 1.0
-	dim.anchor_bottom = 1.0
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	dim.gui_input.connect(_on_dim_input)   # click off the panel closes (parity with the other modals)
-	add_child(dim)
-	_dim = dim
-
-	var panel : PanelContainer = PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", _panel_style())
-	panel.anchor_left = 0.5
-	panel.anchor_top = 0.5
-	panel.anchor_right = 0.5
-	panel.anchor_bottom = 0.5
-	panel.offset_left = -340.0
-	panel.offset_top = -250.0
-	panel.offset_right = 340.0
-	panel.offset_bottom = 250.0
-	add_child(panel)
-	_panel = panel
-
-	_content = VBoxContainer.new()
-	_content.add_theme_constant_override("separation", 12)
-	panel.add_child(_content)
 	_show_list()
-	# ESC closes the board — the ONE reusable primitive, not a hand-rolled handler (standing rule).
-	add_child(EscToClose.new(_on_cancel))
-	ModalFx.appear(_panel, _dim)   # fade + pop in (animate-everything)
-
-
-func _on_dim_input(event: InputEvent) -> void:
-
-	if event is InputEventMouseButton and event.pressed:
-		_on_cancel()
 
 
 # --- The crew list ----------------------------------------------------
@@ -142,7 +106,7 @@ func _show_list() -> void:
 	_content.add_child(_make_caption("You job a single station and fight the boarding; you can't strand yourself."))
 	_content.add_child(_make_fare_row(_destination_island()))
 	var back : Button = _make_button("Never mind", Color(0.95, 0.84, 0.56, 1.0))
-	back.pressed.connect(_on_cancel)
+	back.pressed.connect(_close)
 	_content.add_child(back)
 
 
@@ -308,18 +272,6 @@ func _on_fare(dest: Dictionary) -> void:
 	if get_tree() != null:
 		get_tree().paused = false
 	get_tree().change_scene_to_file(String(dest["scene"]))
-
-
-func _on_cancel() -> void:
-
-	ModalFx.dismiss(self, _panel, _dim, _do_cancel)   # scale + fade out, THEN really close
-
-
-func _do_cancel() -> void:
-
-	if get_tree() != null:
-		get_tree().paused = false
-	queue_free()
 
 
 # --- Chrome (cloned from the other modals) ---------------------------
