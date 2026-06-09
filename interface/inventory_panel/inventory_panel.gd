@@ -85,6 +85,7 @@ func _ready() -> void:
 		PlayerState.inventory_changed.connect(_on_inventory_changed)
 		PlayerState.trophy_earned.connect(_on_trophies_changed)
 		PlayerState.trophy_claimed.connect(_on_trophies_changed)
+		PlayerState.challenges_changed.connect(_on_trophies_changed)
 		PlayerState.objective_changed.connect(_on_objectives_changed)
 		PlayerState.coins_changed.connect(_on_objectives_changed)
 		_update_ayo_badge()
@@ -400,7 +401,7 @@ func _update_ayo_badge() -> void:
 
 	if _ayo_badge == null:
 		return
-	var n : int = PlayerState.unclaimed_trophy_ids().size()
+	var n : int = PlayerState.unclaimed_trophy_ids().size() + PlayerState.pending_challenges.size()
 	_ayo_badge.text = str(n)
 	_ayo_badge.visible = n > 0
 

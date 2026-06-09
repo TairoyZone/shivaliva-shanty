@@ -629,6 +629,12 @@ signal crew_changed
 ## [method complete_favor] on turn-in, so a favour never lingers as "done".
 var active_favors : Dictionary = {}
 
+## NPC-issued Skirmish CHALLENGES the player hasn't answered yet (npc names). Filed when a chat AI drops the
+## [[DUEL]] marker (an argument / bravado / the player goading them); shown in the Ayo! tab → Accept (launch the
+## duel) / Reject (dismiss). Persisted. See [[ayo-tidings-inbox]].
+var pending_challenges : Array = []
+signal challenges_changed
+
 ## Lifetime tournaments won (champion count). Persisted — an earn-only
 ## achievement stat. Bumped via [method record_tournament_win].
 var tournaments_won : int = 0
@@ -1596,6 +1602,31 @@ func claim_trophy(id: String) -> void:
 	trophy_claimed.emit(id)
 
 
+## Has the player got pending NPC duel challenges waiting in Ayo!?
+func has_challenges() -> bool:
+
+	return not pending_challenges.is_empty()
+
+
+## File a Skirmish challenge from [param npc_name] (deduped). Drives the Ayo! tab + its badge.
+func add_challenge(npc_name: String) -> void:
+
+	if npc_name.is_empty() or pending_challenges.has(npc_name):
+		return
+	pending_challenges.append(npc_name)
+	challenges_changed.emit()
+	_save()
+
+
+## Clear a challenge (on Accept or Reject).
+func clear_challenge(npc_name: String) -> void:
+
+	if pending_challenges.has(npc_name):
+		pending_challenges.erase(npc_name)
+		challenges_changed.emit()
+		_save()
+
+
 ## Mark all CURRENTLY-earned trophies as already-seen WITHOUT announcing — called once on
 ## load so existing trophies (or a pre-system save) never spam toasts; only live earns notify.
 func _seed_trophies_seen() -> void:
@@ -1720,6 +1751,7 @@ func clear_save() -> void:
 	npc_favor_done = {}
 	crew = {}
 	active_favors = {}
+	pending_challenges = []
 	tournaments_won = 0
 	last_scene = ""
 	last_position = Vector2.ZERO
@@ -1764,6 +1796,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "npc_favor_done", npc_favor_done)
 	config.set_value(SAVE_SECTION, "crew", crew)
 	config.set_value(SAVE_SECTION, "active_favors", active_favors)
+	config.set_value(SAVE_SECTION, "pending_challenges", pending_challenges)
 	config.set_value(SAVE_SECTION, "tournaments_won", tournaments_won)
 	config.set_value(SAVE_SECTION, "last_scene", last_scene)
 	config.set_value(SAVE_SECTION, "last_position_x", last_position.x)
@@ -1801,6 +1834,7 @@ func _load() -> void:
 	npc_favor_done = config.get_value(SAVE_SECTION, "npc_favor_done", {})
 	crew = config.get_value(SAVE_SECTION, "crew", {})
 	active_favors = config.get_value(SAVE_SECTION, "active_favors", {})
+	pending_challenges = config.get_value(SAVE_SECTION, "pending_challenges", [])
 	tournaments_won = int(config.get_value(SAVE_SECTION, "tournaments_won", 0))
 	last_scene = String(config.get_value(SAVE_SECTION, "last_scene", ""))
 	last_position = Vector2(
