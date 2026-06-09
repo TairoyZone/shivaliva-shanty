@@ -232,6 +232,9 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 	var here : String = _current_place()
 	if not here.is_empty():
 		parts.append(here)   # environment awareness: the ACTUAL room they're standing in right now
+	var directory : String = _directory_block(persona.npc_name)
+	if not directory.is_empty():
+		parts.append(directory)   # who's-where grounding so directions are real, not invented
 	if include_secret and not persona.chat_secret.is_empty():
 		parts.append("A secret you hold (do NOT volunteer it; only hint at it, or reveal it, if the player "
 			+ "pointedly digs for it — and the more you trust them, the more willing you are): "
@@ -436,6 +439,25 @@ func _current_place() -> String:
 	if path.is_empty():
 		return ""
 	return String(PLACES.get(path.get_file().get_basename(), ""))
+
+
+# WHO'S-WHERE DIRECTORY — Cradle Rock is small, so every NPC knows where the rest of the cast is usually
+# found. Built from each persona's chat_locale (the ONE source of truth — edit a .tres, the directory follows),
+# excluding the speaker. Folded into the prompt so "where is Troy / the forge?" gets a REAL answer instead of an
+# invented contract (Troy 2026-06-09). [param self_name] = the speaker, skipped from their own directory.
+func _directory_block(self_name: String) -> String:
+
+	var lines : PackedStringArray = PackedStringArray()
+	for p in NpcRegistry.all():
+		if p.npc_name == self_name or p.chat_locale.is_empty():
+			continue
+		lines.append("- %s: %s" % [p.npc_name, p.chat_locale])
+	if lines.is_empty():
+		return ""
+	return ("WHO'S WHERE ON CRADLE ROCK — the island is small, so you know where folk are usually found. If the "
+		+ "traveller asks where someone is, or how to reach a place or workshop, answer plainly from this list. "
+		+ "Do NOT invent whereabouts, contracts, or journeys that aren't here; if you truly don't know, say so "
+		+ "simply.\n" + "\n".join(lines))
 
 
 # RAPPORT context — the player's standing with this NPC shapes their warmth + openness (first step toward
