@@ -162,7 +162,9 @@ func _setup_phase() -> void:
 	if _report_btn != null:
 		_report_btn.visible = not BoardingMelee.has_active()
 	if _crew_btn != null:
-		_crew_btn.visible = not BoardingMelee.has_active()   # can't reshuffle the crew mid-boarding
+		# Crew Duty (post YOUR recruited crew to stations) only makes sense when you captain your OWN ship — on
+		# a jobbed run the hands are the captain's, not yours (Troy 2026-06-10). Also hidden mid-boarding.
+		_crew_btn.visible = PlayerState.voyage_self_captained and not BoardingMelee.has_active()
 	_refresh_vitals()   # refresh the HULL + STARDUST bars (holes change as legs resolve)
 	if _arrived():
 		# Voyage's end. Also guards a redundant re-load so the last leg is never re-banked.
