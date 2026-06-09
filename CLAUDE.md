@@ -35,6 +35,11 @@ Compatibility, 1280×720. No build step — run `main.tscn`, or any `puzzles/*/<
   override only what differs. Never re-implement a foundation.
 - **Scene-per-component**: each visual game piece is its own `.tscn` so art can be swapped later
   without touching gameplay logic.
+- **NPCs know their situation** (Troy 2026-06-09 foundational): an NPC you can chat with is ALWAYS grounded in
+  the LIVE scene/activity — what they're doing, where, and its real-time state — and speaks to it. Mechanism: a
+  scene implements `npc_chat_context(npc_name) -> String`; `NpcBrain.compose_system` folds it into the prompt
+  (poker does this). MUST be hidden-info-safe — only ever expose the asker's OWN secret state (their hole cards),
+  never a rival's. Make every chat-reachable scene situation-aware. See `…/memory/npc_situational_awareness.md`.
 - For **risky logic / new systems**, prefer design → build → adversarial review before handoff. Be
   deliberate about multi-agent *workflows* — they're powerful but slow/expensive; reserve them for
   genuinely risky or open-ended work, just build for routine edits.

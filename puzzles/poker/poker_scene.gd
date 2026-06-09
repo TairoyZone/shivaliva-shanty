@@ -78,6 +78,10 @@ const HUMAN_SEAT_COLOR : Color = Color(0.95, 0.78, 0.34, 1.0)
 @onready var _result_btn : Button = %ResultButton
 
 var _seats : Array[PokerSeat] = []
+## Rolling buffer of recent table EVENTS (raises, folds, all-ins, wins, busts) fed into the seated NPCs' live
+## chat context (see [method npc_chat_context]) so they react to what just happened. Cleared each new hand.
+var _chat_events : Array[String] = []
+const CHAT_EVENTS_MAX : int = 6
 ## True while the showdown sequence (cards revealed, toasts rising,
 ## winner halos showing) is on-screen and the player hasn't yet
 ## advanced. Used so the auto-advance timer AND the manual Next-Hand
@@ -558,6 +562,7 @@ func _on_phase_changed(phase: PokerBoard.Phase) -> void:
 	# revealed. PREFLOP wipes the community row; nothing else to do.
 	if phase == PokerBoard.Phase.PREFLOP:
 		_community.clear()
+		_chat_events.clear()   # a fresh hand — drop last hand's action from the NPC chat context
 	# On each new betting round (FLOP/TURN/RIVER), every player's
 	# current_bet has been reset to 0 by the board — rebind so the seat
 	# panels reflect that. Last-action labels intentionally persist
@@ -762,6 +767,7 @@ func _on_player_acted(player_index: int, action: PokerBoard.Action, amount: int)
 	# happened" feedback the toast used to do.
 	_seats[player_index].bind_to(_board.players[player_index])
 	_apply_action_label(player_index, action, amount)
+	_push_chat_event(_action_phrase(_board.players[player_index], action, amount))
 	# Any action that put chips into play gets a fly-to-pot animation.
 	if amount > 0:
 		_spawn_chip_fly_to_pot(player_index, amount)
@@ -823,6 +829,116 @@ func _on_blinds_posted(sb_index: int, sb_amount: int, bb_index: int, bb_amount: 
 func _on_pot_changed(total: int) -> void:
 
 	_pot.amount = total
+
+
+# --- NPC chat context: live table awareness for the seated cast ------------------------------------------
+# The seated NPCs chat via the shared ChatBox/RoomChat; NpcBrain.compose_system calls this (duck-typed) to
+# ground each one in the LIVE hand so they react like real players. HIDDEN-INFO SAFE: a player only ever sees
+# their OWN hole cards + the shared board + showdown-revealed results — never a rival's hidden cards.
+# [param asker] = the NPC asking (their display name). See [[npc-situational-awareness]].
+func npc_chat_context(asker: String) -> String:
+
+	if _board == null or _board.players.is_empty():
+		return ""
+	var lines : PackedStringArray = PackedStringArray()
+	lines.append("POKER — you're at the table playing this hand right now; react to it naturally, like a player at the felt:")
+	# The shared, PUBLIC frame.
+	var phase_name : String = PokerBoard.PHASE_NAMES[_board.phase]
+	# Clamp the board to what's actually been revealed ON-SCREEN: an all-in run-out fills community_cards
+	# logically a beat before the cards animate onto the felt, so reading the raw array would let an NPC "see"
+	# the river early. revealed_count() is the visible truth.
+	var shown : int = _community.revealed_count()
+	var board_str : String = _cards_str(_board.community_cards.slice(0, shown))
+	lines.append("Hold'em, blinds %d/%d. %s. Board: %s." % [
+		_board.small_blind_amount, _board.big_blind_amount, phase_name,
+		board_str if not board_str.is_empty() else "none yet (preflop)"])
+	# Pot + bet-to-call ONLY while a hand is actually live. Between hands the pot's already been awarded, but
+	# total_pot still sums the old contributions until the next deal — the "<who> won N" event covers the result.
+	if _board.phase >= PokerBoard.Phase.PREFLOP and _board.phase <= PokerBoard.Phase.RIVER:
+		var potline : String = "Pot: %d." % _board.pot_calculator.total_pot(_board.players)
+		if _board.current_bet > 0:
+			potline += " Bet to call this round: %d." % _board.current_bet
+		lines.append(potline)
+	# Public stacks + status for everyone (chips, folded/all-in/in-for — all visible to the whole table).
+	var stacks : PackedStringArray = PackedStringArray()
+	for p in _board.players:
+		var s : String = "%s %d" % [_who_name(p), p.chips]
+		if p.folded:
+			s += " (folded)"
+		elif p.all_in:
+			s += " (all-in)"
+		elif p.current_bet > 0:
+			s += " (in %d)" % p.current_bet
+		stacks.append(s)
+	lines.append("Stacks (chips) — " + ", ".join(stacks) + ".")
+	# The asker's OWN private view — ONLY their own hole cards (never a rival's).
+	var me : PokerPlayer = _player_named(asker)
+	if me != null:
+		var pv : String = "You are %s — %d chips" % [asker, me.chips]
+		if not me.hole_cards.is_empty():
+			pv += ", your hole cards: %s" % _cards_str(me.hole_cards)
+		if me.folded:
+			pv += " (you've folded this hand)"
+		elif me.all_in:
+			pv += " (you're all-in)"
+		lines.append(pv + ".")
+	# Recent action this hand (the rolling event buffer).
+	if not _chat_events.is_empty():
+		lines.append("Just happened: " + " ".join(_chat_events))
+	return "\n".join(lines)
+
+
+func _push_chat_event(text: String) -> void:
+
+	if text.is_empty():
+		return
+	_chat_events.append(text)
+	while _chat_events.size() > CHAT_EVENTS_MAX:
+		_chat_events.remove_at(0)
+
+
+# A poker action as a readable past-tense line for the chat context. Raise/all-in use post-action current_bet
+# for the to-total (mirrors the seat label). The human reads as "the traveller".
+func _action_phrase(p: PokerPlayer, action: PokerBoard.Action, amount: int) -> String:
+
+	var who : String = _who_name(p)
+	match action:
+		PokerBoard.Action.FOLD:
+			return "%s folded." % who
+		PokerBoard.Action.CHECK:
+			return "%s checked." % who
+		PokerBoard.Action.CALL:
+			return ("%s called %d." % [who, amount]) if amount > 0 else ("%s called." % who)
+		PokerBoard.Action.BET:
+			return "%s bet %d." % [who, amount]
+		PokerBoard.Action.RAISE:
+			return "%s raised to %d." % [who, p.current_bet]
+		PokerBoard.Action.ALL_IN:
+			return ("%s shoved all-in for %d." % [who, p.current_bet]) if p.current_bet > 0 else ("%s shoved all-in." % who)
+	return ""
+
+
+# The human reads as "the traveller" (the prompt addresses the NPC as "you"); NPCs go by name.
+func _who_name(p: PokerPlayer) -> String:
+
+	return "the traveller" if p.is_human else p.player_name
+
+
+func _player_named(nm: String) -> PokerPlayer:
+
+	for p in _board.players:
+		if not p.is_human and p.player_name == nm:
+			return p
+	return null
+
+
+func _cards_str(cards: Array) -> String:
+
+	var parts : PackedStringArray = PackedStringArray()
+	for c in cards:
+		if c != null:
+			parts.append(c.short_name())
+	return " ".join(parts)
 
 
 func _on_turn_changed(player_index: int) -> void:
@@ -977,6 +1093,17 @@ func _on_hand_complete(awards: Array) -> void:
 			seven.append_array(_board.community_cards)
 			if seven.size() >= 5:
 				_seats[i].hand_label = HandEval.describe_showdown(HandEval.best_of(seven))
+
+	# Chat context: log the showdown result + any bust so the seated NPCs can react to it ("nice hand", "ouch").
+	# Hand descriptions are only added on a real showdown (public info); fold-out wins just say "won N".
+	for w in order:
+		var ev : String = "%s won %d" % [_who_name(w), int(totals[w])]
+		if did_showdown and descriptions.has(w):
+			ev += " with %s" % String(descriptions[w])
+		_push_chat_event(ev + ".")
+	for bp in _board.players:
+		if bp.chips <= 0 and bp.total_bet_in_hand > 0 and not (bp in totals):
+			_push_chat_event("%s busted out of the game." % _who_name(bp))
 
 	# Populate the bottom-right result panel — same footprint as the
 	# action panel during play — with the player's outcome and a Next

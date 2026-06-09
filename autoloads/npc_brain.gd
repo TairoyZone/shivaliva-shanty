@@ -239,6 +239,14 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 	var voyage : String = _voyage_block()
 	if not voyage.is_empty():
 		parts.append(voyage)   # mid-pillage: the live ship + route facts, so the crew talks about it accurately
+	# STANDING PRINCIPLE — live SCENE/ACTIVITY awareness: ANY scene may implement npc_chat_context(npc_name) to
+	# tell the cast what's happening RIGHT NOW (the poker hand in play, etc.) so they comment on it like a real
+	# participant. Scene-side because the scene knows its own state best. See [[npc-situational-awareness]].
+	var tree : SceneTree = get_tree()
+	if tree != null and tree.current_scene != null and tree.current_scene.has_method("npc_chat_context"):
+		var situation : String = String(tree.current_scene.npc_chat_context(persona.npc_name))
+		if not situation.is_empty():
+			parts.append(situation)
 	if include_secret and not persona.chat_secret.is_empty():
 		parts.append("A secret you hold (do NOT volunteer it; only hint at it, or reveal it, if the player "
 			+ "pointedly digs for it — and the more you trust them, the more willing you are): "
