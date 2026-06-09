@@ -9,7 +9,7 @@
 ## CO-OP-READY — a real player's seat slots into the same {name, color, standing} row model later.
 ## See [[parlor-social-system]] + [[multiplayer-direction]].
 class_name ParlorBrowser
-extends CanvasLayer
+extends Modal
 
 
 ## Emitted on Leave / dismiss (so the launching prop can drop its open-guard).
@@ -60,24 +60,22 @@ func _ingest(props: Array) -> void:
 		return String(a["name"]) < String(b["name"]))
 
 
-func _ready() -> void:
+# --- Modal config -----------------------------------------------------
 
-	layer = 40
-	process_mode = Node.PROCESS_MODE_ALWAYS
-	_active = _game_by_id(_focused_id)
-	if _active.is_empty() and not _games.is_empty():
-		_active = _games[0]
-	_sync_create_defaults()
-	_build_chrome()
-	_render()
-	get_tree().paused = true
-	add_child(EscToClose.new(_close.bind(true)))
+func _modal_layer() -> int:
+	return 40
 
+func _modal_size() -> Vector2:
+	return Vector2(760.0, 580.0)
 
-func _exit_tree() -> void:
+func _modal_content_separation() -> int:
+	return 12
 
-	if get_tree() != null:
-		get_tree().paused = false
+func _modal_dim_alpha() -> float:
+	return 0.58
+
+func _modal_panel_style() -> StyleBoxFlat:
+	return _panel_style()
 
 
 func _game_by_id(id: String) -> Dictionary:
@@ -90,33 +88,14 @@ func _game_by_id(id: String) -> Dictionary:
 
 # --- Chrome (built once) ----------------------------------------------
 
-func _build_chrome() -> void:
+func _build_content() -> void:
 
-	var dim : ColorRect = ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.58)
-	dim.anchor_right = 1.0
-	dim.anchor_bottom = 1.0
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	dim.gui_input.connect(_on_dim_input)
-	add_child(dim)
+	_active = _game_by_id(_focused_id)
+	if _active.is_empty() and not _games.is_empty():
+		_active = _games[0]
+	_sync_create_defaults()
 
-	var panel : PanelContainer = PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", _panel_style())
-	panel.anchor_left = 0.5
-	panel.anchor_top = 0.5
-	panel.anchor_right = 0.5
-	panel.anchor_bottom = 0.5
-	panel.offset_left = -380.0
-	panel.offset_top = -290.0
-	panel.offset_right = 380.0
-	panel.offset_bottom = 290.0
-	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	add_child(panel)
-
-	var col : VBoxContainer = VBoxContainer.new()
-	col.add_theme_constant_override("separation", 12)
-	panel.add_child(col)
+	var col : VBoxContainer = _content   # the base's content VBox (already centered in the panel)
 
 	var title_text : String = "PARLOR TABLES"
 	if _games.size() == 1 and not _active.is_empty():
@@ -136,6 +115,7 @@ func _build_chrome() -> void:
 	leave.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	leave.pressed.connect(_on_leave)
 	col.add_child(leave)
+	_render()
 
 
 # --- Render -----------------------------------------------------------
@@ -396,13 +376,7 @@ func _create_poker_config() -> Dictionary:
 
 func _on_leave() -> void:
 
-	_close(true)
-
-
-func _on_dim_input(event: InputEvent) -> void:
-
-	if event is InputEventMouseButton and event.pressed:
-		_close(true)
+	_close()
 
 
 # Hand the chosen opponents + stake to the game's OWN prop (so its buy-in + return-anchor are right),
@@ -417,12 +391,12 @@ func _launch(game: Dictionary, paths: Array, free: bool, config: Dictionary = {}
 	queue_free()
 
 
-func _close(emit_cancel: bool) -> void:
+# Cancel-close (ESC / dim / Leave, all via the base _close → ModalFx dismiss) emits `cancelled` so the
+# launching prop drops its open-guard. The _launch path frees WITHOUT this (joining a table isn't cancelling);
+# the base _exit_tree restores the pause.
+func _do_close() -> void:
 
-	if get_tree() != null:
-		get_tree().paused = false
-	if emit_cancel:
-		cancelled.emit()
+	cancelled.emit()
 	queue_free()
 
 
