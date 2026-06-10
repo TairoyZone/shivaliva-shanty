@@ -12,8 +12,8 @@ term is reskinned to a sky/Stardust equivalent ("the Stardust" = the abyss below
 ## Dev journey + velocity (the numbers)
 _Recompute these from git each report — first-commit date, `git rev-list --count HEAD`, `.gd`/`.tscn` line counts._
 - **Started: ~2026-05-24/25** (first locked design calls) → **~17 days** as of 2026-06-10.
-- **248 commits** (git baseline 2026-06-03; **7 intense build days** Jun 3·5·6·7·8·9·10, ~35/day).
-- **~32,800 lines of hand-built game** — **~29,764 GDScript** across **170 `.gd` files** + **~3,049 lines** across **83 scenes**.
+- **250 commits** (git baseline 2026-06-03; **7 intense build days** Jun 3·5·6·7·8·9·10, ~36/day).
+- **~32,900 lines of hand-built game** — **~29,848 GDScript** across **170 `.gd` files** + **~3,049 lines** across **83 scenes**.
 - **Scope:** a walkable iso overworld + a 9-NPC cast · **7 full mini-games** (each a Board+Scene engine w/ AI +
   animation + mastery) · the **voyage meta-system** (deck, set-sail routes, charts, duty reports, a LIVE
   background boarding melee, sinkable ships) · **AI-powered NPC chat** (LLM via a key-safe proxy — a novel hook,
@@ -117,8 +117,15 @@ Troy's first **Fable 5** session. The cast got human; the ships got real; the ra
 - **Feel/UI:** Crew Duty button only when captaining your own ship (`e40b247`) · weapon slots **toggle**
   (click to equip, click again to unarm, `a944a0c`) · trophy shelf folds behind "See all N" (`14ed35c`) ·
   duty report "off duty" for unmanned legs (`5d02027`/`3544c5f`) · prices stripped from chat roles (`3c7de8e`).
-- **Adversarially reviewed:** a 5-angle multi-agent review swept both headline systems (voyage state,
-  economy exploits, modal lifecycle, negative-affinity fallout, @tool safety); confirmed findings fixed.
+- **Adversarially reviewed + fixed** (`8620494`): a 5-angle multi-agent review swept both headline systems
+  (voyage state, economy exploits, modal lifecycle, negative-affinity fallout, @tool safety). **11 confirmed
+  bugs fixed** — incl. an offense-tag reply that spoke a *warm* canned line over the souring, a two-click
+  sell that survived a rename (one stray click could sell a just-named ship), the `/crew` cheat failing on
+  soured NPCs, the berth cap blocking a legal crew *move*, and resume-into-a-phantom-voyage if you closed
+  the app mid-sail.
+- **Your own ship carries YOUR crew** (`9078cb5`): captaining your own hull seated *random* cast at the
+  stations — now it's only your recruited crew (capped to berths), and **with none recruited you sail solo**
+  (no NPCs aboard). Jobbed runs unchanged (those are the AI captain's hands).
 - ⚠️ **Needs playtest:** christening + dock-berth feel, a galleon 4–6-leg run, hold-mult economy, the
   offense tag's fire-rate (too touchy vs too tolerant), the new voices across the whole cast.
 
