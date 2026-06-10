@@ -286,10 +286,8 @@ var frontier_unlocked : bool = false :
 ## Scene to return to when a voyage ends ("Sail home"); set by the Skydock
 ## helm before launching the voyage.
 var voyage_home_scene : String = ""
-## The Voyage scene's _ready branches on this: 0 = fresh (cast off → the LOFT
-## station); 1 = back from the Loft (encounter → the SKIRMISH boarding fight);
-## 2 = back from the fight (resolve booty + disembark / sail home).
-var voyage_phase : int = 0
+## (Removed: voyage_phase — dead orphan from the deleted voyages/voyage.gd; the LIVE phase machine is
+## pillage_phase. It was unread/unwritten + unreset, an obvious-name trap. Audit 2026-06-10.)
 ## The wood yield of the most recent Lumberjacking session (set by
 ## lumberjacking.gd on commit; robust to a full backpack, unlike a
 ## carried-wood delta). The Voyage reads it as the boarding-fight result.
@@ -588,6 +586,8 @@ func clear_voyage() -> void:
 	voyage_leg_lift0 = 0
 	voyage_leg_swaps0 = 0
 	voyage_boarding_seed = 0   # don't bleed a stale footing seed into the next (maybe friendly) Skirmish
+	last_loft_lift = 0         # AND its upstream source — else a WATCHED encounter leg seeds boarding footing
+	last_loft_swaps = 0        # from a PRIOR voyage's Loft run (audit 2026-06-10). Watched = no duty = no footing.
 	voyage_open_holes = 0      # the pillage SHIP's holes are transient — the next voyage's ship starts fresh
 	voyage_stations = {}       # drop stale crew assignments (a dismissed hand mustn't bleed into the next run)
 	last_deck_say = ""         # so the next voyage's captain greets you again instead of staying silent
@@ -1152,7 +1152,8 @@ func captain_own_voyage() -> String:
 	if aboard.size() > berths:
 		aboard = aboard.slice(0, berths)
 	var mate : String = String(aboard[0]) if not aboard.is_empty() else ""
-	var start_holes : int = ship_open_holes()   # read BEFORE voyage_active flips → reads the owned ship's condition
+	var start_holes : int = ship_holes_of(active_ship_id())   # the canonical owned-ship condition directly (not
+	# the dual-source ship_open_holes() helper), so the seed is right even if prior transient state were live.
 	pillage_captain = mate
 	pillage_crew = "your crew"
 	pillage_ship_name = active_ship_name()

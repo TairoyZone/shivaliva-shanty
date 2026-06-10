@@ -147,9 +147,9 @@ func _tween_height(target_bottom: float) -> void:
 func refresh_from_state(sailing: bool) -> void:
 
 	var dest : String = PlayerState.pillage_destination if not PlayerState.pillage_destination.is_empty() else "the lanes"
-	var haul : int = 0
-	for r in PlayerState.pillage_log:
-		haul += int(r.get("gold", 0))
+	# The CANONICAL pool (includes the class hold mult). Don't re-sum pillage_log raw here — that omitted
+	# voyage_booty_mult, so the chart undersold a galleon's pool the whole crossing (audit 2026-06-10).
+	var haul : int = PlayerState.voyage_total_gold()
 	_sail_speed = _crew_sail_speed()
 	set_route(dest, PlayerState.pillage_legs_total, PlayerState.pillage_log.size(),
 		PlayerState.pillage_log, PlayerState.pillage_encounters, haul, sailing)

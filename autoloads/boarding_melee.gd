@@ -245,6 +245,8 @@ func _init_targets() -> void:
 # 0 and ship condition is read only on a voyage). See [[ship-condition-research]].
 func _apply_voyage_footing() -> void:
 
+	if not PlayerState.voyage_active:
+		return   # footing applies ONLY on a real voyage (matches skirmish_duel) — never off a stale seed standalone
 	var clumps : int = PlayerState.voyage_boarding_seed
 	PlayerState.voyage_boarding_seed = 0
 	var atk : Dictionary

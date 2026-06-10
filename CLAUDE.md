@@ -78,8 +78,8 @@ main.gd/.tscn     entry point / title → resume or new session
   per-puzzle mastery (`puzzle_mastery` high-water-mark via **`record_puzzle_result(id, score)`** +
   the **`MASTERY_PUZZLES`** registry + `MASTERY_TIERS`), `npc_affinity`, `owned_ships`, flags
   (`frontier_unlocked`, `has_seen_intro`), and the **scene-transition handoff**: `last_scene` /
-  `last_position`, `request_spawn_at_anchor(name)`/`consume_anchor()`, the one-shot
-  `puzzle_return_scene`, and `voyage_phase`. Persisted via `_save()`/`_load()` (ConfigFile). Mutate
+  `last_position`, `request_spawn_at_anchor(name)`/`consume_anchor()`, and the one-shot
+  `puzzle_return_scene`. Persisted via `_save()`/`_load()` (ConfigFile). Mutate
   mastery ONLY via `record_puzzle_result`.
 - **`HUD`** (`interface/hud.tscn`) — overworld HUD: just the gold purse now (the right-side quick-menu + the
   "!" journal popup were retired into the **Sunshine Widget** user panel — see `InventoryPanel`). Hidden by

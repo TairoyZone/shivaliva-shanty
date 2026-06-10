@@ -220,7 +220,7 @@ func _show_invite(crew: Dictionary) -> void:
 		var dest : Dictionary = _destination_island()
 		crew["destination"] = dest["name"]
 		crew["dest_scene"] = dest["scene"]
-		crew["legs"] = LEGS_MIN + randi() % (LEGS_MAX - LEGS_MIN + 1)
+		crew["legs"] = LEGS_MIN + randi() % maxi(LEGS_MAX - LEGS_MIN + 1, 1)   # zero-guard (matches the self-captained twin)
 		crew["encounters"] = _roll_encounters(int(crew["legs"]))
 		crew["encounter_pos"] = _roll_encounter_positions(int(crew["legs"]))
 	var fights : int = 0

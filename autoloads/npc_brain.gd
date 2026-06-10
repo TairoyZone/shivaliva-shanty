@@ -606,7 +606,7 @@ func _voyage_block() -> String:
 		aboard.append("%s%s%s" % [tag, nm, role])
 	if not aboard.is_empty():
 		bits.append("Aboard with you: " + ", ".join(aboard) + ".")
-	var holes : int = PlayerState.voyage_open_holes
+	var holes : int = PlayerState.ship_open_holes()   # the canonical hull helper (every other consumer reads it)
 	if holes <= 0:
 		bits.append("The hull is sound and dry.")
 	elif holes <= 2:
