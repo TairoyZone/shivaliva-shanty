@@ -102,6 +102,28 @@ static func build_roster(captain_name: String) -> Array:
 # Snapshot this leg's report from the roster: rate the player from `player_score01` (a 0..1
 # performance score — lift-per-swap, computed by the caller), sim each crewmate from their
 # skill. Each entry: {name, duty, rating_idx, is_player, tint}.
+# Build a SELF-CAPTAINED roster: ONLY your own recruited crew aboard (no random cast, no separate AI
+# captain — YOU navigate) + YOU at the Loft. `crew_names` is your recruited hands (capped to berths by the
+# caller); an EMPTY list means you sail solo (just the player row). Troy 2026-06-10: no crew → no NPCs aboard.
+static func build_roster_self(crew_names: Array) -> Array:
+
+	var roster : Array = []
+	var n : int = mini(crew_names.size(), CREW_DUTIES.size())   # 3 visible deck posts (Sailing/Gunnery/Carpentry)
+	for i in n:
+		var p : NpcPersonality = _personality_by_name(String(crew_names[i]))
+		roster.append({
+			"name": String(crew_names[i]),
+			"duty": CREW_DUTIES[i],
+			"skill": (p.duty_skill if p != null else FALLBACK_SKILL),
+			"tint": (p.portrait_color if p != null else Color(0.6, 0.6, 0.72, 1.0)),
+			"is_player": false,
+		})
+	roster.append({
+		"name": "You", "duty": PLAYER_DUTY, "skill": -1.0, "tint": PLAYER_TINT, "is_player": true,
+	})
+	return roster
+
+
 static func snapshot(roster: Array, player_score01: float, player_duty: String = "", player_manned: bool = true) -> Array:
 
 	var report : Array = []

@@ -1125,10 +1125,14 @@ func captain_own_voyage() -> String:
 		pos.append(randf_range(0.28, 0.78))
 	if not any_fight and legs > 0:
 		enc[legs - 1] = SELF_VOYAGE_FOES[randi() % SELF_VOYAGE_FOES.size()]
-	# Your first mate runs the deck while YOU captain — your first recruited hand, else the Skydock master.
-	var mate : String = "Stormy Jericho"
-	if not crew.is_empty():
-		mate = String(crew.keys()[0])
+	# Aboard = YOUR recruited crew, capped to the ship's berths — NOT random cast. None recruited → you sail
+	# SOLO (Troy 2026-06-10: no crew means no NPCs aboard your own ship). Your first hand is the speaking
+	# MATE; with no crew there's no mate (the deck voice becomes your own log — see ship_deck._say).
+	var aboard : Array = crew.keys()
+	var berths : int = ShipClasses.crew_slots(sid)
+	if aboard.size() > berths:
+		aboard = aboard.slice(0, berths)
+	var mate : String = String(aboard[0]) if not aboard.is_empty() else ""
 	var start_holes : int = ship_open_holes()   # read BEFORE voyage_active flips → reads the owned ship's condition
 	pillage_captain = mate
 	pillage_crew = "your crew"
@@ -1150,7 +1154,7 @@ func captain_own_voyage() -> String:
 	voyage_station_state = {}
 	voyage_stations = {}
 	BoardingMelee.clear()
-	pillage_duty_crew = DutyReport.build_roster(mate)
+	pillage_duty_crew = DutyReport.build_roster_self(aboard)   # only YOUR crew aboard (or just you, solo)
 	last_duty_report = []
 	return "res://levels/ship_deck/ship_deck.tscn"
 

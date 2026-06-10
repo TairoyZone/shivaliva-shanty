@@ -684,8 +684,13 @@ func _say(line: String) -> void:
 		for c in _captain_anchor.get_children():
 			c.queue_free()   # only the latest line shows (don't stack bubbles on rapid phase changes)
 		SpeechBubble.say(_captain_anchor, line)
-	# On your OWN ship YOU'RE the captain — the deck voice is your first MATE, not a "Cap'n".
-	var speaker : String = "Mate %s" % _captain_name() if PlayerState.voyage_self_captained else "Cap'n %s" % _captain_name()
+	# On your OWN ship YOU'RE the captain — the deck voice is your first MATE, or (sailing solo) your own log.
+	var cap_nm : String = _captain_name()
+	var speaker : String
+	if PlayerState.voyage_self_captained:
+		speaker = ("Mate %s" % cap_nm) if not cap_nm.is_empty() else "At the helm"
+	else:
+		speaker = "Cap'n %s" % cap_nm
 	PlayerState.log_event("%s: %s" % [speaker, line], Color(0.98, 0.90, 0.62))
 
 
@@ -790,6 +795,8 @@ func _captain_name() -> String:
 
 	if not PlayerState.pillage_captain.is_empty():
 		return PlayerState.pillage_captain
+	if PlayerState.voyage_self_captained:
+		return ""   # solo on your OWN ship — no mate; the deck voice is your own log (handled in _say)
 	return "Stormy Jericho"
 
 
