@@ -62,10 +62,17 @@ func _destination_island() -> Dictionary:
 	return ISLAND_DRIFTSPAR
 
 ## AI crews currently seeking a hand (single-player flavour; all board the deck).
+# A crew won't sign a greenhorn (Troy 2026-06-10): each wants a minimum mastery TIER in a relevant skill,
+# scaling with the cut (the best cut = the toughest crew = the strictest bar). req_skill is a MASTERY_PUZZLES
+# id; req_tier indexes MASTERY_TIERS (1 = Hand, 2 = Adept). The row shows it + what you're short, so a locked
+# player knows exactly which puzzle to go rank up. (A straight FARE ride below has no requirement.)
 const CREWS : Array = [
-	{"ship": "Enlightened Catfish", "crew": "Scurvy Dogs", "captain": "Stormy Jericho", "cut": 80},
-	{"ship": "Drifting Guppy", "crew": "Dark Crusaders", "captain": "Flint Kerr", "cut": 70},
-	{"ship": "Haughty Eel", "crew": "Calm Guardians", "captain": "Hollow Ellison", "cut": 75},
+	{"ship": "Enlightened Catfish", "crew": "Scurvy Dogs", "captain": "Stormy Jericho", "cut": 80,
+		"req_skill": "skirmish", "req_tier": 2},      # pirates, best cut → prove you can fight a boarding
+	{"ship": "Drifting Guppy", "crew": "Dark Crusaders", "captain": "Flint Kerr", "cut": 70,
+		"req_skill": "lumberjacking", "req_tier": 1},  # lowest cut → just a useful hand
+	{"ship": "Haughty Eel", "crew": "Calm Guardians", "captain": "Hollow Ellison", "cut": 75,
+		"req_skill": "mining", "req_tier": 1},
 ]
 
 
@@ -117,15 +124,47 @@ func _make_crew_row(crew: Dictionary) -> PanelContainer:
 	var row : HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
 	row_panel.add_child(row)
+	var left : VBoxContainer = VBoxContainer.new()
+	left.add_theme_constant_override("separation", 2)
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(left)
 	var info : Label = Label.new()
 	info.text = "%s   ·   %s\nCap'n %s   ·   %d%% jobber cut" % [
 		crew["ship"], crew["crew"], crew["captain"], int(crew["cut"])]
 	info.add_theme_font_size_override("font_size", 16)
 	info.add_theme_color_override("font_color", Color(0.92, 0.88, 0.74, 1.0))
-	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(info)
-	var apply : Button = _make_button("Apply", Color(0.80, 1.0, 0.66, 1.0))
-	apply.pressed.connect(_on_apply.bind(crew))
+	left.add_child(info)
+
+	# The experience GATE: a crew won't take you below their bar — and the row TELLS you what you're short.
+	var skill : String = String(crew.get("req_skill", ""))
+	var req_tier : int = int(crew.get("req_tier", 0))
+	var met : bool = true
+	if not skill.is_empty() and req_tier > 0:
+		var cur : int = int(PlayerState.mastery_tier(skill)["index"])
+		met = cur >= req_tier
+		var skill_name : String = String((PlayerState.MASTERY_PUZZLES.get(skill, {}) as Dictionary).get("name", skill.capitalize()))
+		var req_name : String = String(PlayerState.MASTERY_TIERS[req_tier])
+		var req_l : Label = Label.new()
+		req_l.add_theme_font_size_override("font_size", 13)
+		if met:
+			req_l.text = "✓ Wants %s ▸ %s — you qualify" % [skill_name, req_name]
+			req_l.add_theme_color_override("font_color", Color(0.62, 0.86, 0.6, 1.0))
+		else:
+			req_l.text = "🔒 Wants %s ▸ %s   (you're %s — go rank up)" % [
+				skill_name, req_name, String(PlayerState.MASTERY_TIERS[cur])]
+			req_l.add_theme_color_override("font_color", Color(0.96, 0.62, 0.5, 1.0))
+		left.add_child(req_l)
+
+	var apply : Button = _make_button("Apply" if met else "Locked",
+		Color(0.80, 1.0, 0.66, 1.0) if met else Color(0.78, 0.66, 0.56, 1.0))
+	if met:
+		apply.pressed.connect(_on_apply.bind(crew))
+	else:
+		apply.disabled = true
+		apply.tooltip_text = "Reach %s in %s to sign on — practice the puzzle to rank up." % [
+			String(PlayerState.MASTERY_TIERS[req_tier]),
+			String((PlayerState.MASTERY_PUZZLES.get(skill, {}) as Dictionary).get("name", skill))]
+	apply.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(apply)
 	return row_panel
 
