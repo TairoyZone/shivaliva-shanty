@@ -32,7 +32,12 @@ const SKILL_GROUPS : Array = [
 	{"label": "Combat", "puzzles": ["skirmish"]},
 ]
 
+## How many trophies the shelf previews before folding behind "See all" (one wrapped row's worth).
+const TROPHY_PREVIEW : int = 5
+
 var _root : VBoxContainer
+## Whether the trophy shelf is unfolded to the full collection (session-only; folds again next open).
+var _trophies_expanded : bool = false
 
 
 func _ready() -> void:
@@ -217,9 +222,25 @@ func _make_center_column() -> Control:
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 8)
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	for t in claimed_list:
+	# The shelf PREVIEWS a row's worth; past that it folds behind "See all" so a big collection never
+	# floods the whole profile (Troy 2026-06-10). The toggle just rebuilds the page.
+	var shown : Array = claimed_list if _trophies_expanded else claimed_list.slice(0, TROPHY_PREVIEW)
+	for t in shown:
 		grid.add_child(_make_trophy(t))
 	col.add_child(grid)
+	if claimed_list.size() > TROPHY_PREVIEW:
+		var toggle : Button = Button.new()
+		toggle.flat = true
+		toggle.focus_mode = Control.FOCUS_NONE
+		toggle.text = ("▾ Show fewer" if _trophies_expanded
+			else "▸ See all %d trophies" % claimed_list.size())
+		toggle.add_theme_font_size_override("font_size", 12)
+		toggle.add_theme_color_override("font_color", COLOR_GOLD)
+		toggle.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		toggle.pressed.connect(func() -> void:
+			_trophies_expanded = not _trophies_expanded
+			refresh())
+		col.add_child(toggle)
 	return col
 
 

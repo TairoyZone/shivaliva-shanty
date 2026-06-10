@@ -59,7 +59,9 @@ autoloads/        PlayerState — the data spine (singleton)
 interface/        HUD, Overlay (singletons) + all UI panels (inventory, profile, lobby, …)
 components/       reusable bases + parts: interactable, puzzle, npc, building, bed,
                   modal (the pop-up base — EVERY centered panel/window extends it), puzzle_scene,
-                  state_machine, parlor_table, trophies, npc/ (personality + registry + crew_skills)
+                  state_machine, parlor_table, trophies, npc/ (personality + registry + crew_skills),
+                  ships/ (ShipClasses — THE registry of the 3 ship classes: stats/prices/blurbs;
+                  the shop, PlayerState, dock, deck + chat ALL read it — never hardcode a ship stat)
 levels/           walkable overworld scenes (extend BaseLocation): shore, tavern, forest, mine,
                   *_interior, frontier_isle(Driftspar), door/
 buildings/        building props + their interiors' work-sites (forge, workshop, skydock, …)
