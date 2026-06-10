@@ -30,14 +30,13 @@ const SKILL_GROUPS : Array = [
 	{"label": "Labor", "puzzles": ["lumberjacking", "mining"]},
 	{"label": "Parlor", "puzzles": ["poker", "gem_drop"]},
 	{"label": "Combat", "puzzles": ["skirmish"]},
+	{"label": "Voyage", "puzzles": ["loft", "patchworks"]},   # the shipboard stations — were missing here
 ]
 
-## How many trophies the shelf previews before folding behind "See all" (one wrapped row's worth).
+## How many trophies the shelf previews before the "See all" button opens the full TrophiesPanel page.
 const TROPHY_PREVIEW : int = 5
 
 var _root : VBoxContainer
-## Whether the trophy shelf is unfolded to the full collection (session-only; folds again next open).
-var _trophies_expanded : bool = false
 
 
 func _ready() -> void:
@@ -222,66 +221,27 @@ func _make_center_column() -> Control:
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 8)
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	# The shelf PREVIEWS a row's worth; past that it folds behind "See all" so a big collection never
-	# floods the whole profile (Troy 2026-06-10). The toggle just rebuilds the page.
-	var shown : Array = claimed_list if _trophies_expanded else claimed_list.slice(0, TROPHY_PREVIEW)
-	for t in shown:
+	# The shelf shows a small PREVIEW; the full collection lives on its own TROPHY ROOM page (the button below)
+	# so a growing collection never floods the profile (Troy 2026-06-10).
+	for t in claimed_list.slice(0, TROPHY_PREVIEW):
 		grid.add_child(_make_trophy(t))
 	col.add_child(grid)
-	if claimed_list.size() > TROPHY_PREVIEW:
-		var toggle : Button = Button.new()
-		toggle.flat = true
-		toggle.focus_mode = Control.FOCUS_NONE
-		toggle.text = ("▾ Show fewer" if _trophies_expanded
-			else "▸ See all %d trophies" % claimed_list.size())
-		toggle.add_theme_font_size_override("font_size", 12)
-		toggle.add_theme_color_override("font_color", COLOR_GOLD)
-		toggle.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		toggle.pressed.connect(func() -> void:
-			_trophies_expanded = not _trophies_expanded
-			refresh())
-		col.add_child(toggle)
+	var see_all : Button = Button.new()
+	see_all.flat = true
+	see_all.focus_mode = Control.FOCUS_NONE
+	see_all.text = ("▸ See all %d trophies" % claimed_list.size()) if claimed_list.size() > TROPHY_PREVIEW \
+		else "▸ Open the trophy room"
+	see_all.add_theme_font_size_override("font_size", 12)
+	see_all.add_theme_color_override("font_color", COLOR_GOLD)
+	see_all.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	see_all.pressed.connect(func() -> void: TrophiesPanel.open(self))
+	col.add_child(see_all)
 	return col
 
 
 func _make_trophy(t: Dictionary) -> Control:
 
-	var earned : bool = Trophies.is_earned(String(t["id"]))
-	var cell : VBoxContainer = VBoxContainer.new()
-	cell.add_theme_constant_override("separation", 2)
-	cell.custom_minimum_size = Vector2(64, 0)
-	cell.tooltip_text = "%s\n%s%s" % [
-		String(t["name"]), String(t["desc"]), "" if earned else "\n(locked)"]
-
-	# Medallion — a gold disc when earned, dim grey when locked.
-	var disc : PanelContainer = PanelContainer.new()
-	var ds : StyleBoxFlat = StyleBoxFlat.new()
-	ds.bg_color = COLOR_GOLD if earned else Color(0.30, 0.27, 0.22, 1.0)
-	ds.border_color = COLOR_GOLD.lightened(0.2) if earned else Color(0.42, 0.38, 0.30, 1.0)
-	ds.set_border_width_all(2)
-	ds.set_corner_radius_all(22)
-	disc.add_theme_stylebox_override("panel", ds)
-	disc.custom_minimum_size = Vector2(46, 46)
-	disc.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var star : Label = Label.new()
-	star.text = "★"
-	star.add_theme_font_size_override("font_size", 24)
-	star.add_theme_color_override("font_color",
-		Color(0.32, 0.20, 0.05, 1.0) if earned else COLOR_LOCKED)
-	star.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	star.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	disc.add_child(star)
-	cell.add_child(disc)
-
-	var cap : Label = Label.new()
-	cap.text = String(t["name"])
-	cap.add_theme_font_size_override("font_size", 10)
-	cap.add_theme_color_override("font_color", COLOR_INK if earned else COLOR_INK_SOFT)
-	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	cap.autowrap_mode = TextServer.AUTOWRAP_WORD
-	cap.custom_minimum_size = Vector2(64, 0)
-	cell.add_child(cap)
-	return cell
+	return TrophyCell.make(t)   # the ONE shared medallion cell (also used by the TrophiesPanel page)
 
 
 # --- Right column: skills by category --------------------------------

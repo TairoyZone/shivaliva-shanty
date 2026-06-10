@@ -680,18 +680,20 @@ func _say(line: String) -> void:
 		return
 	PlayerState.last_deck_say = line
 	# Transient captain speech over his post + an echo to the log — no permanent banner.
-	if _captain_anchor != null:
+	var cap_nm : String = _captain_name()
+	# Sailing SOLO (your own ship, no crew aboard): the deck lines are your OWN log/narration — NO speaker and
+	# NO speech bubble, so it never reads as "the helm talking" (Troy 2026-06-10). A captain/mate aboard speaks
+	# normally (bubble over their post + a "Name:" prefix).
+	var solo : bool = PlayerState.voyage_self_captained and cap_nm.is_empty()
+	if not solo and _captain_anchor != null:
 		for c in _captain_anchor.get_children():
 			c.queue_free()   # only the latest line shows (don't stack bubbles on rapid phase changes)
 		SpeechBubble.say(_captain_anchor, line)
-	# On your OWN ship YOU'RE the captain — the deck voice is your first MATE, or (sailing solo) your own log.
-	var cap_nm : String = _captain_name()
-	var speaker : String
-	if PlayerState.voyage_self_captained:
-		speaker = ("Mate %s" % cap_nm) if not cap_nm.is_empty() else "At the helm"
+	if solo:
+		PlayerState.log_event(line, Color(0.90, 0.86, 0.74))   # plain narration, no "Name:" prefix
 	else:
-		speaker = "Cap'n %s" % cap_nm
-	PlayerState.log_event("%s: %s" % [speaker, line], Color(0.98, 0.90, 0.62))
+		var speaker : String = ("Mate %s" % cap_nm) if PlayerState.voyage_self_captained else "Cap'n %s" % cap_nm
+		PlayerState.log_event("%s: %s" % [speaker, line], Color(0.98, 0.90, 0.62))
 
 
 # Refresh the consolidated VESSEL panel — both meter bars from live ship state. HULL = open holes (segmented,
