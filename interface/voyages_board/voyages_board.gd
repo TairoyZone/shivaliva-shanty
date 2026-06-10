@@ -135,38 +135,43 @@ func _make_crew_row(crew: Dictionary) -> PanelContainer:
 	info.add_theme_color_override("font_color", Color(0.92, 0.88, 0.74, 1.0))
 	left.add_child(info)
 
-	# The experience GATE: a crew won't take you below their bar — and the row TELLS you what you're short.
-	var skill : String = String(crew.get("req_skill", ""))
-	var req_tier : int = int(crew.get("req_tier", 0))
-	var met : bool = true
-	if not skill.is_empty() and req_tier > 0:
-		var cur : int = int(PlayerState.mastery_tier(skill)["index"])
-		met = cur >= req_tier
-		var skill_name : String = String((PlayerState.MASTERY_PUZZLES.get(skill, {}) as Dictionary).get("name", skill.capitalize()))
-		var req_name : String = String(PlayerState.MASTERY_TIERS[req_tier])
+	# What experience the crew's after — shown so the choice is informed. You can APPLY regardless; fall short
+	# and the captain turns you away IN CHARACTER (Troy 2026-06-10), so a knock-back is a nudge, not a wall.
+	var rq : Dictionary = _req_status(crew)
+	if bool(rq.get("has_req", false)):
 		var req_l : Label = Label.new()
 		req_l.add_theme_font_size_override("font_size", 13)
-		if met:
-			req_l.text = "✓ Wants %s ▸ %s — you qualify" % [skill_name, req_name]
+		if bool(rq["met"]):
+			req_l.text = "✓ Wants %s ▸ %s — you qualify" % [rq["skill_name"], rq["req_name"]]
 			req_l.add_theme_color_override("font_color", Color(0.62, 0.86, 0.6, 1.0))
 		else:
-			req_l.text = "🔒 Wants %s ▸ %s   (you're %s — go rank up)" % [
-				skill_name, req_name, String(PlayerState.MASTERY_TIERS[cur])]
-			req_l.add_theme_color_override("font_color", Color(0.96, 0.62, 0.5, 1.0))
+			req_l.text = "Wants %s ▸ %s   (you're %s)" % [rq["skill_name"], rq["req_name"], rq["cur_name"]]
+			req_l.add_theme_color_override("font_color", Color(0.92, 0.80, 0.5, 1.0))
 		left.add_child(req_l)
 
-	var apply : Button = _make_button("Apply" if met else "Locked",
-		Color(0.80, 1.0, 0.66, 1.0) if met else Color(0.78, 0.66, 0.56, 1.0))
-	if met:
-		apply.pressed.connect(_on_apply.bind(crew))
-	else:
-		apply.disabled = true
-		apply.tooltip_text = "Reach %s in %s to sign on — practice the puzzle to rank up." % [
-			String(PlayerState.MASTERY_TIERS[req_tier]),
-			String((PlayerState.MASTERY_PUZZLES.get(skill, {}) as Dictionary).get("name", skill))]
+	var apply : Button = _make_button("Apply", Color(0.80, 1.0, 0.66, 1.0))
+	apply.pressed.connect(_on_apply.bind(crew))
 	apply.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(apply)
 	return row_panel
+
+
+# The crew's experience requirement vs the player's current standing. {has_req, met, skill_name, req_name,
+# cur_name}. Shared by the crew row, the apply check, and the rejection message.
+func _req_status(crew: Dictionary) -> Dictionary:
+
+	var skill : String = String(crew.get("req_skill", ""))
+	var req_tier : int = int(crew.get("req_tier", 0))
+	if skill.is_empty() or req_tier <= 0:
+		return {"has_req": false, "met": true}
+	var cur : int = int(PlayerState.mastery_tier(skill)["index"])
+	return {
+		"has_req": true,
+		"met": cur >= req_tier,
+		"skill_name": String((PlayerState.MASTERY_PUZZLES.get(skill, {}) as Dictionary).get("name", skill.capitalize())),
+		"req_name": String(PlayerState.MASTERY_TIERS[req_tier]),
+		"cur_name": String(PlayerState.MASTERY_TIERS[cur]),
+	}
 
 
 # --- Apply → carrier pigeon → invite ---------------------------------
@@ -180,7 +185,29 @@ func _on_apply(crew: Dictionary) -> void:
 	await get_tree().create_timer(1.2).timeout
 	if not is_instance_valid(self):
 		return
-	_show_invite(crew)
+	# Met the crew's bar → the jobbing invite. Fall short → the captain turns you away (a nudge to the puzzle).
+	if bool(_req_status(crew)["met"]):
+		_show_invite(crew)
+	else:
+		_show_rejection(crew)
+
+
+# Turned away: the captain reads your application, knocks you back IN CHARACTER, and NAMES what you're short
+# so you know which puzzle to rank up. "Back" returns to the crew list. (Troy 2026-06-10.)
+func _show_rejection(crew: Dictionary) -> void:
+
+	_clear_content()
+	var rq : Dictionary = _req_status(crew)
+	var who : String = PlayerState.player_name if not PlayerState.player_name.is_empty() else "stranger"
+	_content.add_child(_make_title("TURNED AWAY"))
+	_content.add_child(_make_caption("Cap'n %s reads your application, then shakes their head:" % crew["captain"]))
+	var msg : Label = _make_caption("\"Not yet, %s. The %s is no place for a %s — I need a hand who's reached %s at %s for this run. Go earn your stripes, then come find me.\"" % [
+		who, crew["crew"], rq["cur_name"], rq["req_name"], rq["skill_name"]])
+	msg.add_theme_color_override("font_color", Color(0.97, 0.82, 0.56, 1.0))
+	_content.add_child(msg)
+	var back : Button = _make_button("Back", Color(0.95, 0.84, 0.56, 1.0))
+	back.pressed.connect(_show_list)
+	_content.add_child(back)
 
 
 func _show_invite(crew: Dictionary) -> void:
