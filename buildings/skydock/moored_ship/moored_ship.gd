@@ -96,8 +96,10 @@ func _draw() -> void:
 	draw_line(Vector2(-52, -22) * s, Vector2(50, -22) * s, COLOR_TRIM, 3.0 * s)
 	# Breaches (open holes) — dark notches spread along the hull, so a battered ship LOOKS battered
 	# (spacing fits the class's full hull cap, so a galleon's nine wounds all land on the planks).
-	var holes : int = 0 if Engine.is_editor_hint() else PlayerState.ship_open_holes()
 	var cap : int = maxi(int(def.get("max_holes", 4)), 1)
+	# Clamp to cap on READ — writes clamp, but a save predating a downward max_holes rebalance (or a
+	# hand-edited save) could carry more holes than the class now allows, drawing notches off the bow.
+	var holes : int = 0 if Engine.is_editor_hint() else mini(PlayerState.ship_open_holes(), cap)
 	for i in holes:
 		var bx : float = lerpf(-38.0, 46.0, float(i) / float(maxi(cap - 1, 1)))
 		draw_rect(Rect2(bx * s, -8.0 * s, 11.0 * s, 14.0 * s), COLOR_BREACH)

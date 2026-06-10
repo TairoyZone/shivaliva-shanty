@@ -47,7 +47,9 @@ func run_command(text: String) -> void:
 func _seed_crew() -> void:
 
 	for p in NpcRegistry.all():
-		PlayerState.add_affinity(p.npc_name, PlayerState.MAX_AFFINITY)   # → 100 (Confidant): all recruitable
+		# SET to max, not add — add_affinity is relative, so a soured NPC (now possible, rapport < 0) would
+		# land below the recruit threshold and hire_crew would silently no-op. Lift everyone TO Confidant.
+		PlayerState.add_affinity(p.npc_name, PlayerState.MAX_AFFINITY - PlayerState.get_affinity(p.npc_name))
 	for who in ["Stormy Jericho", "Cogwise Godfrey", "Flint Kerr", "Spritely Mia"]:
 		PlayerState.hire_crew(who)
 	_note("cast at Confidant + 4 hired — start a voyage, then open Crew Duty on the deck")

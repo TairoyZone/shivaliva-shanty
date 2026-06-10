@@ -338,6 +338,15 @@ const DUEL_MARKER : String = "[[DUEL]]"
 const OFFENSE_MARKER : String = "[[OFFENDED]]"
 const OFFENSE_HIT : int = 4
 
+## A short, COLD retort for when an NPC's reply is the offense tag ALONE (no spoken words) — so a
+## tag-only line reads as a cold brush-off, never blank and (in the room path) never a warm canned
+## fallback over a souring. WORDED, not "…", so the room path's _is_silent doesn't treat it as silence.
+const COLD_OFFENSE_LINES : Array[String] = [
+	"Watch your mouth.", "We're done talking.", "Mind yourself.", "I've nothing to say to that.", "That's enough."]
+
+static func cold_offense_line() -> String:
+	return COLD_OFFENSE_LINES[randi() % COLD_OFFENSE_LINES.size()]
+
 ## How long after a duel the NPC treats the result as "just now" in chat (the post-fight beat). Past this, the
 ## persistent record still makes them aware ("you've beaten me before"), just not "moments ago".
 const FRESH_DUEL_MS : int = 180000   # 3 minutes
@@ -666,9 +675,10 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		var cleaned : String = file_duel_if_marked(reply, _persona.npc_name)
 		if cleaned.is_empty() and cleaned != reply:
 			cleaned = "Then it's settled — meet me when you're ready to throw down."   # marker-only line
+		var _pre_off : String = cleaned
 		cleaned = file_offense_if_marked(cleaned, _persona.npc_name)
-		if cleaned.is_empty():
-			cleaned = "…"   # an offense-marker-only reply still shows the cold silence
+		if cleaned.is_empty() and cleaned != _pre_off:
+			cleaned = cold_offense_line()   # a tag-only reply reads as a cold brush-off, not blank
 		reply = cleaned
 		# Deterministic fallback: the model often agrees in words but drops the tag. If the PLAYER explicitly
 		# proposed a duel and this NPC's reply accepts (and doesn't decline), file it anyway — the chat partner

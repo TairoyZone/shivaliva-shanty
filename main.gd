@@ -85,8 +85,15 @@ func _build_menu() -> void:
 
 func _on_continue() -> void:
 
+	# The ship deck is NEVER a valid resume target: voyage state is transient (never saved), so resuming
+	# onto the deck would fabricate a phantom demo voyage (the deck's standalone seeder). Close-the-app
+	# mid-voyage makes this reachable — fall back to the home shore, fresh-spawned. (Troy 2026-06-10 review.)
+	var scene : String = PlayerState.last_scene
+	if scene.is_empty() or scene.find("ship_deck") != -1:
+		get_tree().change_scene_to_file("res://levels/shore/shore.tscn")
+		return
 	PlayerState.request_spawn_at_position(PlayerState.last_position)
-	get_tree().change_scene_to_file(PlayerState.last_scene)
+	get_tree().change_scene_to_file(scene)
 
 
 func _on_new_game() -> void:

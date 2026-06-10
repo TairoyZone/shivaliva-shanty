@@ -12,8 +12,8 @@ term is reskinned to a sky/Stardust equivalent ("the Stardust" = the abyss below
 ## Dev journey + velocity (the numbers)
 _Recompute these from git each report — first-commit date, `git rev-list --count HEAD`, `.gd`/`.tscn` line counts._
 - **Started: ~2026-05-24/25** (first locked design calls) → **~17 days** as of 2026-06-10.
-- **240 commits** (git baseline 2026-06-03; **7 intense build days** Jun 3·5·6·7·8·9·10, ~34/day).
-- **~32,300 lines of hand-built game** — **~29,247 GDScript** across **167 `.gd` files** + **~3,049 lines** across **83 scenes**.
+- **248 commits** (git baseline 2026-06-03; **7 intense build days** Jun 3·5·6·7·8·9·10, ~35/day).
+- **~32,800 lines of hand-built game** — **~29,764 GDScript** across **170 `.gd` files** + **~3,049 lines** across **83 scenes**.
 - **Scope:** a walkable iso overworld + a 9-NPC cast · **7 full mini-games** (each a Board+Scene engine w/ AI +
   animation + mastery) · the **voyage meta-system** (deck, set-sail routes, charts, duty reports, a LIVE
   background boarding melee, sinkable ships) · **AI-powered NPC chat** (LLM via a key-safe proxy — a novel hook,
@@ -61,6 +61,10 @@ The endgame loop, reskinned from YPP pillaging. You job onto a crew at the Skydo
   for your cut.
 - The ship is **sinkable**: damage → hull holes → the Stardust floods faster in the Loft → sink on a fight
   leg = "Lost in the Stardust."
+- **Three real ship classes** (2026-06-10, `ShipClasses` registry): Driftpod 750g (hull 4 · 1 crew berth ·
+  2–3-leg hops · hold ×1.0) → Cloud Cutter 3000g (6 · 2 · 2–4 · ×1.3) → Sky Galleon 10000g (9 · 4 · 4–6 ·
+  ×1.6). You **christen** her at purchase, manage the fleet at the **dock berth** (sail / swap / rename /
+  sell at half price), and she *draws* as her class (size, 1–3 masts, armament).
 
 **The boarding is a LIVE BACKGROUND MELEE:** the fight runs in a persistent simulation (a `BoardingMelee`
 autoload) whether or not you're watching — your AI mates trade blows, your undefended board buries
@@ -89,7 +93,36 @@ finished). Adversarially reviewed (3 bugs fixed) + several playtest fixes alread
 - **Inheritance over duplication; scene-per-component.**
 - Build proactively, flag only big design forks; commit freely; **never push without an explicit ask.**
 
-## This session (2026-06-09) — the NPC-CHAT DEPTH arc + UI/bug polish (all committed)
+## This session (2026-06-10) — voices, the SHIP SYSTEM + NPCs that can hate you (all committed)
+Troy's first **Fable 5** session. The cast got human; the ships got real; the rapport got teeth.
+
+- **Plain, human, distinct NPC voices** (`eeb9d3f`): the global prompt now bans the thick pirate dialect
+  ("ahoy/ye/matey") and sets a plain-English bar (Troy: ESL players must read it easily) — each persona's
+  written personality finally drives HOW they talk. World-nouns (ship, stardust, Skydock) stay. Confirmed
+  in live play (Kerr's dry jabs vs Mia's tea-mothering).
+- **"I'm Troy" is an introduction, not a mix-up** (`533527e`): the cast accepts/remembers/uses a name the
+  traveller gives — even one colliding with a local's (Mia had replied "I'm Mia, not Troy").
+- **THE ELABORATE SHIP SYSTEM** (`8decc2a`, the session's centerpiece — design forked via 2 questions,
+  "full spread" + dock picker locked): the `ShipClasses` registry single-sources every class stat
+  (see the voyage section); **christening** ("name her!", dice-roll suggestions, re-christen at the dock);
+  the **DockBerthModal** fleet hub (sail / swap ★ / rename / two-click **sell**); class-driven hull caps
+  (`voyage_max_holes` — a galleon survives 9 holes, fixed the old clamp-to-4), route lengths, **hold
+  multiplier** on the plunder pool, crew **berth caps** at the stations, class visuals at the dock + deck;
+  NPC chat names her class. Also fixed: the shop's id mismatch that broke 2 of 3 ships' display names.
+- **NPCs can HATE you** (`cb6e038`): rapport now spans **-100..100** — tiers Wary/Disliked/Despised; the
+  NPC itself judges a line crossed in chat (hidden `[[OFFENDED]]` tag, same plumbing as `[[DUEL]]`, -4 a
+  hit; banter explicitly safe); soured NPCs go cold in chat, show **red** in Hearts, and withhold their
+  Favour. Profile reads "Friends: N" — never "of 9" (befriending the whole cast isn't the point). Core
+  earning never gates on rapport (the parlor LAW).
+- **Feel/UI:** Crew Duty button only when captaining your own ship (`e40b247`) · weapon slots **toggle**
+  (click to equip, click again to unarm, `a944a0c`) · trophy shelf folds behind "See all N" (`14ed35c`) ·
+  duty report "off duty" for unmanned legs (`5d02027`/`3544c5f`) · prices stripped from chat roles (`3c7de8e`).
+- **Adversarially reviewed:** a 5-angle multi-agent review swept both headline systems (voyage state,
+  economy exploits, modal lifecycle, negative-affinity fallout, @tool safety); confirmed findings fixed.
+- ⚠️ **Needs playtest:** christening + dock-berth feel, a galleon 4–6-leg run, hold-mult economy, the
+  offense tag's fire-rate (too touchy vs too tolerant), the new voices across the whole cast.
+
+## Prior session (2026-06-09) — the NPC-CHAT DEPTH arc + UI/bug polish (all committed)
 A massive Troy-driven pass making the **AI-chat hook the game's soul** — the cast now reacts to the live
 moment AND knows the world — plus a wave of UI-placement fixes and voyage bug-fixes. Each piece scan-verified;
 the two riskiest (duel reliability, poker live-awareness) adversarially reviewed via multi-agent workflows.
@@ -240,11 +273,18 @@ _This report is a living snapshot — regenerate it as the project moves. Deeper
 decisions live in the auto-memory (`…/memory/MEMORY.md`); the code map lives in `CLAUDE.md`._
 
 # TROY's TODO (next session) #
---- NPC CHAT (each persona now has chat_role + pronouns; situational awareness live) ---
-= talk to the whole cast end-to-end + tune duel_appetite (challenge frequency) + the persona chat_* fields by feel
-= confirm shop prices read right in the UI (chat no longer quotes them — shop UI is the source of truth)
+--- THE SHIP SYSTEM (new 06-10 — playtest it!) ---
+= buy a ship → christen her (the "name her" card) → click the moored ship → the BERTH hub (sail/rename/sell)
+= sail a Cloud Cutter / Sky Galleon run: feel the longer routes + the bigger booty cut + the berth caps
+= sell a ship (two-click confirm) + check the dock redraws as the new active class (size + masts)
+--- NPC VOICES + HATE (new 06-10) ---
+= chat the cast — voices should read PLAIN + distinct (no "ahoy ye matey"); introduce yourself by name
+= try genuinely insulting someone (for science): rapport should sour → red row in Hearts → favour withheld
+= tune the offense sensitivity by feel (OFFENSE_HIT = 4 in npc_brain.gd; the tag prompt is in _affinity_block)
+--- CARRY-OVER ---
+= tune duel_appetite (challenge frequency) + persona chat_* fields by feel
 = deploy the proxy to a free Node host before the public demo (see proxy/README.md)
---- DEMO READINESS ---
 = a self-playthrough + a written playtest checklist/script before a friend plays
---- KNOWN, DEFERRED (not bugs) ---
-= confirm Kerr + Ellison genders read right everywhere (Kerr he/him, Ellison she/her — fixed today)
+--- IDEAS PARKED ---
+= per-class WALKABLE deck layouts (the deck props are hand-placed — needs 3 hand-tuned scenes; flagged 06-10)
+= the cast permanently remembers your introduced name (PlayerState + prompt, pairs w/ romance groundwork)

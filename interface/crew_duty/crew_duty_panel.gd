@@ -118,14 +118,15 @@ func _station_row(station: String) -> Control:
 	lab.add_child(post_l)
 	row.add_child(lab)
 
-	# Crew picker — "— unmanned —" + each recruited hand with their rating for THIS station. An
-	# UNMANNED station greys out once the class's berths are full (you can still re-pick manned ones).
-	var berths_full : bool = PlayerState.voyage_station_npc(station).is_empty() \
+	# Crew picker — "— unmanned —" + each recruited hand with their rating for THIS station. At full
+	# berths on an UNMANNED station only a MOVE (a hand already aboard) is legal — so we grey the new
+	# hands PER-ITEM (below), not the whole picker, matching PlayerState.set_voyage_station's cap rule.
+	var no_new_hands : bool = PlayerState.voyage_station_npc(station).is_empty() \
 		and PlayerState.voyage_stations.size() >= PlayerState.voyage_crew_berths()
+	var posted : Array = PlayerState.voyage_stations.values()
 	var pick : OptionButton = OptionButton.new()
-	pick.disabled = berths_full
-	if berths_full:
-		pick.tooltip_text = "Her berths are full — clear another station first."
+	if no_new_hands:
+		pick.tooltip_text = "Berths full — move a hand already aboard, or clear a station first."
 	pick.focus_mode = Control.FOCUS_NONE
 	pick.custom_minimum_size = Vector2(212, 34)
 	pick.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -141,6 +142,8 @@ func _station_row(station: String) -> Control:
 		var who : String = String(names[i])
 		pick.add_item("%s   %s" % [_given(who), CrewSkills.stars(CrewSkills.rating(who, station))])
 		pick.set_item_metadata(i + 1, who)
+		if no_new_hands and not posted.has(who):
+			pick.set_item_disabled(i + 1, true)   # at full berths a brand-new hand can't board; a move still can
 		if who == assigned:
 			sel = i + 1
 	pick.select(sel)

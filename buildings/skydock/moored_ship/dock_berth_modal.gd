@@ -33,7 +33,16 @@ func _modal_size() -> Vector2:
 
 func _build_content() -> void:
 
-	PlayerState.ships_changed.connect(_render)
+	PlayerState.ships_changed.connect(_on_ships_changed)
+	_render()
+
+
+# Any EXTERNAL fleet change (rename/christen, or a completed sale) DISARMS a pending sell-confirm — so
+# the two-click guard can't be completed across an intervening action — then rebuilds. The arming click
+# calls _render() directly (below), bypassing this, so it stays armed.
+func _on_ships_changed() -> void:
+
+	_confirm_sell = ""
 	_render()
 
 
@@ -42,6 +51,12 @@ func _render() -> void:
 	if PlayerState.owned_ships.is_empty():   # sold the last hull from this very panel
 		_close()
 		return
+	# Re-fit the panel to the current fleet (Modal sizes it once at open; selling shrinks the list, which
+	# would otherwise leave a blank band). Same formula as _modal_size.
+	if _panel != null:
+		var h : float = 150.0 + 118.0 * float(maxi(PlayerState.owned_ships.size(), 1))
+		_panel.offset_top = -h * 0.5
+		_panel.offset_bottom = h * 0.5
 	for c in _content.get_children():
 		_content.remove_child(c)
 		c.queue_free()

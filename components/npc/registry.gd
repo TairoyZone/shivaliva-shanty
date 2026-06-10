@@ -95,15 +95,17 @@ static func pick_for_lobby(count: int, affinity_of: Callable, exclude: Array[Npc
 		if chosen.size() >= count:
 			break
 		var aff : int = int(affinity_of.call(profile.npc_name))
+		if aff < 0:
+			continue   # a soured NPC won't volunteer for your table — no forced seat, so no no-amends thaw
 		var p_join : float = clampf(0.25 + float(aff) / 100.0 * 0.65, 0.25, 0.90)
 		if randf() <= p_join:
 			chosen.append(profile)
 	# Top up with the friendliest faces that didn't roll in, so the table
-	# is always full.
+	# is always full — but never conscript a hater (rapport < 0) either.
 	if chosen.size() < count:
 		var rest : Array[NpcPersonality] = []
 		for profile in pool:
-			if not (profile in chosen):
+			if not (profile in chosen) and int(affinity_of.call(profile.npc_name)) >= 0:
 				rest.append(profile)
 		rest.sort_custom(func(a: NpcPersonality, b: NpcPersonality) -> bool:
 			return int(affinity_of.call(a.npc_name)) > int(affinity_of.call(b.npc_name)))

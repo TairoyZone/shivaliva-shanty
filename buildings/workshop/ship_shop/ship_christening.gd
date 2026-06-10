@@ -11,6 +11,7 @@ const GROUP : StringName = &"ship_christening"
 
 var _ship_id : String = ""
 var _edit : LineEdit
+var _done : bool = false   # one christen only — guards a double Enter / Enter+click during the close fade
 
 
 static func open(host: Node, ship_id: String) -> void:
@@ -96,6 +97,9 @@ func _on_roll() -> void:
 
 func _on_christen() -> void:
 
+	if _done:
+		return   # the buttons stay live during the 0.12s close fade — don't christen (and re-save) twice
+	_done = true
 	var typed : String = _edit.text.strip_edges()
 	if not typed.is_empty():
 		PlayerState.christen_ship(_ship_id, typed)

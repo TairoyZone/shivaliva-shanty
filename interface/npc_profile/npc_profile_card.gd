@@ -197,8 +197,13 @@ func _crew_section() -> Control:
 		row.add_child(hire)
 		box.add_child(row)
 	else:
-		_content_note(box, "Earn their trust to recruit — become their Confidant.  (rapport %d / %d)" % [
-			PlayerState.get_affinity(_npc_name), PlayerState.RECRUIT_MIN_AFFINITY], INK_SOFT)
+		var aff : int = PlayerState.get_affinity(_npc_name)
+		if aff < 0:
+			_content_note(box, "They've soured on you (%s) — mend things before they'd ever crew for you." % \
+				PlayerState.affinity_tier(_npc_name), Color(0.92, 0.5, 0.45, 1.0))
+		else:
+			_content_note(box, "Earn their trust to recruit — become their Confidant.  (rapport %d / %d)" % [
+				aff, PlayerState.RECRUIT_MIN_AFFINITY], INK_SOFT)
 	return box
 
 
@@ -252,14 +257,16 @@ func _skill_row(skill: String, value: int) -> Control:
 func _hearts_bar() -> Control:
 
 	var bar : ProgressBar = ProgressBar.new()
+	var aff : int = PlayerState.get_affinity(_npc_name)
 	bar.min_value = 0.0
 	bar.max_value = float(PlayerState.MAX_AFFINITY)
-	bar.value = float(PlayerState.get_affinity(_npc_name))
+	bar.value = float(maxi(aff, 0))   # negative rapport reads as an EMPTY bar; the red trough below marks WHY
 	bar.show_percentage = false
 	bar.custom_minimum_size = Vector2(0, 12)
 	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var bg : StyleBoxFlat = StyleBoxFlat.new()
-	bg.bg_color = Color(0.24, 0.20, 0.16, 1.0)
+	# A soured standing tints the empty trough RED, so a grudge no longer looks like a never-met Stranger.
+	bg.bg_color = Color(0.42, 0.16, 0.16, 1.0) if aff < 0 else Color(0.24, 0.20, 0.16, 1.0)
 	bg.set_corner_radius_all(6)
 	bar.add_theme_stylebox_override("background", bg)
 	var fill : StyleBoxFlat = StyleBoxFlat.new()

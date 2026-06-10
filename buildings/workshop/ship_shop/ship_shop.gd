@@ -41,6 +41,8 @@ func interact() -> void:
 
 func _exit_tree() -> void:
 
+	if Engine.is_editor_hint():
+		return   # @tool: autoloads don't exist at edit time — closing the scene tab must not touch PlayerState
 	# Mirror _on_close_pressed's cleanup in case the shop is freed (scene change) with the modal still open.
 	if PlayerState.ships_changed.is_connected(_rebuild_rows):
 		PlayerState.ships_changed.disconnect(_rebuild_rows)
