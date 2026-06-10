@@ -250,7 +250,8 @@ func _begin_sail() -> void:
 # The sloop reached this leg's swords (the random mid-leg spot) — board 'em.
 func _on_chart_reached_encounter() -> void:
 
-	if not _crossing or PlayerState.pillage_phase != 1 or not _is_encounter_leg(PlayerState.pillage_leg):
+	if not _crossing or PlayerState.pillage_phase != 1 or PlayerState.pillage_fight_done \
+			or not _is_encounter_leg(PlayerState.pillage_leg):
 		return
 	_crossing = false
 	await _deck_board_now()
@@ -535,6 +536,7 @@ func _board_brigand() -> void:
 
 	PlayerState.last_skirmish_won = false
 	PlayerState.pillage_phase = 2
+	PlayerState.pillage_fight_done = true   # the DECK fired this leg's boarding — the station won't re-fight it
 	PlayerState.voyage_boarding_seed = PlayerState.voyage_seed_from_lift(PlayerState.last_loft_lift)
 	PlayerState.skirmish_opponent = ""
 	PlayerState.puzzle_return_scene = SELF_SCENE

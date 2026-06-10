@@ -240,6 +240,10 @@ var pillage_ship_id : String = ""
 ## TRANSIENT (not saved): the hold multiplier scaling this voyage's plunder pool (the class "hold" stat
 ## on a self-captained run; 1.0 jobbed). Applied in voyage_total_gold so the chart pool shows it live.
 var voyage_booty_mult : float = 1.0
+## TRANSIENT (not saved): YOUR share of the plunder pool — 1.0 (keep all) when you captain your OWN ship; a
+## jobbing crew's advertised cut (0.70–0.80) when you sign on under their captain (he keeps the rest). The
+## divvy = pool × duty × this. Set on launch; reset to 1.0 by clear_voyage (audit 2026-06-10 — was dead text).
+var pillage_jobber_cut : float = 1.0
 ## TRANSIENT (not saved): the last line the deck captain spoke — so re-entering the deck in the SAME
 ## phase doesn't re-announce/re-log the identical line (the deck is a fresh node each re-entry). Reset
 ## by clear_voyage so a new voyage greets you again. See ship_deck.gd `_say`.
@@ -311,6 +315,10 @@ var voyage_boarding_seed : int = 0
 ## scene-swap): 0 = just boarded (man the Loft); 1 = back from the Loft (a brigand —
 ## board them); 2 = back from the boarding fight (take your cut + disembark).
 var pillage_phase : int = 0
+## CANONICAL "this leg's boarding already fired" flag — set by BOTH the deck (_board_brigand) AND the station
+## (_trigger_voyage_skirmish) when a fight starts, read by both before firing/resolving, reset on leg advance.
+## ONE source so the deck + station can't disagree and double-fight a leg (audit 2026-06-10).
+var pillage_fight_done : bool = false
 ## The crew the player jobbed onto at the Voyages board (set on Accept) — shown on
 ## the ShipDeck (captain name + banner). Empty = a generic crew.
 var pillage_captain : String = ""
@@ -449,6 +457,7 @@ func resolve_voyage_leg(is_fight: bool, won: bool, lift: int, swaps: int, master
 	else:
 		pillage_leg += 1
 		pillage_phase = 0
+		pillage_fight_done = false   # next leg starts fresh — its boarding hasn't fired yet
 	return {"arrived": arrived, "cut": cut, "outcome_line": outcome}
 
 
@@ -515,7 +524,7 @@ func voyage_duty_multiplier() -> float:
 # (a flat pool from the battles, then your share reflecting how well you flew the whole crossing).
 func voyage_final_cut() -> int:
 
-	return roundi(float(voyage_total_gold()) * voyage_duty_multiplier())
+	return roundi(float(voyage_total_gold()) * voyage_duty_multiplier() * pillage_jobber_cut)
 
 
 # Pay out your FINAL cut — the pooled booty scaled by your overall duty (YPP-style, paid at voyage's
@@ -568,10 +577,12 @@ func clear_voyage() -> void:
 	pillage_ship_name = ""
 	pillage_ship_id = ""
 	voyage_booty_mult = 1.0
+	pillage_jobber_cut = 1.0
 	voyage_active = false
 	voyage_ship_t = 0.0
 	pillage_phase = 0
 	pillage_leg = 0
+	pillage_fight_done = false
 	pillage_legs_total = 1
 	pillage_log = []
 	pillage_encounters = []
@@ -1159,6 +1170,7 @@ func captain_own_voyage() -> String:
 	pillage_ship_name = active_ship_name()
 	pillage_ship_id = sid                                  # the hull that sails is the hull written back
 	voyage_booty_mult = ShipClasses.booty_mult(sid)        # the class hold scales the whole pool
+	pillage_jobber_cut = 1.0                                # YOUR ship → you keep the whole cut
 	voyage_self_captained = true
 	pillage_destination = dest_name
 	pillage_destination_scene = dest_scene

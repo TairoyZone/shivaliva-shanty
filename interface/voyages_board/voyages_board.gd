@@ -265,6 +265,7 @@ func _on_accept(crew: Dictionary) -> void:
 	PlayerState.pillage_ship_name = ""          # hull's holes back onto your OWNED ship
 	PlayerState.pillage_ship_id = ""            # a jobbed hull is nobody's deed
 	PlayerState.voyage_booty_mult = 1.0         # the stock jobbed hold — class holds only boost YOUR ship
+	PlayerState.pillage_jobber_cut = float(crew.get("cut", 100)) / 100.0   # YOUR advertised share; the captain keeps the rest
 	BoardingMelee.clear()
 	# Lay in the crew for the duty report: this captain + real cast hands at the stations.
 	PlayerState.pillage_duty_crew = DutyReport.build_roster(String(crew["captain"]))

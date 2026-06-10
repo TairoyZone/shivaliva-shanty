@@ -73,6 +73,9 @@ func _ready() -> void:
 		else:
 			_add(col, "Crew duty:  %s   ×%.1f" % [DutyReport.rating_name(rating_idx), mult], 16,
 				DutyReport.rating_color(rating_idx), 2)
+		if PlayerState.pillage_jobber_cut < 1.0:   # jobbing under another captain — you take your advertised share
+			_add(col, "Jobber's cut:  %d%%   (the cap'n keeps the rest)" % int(round(PlayerState.pillage_jobber_cut * 100.0)),
+				15, Color(0.82, 0.78, 0.62, 1.0), 2)
 		col.add_child(_spacer(4))
 	_add(col, "%d gold" % final_cut, 40, Color(0.99, 0.84, 0.36, 1.0), 4)
 	_add(col, "your cut of the plunder" if final_cut > 0 else "no plunder this run", 14,

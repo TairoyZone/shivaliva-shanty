@@ -22,7 +22,7 @@ const STARDUST_SINK : float = 10.0                          # the Stardust full 
 
 var _voyage_chart : VoyageChart
 var _voyage_busy : bool = false           # a voyage transition (stop/fight/report/sink) underway — fire once
-var _fight_done_this_leg : bool = false   # this fight leg's boarding is fought — resolve at the node, don't re-board
+# (this leg's "fight done" flag moved to the canonical PlayerState.pillage_fight_done — shared with the deck)
 var _restore_pending : bool = false       # post-fight board restore not done yet — hold leg resolution until it is
 
 
@@ -40,7 +40,7 @@ func _enter_voyage_station() -> void:
 		# Back from a boarding → RESTORE the station + sail on to the node, where this fight leg resolves.
 		# Mark the fight DONE + restore PENDING synchronously so a stray reached_stop can't re-board or
 		# resolve a 0/0 leg before the restore runs; the restore itself is deferred (UI/board built).
-		_fight_done_this_leg = true
+		PlayerState.pillage_fight_done = true
 		_restore_pending = true
 		call_deferred("_resume_after_fight")
 	else:
@@ -122,7 +122,7 @@ func _on_voyage_reached_stop() -> void:
 		return   # post-fight restore not done — _resume_after_fight will drive the resolve
 	var perf : Dictionary = _leg_performance()
 	if _is_voyage_fight_leg():
-		if _fight_done_this_leg:
+		if PlayerState.pillage_fight_done:
 			_resolve_and_report(true, PlayerState.last_skirmish_won, int(perf["lift"]), int(perf["swaps"]))
 		else:
 			_trigger_voyage_skirmish()
@@ -133,7 +133,7 @@ func _on_voyage_reached_stop() -> void:
 # The sloop reached this leg's swords (the mid-leg spot) — board 'em right there.
 func _on_voyage_reached_encounter() -> void:
 
-	if _is_voyage_fight_leg() and not _fight_done_this_leg:
+	if _is_voyage_fight_leg() and not PlayerState.pillage_fight_done:
 		_trigger_voyage_skirmish()
 
 
@@ -198,7 +198,7 @@ func _on_report_closed(arrived: bool) -> void:
 # measurement baseline + re-arm the station (via the hook), then sail the chart on toward the next node.
 func _begin_next_leg() -> void:
 
-	_fight_done_this_leg = false
+	PlayerState.pillage_fight_done = false
 	_open_next_leg()
 	if _voyage_chart != null:
 		_voyage_chart.refresh_from_state(true)
@@ -287,6 +287,7 @@ func _trigger_voyage_skirmish() -> void:
 	PlayerState.voyage_boarding_seed = PlayerState.voyage_seed_from_lift(int(perf["lift"]))
 	PlayerState.skirmish_opponent = ""
 	PlayerState.pillage_phase = 2
+	PlayerState.pillage_fight_done = true   # the STATION fired this leg's boarding — the deck won't re-board it
 	PlayerState.puzzle_return_scene = _self_scene()
 	# Swap right as the cry ENDS — never cut it off (fast resolve) nor leave a dead locked frame after it.
 	if cry != null and cry.is_valid():
