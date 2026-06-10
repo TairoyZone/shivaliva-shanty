@@ -259,6 +259,7 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 	var here : String = _current_place()
 	if not here.is_empty():
 		parts.append(here)   # environment awareness: the ACTUAL room they're standing in right now
+	parts.append(GameClock.prompt_line())   # TIME OF DAY so greetings match the hour (not always "evening")
 	parts.append(ISLAND_GAZETTEER)   # world-map grounding so directions/whereabouts are real, not invented
 	var pronoun_roster : String = _cast_pronouns_block()
 	if not pronoun_roster.is_empty():

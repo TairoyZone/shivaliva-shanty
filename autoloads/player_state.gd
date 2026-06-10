@@ -205,6 +205,10 @@ var ship_custom_names : Dictionary = {}
 ## Which owned ship is ACTIVE — the one berthed at the dock, sailed on a self-captained voyage, and
 ## whose hull the condition helpers track. "" or a sold id falls back to the first owned. Persisted.
 var active_ship : String = ""
+## In-game time of day, in minutes since midnight (0..1440). Advanced by the [GameClock] autoload; NPCs read
+## it so greetings match the hour. A plain persisted field (no setter — GameClock writes it every frame; the
+## normal save cycle + quit persist it). Fresh game starts at 08:00. See game_clock.gd.
+var game_minutes : float = 480.0
 
 ## Persistent per-ship CONDITION, keyed by ship id → {"open_holes": int}. The ACTIVE ship's holes
 ## drive the Loft's Stardust rise (more holes ⇒ floods faster) + the sink; the Patchworks seals them.
@@ -1918,6 +1922,7 @@ func clear_save() -> void:
 	ship_condition = {}
 	ship_custom_names = {}
 	active_ship = ""
+	game_minutes = 480.0   # a fresh game wakes at 08:00
 	owned_weapons = ["brawl"]
 	equipped_weapon = "brawl"
 	npc_affinity = {}
@@ -1967,6 +1972,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "ship_condition", ship_condition)
 	config.set_value(SAVE_SECTION, "ship_custom_names", ship_custom_names)
 	config.set_value(SAVE_SECTION, "active_ship", active_ship)
+	config.set_value(SAVE_SECTION, "game_minutes", game_minutes)
 	config.set_value(SAVE_SECTION, "owned_weapons", owned_weapons)
 	config.set_value(SAVE_SECTION, "equipped_weapon", equipped_weapon)
 	config.set_value(SAVE_SECTION, "npc_affinity", npc_affinity)
@@ -2008,6 +2014,7 @@ func _load() -> void:
 	ship_condition = config.get_value(SAVE_SECTION, "ship_condition", {})
 	ship_custom_names = config.get_value(SAVE_SECTION, "ship_custom_names", {})
 	active_ship = String(config.get_value(SAVE_SECTION, "active_ship", ""))
+	game_minutes = float(config.get_value(SAVE_SECTION, "game_minutes", 480.0))
 	owned_weapons = config.get_value(SAVE_SECTION, "owned_weapons", ["brawl"])
 	equipped_weapon = String(config.get_value(SAVE_SECTION, "equipped_weapon", "brawl"))
 	npc_affinity = config.get_value(SAVE_SECTION, "npc_affinity", {})
