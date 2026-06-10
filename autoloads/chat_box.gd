@@ -26,6 +26,8 @@ var _log_panel : PanelContainer
 var _log_box : VBoxContainer
 var _log_scroll : ScrollContainer
 var _log_open : bool = false
+var _bar : PanelContainer       # the summoned input bar — HIDDEN by default; Enter reveals it (the Minecraft /
+var _bar_open : bool = false    # Valorant / Stardew model — Troy 2026-06-10). The fading idle log = the EventFeed.
 
 # Private NPC chat state (one conversation at a time; routed through this bar).
 var _in_private : bool = false
@@ -53,11 +55,11 @@ func is_typing() -> bool:
 	return _input != null and _input.has_focus()
 
 
-## True while the stored chat/event LOG overlay is open — so ESC closes it (and the HUD stands down on
+## True while the summoned chat bar (with its log) is up — so ESC dismisses it (and the HUD stands down on
 ## ESC rather than opening the backpack; see hud.gd).
 func is_log_open() -> bool:
 
-	return _log_open
+	return _bar_open
 
 
 ## Release the chat bar's focus — called when a HUD panel opens via a mouse click (which bypasses the
@@ -88,6 +90,8 @@ func _build_ui() -> void:
 	bar.add_theme_stylebox_override("panel", _panel_style(Color(0.16, 0.11, 0.06, 0.90)))   # warm walnut (was cool navy)
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE   # the empty bar background must not eat world clicks
 	add_child(bar)
+	_bar = bar
+	bar.visible = false   # HIDDEN by default — Enter summons it (see _open_bar)
 	var hb : HBoxContainer = HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 6)
 	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE   # only the actual controls (LineEdit/buttons) catch clicks
@@ -224,19 +228,42 @@ func _unhandled_input(event: InputEvent) -> void:
 	if Overlay.is_active or (HUD != null and HUD.is_inventory_open()):
 		return
 	if event is InputEventKey and event.pressed and not event.echo and (event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER):
-		if _input != null:
-			_input.grab_focus()
+		_open_bar()
 		var vp : Viewport = get_viewport()
 		if vp != null:
 			vp.set_input_as_handled()
 
 
-# Escape while typing bows out of the bar (without opening the backpack).
+# Summon the input bar + the recent log (Enter, or the start of a private chat). Focuses the field so you can
+# type straight away.
+func _open_bar() -> void:
+
+	_bar_open = true
+	if _bar != null:
+		_bar.visible = true
+	if not _log_open:
+		_toggle_log()          # show the recent history alongside the input (the "Enter shows the log" beat)
+	if _input != null:
+		_input.grab_focus()
+
+
+# Dismiss the bar + the log back to the idle state (the fading EventFeed takes over). Send + Esc call this.
+func _close_bar() -> void:
+
+	_bar_open = false
+	if _input != null:
+		_input.release_focus()   # back to the game / puzzle
+	if _log_open:
+		_toggle_log()
+	if _bar != null:
+		_bar.visible = false
+
+
+# Escape while typing dismisses the bar (without opening the backpack).
 func _on_input_gui(event: InputEvent) -> void:
 
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		if _input != null:
-			_input.release_focus()
+		_close_bar()
 		var vp : Viewport = get_viewport()
 		if vp != null:
 			vp.set_input_as_handled()
@@ -263,8 +290,7 @@ func _send(raw: String) -> void:
 	# DEV slash-commands (debug builds only): typed in the chat box — /crew, /gold, /holes, /mend, /wreck, /help.
 	if text.begins_with("/") and OS.is_debug_build():
 		DevCheats.run_command(text)
-		if _input != null:
-			_input.release_focus()
+		_close_bar()
 		return
 	if _in_private:
 		_send_private(text)
@@ -276,8 +302,7 @@ func _send(raw: String) -> void:
 		player.speak(text)
 	PlayerState.log_event("You: %s" % text, CHAT_COLOR)
 	RoomChat.hear(text)   # ambient: NPCs present in the room may pipe up (the private path never reaches here)
-	if _input != null:
-		_input.release_focus()   # back to the game so WASD moves again
+	_close_bar()          # one public line sent → tuck the bar away (the line fades in the corner via EventFeed)
 
 
 # --- private NPC chat (routed through this bar; see [NpcBrain]) --------
@@ -300,9 +325,7 @@ func start_private_chat(persona: NpcPersonality, npc: Node = null, fallback_line
 	var verb : String = "pick your talk back up with" if NpcBrain.has_history() else "begin talking with"
 	PlayerState.log_event("— You %s %s  (%s) —" % [verb, persona.npc_name,
 		PlayerState.affinity_tier(persona.npc_name)], SYSTEM_LINE_COLOR)
-	if not _log_open:
-		_toggle_log()              # open the thread so the back-and-forth reads as a chat
-	_input.grab_focus()
+	_open_bar()                    # summon the bar + show the conversation thread
 	_set_thinking(true)
 	NpcBrain.request_opening()
 
@@ -462,11 +485,11 @@ func _toggle_log() -> void:
 		_autoscroll()
 
 
-## Close the log if open (ESC from the HUD calls this before falling through to the pause menu).
+## Dismiss the chat bar if up (ESC from the HUD calls this before falling through to the pause menu).
 func close_log() -> void:
 
-	if _log_open:
-		_toggle_log()
+	if _bar_open:
+		_close_bar()
 
 
 # --- log --------------------------------------------------------------
@@ -514,24 +537,32 @@ func _process(_delta: float) -> void:
 	# Shows in the walkable overworld (mirrors the HUD) AND in any scene that opts in via the "chat_scene"
 	# group (e.g. the poker table — a PuzzleScene where the HUD is hidden but we still want table banter).
 	var sc : Node = get_tree().current_scene if get_tree() != null else null
-	var should : bool = chat_visible and ((HUD != null and HUD.visible) or (sc != null and sc.is_in_group("chat_scene")))
+	# UNIVERSAL now: chat is available in EVERY gameplay scene — the overworld AND every puzzle/voyage — hidden
+	# by default; only the title has no chat (Troy 2026-06-10, the Minecraft/Stardew/Valorant model).
+	var should : bool = chat_visible and sc != null and not _is_title(sc)
 	if should != visible:
 		visible = should
-		if not visible and is_typing():
-			_input.release_focus()
+		if not visible:
+			_close_bar()   # left for the title — tuck everything away
 	if _in_private and not visible:
-		_exit_private()   # left the walkable scene (puzzle / title) — end the conversation cleanly
-	# End a private chat on ANY scene change too — the NPC node (e.g. a poker seat) is freed by the swap, so
-	# the conversation can't continue (covers poker → overworld, where the bar stays visible across the cut).
+		_exit_private()
+	# End a private chat on ANY scene change — the NPC node (e.g. a poker seat) is freed by the swap, so
+	# the conversation can't continue (covers poker → overworld, where the bar stays available across the cut).
 	if sc != _last_scene:
 		_last_scene = sc
 		if _in_private:
 			_exit_private()
-	# The open log shows the same lines as the transient EventFeed + shares the lower-left corner, so hide
-	# the feed while the log is open (avoids the same line rendering twice).
-	var feed_visible : bool = not (visible and _log_open)
+	# The fading idle LOG is the EventFeed (shows everywhere, lingers ~8s then fades — the Minecraft/Stardew
+	# corner). Hide it only while the bar's OPEN (the scrollable history shows the same lines then).
+	var feed_visible : bool = not _bar_open
 	if EventFeed != null and EventFeed.visible != feed_visible:
 		EventFeed.visible = feed_visible
+
+
+# The title screen (main.tscn) is the one scene with no chat — everything else is gameplay.
+func _is_title(sc: Node) -> bool:
+
+	return sc != null and sc.scene_file_path.ends_with("main.tscn")
 
 
 func _load_settings() -> void:
