@@ -22,7 +22,9 @@ const DEV_DIRECT_URL : String = "https://api.deepseek.com/chat/completions"
 const DEV_DIRECT_MODEL : String = "deepseek-chat"
 const REPLY_MAX_TOKENS : int = 300        # short, snappy NPC lines (cheap + low latency; proxy also caps)
 const HISTORY_MESSAGES : int = 24         # rolling cap (~12 exchanges) sent each call — a cost guard
-const REQUEST_TIMEOUT : float = 20.0
+const REQUEST_TIMEOUT : float = 40.0   # long enough to survive a Render free-tier COLD START (~30–50s) on the
+                                       # first chat after idle, so it doesn't time out → "AI offline" before the
+                                       # proxy wakes (the keep-warm pinger is the real fix; this is the backstop).
 
 ## Global canon + behaviour guardrails, prepended to every NPC's system prompt. Keeps replies in-world,
 ## in-character, short, and free of AI/real-world leakage. (Sky-canon: floating islands, THE STARDUST.)
@@ -104,6 +106,11 @@ func _load_config() -> void:
 	# Blank on a player's machine -> the proxy path. See DEV_DIRECT_URL above.
 	if _dev_key.is_empty():
 		_dev_key = OS.get_environment("SHANTY_NPC_KEY")
+	# Defense-in-depth: in an EXPORTED build, if nothing moved the endpoint off the local dev default AND there's
+	# no dev key, the bundled npc_chat.cfg almost certainly didn't ship (the export include_filter must pack this
+	# non-resource .cfg). Make that LOUD instead of silently degrading to "AI offline" for every player.
+	if endpoint == DEFAULT_ENDPOINT and _dev_key.is_empty() and not OS.has_feature("editor"):
+		push_warning("[NpcBrain] endpoint still = %s with no dev key — npc_chat.cfg was NOT bundled; NPC chat is OFFLINE for players. Fix the export include_filter (it must pack npc_chat.cfg)." % DEFAULT_ENDPOINT)
 
 
 # Fold one ConfigFile's [npc_chat] section over the CURRENT values — absent keys keep what's already set, so

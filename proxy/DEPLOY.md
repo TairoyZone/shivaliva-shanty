@@ -68,6 +68,15 @@ your proxy; `user://settings.cfg` can't do that, a fresh install doesn't have it
 secret never hits source). Then export and upload. *(A tester can instead drop their own `endpoint`+`secret`
 in `user://settings.cfg` to override without you re-exporting.)*
 
+> ⚠️ **Two things that silently kill chat** — both just show the canned "AI offline" line, no error:
+> 1. **The export must PACK `npc_chat.cfg`.** It's a non-resource file, so `export_presets.cfg` lists it under
+>    `include_filter="npc_chat.cfg"` in every preset (already set). If that's ever removed, the file won't ship
+>    and every build falls back to localhost. The game now logs a loud warning at boot (`push_warning`) if the
+>    endpoint is still localhost in an exported build, so a mis-export is visible instead of silent.
+> 2. **`secret` must match Render's `SHARED_SECRET` byte-for-byte** — else every chat 401s → canned lines.
+>    **Easiest for a first friend playtest: leave `SHARED_SECRET` UNSET on Render AND `secret=""` here** (the
+>    daily budget + your capped DeepSeek balance are the real guards). If you do set a secret, copy it identically.
+
 > The URL + secret **will** be inside the shipped build — that's expected and fine. The *key* never is (it
 > lives only on Render). The secret only stops casual drive-by abuse; the daily budget + Step 0 are the real guards.
 

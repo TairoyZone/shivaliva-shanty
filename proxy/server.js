@@ -176,8 +176,9 @@ const server = http.createServer((req, res) => {
   const path = String(req.url || "").split("?")[0];
   const ip = clientIp(req);
 
-  // Health (Render health check + an external keep-alive ping). No internal state leaked.
-  if (req.method === "GET" && (path === "/health" || path === "/")) return sendJson(res, 200, { ok: true });
+  // Health (Render health check + an external keep-alive ping). `enabled` lets the keep-alive ping double as a
+  // kill-switch readout; no other internal state leaked.
+  if (req.method === "GET" && (path === "/health" || path === "/")) return sendJson(res, 200, { ok: true, enabled });
 
   // Admin (kill switch + live stats) — constant-time-gated by ADMIN_SECRET. With no ADMIN_SECRET, /admin is closed.
   if (path.startsWith("/admin")) {
