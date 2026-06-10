@@ -209,6 +209,10 @@ var active_ship : String = ""
 ## it so greetings match the hour. A plain persisted field (no setter — GameClock writes it every frame; the
 ## normal save cycle + quit persist it). Fresh game starts at 08:00. See game_clock.gd.
 var game_minutes : float = 480.0
+## The player's chosen name (typed at New Game) — the cast addresses + permanently REMEMBERS it (this is the
+## name that doesn't fade from chat history). "" = unnamed (chat falls back to "traveller"). Persisted; set via
+## [method set_player_name]. See [NpcBrain.compose_system]. (Troy 2026-06-10.)
+var player_name : String = ""
 
 ## Persistent per-ship CONDITION, keyed by ship id → {"open_holes": int}. The ACTIVE ship's holes
 ## drive the Loft's Stardust rise (more holes ⇒ floods faster) + the sink; the Patchworks seals them.
@@ -1409,8 +1413,8 @@ func add_affinity(npc_name: String, amount: int) -> void:
 ## Empty for an NPC you've never chatted with. See [NpcBrain.enter_chat].
 func npc_chat_history(npc_name: String) -> Array:
 
-	var log : Array = npc_chat_log.get(npc_name, [])
-	return log.duplicate(true)
+	var entries : Array = npc_chat_log.get(npc_name, [])
+	return entries.duplicate(true)
 
 
 ## Persist the chat history with [param npc_name] (bounded to the last NPC_CHAT_LOG_CAP turns). Called by
@@ -1423,6 +1427,13 @@ func save_npc_chat(npc_name: String, messages: Array) -> void:
 	if trimmed.size() > NPC_CHAT_LOG_CAP:
 		trimmed = trimmed.slice(trimmed.size() - NPC_CHAT_LOG_CAP)
 	npc_chat_log[npc_name] = trimmed.duplicate(true)
+	_save()
+
+
+## Set + persist the player's name (typed at New Game). Trimmed + capped at 20 chars.
+func set_player_name(new_name: String) -> void:
+
+	player_name = new_name.strip_edges().left(20)
 	_save()
 
 
@@ -1950,6 +1961,7 @@ func clear_save() -> void:
 	ship_custom_names = {}
 	active_ship = ""
 	game_minutes = 480.0   # a fresh game wakes at 08:00
+	player_name = ""       # named at the New Game prompt
 	owned_weapons = ["brawl"]
 	equipped_weapon = "brawl"
 	npc_affinity = {}
@@ -2001,6 +2013,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "ship_custom_names", ship_custom_names)
 	config.set_value(SAVE_SECTION, "active_ship", active_ship)
 	config.set_value(SAVE_SECTION, "game_minutes", game_minutes)
+	config.set_value(SAVE_SECTION, "player_name", player_name)
 	config.set_value(SAVE_SECTION, "owned_weapons", owned_weapons)
 	config.set_value(SAVE_SECTION, "equipped_weapon", equipped_weapon)
 	config.set_value(SAVE_SECTION, "npc_affinity", npc_affinity)
@@ -2044,6 +2057,7 @@ func _load() -> void:
 	ship_custom_names = config.get_value(SAVE_SECTION, "ship_custom_names", {})
 	active_ship = String(config.get_value(SAVE_SECTION, "active_ship", ""))
 	game_minutes = float(config.get_value(SAVE_SECTION, "game_minutes", 480.0))
+	player_name = String(config.get_value(SAVE_SECTION, "player_name", ""))
 	owned_weapons = config.get_value(SAVE_SECTION, "owned_weapons", ["brawl"])
 	equipped_weapon = String(config.get_value(SAVE_SECTION, "equipped_weapon", "brawl"))
 	npc_affinity = config.get_value(SAVE_SECTION, "npc_affinity", {})

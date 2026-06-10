@@ -927,15 +927,9 @@ func _make_weapon_slot(weapon_id: String) -> Control:
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		panel.add_child(icon)
 	cell.add_child(panel)
-	var name_l : Label = Label.new()
-	name_l.text = "" if is_default else (("✓ %s" % SkirmishWeapon.display_name(weapon_id)) if equipped \
-		else SkirmishWeapon.display_name(weapon_id))
-	name_l.add_theme_font_size_override("font_size", 12)
-	name_l.add_theme_color_override("font_color",
-		COLOR_TITLE if equipped else Color(0.80, 0.72, 0.56, 1.0))
-	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_l.custom_minimum_size = Vector2(SLOT_SIZE, 0.0)
-	cell.add_child(name_l)
+	# No ✓ and no name label: it's the ONE equipped slot now, so the checkmark says nothing and the name just
+	# duplicates the icon + the "Weapon" header. Icon + hover tooltip carry it (Troy 2026-06-10). Matches the
+	# icon-only backpack cells.
 	return cell
 
 

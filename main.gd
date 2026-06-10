@@ -11,8 +11,10 @@ const FIRST_SCENE : String = "res://levels/player_shanty_interior/player_shanty_
 @onready var _title : Label = $Title
 @onready var _subtitle : Label = $Subtitle
 
-## The overwrite-confirm overlay while it's up (guards against stacking).
+## The overwrite-confirm / name-prompt overlay while it's up (guards against stacking).
 var _confirm : CanvasLayer = null
+## The New Game name field (lives inside the name-prompt overlay).
+var _name_edit : LineEdit = null
 
 
 func _ready() -> void:
@@ -107,7 +109,90 @@ func _on_new_game() -> void:
 
 func _start_new_game() -> void:
 
+	# Name yourself first — the cast remembers it for the whole game (Troy 2026-06-10).
+	_close_confirm()           # drop the overwrite confirm if that's the path here
+	_show_name_prompt()
+
+
+# Pop the "what do they call you?" field, then begin the named game.
+func _show_name_prompt() -> void:
+
+	if is_instance_valid(_confirm):
+		return
+	var layer : CanvasLayer = CanvasLayer.new()
+	layer.layer = 40
+	var dim : ColorRect = ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.6)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	layer.add_child(dim)
+	var panel : PanelContainer = PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", _panel_style())
+	panel.anchor_left = 0.5
+	panel.anchor_top = 0.5
+	panel.anchor_right = 0.5
+	panel.anchor_bottom = 0.5
+	panel.offset_left = -280.0
+	panel.offset_top = -120.0
+	panel.offset_right = 280.0
+	panel.offset_bottom = 120.0
+	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	layer.add_child(panel)
+	var vbox : VBoxContainer = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 14)
+	panel.add_child(vbox)
+	var msg : Label = Label.new()
+	msg.text = "What do they call you?"
+	msg.add_theme_font_size_override("font_size", 26)
+	msg.add_theme_color_override("font_color", Color(0.98, 0.90, 0.6, 1.0))
+	msg.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	msg.add_theme_constant_override("outline_size", 3)
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(msg)
+	var sub : Label = Label.new()
+	sub.text = "The folk of Cradle Rock will remember your name."
+	sub.add_theme_font_size_override("font_size", 15)
+	sub.add_theme_color_override("font_color", Color(0.82, 0.74, 0.56, 1.0))
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.autowrap_mode = TextServer.AUTOWRAP_WORD
+	vbox.add_child(sub)
+	var edit : LineEdit = LineEdit.new()
+	edit.placeholder_text = "your name…"
+	edit.max_length = 20
+	edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	edit.add_theme_font_size_override("font_size", 22)
+	edit.custom_minimum_size = Vector2(0, 46)
+	edit.text_submitted.connect(func(_t: String) -> void: _begin_from_edit())   # Enter submits
+	vbox.add_child(edit)
+	_name_edit = edit
+	var row : HBoxContainer = HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_child(row)
+	var go : Button = _make_button("Set sail", Color(0.80, 1.0, 0.66, 1.0))
+	go.pressed.connect(_begin_from_edit)
+	row.add_child(go)
+	_confirm = layer
+	add_child(layer)
+	edit.grab_focus()
+
+
+func _begin_from_edit() -> void:
+
+	var entered : String = ""
+	if is_instance_valid(_name_edit):
+		entered = _name_edit.text.strip_edges()
+	if entered.is_empty():
+		entered = "Traveller"   # a sensible default for a no-name start
+	_begin_named_game(entered)
+
+
+func _begin_named_game(chosen_name: String) -> void:
+
+	_close_confirm()
+	_name_edit = null
 	PlayerState.clear_save()
+	PlayerState.set_player_name(chosen_name)   # persisted — the cast remembers it all game
 	get_tree().change_scene_to_file(FIRST_SCENE)
 
 

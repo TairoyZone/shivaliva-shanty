@@ -273,6 +273,9 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 	if not here.is_empty():
 		parts.append(here)   # environment awareness: the ACTUAL room they're standing in right now
 	parts.append(GameClock.prompt_line())   # TIME OF DAY so greetings match the hour (not always "evening")
+	if not PlayerState.player_name.is_empty():
+		# The player named themselves at New Game — the cast knows + remembers it (permanent, never trims out).
+		parts.append("The traveller before you is named %s — you know them by that name; use it naturally when it fits (don't overuse it)." % PlayerState.player_name)
 	parts.append(ISLAND_GAZETTEER)   # world-map grounding so directions/whereabouts are real, not invented
 	var pronoun_roster : String = _cast_pronouns_block()
 	if not pronoun_roster.is_empty():
@@ -358,7 +361,7 @@ const OFFENSE_HIT : int = 4
 const COLD_OFFENSE_LINES : Array[String] = [
 	"Watch your mouth.", "We're done talking.", "Mind yourself.", "I've nothing to say to that.", "That's enough."]
 
-static func cold_offense_line() -> String:
+func cold_offense_line() -> String:   # instance method (called on the NpcBrain autoload from both paths)
 	return COLD_OFFENSE_LINES[randi() % COLD_OFFENSE_LINES.size()]
 
 ## How long after a duel the NPC treats the result as "just now" in chat (the post-fight beat). Past this, the
