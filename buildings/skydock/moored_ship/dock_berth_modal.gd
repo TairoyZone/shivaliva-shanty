@@ -28,7 +28,7 @@ func _modal_group() -> StringName:
 	return GROUP
 
 func _modal_size() -> Vector2:
-	return Vector2(560.0, 150.0 + 118.0 * float(maxi(PlayerState.owned_ships.size(), 1)))
+	return Vector2(560.0, 360.0)   # width fixed; the HEIGHT is refit to the real content in _render (no dead band)
 
 
 func _build_content() -> void:
@@ -51,12 +51,6 @@ func _render() -> void:
 	if PlayerState.owned_ships.is_empty():   # sold the last hull from this very panel
 		_close()
 		return
-	# Re-fit the panel to the current fleet (Modal sizes it once at open; selling shrinks the list, which
-	# would otherwise leave a blank band). Same formula as _modal_size.
-	if _panel != null:
-		var h : float = 150.0 + 118.0 * float(maxi(PlayerState.owned_ships.size(), 1))
-		_panel.offset_top = -h * 0.5
-		_panel.offset_bottom = h * 0.5
 	for c in _content.get_children():
 		_content.remove_child(c)
 		c.queue_free()
@@ -85,6 +79,22 @@ func _render() -> void:
 	close.pressed.connect(_close)
 	row.add_child(close)
 	_content.add_child(row)
+	_fit_panel_to_content()
+
+
+# Size the panel HEIGHT to the ACTUAL content (no fixed per-ship formula → no dead band below Close, and it
+# re-fits after a sell). Width stays from the base. Deferred one frame so freshly-added children report their
+# final laid-out min size.
+func _fit_panel_to_content() -> void:
+
+	if not is_instance_valid(_panel) or not is_instance_valid(_content):
+		return
+	await get_tree().process_frame
+	if not is_instance_valid(_panel) or not is_instance_valid(_content):
+		return
+	var h : float = _content.get_combined_minimum_size().y + 50.0   # + the panel's content margins + a little air
+	_panel.offset_top = -h * 0.5
+	_panel.offset_bottom = h * 0.5
 
 
 func _ship_card(sid: String) -> Control:
