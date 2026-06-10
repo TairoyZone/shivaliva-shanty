@@ -93,14 +93,39 @@ var _report_btn : Button         # Duty Report button — hidden mid-boarding (i
 var _crew_btn : Button           # Crew Duty button — post crew to stations; hidden mid-boarding like the report
 var _glow : Glow                 # the pulsing halo on the active station — SLIDES between stations (never snaps)
 var _patch_glow : Glow           # a second halo on the Patchworks when the hull's holed
+## Per-class deck SIZE (× the iso projection): your own ship's class scales the whole walkable deck so a
+## skiff feels cramped and a galleon roomy (Troy 2026-06-10). 1.0 on a jobbed run (a stock vessel). Set once
+## in _ready BEFORE the spawn/draw/collision/prop layout so everything scales together; the PLAYER node is
+## never scaled, so they stay normal size — a bigger deck just spreads the stations further apart.
+var _scale : float = 1.0
 
 
-# Iso projection, centred so the deck middle sits on the world origin.
+# Iso projection, centred so the deck middle sits on the world origin. Scaled by the class deck size (_scale)
+# so the whole deck — drawing, hull collision, spawn, station-const fallbacks, crew posts — sizes together.
 func _iso(gx: float, gy: float) -> Vector2:
 
-	return Vector2(
+	return _scale * Vector2(
 		(gx - gy) * TILE_W * 0.5 - float(GW - GH) * TILE_W * 0.25,
 		(gx + gy) * TILE_H * 0.5 - float(GW + GH) * TILE_H * 0.25)
+
+
+# The class deck size: your OWN ship's class on a self-captained run, the stock 1.0 jobbing someone else's.
+func _deck_scale() -> float:
+
+	if PlayerState.voyage_self_captained and not PlayerState.pillage_ship_id.is_empty():
+		return ShipClasses.deck_scale(PlayerState.pillage_ship_id)
+	return 1.0
+
+
+# Scale the placed DeckProp positions to match the iso scale (they're authored at the 1.0 layout). Only the
+# POSITIONS scale — prop size stays player-relative, so a bigger deck spreads the stations further apart
+# (more deck to walk) rather than blowing everything up.
+func _scale_deck_props() -> void:
+
+	if is_equal_approx(_scale, 1.0):
+		return
+	for n in find_children("*", "DeckProp", true, false):
+		(n as Node2D).position *= _scale
 
 
 func _ready() -> void:
@@ -114,6 +139,7 @@ func _ready() -> void:
 	# panel that ran on the way here, or the player can't move/man and the chart won't sail. Self-heal.
 	if get_tree() != null:
 		get_tree().paused = false
+	_scale = _deck_scale()   # BEFORE any _iso call so spawn/draw/collision all share the class size
 	pirate_spawn_position = _iso(SPAWN_G.x, SPAWN_G.y)
 	_seed_demo_route_if_unset()
 	super._ready()                 # spawns the Player + adds the shared Stardust SKY + clouds (BaseLocation)
@@ -122,6 +148,7 @@ func _ready() -> void:
 	_add_hull_collision()
 	_add_crew()
 	_build_ui()
+	_scale_deck_props()   # scale the placed props to the class deck size BEFORE indexing reads their positions
 	_index_stations()   # map the placed DeckProp station nodes -> positions (the deck reads these to interact)
 	_build_glows()      # the pulsing active-station halos (real nodes now — they slide + breathe, see _process)
 	_setup_phase()
@@ -398,7 +425,7 @@ func _nearest_active_station() -> String:
 
 	var here : Vector2 = player.global_position
 	var best : String = ""
-	var best_d : float = INTERACT_RANGE * INTERACT_RANGE
+	var best_d : float = INTERACT_RANGE * INTERACT_RANGE * _scale * _scale   # stations sit further apart on a bigger deck
 	for s in _stations_for_phase():
 		var d : float = here.distance_squared_to(s[1])
 		if d <= best_d:

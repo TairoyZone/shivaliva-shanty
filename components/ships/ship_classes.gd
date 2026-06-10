@@ -17,6 +17,7 @@ const DEFS : Dictionary = {
 		"legs_max": 3,
 		"booty_mult": 1.0,   # hold — scales the whole plunder pool on a self-captained run
 		"moor_scale": 0.62,  # the berthed hull's visual size at the dock (× the prop's ship_scale)
+		"deck_scale": 0.85,  # the WALKABLE voyage deck's size (× the iso projection) — a cramped little skiff
 		"masts": 1,
 		"cannon_rows": [8.0],                      # deck dressing — rail-gun pairs along the hull
 	},
@@ -30,6 +31,7 @@ const DEFS : Dictionary = {
 		"legs_max": 4,
 		"booty_mult": 1.3,
 		"moor_scale": 1.0,
+		"deck_scale": 1.0,
 		"masts": 2,
 		"cannon_rows": [4.5, 8.0, 11.5],
 	},
@@ -43,6 +45,7 @@ const DEFS : Dictionary = {
 		"legs_max": 6,
 		"booty_mult": 1.6,
 		"moor_scale": 1.32,
+		"deck_scale": 1.2,
 		"masts": 3,
 		"cannon_rows": [3.0, 5.5, 8.0, 10.5, 13.0],
 	},
@@ -72,6 +75,12 @@ static func display(ship_id: String) -> String:
 static func max_holes(ship_id: String) -> int:
 
 	return int(get_def(ship_id).get("max_holes", 4))
+
+
+## The walkable voyage deck's size factor for a class (× the iso projection). 1.0 if unknown.
+static func deck_scale(ship_id: String) -> float:
+
+	return float(get_def(ship_id).get("deck_scale", 1.0))
 
 
 static func crew_slots(ship_id: String) -> int:
