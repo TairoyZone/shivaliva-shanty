@@ -17,7 +17,8 @@ var _box : VBoxContainer
 
 func _ready() -> void:
 
-	layer = 15   # above gameplay + the hidden HUD (10), below the Leave button / modals (20+)
+	layer = 22   # ON TOP of gameplay + the hidden HUD (10) + the puzzle Leave button (20) — the fading chat/event
+	             # log shows over everything (Troy 2026-06-10); still below tree-pausing modals (36+)
 	process_mode = Node.PROCESS_MODE_ALWAYS   # keep lines fading even under a tree-pausing modal (the sink card)
 	_box = VBoxContainer.new()
 	# Anchor to the BOTTOM-LEFT corner and grow toward BEGIN so new lines stack UPWARD and the log

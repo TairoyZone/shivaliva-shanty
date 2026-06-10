@@ -40,7 +40,8 @@ var _last_scene : Node = null           # to end a private chat when the scene c
 
 func _ready() -> void:
 
-	layer = 12   # above the world, below the HUD (10? no — HUD is 10); sits with gameplay, hides in puzzles
+	layer = 22   # ON TOP of the HUD (10) + the puzzle Leave button (20) so the summoned bar is never hidden
+	             # behind them (Troy 2026-06-10); still below tree-pausing modals (36+), which suppress the summon
 	process_mode = Node.PROCESS_MODE_PAUSABLE
 	_load_settings()
 	_build_ui()
