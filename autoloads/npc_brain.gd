@@ -89,23 +89,36 @@ func _ready() -> void:
 	_load_config()
 
 
-# Endpoint + secret are overridable from user://settings.cfg so the proxy URL can change per build / per
-# tester without recompiling (the deploy step just writes the URL there). Defaults work for the local proxy.
+# Endpoint + secret + the AI toggle come from config so the proxy URL can change WITHOUT recompiling, in two
+# layers (each only changes the keys it sets — res:// is the base, user:// wins where present):
+#   1. res://npc_chat.cfg     — the RELEASE config BUNDLED in the export, so EVERY player's build reaches your
+#                               deployed proxy (a fresh install has no user://settings.cfg). Gitignored so the
+#                               secret never hits source; copy npc_chat.cfg.example + fill it before exporting.
+#   2. user://settings.cfg    — a per-machine OVERRIDE (a dev's direct key, a tester's own proxy URL).
+# Defaults (no config either place) = the local dev proxy at DEFAULT_ENDPOINT.
 func _load_config() -> void:
 
-	var cfg : ConfigFile = ConfigFile.new()
-	if cfg.load("user://settings.cfg") != OK:
-		return
-	ai_enabled = bool(cfg.get_value("npc_chat", "enabled", true))
-	endpoint = String(cfg.get_value("npc_chat", "endpoint", DEFAULT_ENDPOINT))
-	_secret = String(cfg.get_value("npc_chat", "secret", ""))
-	# DEV-DIRECT key: settings.cfg first, else the SHANTY_NPC_KEY env var (set it once, no terminal). Blank
-	# on a player's machine -> the proxy path. See DEV_DIRECT_URL above.
-	_dev_key = String(cfg.get_value("npc_chat", "dev_api_key", ""))
+	_apply_chat_cfg("res://npc_chat.cfg")     # bundled release config (the deployed proxy for all players)
+	_apply_chat_cfg("user://settings.cfg")    # per-machine override (dev/tester)
+	# DEV-DIRECT key: a last-resort SHANTY_NPC_KEY env var (set it once, no terminal) if no config supplied one.
+	# Blank on a player's machine -> the proxy path. See DEV_DIRECT_URL above.
 	if _dev_key.is_empty():
 		_dev_key = OS.get_environment("SHANTY_NPC_KEY")
-	_dev_url = String(cfg.get_value("npc_chat", "dev_url", DEV_DIRECT_URL))
-	_dev_model = String(cfg.get_value("npc_chat", "dev_model", DEV_DIRECT_MODEL))
+
+
+# Fold one ConfigFile's [npc_chat] section over the CURRENT values — absent keys keep what's already set, so
+# layering res:// then user:// makes res:// the base and user:// the override. Missing file = no-op.
+func _apply_chat_cfg(path: String) -> void:
+
+	var cfg : ConfigFile = ConfigFile.new()
+	if cfg.load(path) != OK:
+		return
+	ai_enabled = bool(cfg.get_value("npc_chat", "enabled", ai_enabled))
+	endpoint = String(cfg.get_value("npc_chat", "endpoint", endpoint))
+	_secret = String(cfg.get_value("npc_chat", "secret", _secret))
+	_dev_key = String(cfg.get_value("npc_chat", "dev_api_key", _dev_key))
+	_dev_url = String(cfg.get_value("npc_chat", "dev_url", _dev_url))
+	_dev_model = String(cfg.get_value("npc_chat", "dev_model", _dev_model))
 
 
 ## Options toggle: enable/disable live AI chat. Persisted to user://settings.cfg; when off, an NPC's "Chat"

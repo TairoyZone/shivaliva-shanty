@@ -56,16 +56,20 @@ curl -X POST https://YOUR-APP.onrender.com/chat \
 
 ## Step 5 — Point the game at it
 
-In **`autoloads/npc_brain.gd`**, set the default endpoint to your Render URL, then export the build:
-```gdscript
-const DEFAULT_ENDPOINT : String = "https://YOUR-APP.onrender.com/chat"
+Copy **`npc_chat.cfg.example`** (repo root) → **`npc_chat.cfg`** and fill in your Render URL (+ the secret if
+you set one):
+```ini
+[npc_chat]
+endpoint="https://YOUR-APP.onrender.com/chat"
+secret="YOUR_SHARED_SECRET"    # leave "" if you didn't set SHARED_SECRET
 ```
-And put the shared secret in the build so the game sends it (per-machine override, no recompile needed):
-`user://settings.cfg` → `[npc_chat]` → `secret = "YOUR_SHARED_SECRET"`. *(Or, for testers only, they can set
-`endpoint` + `secret` in their own settings.cfg instead of you re-exporting.)*
+`npc_chat.cfg` is **bundled into the export** (so every player's build — friends anywhere in the world — reach
+your proxy; `user://settings.cfg` can't do that, a fresh install doesn't have it) and **gitignored** (so the
+secret never hits source). Then export and upload. *(A tester can instead drop their own `endpoint`+`secret`
+in `user://settings.cfg` to override without you re-exporting.)*
 
-> The URL and shared-secret **will** be inside the shipped build — that's expected and fine. The *key* never
-> is. The secret only stops casual drive-by abuse; the rate-limit + daily budget + Step 0 are the real guards.
+> The URL + secret **will** be inside the shipped build — that's expected and fine. The *key* never is (it
+> lives only on Render). The secret only stops casual drive-by abuse; the daily budget + Step 0 are the real guards.
 
 ---
 

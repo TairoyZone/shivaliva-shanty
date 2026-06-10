@@ -4,3 +4,11 @@
 
 # Claude Code harness — transient local state
 .claude/scheduled_tasks.lock
+
+# NPC-chat RELEASE config — bundled in the export but holds your proxy URL/secret; never commit it
+# (copy npc_chat.cfg.example → npc_chat.cfg locally before exporting). The API key never lives here regardless.
+npc_chat.cfg
+
+# Exported builds
+/build/
+/export/

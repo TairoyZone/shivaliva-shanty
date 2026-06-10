@@ -1,0 +1,24 @@
+; Shivaliva Shanty — NPC-chat RELEASE config.  →  Copy this file to `npc_chat.cfg` to activate.
+;
+; WHY this file: the deployed proxy URL must reach EVERY player's build. user://settings.cfg can't do that
+; for friends — it's per-machine, so a fresh install doesn't have it. This file is BUNDLED inside the
+; exported game (res://), so every copy points at your proxy. `npc_chat.cfg` is GITIGNORED, so the secret
+; here never gets committed to source — but it DOES ship inside the build, which is expected and fine. The
+; API KEY never ships anywhere; it lives only as an env var on the proxy host (Render). See proxy/DEPLOY.md.
+;
+; GO LIVE FOR FRIENDS:
+;   1. Deploy the proxy  (proxy/DEPLOY.md — Render, ~10 min; set your DeepSeek key there).
+;   2. Copy this file to `npc_chat.cfg` and fill in the Render URL (+ the secret, if you set one).
+;   3. Export the build (it bundles npc_chat.cfg) and upload to Itch.io.
+
+[npc_chat]
+
+; Your deployed proxy's /chat endpoint — from Render, e.g. https://shivaliva-npc-proxy.onrender.com/chat
+endpoint="https://YOUR-APP.onrender.com/chat"
+
+; The SHARED_SECRET you set on the proxy (Render env var). Leave "" if you didn't set one — fine for a small
+; friend playtest; the daily budget + your capped provider balance are the real cost guards.
+secret=""
+
+; Live AI chat on/off. The in-game Options toggle also writes this (to user://settings.cfg, per machine).
+enabled=true

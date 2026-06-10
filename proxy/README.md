@@ -54,8 +54,9 @@ Node script works (Render, Railway, Fly.io, a small VPS; free tiers exist):
    - `ADMIN_SECRET` — gates the **kill switch** + stats: `POST /admin/disable|enable`, `GET /admin/stats`.
    - `DAILY_TOKEN_BUDGET` / `RATE_LIMIT_RPM` / `IP_DAILY_CAP` / `MAX_TOKENS_CAP` — cost + flood guards.
    - `ALLOWED_ORIGIN` — for an HTML5/web Itch build, set to the page origin (CORS).
-3. Point the game at it: set `DEFAULT_ENDPOINT` in `autoloads/npc_brain.gd` to `https://your-proxy/chat`
-   (and `[npc_chat] secret` in `user://settings.cfg`), then export.
+3. Point the game at it: copy `npc_chat.cfg.example` → `npc_chat.cfg`, set `endpoint` to `https://your-proxy/chat`
+   (+ `secret` if you set one). It's bundled in the export (so every player reaches the proxy) + gitignored.
+   See DEPLOY.md Step 5.
 
 **The real cost ceiling is the provider balance** — make a fresh key and only top up a small amount; the
 in-memory budget/limits reset on restart, but your balance can't. See DEPLOY.md Step 0.
