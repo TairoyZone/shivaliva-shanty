@@ -296,7 +296,9 @@ func start_private_chat(persona: NpcPersonality, npc: Node = null, fallback_line
 	_private_fallback = fallback_lines
 	NpcBrain.enter_chat(persona)
 	_update_scope_chip()
-	PlayerState.log_event("— You begin talking with %s  (%s) —" % [persona.npc_name,
+	# "again" once they remember you (saved history) — the persistence is felt right from the opening line.
+	var verb : String = "pick your talk back up with" if NpcBrain.has_history() else "begin talking with"
+	PlayerState.log_event("— You %s %s  (%s) —" % [verb, persona.npc_name,
 		PlayerState.affinity_tier(persona.npc_name)], SYSTEM_LINE_COLOR)
 	if not _log_open:
 		_toggle_log()              # open the thread so the back-and-forth reads as a chat

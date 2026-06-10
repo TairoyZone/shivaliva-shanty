@@ -688,6 +688,12 @@ signal challenges_changed
 ## the score (fed into chat context so an NPC never denies a defeat it actually suffered + the NPC profile shows
 ## the tally). Mutate ONLY via [method record_battle]. See [[npc-battle-memory]].
 var npc_battle_record : Dictionary = {}
+## Max chat turns kept PER NPC (a cost + save-size guard — the last ~8 exchanges).
+const NPC_CHAT_LOG_CAP : int = 16
+## Persistent per-NPC CHAT HISTORY — {npc_name: Array[{role, content}]} — so a cast member REMEMBERS past
+## conversations across scene changes AND a full reload (Troy 2026-06-10). Bounded to the last NPC_CHAT_LOG_CAP
+## turns; stage-direction openings aren't stored. Read via [method npc_chat_history]; written by [NpcBrain].
+var npc_chat_log : Dictionary = {}
 ## One-shot record of the MOST RECENT duel — {npc, player_won} — set on duel end, NOT persisted (transient,
 ## lives in the autoload across the scene cut back to the overworld). Drives the post-fight banter bubble + a
 ## "this was just now" freshness note in chat. Overwritten by the next duel; cleared on New Game.
@@ -1399,6 +1405,27 @@ func add_affinity(npc_name: String, amount: int) -> void:
 	_save()
 
 
+## The saved chat history with [param npc_name] (a deep copy) — what they remember of past conversations.
+## Empty for an NPC you've never chatted with. See [NpcBrain.enter_chat].
+func npc_chat_history(npc_name: String) -> Array:
+
+	var log : Array = npc_chat_log.get(npc_name, [])
+	return log.duplicate(true)
+
+
+## Persist the chat history with [param npc_name] (bounded to the last NPC_CHAT_LOG_CAP turns). Called by
+## [NpcBrain] after each reply so the conversation survives scene changes + reloads.
+func save_npc_chat(npc_name: String, messages: Array) -> void:
+
+	if npc_name.is_empty():
+		return
+	var trimmed : Array = messages
+	if trimmed.size() > NPC_CHAT_LOG_CAP:
+		trimmed = trimmed.slice(trimmed.size() - NPC_CHAT_LOG_CAP)
+	npc_chat_log[npc_name] = trimmed.duplicate(true)
+	_save()
+
+
 # --- Crew (hire + ranks) — the foundation for "start a crew" ------------
 
 ## Can the player recruit this NPC? Only a CONFIDANT (the design's "can recruit" tier). NOTE: this gates the
@@ -1931,6 +1958,7 @@ func clear_save() -> void:
 	active_favors = {}
 	pending_challenges = []
 	npc_battle_record = {}
+	npc_chat_log = {}
 	recent_duel = {}
 	tournaments_won = 0
 	last_scene = ""
@@ -1981,6 +2009,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "active_favors", active_favors)
 	config.set_value(SAVE_SECTION, "pending_challenges", pending_challenges)
 	config.set_value(SAVE_SECTION, "npc_battle_record", npc_battle_record)
+	config.set_value(SAVE_SECTION, "npc_chat_log", npc_chat_log)
 	config.set_value(SAVE_SECTION, "tournaments_won", tournaments_won)
 	config.set_value(SAVE_SECTION, "last_scene", last_scene)
 	config.set_value(SAVE_SECTION, "last_position_x", last_position.x)
@@ -2023,6 +2052,7 @@ func _load() -> void:
 	active_favors = config.get_value(SAVE_SECTION, "active_favors", {})
 	pending_challenges = config.get_value(SAVE_SECTION, "pending_challenges", [])
 	npc_battle_record = config.get_value(SAVE_SECTION, "npc_battle_record", {})
+	npc_chat_log = config.get_value(SAVE_SECTION, "npc_chat_log", {})
 	tournaments_won = int(config.get_value(SAVE_SECTION, "tournaments_won", 0))
 	last_scene = String(config.get_value(SAVE_SECTION, "last_scene", ""))
 	last_position = Vector2(

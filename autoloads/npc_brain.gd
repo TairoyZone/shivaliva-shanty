@@ -163,11 +163,20 @@ func note_offline() -> void:
 		Color(0.98, 0.7, 0.38))
 
 
-## Begin a fresh conversation with [param persona] (an [NpcPersonality]). Clears prior history.
+## Begin a conversation with [param persona] (an [NpcPersonality]). CONTINUES where you left off — loads this
+## NPC's saved history so they remember past chats across scene changes AND reloads (Troy 2026-06-10). Empty
+## for a first-ever conversation.
 func enter_chat(persona: NpcPersonality) -> void:
 
 	_persona = persona
-	_messages = []
+	_messages = PlayerState.npc_chat_history(persona.npc_name)
+
+
+## True if THIS conversation is a RETURN (the NPC already has saved history with the player) — used by the
+## chat box to greet "again" and by request_opening to pick up rather than re-introduce. Call after enter_chat.
+func has_history() -> bool:
+
+	return not _messages.is_empty()
 
 
 func end_chat() -> void:
@@ -182,8 +191,12 @@ func request_opening() -> void:
 
 	if _persona == null or _busy:
 		return
-	_messages.append({"role": "user",
-		"content": "(A traveller walks up to you.) Greet them in character, in a sentence or two."})
+	# A first meeting gets a fresh greeting; a RETURN (saved history loaded) greets you as a familiar face and
+	# picks up naturally. The stage direction is EPHEMERAL — _persist_history drops it so it never accumulates.
+	var opener : String = "(A traveller walks up to you.) Greet them in character, in a sentence or two."
+	if not _messages.is_empty():
+		opener = "(The traveller you've spoken with before comes back to talk again.) Greet them as a familiar face and pick up naturally — don't repeat an earlier greeting. A sentence or two."
+	_messages.append({"role": "user", "content": opener})
 	_post()
 
 
@@ -648,6 +661,23 @@ func _affinity_block(npc_name: String) -> String:
 
 # Keep the rolling history bounded (cost guard). Trim from the front, then ensure it still starts on a
 # 'user' turn (Claude requires the first message to be the user).
+# Save the conversation so the NPC remembers it next time — across scene changes AND a full reload. Stage-
+# direction openings ("(A traveller walks up…)") are EPHEMERAL and dropped, so they never pile up. PlayerState
+# bounds the stored length. Free: no extra AI call — we just persist the turns we already have.
+func _persist_history() -> void:
+
+	if _persona == null:
+		return
+	var keep : Array = []
+	for m in _messages:
+		var role : String = String(m.get("role", ""))
+		var content : String = String(m.get("content", ""))
+		if role == "user" and content.begins_with("("):
+			continue   # an ephemeral stage-direction opener — never persisted
+		keep.append({"role": role, "content": content})
+	PlayerState.save_npc_chat(_persona.npc_name, keep)
+
+
 func _trim_history() -> void:
 
 	if _messages.size() > HISTORY_MESSAGES:
@@ -690,6 +720,7 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 			if is_duel_proposal(player_lc) and reply_accepts_duel(reply_lc) and not reply_declines_duel(reply_lc):
 				PlayerState.add_challenge(_persona.npc_name)
 	_messages.append({"role": "assistant", "content": reply})
+	_persist_history()   # remember this exchange across scenes + reloads (free — no extra AI call)
 	npc_replied.emit(reply)
 
 
