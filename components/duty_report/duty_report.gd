@@ -133,6 +133,8 @@ static func snapshot(roster: Array, player_score01: float, player_duty: String =
 		if is_player:
 			# Off duty (watched) → the OFF_DUTY sentinel, NOT a 0/Booched rating.
 			idx = rating_index(clampf(player_score01, 0.0, 1.0)) if player_manned else OFF_DUTY
+		elif String(m.get("duty", "")) == "Reserve":
+			idx = OFF_DUTY   # aboard but posted to no station this voyage — off duty, not Booched
 		else:
 			var score : float = clampf(float(m.get("skill", FALLBACK_SKILL)) \
 				+ randf_range(-VARIANCE, VARIANCE), 0.0, 1.0)

@@ -983,10 +983,12 @@ func _duty_station_pos(duty: String) -> Vector2:
 			return _iso(6.4, 4.2)   # a touch off the helm/board point so E never clashes
 		"Sailing":
 			return _iso(6.9, 8.6)
-		"Gunnery":
+		"Combat", "Gunnery":        # the battle station
 			return _iso(1.2, 11.4)
-		"Carpentry":
+		"Repair", "Carpentry":      # the Patchworks
 			return _iso(6.9, 12.4)
+		"Reserve":                  # aboard but off-station — idle amidships
+			return _iso(2.2, 6.6)
 	return _iso(3.0, 6.0)
 
 
@@ -998,10 +1000,12 @@ func _duty_lines(duty: String) -> Array[String]:
 				"When a ship swings in, get to the helm and board them!"]
 		"Sailing":
 			return ["Trimming the sails to catch the drift.", "Keep an eye out — the Stardust doesn't wait."]
-		"Gunnery":
+		"Combat", "Gunnery":
 			return ["Cannons loaded, powder dry.", "Point me at a brigand and I'll do the rest."]
-		"Carpentry":
+		"Repair", "Carpentry":
 			return ["Patching her up where she creaks.", "She'll hold. Mostly."]
+		"Reserve":
+			return ["Ready when you need me.", "Just keeping an eye on things."]
 	return ["Just keeping busy.", "All quiet for now."]
 
 

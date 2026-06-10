@@ -1172,9 +1172,9 @@ func captain_own_voyage() -> String:
 	voyage_ship_t = 0.0
 	voyage_open_holes = start_holes
 	voyage_station_state = {}
-	voyage_stations = {}
 	BoardingMelee.clear()
 	pillage_duty_crew = DutyReport.build_roster_self(aboard)   # only YOUR crew aboard (or just you, solo)
+	sync_voyage_stations_from_roster()   # auto-post them to stations + relabel duties (ONE source of truth)
 	last_duty_report = []
 	return "res://levels/ship_deck/ship_deck.tscn"
 
@@ -1535,6 +1535,7 @@ func set_voyage_station(station: String, npc_name: String) -> void:
 			if String(voyage_stations[k]) == npc_name and k != station:
 				voyage_stations.erase(k)
 		voyage_stations[station] = npc_name
+	_relabel_roster_from_stations()   # keep the deck/report/chat duties in step with the new posting
 	voyage_stations_changed.emit()
 
 
@@ -1542,6 +1543,55 @@ func set_voyage_station(station: String, npc_name: String) -> void:
 func voyage_station_npc(station: String) -> String:
 
 	return String(voyage_stations.get(station, ""))
+
+
+## Which station [param npc_name] is posted to this voyage ("" if none) — the reverse of [method voyage_station_npc].
+func voyage_station_of(npc_name: String) -> String:
+
+	for station in voyage_stations:
+		if String(voyage_stations[station]) == npc_name:
+			return station
+	return ""
+
+
+## ⭐ ONE crew system (audit 2026-06-10): auto-post the aboard crew to the 3 mechanical STATIONS (the best-rated
+## hand per station) AND relabel the roster's duties + per-station skill to match — so what you SEE on deck /
+## in the duty report / in chat IS what actually WORKS the leg, on JOBBED runs too (they used to give zero
+## mechanical benefit). Called on every voyage launch; CrewDutyPanel re-posts re-sync via the relabel.
+func sync_voyage_stations_from_roster() -> void:
+
+	voyage_stations = {}
+	var pool : Array = []
+	for e in pillage_duty_crew:
+		if e is Dictionary and not bool(e.get("is_player", false)) and String(e.get("duty", "")) != DutyReport.CAPTAIN_DUTY:
+			pool.append(String(e.get("name", "")))
+	for station in CrewSkills.STATIONS:
+		if pool.is_empty():
+			break
+		var best : String = ""
+		var best_r : int = -1
+		for nm in pool:
+			var r : int = CrewSkills.rating(String(nm), station)
+			if r > best_r:
+				best_r = r
+				best = String(nm)
+		if not best.is_empty():
+			voyage_stations[station] = best
+			pool.erase(best)
+	_relabel_roster_from_stations()
+
+
+# Relabel each non-player, non-captain roster entry's DUTY + per-station SKILL from voyage_stations, so the
+# deck / duty report / chat describe the crew at the stations they actually work (Reserve = aboard, unposted).
+func _relabel_roster_from_stations() -> void:
+
+	for e in pillage_duty_crew:
+		if not (e is Dictionary) or bool(e.get("is_player", false)) or String(e.get("duty", "")) == DutyReport.CAPTAIN_DUTY:
+			continue
+		var nm : String = String(e.get("name", ""))
+		var station : String = voyage_station_of(nm)
+		e["duty"] = station if not station.is_empty() else "Reserve"
+		e["skill"] = (float(CrewSkills.rating(nm, station)) / 5.0) if not station.is_empty() else 0.0
 
 
 ## The skill rating (1–5) carrying [param station] this voyage — 0 if unmanned or the assigned hand is no
