@@ -350,9 +350,14 @@ var voyage_station_state : Dictionary = {}
 ## though the board (and its running totals) carry straight across legs + boardings.
 var voyage_leg_lift0 : int = 0
 var voyage_leg_swaps0 : int = 0
-## The voyage crew for the DUTY REPORT (built once on Accept): the captain + real cast hands at
-## the stations + you at the Loft. Stable for the whole pillage. Entries: {name,duty,skill,tint,
-## is_player}. The LAST leg's rated snapshot (DutyReport.snapshot): {name,duty,rating_idx,...}.
+## ⭐ THE SINGLE SOURCE OF TRUTH for WHO IS ABOARD this voyage (built once on Accept / on captain_own_voyage):
+## the captain + cast hands at the stations + you at the Loft. Stable for the whole pillage. Entries:
+## {name,duty,skill,tint,is_player}. Reflects the REAL crew — your recruited hands when you self-captain (or
+## just you, sailing solo), the captain's crew when jobbing (see DutyReport.build_roster / build_roster_self).
+## EVERY voyage-crew consumer reads THIS array — the deck (ship_deck `_add_crew`), the DUTY REPORT
+## (DutyReport.snapshot → the LAST leg's rated {name,duty,rating_idx,…}), the BOARDING fighters
+## (BoardingMelee._voyage_ally_personas), and the NPC chat voyage block. Do NOT invent a separate crew
+## roster anywhere — read this one, or solo/crewed/jobbed will drift apart again (Troy 2026-06-10).
 var pillage_duty_crew : Array = []
 var last_duty_report : Array = []
 

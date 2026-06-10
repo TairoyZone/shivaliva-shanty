@@ -102,10 +102,16 @@ func last_result() -> Dictionary:
 # Build a FRESH melee (clears any spent prior one first). The boards are created + parented under THIS
 # autoload + hidden; the view re-parents them in when it opens. Footing (Loft lift pre-buries foes, hull
 # holes pre-bury you) is applied here so it can't double-apply on a re-attach.
-func start(ally_count: int = ALLY_COUNT, foe_count: int = FOE_COUNT) -> void:
+func start() -> void:
 
 	clear()
-	_build_combatants(ally_count, foe_count)
+	# THE voyage crew is ONE roster: PlayerState.pillage_duty_crew (the same source the deck + the duty report
+	# read). The boarding now reads it too — so your fighters match who's ACTUALLY aboard: your recruited crew,
+	# NONE if you sail solo, or the captain's crew when jobbing. No more divergent random rosters (Troy
+	# 2026-06-10: "a proper system… don't want shit mixed up again"). Foes scale to keep the fight fair.
+	var allies : Array = _voyage_ally_personas()
+	var foe_count : int = clampi(1 + allies.size(), 2, FOE_COUNT)
+	_build_combatants(allies, foe_count)
 	for c in _combatants:
 		add_child(c.board)
 		# PAUSABLE (not the autoload's ALWAYS): the boards FREEZE on a real pause (the fresh-fight READY
@@ -149,7 +155,7 @@ func clear() -> void:
 
 # --- Setup -------------------------------------------------------------
 
-func _build_combatants(ally_count: int, foe_count: int) -> void:
+func _build_combatants(ally_personas: Array, foe_count: int) -> void:
 
 	_combatants = []
 	_player = BoardingCombatant.new()
@@ -161,18 +167,34 @@ func _build_combatants(ally_count: int, foe_count: int) -> void:
 	_player.color = SkirmishWeapon.color_for(_player.weapon)
 	_combatants.append(_player)
 
-	# ALLIES = your jobbed crew, from the real cast. FOES = generic sky-brigands / marines.
-	var cast : Array = NpcRegistry.all().duplicate()
-	cast.shuffle()
+	# ALLIES = the hands actually aboard (your crew / the captain's), passed in from the canonical voyage
+	# roster — NOT a fresh random cast. FOES = generic sky-brigands / marines.
 	_foe_names = BRIGAND_NAMES.duplicate()
 	_foe_names.shuffle()
 	_foe_i = 0
-	var ci : int = 0
-	for _a in ally_count:
-		_combatants.append(_make_ai(cast[ci] if ci < cast.size() else null, false))
-		ci += 1
+	for persona in ally_personas:
+		_combatants.append(_make_ai(persona, false))
 	for _f in foe_count:
 		_combatants.append(_make_ai(null, true))   # generic brigands — NOT the friendly cast
+
+
+# Your boarding crew = the non-player hands actually aboard this voyage, read from the ONE canonical roster
+# (PlayerState.pillage_duty_crew). A SOLO self-captained run has none — you fight alone. Falls back to a few
+# random cast ONLY when there's no voyage roster at all (a standalone boarding test), so the team fight stays
+# testable. THE single source of truth — the deck (_add_crew) + duty report read the same array.
+func _voyage_ally_personas() -> Array:
+
+	var out : Array = []
+	for e in PlayerState.pillage_duty_crew:
+		if e is Dictionary and not bool(e.get("is_player", false)):
+			var p : NpcPersonality = NpcRegistry.by_name(String(e.get("name", "")))
+			if p != null:
+				out.append(p)
+	if PlayerState.pillage_duty_crew.is_empty():
+		var cast : Array = NpcRegistry.all().duplicate()
+		cast.shuffle()
+		out = cast.slice(0, ALLY_COUNT)   # standalone test only — a real voyage always has a roster
+	return out
 
 
 func _make_ai(profile: NpcPersonality, enemy: bool) -> BoardingCombatant:
