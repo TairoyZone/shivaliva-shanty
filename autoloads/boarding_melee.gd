@@ -33,6 +33,14 @@ const WIN_BONUS : int = 1000
 const ALLY_COUNT : int = 3
 const FOE_COUNT : int = 4
 
+## DEFEND behavior (Troy 2026-06-10): an AI fighter may shield a crewmate in real danger INSTEAD of attacking
+## — a same-side target makes _on_cleared call board.relieve() (un-bury them; the mechanism already existed,
+## player-only, now the AI can choose it too). A crewmate counts as "in danger" at this stack height (of 20);
+## a fully DEFENSIVE fighter (aggression 0) shields a deep mate up to MAX_DEFEND_CHANCE of the time, scaling
+## down with aggression. So aggressive NPCs press the attack, cautious ones cover the crew.
+const DEFEND_DANGER_ROWS : int = 13
+const MAX_DEFEND_CHANCE : float = 0.6
+
 ## The enemy crew is GENERIC (sky-brigands / marines), NOT the friendly cast — red names + menacing
 ## tints make "these are opponents" read instantly. Allies are your jobbed crew (the real cast).
 const BRIGAND_NAMES : Array = [
@@ -320,14 +328,16 @@ func _on_cleared(count: int, src: BoardingCombatant) -> void:
 		h = clampi(roundi(float(base) * sc), 0, MAX_GARBAGE_ROWS)
 	if h <= 0:
 		return
-	# Re-pick only if our target is gone — a SAME-SIDE target is a deliberate DEFEND (player-only; the
-	# AI's _pick_target_for always returns a cross-side foe).
+	# Re-pick only if our target is gone — a SAME-SIDE target is a deliberate DEFEND (the player can pick one,
+	# and now _pick_target_for lets a cautious AI choose one too: un-burying a crewmate via relieve below).
 	if src.target == null or not src.target.alive:
 		src.target = _pick_target_for(src)
 	if src.target == null:
 		return
 	if src.target.enemy == src.enemy:
 		src.target.board.relieve(h)   # defending a crewmate — un-bury THEM
+		if _player_present:
+			PlayerState.log_event("%s shields %s" % [src.cname, src.target.cname], Color(0.58, 0.84, 1.0))
 	else:
 		var atk : Dictionary = SkirmishWeapon.make_attack(src.weapon, h, src.target.board, count)
 		src.target.board.receive_attack(atk["shape"], atk["col"], atk["color"], atk["decay"])
@@ -338,6 +348,11 @@ func _on_cleared(count: int, src: BoardingCombatant) -> void:
 # leans only break near-ties: foes lean toward the player, mates toward the tallest stack.
 func _pick_target_for(src: BoardingCombatant) -> BoardingCombatant:
 
+	# DEFEND DECISION: shield a crewmate who's genuinely deep instead of attacking — a defensive fighter (low
+	# aggression) does it more. A same-side target makes _on_cleared call relieve() to un-bury them.
+	var ward : BoardingCombatant = _teammate_to_defend(src)
+	if ward != null and randf() < _defend_chance(src):
+		return ward
 	var opp : Array = _alive(not src.enemy)
 	if opp.is_empty():
 		return null
@@ -373,6 +388,28 @@ func _stack_height(board: SkirmishBoard) -> int:
 			if int(g[r][col]) >= 0:
 				return g.size() - r
 	return 0
+
+
+# The same-side crewmate in the MOST danger (tallest stack, at/above DEFEND_DANGER_ROWS) that an AI would
+# shield — else null. Excludes src (you cover OTHERS this way, not yourself).
+func _teammate_to_defend(src: BoardingCombatant) -> BoardingCombatant:
+
+	var worst : BoardingCombatant = null
+	var worst_h : int = DEFEND_DANGER_ROWS
+	for m in _alive(src.enemy):   # _alive(flag) = combatants on that side; src.enemy = src's OWN side
+		if m == src:
+			continue
+		var h : int = _stack_height(m.board)
+		if h >= worst_h:
+			worst_h = h
+			worst = m
+	return worst
+
+
+# How readily this fighter defends vs attacks — a DEFENSIVE (low-aggression) fighter shields more.
+func _defend_chance(src: BoardingCombatant) -> float:
+
+	return clampf((1.0 - src.aggr) * MAX_DEFEND_CHANCE, 0.0, MAX_DEFEND_CHANCE)
 
 
 # --- KO / win ----------------------------------------------------------
