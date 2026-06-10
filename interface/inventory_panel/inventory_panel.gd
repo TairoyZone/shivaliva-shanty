@@ -832,18 +832,32 @@ func _refresh() -> void:
 		return
 	if _grid == null:
 		return
-	# Weapon equip slots — click one to equip it for your boarding/duel attacks.
+	# ONE equip slot = the weapon in hand (empty = bare fists). Owned-but-unequipped weapons live in the
+	# BACKPACK below; equipping pulls one up here, unequipping (click it again) drops it back. (Troy 2026-06-10)
 	if _weapon_bar != null:
 		for child in _weapon_bar.get_children():
 			child.queue_free()
-		for wid in PlayerState.owned_weapons:
-			_weapon_bar.add_child(_make_weapon_slot(String(wid)))
-	# Backpack grid.
+		_weapon_bar.add_child(_make_weapon_slot(PlayerState.equipped_weapon))
+	# Backpack grid = your real items PLUS every owned weapon you're NOT holding (each fills a slot), padded
+	# to capacity. A bought weapon sits here until equipped; unequipping returns it here.
 	for child in _grid.get_children():
 		child.queue_free()
-	var inv : Array = PlayerState.inventory
-	for slot in inv:
-		_grid.add_child(_make_slot(slot))
+	var cells : Array = []
+	for slot in PlayerState.inventory:
+		if not (slot as Dictionary).is_empty():
+			cells.append({"item": slot})
+	for wid in PlayerState.owned_weapons:
+		var w : String = String(wid)
+		if w != SkirmishWeapon.DEFAULT_WEAPON and w != PlayerState.equipped_weapon:
+			cells.append({"weapon": w})
+	var total : int = maxi(PlayerState.inventory.size(), cells.size())
+	for i in total:
+		if i >= cells.size():
+			_grid.add_child(_make_slot({}))            # an empty slot
+		elif cells[i].has("weapon"):
+			_grid.add_child(_make_backpack_weapon(String(cells[i]["weapon"])))
+		else:
+			_grid.add_child(_make_slot(cells[i]["item"]))
 
 
 func _make_slot(slot: Dictionary) -> Control:
@@ -923,6 +937,29 @@ func _make_weapon_slot(weapon_id: String) -> Control:
 	name_l.custom_minimum_size = Vector2(SLOT_SIZE, 0.0)
 	cell.add_child(name_l)
 	return cell
+
+
+# A backpack cell holding an UNEQUIPPED weapon (icon only, like an item). Click to equip it — it moves up
+# to the Weapon slot above (and whatever was equipped drops back down here). Same square look as an item slot.
+func _make_backpack_weapon(weapon_id: String) -> Control:
+
+	var panel : Panel = Panel.new()
+	panel.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
+	panel.add_theme_stylebox_override("panel", _slot_style(true))
+	panel.tooltip_text = "%s\n%s\nClick to equip" % [SkirmishWeapon.display_name(weapon_id),
+		String(SkirmishWeapon.DESCRIPTIONS.get(weapon_id, ""))]
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.gui_input.connect(_on_weapon_input.bind(weapon_id))   # click → equip (it's not the held one)
+	var icon : WeaponIcon = WeaponIcon.new()
+	icon.weapon_id = weapon_id
+	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	icon.offset_left = 8.0
+	icon.offset_top = 8.0
+	icon.offset_right = -8.0
+	icon.offset_bottom = -8.0
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(icon)
+	return panel
 
 
 func _on_weapon_input(event: InputEvent, weapon_id: String) -> void:
