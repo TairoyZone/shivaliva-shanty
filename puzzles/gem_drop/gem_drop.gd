@@ -75,6 +75,13 @@ func _ready() -> void:
 		# Personalize the turn indicator — "GODFREY THINKING…" rather
 		# than the generic "AI THINKING…".
 		_ai_turn_label.text = "▲  %s THINKING…" % _opponent_short_name().to_upper()
+		# Make the opponent CHAT-REACHABLE + situationally aware — the poker hook, now on the gem table (Troy
+		# 2026-06-10). In the "npc" group so the chat scope menu + RoomChat find them; the SCENE feeds the live
+		# board via npc_chat_context below. Replies float near their score panel; the chat log carries the talk.
+		var chat : OpponentChat = OpponentChat.new()
+		add_child(chat)
+		chat.setup(_opponent)
+		chat.position = Vector2(1100.0, 120.0)   # near the opponent's top-right score panel
 	_board.scores_changed.connect(_on_scores_changed)
 	_board.round_advanced.connect(_on_round_advanced)
 	_board.round_clearing.connect(_on_round_clearing)
@@ -108,6 +115,32 @@ func _opponent_short_name() -> String:
 func _opponent_full_name() -> String:
 
 	return _opponent.npc_name if _opponent != null else "Rival"
+
+
+# Live GEM DROP state for a chatting opponent — situational awareness, the poker hook on the gem table (Troy
+# 2026-06-10). Open board, so nothing's hidden: the asker is the AI opponent (the only NPC here). NpcBrain
+# folds this into their chat prompt. See [[npc-situational-awareness]].
+func npc_chat_context(_asker: String) -> String:
+
+	if _board == null:
+		return ""
+	var human : int = GemDropBoard.HUMAN_PLAYER
+	var you : int = 1 - human   # the opponent asking = the AI seat
+	var lines : PackedStringArray = PackedStringArray()
+	lines.append("GEM DROP — you're mid-match against the traveller right now, a turn-based duel on an OPEN board (you both see everything). React like a player at the game.")
+	lines.append("Round %d, best of 4 — first to %d points takes the round." % [_board.round_number, _board.round_target])
+	lines.append("This round: you %d, the traveller %d." % [_board.player_scores[you], _board.player_scores[human]])
+	lines.append("Rounds won so far: you %d, the traveller %d." % [_board.rounds_won[you], _board.rounds_won[human]])
+	lines.append("It's YOUR turn to drop a gem." if _board.current_player == you else "It's the traveller's turn — you're waiting on them.")
+	var yt : int = _board.total_scores[you]
+	var tt : int = _board.total_scores[human]
+	if yt > tt:
+		lines.append("You're ahead on total points (%d to %d)." % [yt, tt])
+	elif tt > yt:
+		lines.append("You're behind on total points (%d to %d) — they've got the edge." % [yt, tt])
+	else:
+		lines.append("You're level on total points (%d each)." % yt)
+	return "\n".join(lines)
 
 
 func _on_round_advanced(new_round: int, new_target: int) -> void:

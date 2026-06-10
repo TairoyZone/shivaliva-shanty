@@ -66,6 +66,13 @@ func _ready() -> void:
 	super._ready()
 	_player_weapon = PlayerState.equipped_weapon   # what you've equipped in the inventory
 	_opponent_name = _resolve_opponent()
+	# Chat-reachable + situationally aware foe — the poker hook in the duel too (Troy 2026-06-10). The scope
+	# menu / RoomChat find them in the "npc" group; the SCENE feeds the live duel via npc_chat_context below.
+	if _opponent_profile != null:
+		var chat : OpponentChat = OpponentChat.new()
+		add_child(chat)
+		chat.setup(_opponent_profile)
+		chat.position = Vector2(960.0, 70.0)   # up top, between the two boards
 	_layout_boards()
 	_opponent_board.set_ai_controlled(true, _opponent_skill)
 	_player_board.lines_cleared.connect(_on_player_cleared)
@@ -420,3 +427,25 @@ func _resolve_opponent() -> String:
 		return _opponent_profile.npc_name
 	# No cast at all — fall back to the member defaults (skill/aggression 0.5).
 	return "Sparring Partner"
+
+
+# Live SKIRMISH DUEL state for a chatting foe — situational awareness, the poker hook in the duel (Troy
+# 2026-06-10). Both boards are on-screen, so nothing's hidden: who's burying whom via the garbage exchange.
+# The asker is the opponent (the only NPC here). NpcBrain folds this in. See [[npc-situational-awareness]].
+func npc_chat_context(_asker: String) -> String:
+
+	if _opponent_board == null or _player_board == null:
+		return ""
+	var lines : PackedStringArray = PackedStringArray()
+	lines.append("SKIRMISH — you're in a one-on-one block-stacking DUEL with the traveller right now: clear lines to dump garbage on the other board; whoever tops out first loses. React like a fighter mid-bout (a little trash talk fits).")
+	lines.append("You've dumped %d garbage row%s on the traveller; they've dumped %d on you." % [
+		_opp_lines_sent, "" if _opp_lines_sent == 1 else "s", _lines_sent])
+	if _opp_lines_sent > _lines_sent:
+		lines.append("You've got the upper hand — piling the pressure on them.")
+	elif _lines_sent > _opp_lines_sent:
+		lines.append("You're on the back foot — they're burying your board faster than you're theirs.")
+	else:
+		lines.append("It's neck and neck so far.")
+	if _duel_over:
+		lines.append("The duel's just ended.")
+	return "\n".join(lines)
