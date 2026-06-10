@@ -133,6 +133,10 @@ function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
   res.setHeader("Access-Control-Allow-Headers", "content-type, x-shanty-key");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  // A cross-origin-ISOLATED page (itch's "SharedArrayBuffer support" sets COEP: require-corp, needed for the
+  // threaded Godot web build) blocks every cross-origin response that doesn't explicitly opt in. Without this
+  // header the WEB build's chat fetch is dropped by the browser → "AI offline" even though the proxy is up.
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
 }
 function sendJson(res, code, obj, extra) {
   if (res.headersSent || res.writableEnded) return;
