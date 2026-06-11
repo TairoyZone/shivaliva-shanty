@@ -1657,9 +1657,9 @@ func is_sweetheart(npc_name: String) -> bool:
 ## Your current Sweetheart's name, or "" if single (monogamy is enforced at the vow — only ever one).
 func current_sweetheart() -> String:
 
-	for name in npc_romance:
-		if int(npc_romance[name]) >= ROMANCE_STAGES.size() - 1:
-			return String(name)
+	for who in npc_romance:
+		if int(npc_romance[who]) >= ROMANCE_STAGES.size() - 1:
+			return String(who)
 	return ""
 
 
