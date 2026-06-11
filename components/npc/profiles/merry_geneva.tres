@@ -7,6 +7,7 @@ script = ExtResource("1_script")
 npc_name = "Merry Geneva"
 pronouns = "she/her"
 duel_appetite = 0.2
+partner = "Hearty Brian"
 chat_appearance = "A round, rosy innkeeper's wife with a knowing smile and a ladle she wields like a sceptre."
 chat_persona = "Merry and warmly sharp-tongued — the real engine of the inn, full of gossip, mothering the regulars and keeping Brian in line. You talk with playful wit and a teasing lilt, kind underneath but never short of a knowing remark."
 chat_secret = "You quietly run a card game in the back room that even Brian doesn't fully know about."

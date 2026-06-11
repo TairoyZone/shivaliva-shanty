@@ -105,6 +105,13 @@ const MIN_AFFINITY : int = -100
 ## Crew ranks (low → high) the player promotes a recruit through; recruiting needs Confidant rapport.
 const CREW_RANKS : Array[String] = ["Deckhand", "Crewmate", "Officer", "First Mate"]
 const RECRUIT_MIN_AFFINITY : int = 80
+## Romance — the "Sweethearts" track riding ON TOP of affinity (never overloads it). Court a romanceable, single
+## NPC at Friend (50); make the irreversible monogamous Sweetheart vow at Confidant (80). Like crew, these gate
+## the MOMENT of each advance only — the bond persists through later rapport dips (earn-and-keep). Stage = an
+## index into [constant ROMANCE_STAGES]: 0 none / 1 Fond / 2 Smitten / 3 Sweetheart.
+const COURT_MIN_AFFINITY : int = 50
+const VOW_MIN_AFFINITY : int = 80
+const ROMANCE_STAGES : Array[String] = ["", "Fond", "Smitten", "Sweetheart"]
 
 # --- Puzzle mastery (per-puzzle proficiency ladder) --------------------
 ## Reskin of YPP's per-puzzle "Standing" — but ABSOLUTE + non-decaying +
@@ -705,6 +712,12 @@ var npc_favor_done : Dictionary = {}
 ## [constant RECRUIT_MIN_AFFINITY]), per [constant AFFINITY_TIERS]' design note.
 var crew : Dictionary = {}
 signal crew_changed
+
+## Your ROMANCE track — npc_name → stage INDEX into [constant ROMANCE_STAGES]. A SEPARATE axis from rapport:
+## you climb it by TALKING (the AI warms in-character) + a deterministic Sweetheart vow. Monogamous at the vow
+## (only ever one Sweetheart). Persisted. See the Sweethearts design / [[npc-romance]].
+var npc_romance : Dictionary = {}
+signal romance_changed(npc_name: String, stage: int)
 
 ## Favours the player has ACCEPTED but not yet turned in (name → {item,
 ## amount}). Persisted. Surfaced in the Objectives log via
@@ -1608,6 +1621,99 @@ func cycle_crew_rank(npc_name: String, dir: int) -> String:
 	return crew_rank(npc_name)
 
 
+# --- Romance (the "Sweethearts" track — rides on affinity, never overloads it) ---
+
+## This NPC's romance stage index (0 = none).
+func romance_stage(npc_name: String) -> int:
+
+	return int(npc_romance.get(npc_name, 0))
+
+
+## The stage NAME ("", "Fond", "Smitten", "Sweetheart").
+func romance_stage_name(npc_name: String) -> String:
+
+	return ROMANCE_STAGES[clampi(romance_stage(npc_name), 0, ROMANCE_STAGES.size() - 1)]
+
+
+## True once the monogamous Sweetheart vow is made with this NPC.
+func is_sweetheart(npc_name: String) -> bool:
+
+	return romance_stage(npc_name) >= ROMANCE_STAGES.size() - 1
+
+
+## Your current Sweetheart's name, or "" if single (monogamy is enforced at the vow — only ever one).
+func current_sweetheart() -> String:
+
+	for name in npc_romance:
+		if int(npc_romance[name]) >= ROMANCE_STAGES.size() - 1:
+			return String(name)
+	return ""
+
+
+## Can the player START courting this NPC? Friend-tier rapport + not already on the track. Whether the NPC is
+## ROMANCEABLE + single (romance_appetite > 0, no partner) lives on the .tres + is checked at the menu/AI layer;
+## this is the rapport gate only. Mirrors [method can_recruit].
+func can_court(npc_name: String) -> bool:
+
+	return romance_stage(npc_name) == 0 and get_affinity(npc_name) >= COURT_MIN_AFFINITY
+
+
+## Nudge the romance stage up one (the AI's soft signal: none → Fond → Smitten). CAPS at Smitten — the final
+## Sweetheart vow is a DETERMINISTIC player action ([method become_sweetheart]), never an AI advance. Re-checks
+## the rapport gate so pretty words alone can't force it. Emits [signal romance_changed] + persists; returns the new stage.
+func advance_romance(npc_name: String) -> int:
+
+	if npc_name.is_empty() or get_affinity(npc_name) < COURT_MIN_AFFINITY:
+		return romance_stage(npc_name)
+	var capped : int = ROMANCE_STAGES.size() - 2   # Smitten — never the Sweetheart vow
+	var next_stage : int = mini(romance_stage(npc_name) + 1, capped)
+	if next_stage == romance_stage(npc_name):
+		return next_stage
+	npc_romance[npc_name] = next_stage
+	romance_changed.emit(npc_name, next_stage)
+	_save()
+	return next_stage
+
+
+## Make the monogamous Sweetheart VOW — the one irreversible beat, a DETERMINISTIC player confirm (never an AI
+## call). Requires Confidant rapport. Returns false if you already have a DIFFERENT Sweetheart (break up first —
+## the UI confirms that). Emits [signal romance_changed] + persists on success.
+func become_sweetheart(npc_name: String) -> bool:
+
+	if npc_name.is_empty() or get_affinity(npc_name) < VOW_MIN_AFFINITY:
+		return false
+	var existing : String = current_sweetheart()
+	if existing != "" and existing != npc_name:
+		return false   # already spoken for — leave the first (the UI handles the confirm)
+	npc_romance[npc_name] = ROMANCE_STAGES.size() - 1
+	romance_changed.emit(npc_name, romance_stage(npc_name))
+	_save()
+	return true
+
+
+## End the romance with this NPC — an explicit player choice (romance NEVER decays on its own). Clears the
+## stage; rapport is untouched (you can stay friends). Emits [signal romance_changed] + persists.
+func break_up(npc_name: String) -> void:
+
+	if npc_romance.erase(npc_name):
+		romance_changed.emit(npc_name, 0)
+		_save()
+
+
+## Directly set a romance stage (migrations / debug seeding). Clamps to the ladder; 0 clears.
+func set_romance_stage(npc_name: String, stage: int) -> void:
+
+	if npc_name.is_empty():
+		return
+	var s : int = clampi(stage, 0, ROMANCE_STAGES.size() - 1)
+	if s == 0:
+		npc_romance.erase(npc_name)
+	else:
+		npc_romance[npc_name] = s
+	romance_changed.emit(npc_name, s)
+	_save()
+
+
 # --- Voyage duty-stations (assign crew to a station; their skill carries it) ---
 
 ## How many of YOUR crew this voyage's ship can berth (the class "crew slots" stat on a self-captained
@@ -2135,6 +2241,7 @@ func clear_save() -> void:
 	npc_affinity = {}
 	npc_favor_done = {}
 	crew = {}
+	npc_romance = {}
 	active_favors = {}
 	pending_challenges = []
 	npc_battle_record = {}
@@ -2189,6 +2296,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "npc_affinity", npc_affinity)
 	config.set_value(SAVE_SECTION, "npc_favor_done", npc_favor_done)
 	config.set_value(SAVE_SECTION, "crew", crew)
+	config.set_value(SAVE_SECTION, "npc_romance", npc_romance)
 	config.set_value(SAVE_SECTION, "active_favors", active_favors)
 	config.set_value(SAVE_SECTION, "pending_challenges", pending_challenges)
 	config.set_value(SAVE_SECTION, "npc_battle_record", npc_battle_record)
@@ -2237,6 +2345,7 @@ func _load() -> void:
 	npc_affinity = config.get_value(SAVE_SECTION, "npc_affinity", {})
 	npc_favor_done = config.get_value(SAVE_SECTION, "npc_favor_done", {})
 	crew = config.get_value(SAVE_SECTION, "crew", {})
+	npc_romance = config.get_value(SAVE_SECTION, "npc_romance", {})
 	active_favors = config.get_value(SAVE_SECTION, "active_favors", {})
 	pending_challenges = config.get_value(SAVE_SECTION, "pending_challenges", [])
 	npc_battle_record = config.get_value(SAVE_SECTION, "npc_battle_record", {})

@@ -315,6 +315,12 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 		parts.append("A secret you hold (do NOT volunteer it; only hint at it, or reveal it, if the player "
 			+ "pointedly digs for it — and the more you trust them, the more willing you are): "
 			+ persona.chat_secret)
+	if include_secret:
+		# Romance is PRIVATE — only on the include_secret path, so an ambient overhear never surfaces the
+		# player's love life (hidden-info-safe, exactly like the secret above).
+		var romance : String = _romance_block(persona)
+		if not romance.is_empty():
+			parts.append(romance)
 	parts.append(_affinity_block(persona.npc_name))
 	var battle : String = _battle_block(persona.npc_name)
 	if not battle.is_empty():
@@ -680,6 +686,34 @@ func _affinity_block(npc_name: String) -> String:
 		+ "never sees the tag; it marks that they've soured you). Be honest, not touchy: friendly banter, jokes "
 		+ "and teasing are NOT offense. The lower your rapport already is, the shorter your patience runs.")
 	return block
+
+
+## The ROMANCE clause — appended ONLY on the private (include_secret) path so an ambient overhear can never leak
+## the player's love life. (1) a PARTNERED/married NPC → a faithful deflection naming their partner (the REAL
+## guard: appetite 0 only OMITS the openness clause; an agreeable model can still be coaxed to flirt without an
+## ACTIVE decline); (2) an ACTIVE romance with this traveller → play the stage's warmth; (3) romanceable + single,
+## no romance yet → a light openness so a courtship CAN bloom over time. Returns "" when none apply.
+func _romance_block(persona: NpcPersonality) -> String:
+
+	if not persona.partner.is_empty():
+		return ("ROMANCE: You are happily and faithfully partnered to %s, and devoted to them. If the traveller "
+			+ "flirts with you or makes a romantic advance, decline it warmly, kindly and without wavering — "
+			+ "mention %s if it helps — and never reciprocate or lead them on.") % [persona.partner, persona.partner]
+	match PlayerState.romance_stage(persona.npc_name):
+		1:
+			return ("ROMANCE: A FONDNESS is growing between you and this traveller — you're glad of their company, "
+				+ "warmer and more personal with them than with others. Let it show gently; never force it.")
+		2:
+			return ("ROMANCE: You are SMITTEN with this traveller — your heart leans toward them. Be openly warm, a "
+				+ "touch flirtatious and affectionate, glad of every visit; speak like someone falling for them.")
+		3:
+			return ("ROMANCE: This traveller is your SWEETHEART — you are devoted to them. Speak with open love, "
+				+ "warmth and tenderness, like talking to the one you've given your heart to.")
+	if persona.romance_appetite > 0.0:
+		return ("ROMANCE: You are single and open to love. If THIS traveller is genuinely charming and kind and "
+			+ "courts your affection over time, you may find yourself warming to them — let a real connection grow "
+			+ "naturally from how they treat you; never instant, never forced.")
+	return ""
 
 
 # Keep the rolling history bounded (cost guard). Trim from the front, then ensure it still starts on a

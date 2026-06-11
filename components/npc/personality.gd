@@ -108,6 +108,13 @@ extends Resource
 ## At 0 the duel marker is omitted from the prompt entirely, so they cannot start a fight. See
 ## [NpcBrain._duel_clause]; the marker is stripped before display + filed as an Ayo! challenge.
 @export_range(0.0, 1.0) var duel_appetite : float = 0.12
+## ROMANCEABLE? 0.0 = not romanceable (the default — nobody is courtable until you deliberately raise this).
+## Above 0 = single + open to a courtship, biasing how readily they warm to one in chat (the AI's [[SMITTEN]]
+## nudge). See [NpcBrain._romance_block].
+@export_range(0.0, 1.0) var romance_appetite : float = 0.0
+## If set, this NPC is already PARTNERED to the named NPC (e.g. Brian ↔ Merry Geneva) — OFF-LIMITS: courtship is
+## hidden + the AI faithfully declines any advance, naming the partner. Canon/flavour, never a gameplay block.
+@export var partner : String = ""
 ## Pronouns this NPC goes by — folded into the chat prompt as a cast roster so the OTHER NPCs refer to them
 ## correctly (the AI otherwise guesses, and guesses wrong). See [NpcBrain._cast_pronouns_block].
 @export_enum("he/him", "she/her", "they/them") var pronouns : String = "they/them"
