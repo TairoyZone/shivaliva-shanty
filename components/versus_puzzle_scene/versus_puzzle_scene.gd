@@ -75,16 +75,16 @@ func _active_mood_note(asker: String) -> String:
 # ── Talk-influence seam (no-ops until the NpcMood autoload ships) ────────────────────────────────────────
 # The shared accessor every concrete AI reads. Sign convention: + = rattled (toward blunder/looser),
 # − = confident / steely. 0 when there's no live mood. Read it on the MAIN thread (it lazily clears expiries).
-func mood_bias(name: String) -> float:
-	return NpcMood.bias(name)
+func mood_bias(npc: String) -> float:
+	return NpcMood.bias(npc)
 
 
 ## Tick the opponent's mood once, at the AI decision point (ages it one step toward neutral).
-func tick_opponent_mood(name: String) -> void:
-	NpcMood.tick(name)
+func tick_opponent_mood(npc: String) -> void:
+	NpcMood.tick(npc)
 
 
-## Per-game AI-biasing hook: override to fold `mood_bias(name)` into your own AI knobs, and CALL it at your
-## AI decision point (per active opponent for multi-seat games). The default just ticks (a no-op today).
-func _apply_opponent_mood(name: String) -> void:
-	tick_opponent_mood(name)
+## Per-game AI-biasing hook: override to fold `mood_bias(npc)` into your own AI knobs, and CALL it at your AI
+## decision point (per active opponent for multi-seat games). The default just ticks (a no-op today).
+func _apply_opponent_mood(npc: String) -> void:
+	tick_opponent_mood(npc)
