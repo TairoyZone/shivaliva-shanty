@@ -333,9 +333,11 @@ func _fire(r: Dictionary, others: PackedStringArray, token: int) -> void:
 	slot["token"] = token
 	slot["answer"] = answer
 	slot["fallback"] = (node.dialog_lines if "dialog_lines" in node else [])
-	# Instant "…" feedback above the NPC the moment we dispatch, so a reply never reads as dead air; the real
-	# line REPLACES it (see _on_slot_done). If they end up (silent), the dots just fade — "considered, stayed quiet".
-	slot["thinking"] = SpeechBubble.say(node, "…") if is_instance_valid(node) else null
+	# Instant "…" feedback above the NPC the moment we dispatch, so a reply never reads as dead air; the real line
+	# REPLACES it (see _on_slot_done). ONLY for an ADDRESSED responder — they always resolve to a line (a reply or
+	# a canned fallback). An OVERHEARD NPC shows NO dots: it speaks or stays quiet invisibly, so the player never
+	# sees a "…" that resolves to nothing (Troy 2026-06-11: that "about to reply → never replies" read as broken).
+	slot["thinking"] = SpeechBubble.say(node, "…") if (answer and is_instance_valid(node)) else null
 	var system : String = NpcBrain.compose_system(persona, false)   # ambient: no secret, saves tokens
 	var user : String = _user_turn(answer, others, _short(persona.npc_name))
 	var payload : Dictionary = NpcBrain.build_payload(system, [{"role": "user", "content": user}])

@@ -44,7 +44,11 @@ const WORLD_RULES : String = (
 	+ "('I'm <name>', 'my name is <name>'), that is THEIR OWN name — accept it, remember it, and use it. Names "
 	+ "repeat in the sky: a visitor may share a name with a local (there's a smith called Cinder Troy, for "
 	+ "instance). NEVER assume they mean that local, never think they're confusing you with someone, and never "
-	+ "correct a person about their own name.")
+	+ "correct a person about their own name. "
+	+ "Also: DON'T invent specific PRICES, COSTS, or ITEMS for a trade or game you don't run yourself. If you're "
+	+ "not sure what something costs or how it works, point the traveller to whoever runs it ('that's Cinder "
+	+ "Troy's forge — ask him there') instead of guessing a number or making up an item. Being vague beats being "
+	+ "wrong; the rock's economy is real.")
 
 # HOW THE CAST TALKS — the single biggest lever on voice. The setting is sky-pirate, but the PEOPLE are plain,
 # modern, distinct humans. This forbids the generic "ahoy/ye/matey" dialect the model defaults to, sets a low
