@@ -32,7 +32,6 @@ var _sfx : Dictionary = {
 	"ko": preload("res://audio/sfx/ko.wav"),
 	"pain": preload("res://audio/sfx/pain.wav"),
 	"laser": preload("res://audio/sfx/laser.wav"),
-	"whoosh2": preload("res://audio/sfx/whoosh2.ogg"),
 	"explosion": preload("res://audio/sfx/explosion.ogg"),
 }
 
@@ -51,6 +50,9 @@ var _current_music_vol : float = -9.0
 const SETTINGS_PATH : String = "user://settings.cfg"
 var music_enabled : bool = true
 var sfx_enabled : bool = true
+## 0..1 volume multipliers layered on top of the per-sound base levels — driven by the Options sliders, persisted.
+var music_volume : float = 1.0
+var sfx_volume : float = 1.0
 
 
 func _ready() -> void:
@@ -79,14 +81,14 @@ func _ready() -> void:
 # Fire a one-shot SFX by name (no-op if unknown). A little random pitch per play kills repetition fatigue.
 func play_sfx(snd: String, volume_db: float = 0.0, pitch_jitter: float = 0.07) -> void:
 
-	if not sfx_enabled:
+	if not sfx_enabled or sfx_volume <= 0.0:
 		return
 	if _sfx_player == null or not _sfx.has(snd):
 		return
 	var pb : AudioStreamPlaybackPolyphonic = _sfx_player.get_stream_playback() as AudioStreamPlaybackPolyphonic
 	if pb == null:
 		return
-	pb.play_stream(_sfx[snd], 0.0, volume_db, 1.0 + randf_range(-pitch_jitter, pitch_jitter))
+	pb.play_stream(_sfx[snd], 0.0, volume_db + linear_to_db(sfx_volume), 1.0 + randf_range(-pitch_jitter, pitch_jitter))
 
 
 func play_music(stream: AudioStream, volume_db: float = -8.0) -> void:
@@ -94,7 +96,7 @@ func play_music(stream: AudioStream, volume_db: float = -8.0) -> void:
 	if _music_player == null or stream == null:
 		return
 	_music_player.stream = stream
-	_music_player.volume_db = volume_db
+	_music_player.volume_db = volume_db + linear_to_db(maxf(music_volume, 0.0001))
 	_music_player.play()
 
 
@@ -165,6 +167,22 @@ func set_sfx_enabled(on: bool) -> void:
 	_save_settings()
 
 
+## Live music-volume change (0..1) — re-applies to the playing track WITHOUT restarting it, then persists.
+func set_music_volume(v: float) -> void:
+
+	music_volume = clampf(v, 0.0, 1.0)
+	if _music_player != null:
+		_music_player.volume_db = _current_music_vol + linear_to_db(maxf(music_volume, 0.0001))
+	_save_settings()
+
+
+## Live sfx-volume change (0..1) — applied per play_sfx, then persisted.
+func set_sfx_volume(v: float) -> void:
+
+	sfx_volume = clampf(v, 0.0, 1.0)
+	_save_settings()
+
+
 func _load_settings() -> void:
 
 	var cfg : ConfigFile = ConfigFile.new()
@@ -172,6 +190,8 @@ func _load_settings() -> void:
 		return   # no settings file yet — keep the defaults (both on)
 	music_enabled = bool(cfg.get_value("audio", "music_enabled", true))
 	sfx_enabled = bool(cfg.get_value("audio", "sfx_enabled", true))
+	music_volume = clampf(float(cfg.get_value("audio", "music_volume", 1.0)), 0.0, 1.0)
+	sfx_volume = clampf(float(cfg.get_value("audio", "sfx_volume", 1.0)), 0.0, 1.0)
 
 
 func _save_settings() -> void:
@@ -180,4 +200,6 @@ func _save_settings() -> void:
 	cfg.load(SETTINGS_PATH)   # keep sections other autoloads own (e.g. ChatBox's [chat]) — merge, don't clobber
 	cfg.set_value("audio", "music_enabled", music_enabled)
 	cfg.set_value("audio", "sfx_enabled", sfx_enabled)
+	cfg.set_value("audio", "music_volume", music_volume)
+	cfg.set_value("audio", "sfx_volume", sfx_volume)
 	cfg.save(SETTINGS_PATH)

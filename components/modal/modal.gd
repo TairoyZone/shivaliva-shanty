@@ -113,8 +113,7 @@ func _ready() -> void:
 	if _modal_esc_to_close():
 		add_child(EscToClose.new(_close))
 	_build_content()
-	Audio.play_sfx("whoosh2", -4.0)   # every modal pops IN with a sound — one wire covers them all
-	ModalFx.appear(_panel, _dim)
+	ModalFx.appear(_panel, _dim)   # fade + pop in (animate-everything); modals open silently (no whoosh)
 
 
 func _on_dim_input(event: InputEvent) -> void:

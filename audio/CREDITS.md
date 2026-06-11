@@ -16,7 +16,7 @@ Shivaliva Shanty's sound is a mix of:
 | `voice_talk.ogg`, `voice_talk2.ogg` | "Talking Synthesizer" by **tcarisland** (OpenGameArt) — via GDQuest *Learn 2D Gamedev* | **CC-BY-SA 4.0** | "Talking Synthesizer" by tcarisland (CC-BY-SA 4.0) |
 | `type_key.wav` | "Keyboard soundpack 1" by **unicaegames** (OpenGameArt) — via GDQuest *Learn 2D Gamedev* | **CC0** | none required (credit appreciated) |
 | `pickup.wav`, `powerup.wav`, `hit.wav`, `bop.wav`, `hurt.wav`, `ko.wav`, `pain.wav`, `laser.wav` | **GDQuest** "Learn 2D Gamedev with Godot 4" | **CC-BY 4.0** | Additional assets CC-By 4.0 GDQuest (https://www.gdquest.com/) |
-| `whoosh2.ogg`, `explosion.ogg` | **Kenney** (Sci-Fi Sounds / Digital Audio) — via GDQuest *Node Essentials* | **CC0** | none required (Kenney — https://kenney.nl — credit appreciated) |
+| `explosion.ogg` | **Kenney** (Sci-Fi Sounds / Digital Audio) — via GDQuest *Node Essentials* | **CC0** | none required (Kenney — https://kenney.nl — credit appreciated) |
 
 ## Borrowed music (`audio/music/`)
 

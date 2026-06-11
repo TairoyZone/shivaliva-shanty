@@ -48,9 +48,9 @@ func _ready() -> void:
 	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	panel.offset_left = -235.0
-	panel.offset_top = -205.0
+	panel.offset_top = -250.0
 	panel.offset_right = 235.0
-	panel.offset_bottom = 205.0
+	panel.offset_bottom = 250.0
 	add_child(panel)
 	_panel = panel
 
@@ -68,7 +68,9 @@ func _ready() -> void:
 	vbox.add_child(title)
 
 	vbox.add_child(_make_toggle("Music", Audio.music_enabled, Audio.set_music_enabled))
+	vbox.add_child(_make_slider("Music volume", Audio.music_volume, Audio.set_music_volume))
 	vbox.add_child(_make_toggle("Sound effects", Audio.sfx_enabled, Audio.set_sfx_enabled))
+	vbox.add_child(_make_slider("Sound volume", Audio.sfx_volume, Audio.set_sfx_volume))
 	vbox.add_child(_make_toggle("Show chat", ChatBox.chat_visible, ChatBox.set_chat_visible))
 	vbox.add_child(_make_toggle("AI NPC chat", NpcBrain.ai_enabled, NpcBrain.set_ai_enabled))
 	vbox.add_child(_make_key_field())
@@ -118,6 +120,28 @@ func _make_toggle(text: String, on: bool, setter: Callable) -> CheckButton:
 	cb.add_theme_color_override("font_color", Color(0.95, 0.9, 0.78, 1.0))
 	cb.toggled.connect(func(pressed: bool) -> void: setter.call(pressed))
 	return cb
+
+
+# A labelled 0..1 volume slider, wired live to an Audio setter (music / sfx).
+func _make_slider(text: String, value: float, setter: Callable) -> VBoxContainer:
+
+	var box : VBoxContainer = VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	var lbl : Label = Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 18)
+	lbl.add_theme_color_override("font_color", Color(0.95, 0.9, 0.78, 1.0))
+	box.add_child(lbl)
+	var sl : HSlider = HSlider.new()
+	sl.min_value = 0.0
+	sl.max_value = 1.0
+	sl.step = 0.05
+	sl.value = value
+	sl.custom_minimum_size = Vector2(0.0, 22.0)
+	sl.focus_mode = Control.FOCUS_NONE
+	sl.value_changed.connect(func(v: float) -> void: setter.call(v))
+	box.add_child(sl)
+	return box
 
 
 # Paste-your-key field (DeepSeek) — the course-simple path: saved to user://settings.cfg (per-machine, never
