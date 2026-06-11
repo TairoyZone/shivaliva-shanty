@@ -41,6 +41,21 @@ func _ready() -> void:
 	await _settle()
 	await _capture("03_trade_window")
 	trade.queue_free()
+	await get_tree().process_frame
+
+	# Seed a wider social spread so the Hearts page shows the full romance-status range.
+	PlayerState.add_affinity("Hearty Brian", 30)        # acquaintance + "Married to Merry Geneva"
+	PlayerState.add_affinity("Flint Kerr", 60)
+	PlayerState.set_romance_stage("Flint Kerr", 1)      # "Courting — Fond"
+	PlayerState.add_affinity("Merry Geneva", 22)
+
+	# 4-6. The user panel's three pages: Backpack (weapons-as-items grid), Hearts (romance lines), Profile.
+	get_tree().paused = false   # the freed modal's pause-restore lands a frame late; its fade tween stalls paused
+	await get_tree().process_frame
+	for shot in [["items", "04_backpack"], ["relationships", "05_hearts"], ["profile", "06_profile"]]:
+		UserPanel.open(String(shot[0]))   # direct — the HUD wrapper gates on HUD visibility + toggles
+		await _settle()
+		await _capture(String(shot[1]))
 
 	await get_tree().process_frame
 	get_tree().quit()
