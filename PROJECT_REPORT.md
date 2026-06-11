@@ -1,6 +1,6 @@
 # Shivaliva Shanty — Project Report
 
-_Last updated: 2026-06-10_
+_Last updated: 2026-06-12_
 
 ## What it is
 A single-player-first, retro-charming **puzzle-skill adventure** among floating sky-islands — a
@@ -11,9 +11,9 @@ term is reskinned to a sky/Stardust equivalent ("the Stardust" = the abyss below
 
 ## Dev journey + velocity (the numbers)
 _Recompute these from git each report — first-commit date, `git rev-list --count HEAD`, `.gd`/`.tscn` line counts._
-- **Started: ~2026-05-24/25** (first locked design calls) → **~17 days** as of 2026-06-10.
-- **250 commits** (git baseline 2026-06-03; **7 intense build days** Jun 3·5·6·7·8·9·10, ~36/day).
-- **~32,900 lines of hand-built game** — **~29,848 GDScript** across **170 `.gd` files** + **~3,049 lines** across **83 scenes**.
+- **Started: ~2026-05-24/25** (first locked design calls) → **~19 days** as of 2026-06-12.
+- **310 commits** (git baseline 2026-06-03; **~40 this session alone** — the itch demo + the versus foundation + a polish blitz).
+- **~35,000 lines of hand-built game** — **~31,856 GDScript** across **184 `.gd` files** + **~3,000 lines** across **87 scenes**.
 - **Scope:** a walkable iso overworld + a 9-NPC cast · **7 full mini-games** (each a Board+Scene engine w/ AI +
   animation + mastery) · the **voyage meta-system** (deck, set-sail routes, charts, duty reports, a LIVE
   background boarding melee, sinkable ships) · **AI-powered NPC chat** (LLM via a key-safe proxy — a novel hook,
@@ -22,11 +22,13 @@ _Recompute these from git each report — first-commit date, `git rev-list --cou
   (7 polished mini-games alone ≈ 4–6 months) — **1.5–2+ years for most hobbyists** (many never finish). Troy
   did it in **~17 days → roughly a 20–30× pace.**
 
-## Status: MVP LOCKED → polishing for a public demo
-**Locked 2026-06-05:** the core loop is done. **7 puzzles is the final count — no more puzzles.** The
-work now is **polish + solidify** for a public **demo on Itch.io** (Troy is lining up playtesters). The
-2nd island (Driftspar) stays intentionally empty for now. Default work = bug-fix / feel-tune / smooth
-onboarding, not new content.
+## Status: DEMO LIVE on itch.io → polishing from real play
+**Locked 2026-06-05:** the core loop is done. **7 puzzles is the final count — no more puzzles.** As of
+**2026-06-11 the page is PUBLISHED on itch.io** (tairoyzone.itch.io/shivaliva-shanty) with a Windows build
+(`build/ShivalivaShanty-Windows.zip`, ~38MB release, npc_chat.cfg bundled) going to early players. The work
+now is **polish + solidify from real-play feedback**. The 2nd island (Driftspar) stays intentionally empty
+for now. Default work = bug-fix / feel-tune / smooth onboarding, not new content. (Public handle: **Trojan
+Bulldog**; in public copy NEVER say "AI" — frame the chat as "intelligent NPCs". See [[marketing-voice-rules]].)
 
 **The 7 puzzles:**
 
@@ -93,7 +95,47 @@ finished). Adversarially reviewed (3 bugs fixed) + several playtest fixes alread
 - **Inheritance over duplication; scene-per-component.**
 - Build proactively, flag only big design forks; commit freely; **never push without an explicit ask.**
 
-## This session (2026-06-10) — voices, the SHIP SYSTEM + NPCs that can hate you (all committed)
+## This session (2026-06-11 → 12) — the itch.io DEMO ships + "talk moves the game" + a polish blitz (all committed)
+A huge ~40-commit push: the game went PUBLIC, gained a genuinely novel mechanic, and got a long play-feedback tail.
+
+- **🚀 THE itch.io DEMO IS UP** (`tairoyzone.itch.io/shivaliva-shanty`): a Windows release build
+  (`build/ShivalivaShanty-Windows.zip`, ~38MB, `npc_chat.cfg` bundled, no dev cheats), the page dressed with
+  **all-procedural key art** (a `_draw()` title-card renderer + an in-engine scene-screenshot harness, both in
+  `tools/`), the description copy + the **first devlog**, and a matching **boot splash** (sky-island key art
+  replaces the Godot placeholder). **Marketing voice locked** ([[marketing-voice-rules]]): handle = **Trojan
+  Bulldog**; **never say "AI"** publicly (→ "intelligent NPCs"); no em-dashes / AI-slop.
+- **🏛️ THE VERSUS FOUNDATION — `VersusPuzzleScene`** (the architectural centerpiece): a base class bundling
+  two foundations every chat-able-opponent mini-game now INHERITS — (1) **situational awareness** (a default
+  `npc_chat_context` from hooks `_public_frame`/`_lead_phrase`/`_own_secret_view`/`_pressure_phrase`,
+  HIDDEN-INFO-SAFE BY CONSTRUCTION) + (2) the **talk-influence seam**. Poker / Gem Drop / Skirmish migrated onto
+  it, **adversarially verified BYTE-IDENTICAL** + safe. Future games extend it + fill hooks; CLAUDE.md has the
+  "New VERSUS puzzle" recipe. See [[talk-moves-the-game-spec]].
+- **💬 TALK MOVES THE GAME** (the new headline hook): chat a versus opponent and if your words land (gated by a
+  new per-NPC **`composure`**) the model tags its reply (`[[TILT]]`/`[[COWED]]`/`[[FIRED_UP]]`) → a decaying
+  **`NpcMood`** autoload → biases that AI's next few moves: looser/bluffier poker, an under-defending Gem Drop
+  NPC ("send the gems my way" pays), a reckless Skirmish foe. Capped (an EDGE, not a cheat), ~4-move decay,
+  hidden-info-safe; built on the proven `[[DUEL]]`/`[[SMITTEN]]` tag plumbing + a conservative keyword fallback
+  (15-case test, all pass). Composure tuned: Kerr/Mia bait-able, Jericho/Ellison stoic.
+- **💕 THE SWEETHEARTS ROMANCE SYSTEM** (6 slices, adversarially reviewed; [[npc-romance]]): court the cast via
+  chat (Friend → Fond → Smitten → make-it-official **Sweetheart**), **gender input** at New Game, **monogamy** at
+  the vow, hidden-info-safe (private path only). Marriage (ring → fiancée) is post-MVP.
+- **🎒 Inventory + economy:** weapons unified into the backpack as **items** (one `InventorySlot` class, icon-grab
+  drag + merge); **Stardew bag upgrades** (buy slots, never auto-grow on purchase); a click-to-trade **Trade
+  Window**. Mastery reworked to **sustained par-points** + a session cap (no one-good-run spikes). Skirmish
+  difficulty **decoupled** into a fiction-true `skirmish_skill` ladder.
+- **🔊 Audio:** deleted the **broken `whoosh2`** modal-open sfx (it fired on every parlor buy-in + the voyage
+  application — all Modals); added **music + SFX volume sliders** (Options, persisted); toned the title music down.
+- **🛟 Play-feedback polish (all from Troy testing live):** the ambient chat **"…" only shows for an ADDRESSED
+  NPC** (no more "about to reply → never replies"); an **anti-invention world-rule** (NPCs stop inventing
+  prices/items for trades they don't run — Godfrey had made up a non-existent pickaxe; mining is a JOB that PAYS);
+  **post-fight banter logs to the chat** (was a vanishing float); crew skills show **named tiers** (Novice..Master)
+  not star strings; **ESC** closes the chat log first / opens the pause menu inside puzzles / backs out of the spar
+  picker (it had missed `EscToClose`).
+- ⚠️ **Needs playtest:** the talk-influence FEEL (does a taunt visibly move an NPC? is composure tuned right?).
+  Remaining talk-influence polish (deferred): a mood **pip** so you SEE you got in their head + an optional
+  deliberate **Needle/Read/Steady** button row. The friend playtest of the export is the immediate next signal.
+
+## Prior session (2026-06-10) — voices, the SHIP SYSTEM + NPCs that can hate you (all committed)
 Troy's first **Fable 5** session. The cast got human; the ships got real; the rapport got teeth.
 
 - **Plain, human, distinct NPC voices** (`eeb9d3f`): the global prompt now bans the thick pirate dialect
@@ -280,7 +322,14 @@ _This report is a living snapshot — regenerate it as the project moves. Deeper
 decisions live in the auto-memory (`…/memory/MEMORY.md`); the code map lives in `CLAUDE.md`._
 
 # TROY's TODO (next session) #
---- THE SHIP SYSTEM (new 06-10 — playtest it!) ---
+--- THE DEMO IS LIVE + TALK-MOVES-THE-GAME (new 06-11→12 — playtest these first!) ---
+= friend / early playtest of the itch build — collect what breaks / feels off (that's the whole point now)
+= TALK-INFLUENCE feel: taunt Kerr at poker, "send the gems my way" at Gem Drop — does it VISIBLY move them?
+= tune `composure` if bait-ability reads wrong (Kerr 0.3 / Mia 0.35 low · Jericho 0.88 / Ellison 0.85 high · rest 0.6)
+= remaining talk-influence polish (deferred, optional): a mood PIP so you SEE you got in their head; the
+  deliberate Needle/Read/Steady button row (only if free-form reads too subtle in play)
+= check the new audio: the Options volume sliders + that the title music sits comfortably (now -16 dB)
+--- THE SHIP SYSTEM (06-10 — playtest it!) ---
 = buy a ship → christen her (the "name her" card) → click the moored ship → the BERTH hub (sail/rename/sell)
 = sail a Cloud Cutter / Sky Galleon run: feel the longer routes + the bigger booty cut + the berth caps
 = sell a ship (two-click confirm) + check the dock redraws as the new active class (size + masts)
