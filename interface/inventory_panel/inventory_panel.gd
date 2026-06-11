@@ -855,15 +855,20 @@ func _refresh() -> void:
 
 func _make_slot(slot: Dictionary, index: int = -1) -> Control:
 
-	var panel : Panel = Panel.new()
+	# Indexed cells are InventorySlot (native drag-drop via its _get_drag_data/_can_drop_data/_drop_data — the
+	# old set_drag_forwarding silently never started a drag). Non-indexed → a plain Panel.
+	var panel : Panel
+	if index >= 0:
+		var dslot : InventorySlot = InventorySlot.new()
+		dslot.slot_index = index
+		dslot.inv_panel = self
+		panel = dslot
+	else:
+		panel = Panel.new()
 	panel.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	var filled : bool = not slot.is_empty()
 	panel.add_theme_stylebox_override("panel", _slot_style(filled))
-	if index >= 0:
-		# DRAG-DROP: every slot is a drop TARGET; filled ones are also a drag SOURCE. (Godot drag-forwarding so
-		# we don't need a Control subclass per cell — the index is bound into each callback.)
-		panel.mouse_filter = Control.MOUSE_FILTER_STOP
-		panel.set_drag_forwarding(_slot_get_drag.bind(index), _slot_can_drop.bind(index), _slot_drop.bind(index))
 	if not filled:
 		return panel
 	var icon : Control = _make_item_icon(String(slot["id"]))
@@ -978,41 +983,9 @@ func _make_item_icon(item_id: String) -> Control:
 	return placeholder
 
 
-# --- Backpack drag-drop (Minecraft / Stardew arrange) ---------------------------------------------------
-# Drag a filled slot to pick up its stack (hold SHIFT = take half). Drop on: an EMPTY slot (place), the SAME
-# item (merge to cap, leftover stays), or a DIFFERENT item (swap). Routed through PlayerState.move_inventory,
-# which re-emits inventory_changed → _refresh redraws.
-
-func _slot_get_drag(_at: Vector2, index: int) -> Variant:
-
-	if index < 0 or index >= PlayerState.inventory.size():
-		return null
-	var slot : Dictionary = PlayerState.inventory[index]
-	if slot.is_empty():
-		return null
-	var n : int = int(slot["count"])
-	var amount : int = -1   # whole stack
-	if n > 1 and Input.is_key_pressed(KEY_SHIFT):
-		@warning_ignore("integer_division")
-		amount = n / 2       # SHIFT = split off half
-	set_drag_preview(_make_drag_preview(String(slot["id"]), n if amount < 0 else amount))
-	return {"kind": "item", "from": index, "amount": amount}
-
-
-func _slot_can_drop(_at: Vector2, data: Variant, _index: int) -> bool:
-
-	return data is Dictionary and String((data as Dictionary).get("kind", "")) == "item"
-
-
-func _slot_drop(_at: Vector2, data: Variant, index: int) -> void:
-
-	if not (data is Dictionary) or String((data as Dictionary).get("kind", "")) != "item":
-		return
-	PlayerState.move_inventory(int(data["from"]), index, int(data.get("amount", -1)))
-
-
-# A translucent slot that rides centered under the cursor while dragging.
-func _make_drag_preview(item_id: String, count: int) -> Control:
+# A translucent slot that rides centered under the cursor while dragging. Public — InventorySlot._get_drag_data
+# builds the drag and calls this for the preview.
+func make_drag_preview(item_id: String, count: int) -> Control:
 
 	var root : Control = Control.new()
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
