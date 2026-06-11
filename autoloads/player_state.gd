@@ -930,6 +930,38 @@ func remove_item(item_id: String, count: int) -> int:
 	return removed
 
 
+## Drag-drop core (Minecraft/Stardew arrange): move [param amount] (-1 = the whole stack) of the item in slot
+## [param from] onto slot [param to]. EMPTY target → place it there; the SAME item → merge up to its stack cap
+## (any leftover stays in `from`); a DIFFERENT item → SWAP the two slots (whole-stack moves only — you can't
+## drop a partial split onto another item). Bounds-checked; no-ops on a junk/no-op move. Emits inventory_changed.
+func move_inventory(from: int, to: int, amount: int = -1) -> void:
+
+	if from == to or from < 0 or to < 0 or from >= inventory.size() or to >= inventory.size():
+		return
+	var src : Dictionary = inventory[from]
+	if src.is_empty():
+		return
+	var src_id : String = String(src["id"])
+	var src_n : int = int(src["count"])
+	var move_n : int = src_n if amount < 0 else clampi(amount, 1, src_n)
+	var dst : Dictionary = inventory[to]
+	if dst.is_empty():
+		inventory[to] = {"id": src_id, "count": move_n}
+		inventory[from] = {} if src_n - move_n <= 0 else {"id": src_id, "count": src_n - move_n}
+	elif String(dst["id"]) == src_id:
+		var merged : int = mini(move_n, maxi(0, _max_stack(src_id) - int(dst["count"])))
+		if merged <= 0:
+			return   # target stack already full of this item — nothing moved
+		inventory[to] = {"id": src_id, "count": int(dst["count"]) + merged}
+		inventory[from] = {} if src_n - merged <= 0 else {"id": src_id, "count": src_n - merged}
+	else:
+		if amount >= 0 and move_n != src_n:
+			return   # can't drop a PARTIAL stack onto a different item — only a full-stack swap
+		inventory[from] = dst
+		inventory[to] = src
+	inventory_changed.emit()
+
+
 ## Grow the backpack by [param extra] slots (the future "buy a bigger
 ## backpack" upgrade). Persists.
 func expand_inventory(extra: int) -> void:

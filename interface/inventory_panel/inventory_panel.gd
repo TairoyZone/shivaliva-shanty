@@ -842,30 +842,28 @@ func _refresh() -> void:
 	# to capacity. A bought weapon sits here until equipped; unequipping returns it here.
 	for child in _grid.get_children():
 		child.queue_free()
-	var cells : Array = []
-	for slot in PlayerState.inventory:
-		if not (slot as Dictionary).is_empty():
-			cells.append({"item": slot})
+	# POSITIONAL grid: ONE cell per inventory slot (empties shown as gaps), each carrying its slot index — so
+	# you can drag an item to ANY slot and arrange your bag, the Minecraft/Stardew way (Troy 2026-06-11).
+	for i in PlayerState.inventory.size():
+		_grid.add_child(_make_slot(PlayerState.inventory[i], i))
+	# Owned-but-unequipped weapons sit AFTER the item grid (each its own cell). Click to equip (drag: TODO).
 	for wid in PlayerState.owned_weapons:
 		var w : String = String(wid)
 		if w != SkirmishWeapon.DEFAULT_WEAPON and w != PlayerState.equipped_weapon:
-			cells.append({"weapon": w})
-	var total : int = maxi(PlayerState.inventory.size(), cells.size())
-	for i in total:
-		if i >= cells.size():
-			_grid.add_child(_make_slot({}))            # an empty slot
-		elif cells[i].has("weapon"):
-			_grid.add_child(_make_backpack_weapon(String(cells[i]["weapon"])))
-		else:
-			_grid.add_child(_make_slot(cells[i]["item"]))
+			_grid.add_child(_make_backpack_weapon(w))
 
 
-func _make_slot(slot: Dictionary) -> Control:
+func _make_slot(slot: Dictionary, index: int = -1) -> Control:
 
 	var panel : Panel = Panel.new()
 	panel.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
 	var filled : bool = not slot.is_empty()
 	panel.add_theme_stylebox_override("panel", _slot_style(filled))
+	if index >= 0:
+		# DRAG-DROP: every slot is a drop TARGET; filled ones are also a drag SOURCE. (Godot drag-forwarding so
+		# we don't need a Control subclass per cell — the index is bound into each callback.)
+		panel.mouse_filter = Control.MOUSE_FILTER_STOP
+		panel.set_drag_forwarding(_slot_get_drag.bind(index), _slot_can_drop.bind(index), _slot_drop.bind(index))
 	if not filled:
 		return panel
 	var icon : Control = _make_item_icon(String(slot["id"]))
@@ -978,6 +976,78 @@ func _make_item_icon(item_id: String) -> Control:
 	var placeholder : ColorRect = ColorRect.new()
 	placeholder.color = Color(0.5, 0.5, 0.55, 1.0)
 	return placeholder
+
+
+# --- Backpack drag-drop (Minecraft / Stardew arrange) ---------------------------------------------------
+# Drag a filled slot to pick up its stack (hold SHIFT = take half). Drop on: an EMPTY slot (place), the SAME
+# item (merge to cap, leftover stays), or a DIFFERENT item (swap). Routed through PlayerState.move_inventory,
+# which re-emits inventory_changed → _refresh redraws.
+
+func _slot_get_drag(_at: Vector2, index: int) -> Variant:
+
+	if index < 0 or index >= PlayerState.inventory.size():
+		return null
+	var slot : Dictionary = PlayerState.inventory[index]
+	if slot.is_empty():
+		return null
+	var n : int = int(slot["count"])
+	var amount : int = -1   # whole stack
+	if n > 1 and Input.is_key_pressed(KEY_SHIFT):
+		@warning_ignore("integer_division")
+		amount = n / 2       # SHIFT = split off half
+	set_drag_preview(_make_drag_preview(String(slot["id"]), n if amount < 0 else amount))
+	return {"kind": "item", "from": index, "amount": amount}
+
+
+func _slot_can_drop(_at: Vector2, data: Variant, _index: int) -> bool:
+
+	return data is Dictionary and String((data as Dictionary).get("kind", "")) == "item"
+
+
+func _slot_drop(_at: Vector2, data: Variant, index: int) -> void:
+
+	if not (data is Dictionary) or String((data as Dictionary).get("kind", "")) != "item":
+		return
+	PlayerState.move_inventory(int(data["from"]), index, int(data.get("amount", -1)))
+
+
+# A translucent slot that rides centered under the cursor while dragging.
+func _make_drag_preview(item_id: String, count: int) -> Control:
+
+	var root : Control = Control.new()
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var panel : Panel = Panel.new()
+	panel.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
+	panel.size = Vector2(SLOT_SIZE, SLOT_SIZE)
+	panel.position = Vector2(-SLOT_SIZE * 0.5, -SLOT_SIZE * 0.5)
+	panel.modulate = Color(1.0, 1.0, 1.0, 0.85)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override("panel", _slot_style(true))
+	var icon : Control = _make_item_icon(item_id)
+	if icon != null:
+		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+		icon.offset_left = 8.0
+		icon.offset_top = 8.0
+		icon.offset_right = -8.0
+		icon.offset_bottom = -8.0
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		panel.add_child(icon)
+	if count > 1:
+		var lbl : Label = Label.new()
+		lbl.text = str(count)
+		lbl.add_theme_font_size_override("font_size", 15)
+		lbl.add_theme_color_override("font_color", COLOR_COUNT)
+		lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+		lbl.add_theme_constant_override("outline_size", 4)
+		lbl.set_anchors_preset(Control.PRESET_FULL_RECT)
+		lbl.offset_right = -5.0
+		lbl.offset_bottom = -3.0
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		panel.add_child(lbl)
+	root.add_child(panel)
+	return root
 
 
 func _slot_style(filled: bool) -> StyleBoxFlat:
