@@ -877,17 +877,34 @@ func npc_chat_context(asker: String) -> String:
 			s += " (in %d)" % p.current_bet
 		stacks.append(s)
 	lines.append("Stacks (chips) — " + ", ".join(stacks) + ".")
-	# The asker's OWN private view — ONLY their own hole cards (never a rival's).
+	# A PRE-COMPUTED chip-leader callout: the small chat model is bad at numeric comparison (it once boasted
+	# "more chips than you" while holding fewer), so name who's actually ahead instead of trusting it to compare.
+	var leader : PokerPlayer = _board.players[0]
+	for p in _board.players:
+		if p.chips > leader.chips:
+			leader = p
+	lines.append("Chip leader right now: %s with %d." % [_who_name(leader), leader.chips])
+	# The asker's OWN private view — ONLY their own hole cards (never a rival's), PLUS how their stack compares
+	# to the traveller's, stated plainly (same reason: don't make the model do the math).
 	var me : PokerPlayer = _player_named(asker)
 	if me != null:
-		var pv : String = "You are %s — %d chips" % [asker, me.chips]
+		var pv : String = "You are %s with %d chips" % [asker, me.chips]
 		if not me.hole_cards.is_empty():
-			pv += ", your hole cards: %s" % _cards_str(me.hole_cards)
+			pv += ", holding %s" % _cards_str(me.hole_cards)
 		if me.folded:
 			pv += " (you've folded this hand)"
 		elif me.all_in:
 			pv += " (you're all-in)"
-		lines.append(pv + ".")
+		pv += "."
+		var human : PokerPlayer = _board.players[0]
+		if me != human:
+			if me.chips > human.chips:
+				pv += " You're ahead of the traveller on chips (%d to %d)." % [me.chips, human.chips]
+			elif me.chips < human.chips:
+				pv += " The traveller is ahead of you on chips (%d to %d)." % [human.chips, me.chips]
+			else:
+				pv += " You and the traveller are dead even on chips (%d each)." % me.chips
+		lines.append(pv)
 	# Recent action this hand (the rolling event buffer).
 	if not _chat_events.is_empty():
 		lines.append("Just happened: " + " ".join(_chat_events))

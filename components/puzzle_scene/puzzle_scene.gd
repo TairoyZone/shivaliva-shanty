@@ -48,12 +48,17 @@ func _exit_tree() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 
-	# Note: ESC no longer bails out of a puzzle — leaving is a deliberate
-	# act via the persistent Leave button (built below). The only input
-	# handled here is the click-to-dismiss after a game has ended.
+	# Click anywhere to dismiss the results once a game has ended.
 	if _awaiting_dismiss and event is InputEventMouseButton and event.pressed:
 		get_viewport().set_input_as_handled()
 		_return_to_launching_scene()
+		return
+	# ESC opens the PAUSE MENU in here too (Resume / Options / Quit). The HUD owns ESC→pause in the walkable
+	# world, but it's HIDDEN inside a puzzle, so the pause menu would otherwise be unreachable (Troy 2026-06-11).
+	# Leaving the puzzle is still the deliberate Leave button; ESC only pauses, and Resume drops you right back in.
+	if event.is_action_pressed("ui_cancel"):
+		get_viewport().set_input_as_handled()
+		PauseMenu.open(self)
 
 
 ## Override → true to dock the Leave button at the TOP-left instead of the default BOTTOM-left — for scenes
