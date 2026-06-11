@@ -167,6 +167,7 @@ func _on_buy_pressed(ship_id: String) -> void:
 
 	if not PlayerState.buy_ship(ship_id, ShipClasses.gold_cost(ship_id)):
 		return
+	Audio.play_sfx("powerup")   # the biggest purchase in the game lands with a fanfare
 	# ships_changed fires → _rebuild_rows updates the buttons. Then the christening beat:
 	# she's YOURS — name her (skippable; she keeps the class name until christened).
 	ShipChristening.open(self, ship_id)

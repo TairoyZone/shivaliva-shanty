@@ -289,6 +289,7 @@ func _ready_row() -> Control:
 
 func _show_done(title: String, note: String) -> void:
 
+	Audio.play_sfx("chime")   # the deal seals — covers all three confirm paths (sale, gift, favour)
 	if is_instance_valid(_dim):
 		_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE   # only the Done button / ESC closes the result — not a stray click
 	# Shrink the (trade-sized) panel down to the short result so it isn't a big empty box.

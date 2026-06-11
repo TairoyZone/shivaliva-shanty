@@ -61,6 +61,7 @@ func _launch_puzzle(charge_cost: bool) -> void:
 		return
 	if charge_cost and play_cost > 0:
 		if PlayerState.total_coins < play_cost:
+			Audio.play_sfx("buzz")   # can't afford — a click that did NOTHING read as broken (audio-gap audit)
 			return
 		PlayerState.add_coins(-play_cost, ("%s entry" % marker_label) if not marker_label.is_empty() else "Game entry")
 	# When the puzzle exits, the destination scene's BaseLocation will

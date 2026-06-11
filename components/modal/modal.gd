@@ -113,6 +113,7 @@ func _ready() -> void:
 	if _modal_esc_to_close():
 		add_child(EscToClose.new(_close))
 	_build_content()
+	Audio.play_sfx("whoosh2", -4.0)   # every modal pops IN with a sound — one wire covers them all
 	ModalFx.appear(_panel, _dim)
 
 
@@ -130,6 +131,7 @@ func _exit_tree() -> void:
 
 func _close() -> void:
 
+	Audio.play_sfx("whoosh", -6.0)   # ...and OUT (ESC, dim-click, Done — every dismiss path)
 	ModalFx.dismiss(self, _panel, _dim, _do_close)
 
 

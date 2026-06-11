@@ -150,7 +150,8 @@ func _make_weapon_row(entry: Dictionary) -> Control:
 
 func _on_buy_pressed(entry: Dictionary) -> void:
 
-	PlayerState.buy_weapon(String(entry["id"]), int(entry["gold"]))
+	if PlayerState.buy_weapon(String(entry["id"]), int(entry["gold"])):
+		Audio.play_sfx("pickup")   # forged steel in hand — distinct from the generic backpack thunk
 	# weapons_changed fires → _rebuild_rows updates the buttons.
 
 

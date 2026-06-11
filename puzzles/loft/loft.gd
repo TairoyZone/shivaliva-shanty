@@ -303,6 +303,8 @@ func _update_hull_label() -> void:
 
 func _show_results(total_lift: int, mastery: Dictionary, sank: bool) -> void:
 
+	if not sank:
+		Audio.play_sfx("chime")   # results banked (the sank path already has its "explosion" beat)
 	var layer : CanvasLayer = CanvasLayer.new()
 	layer.layer = 9
 	add_child(layer)

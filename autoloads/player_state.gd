@@ -996,6 +996,7 @@ func move_inventory(from: int, to: int, amount: int = -1) -> void:
 			return   # can't drop a PARTIAL stack onto a different item — only a full-stack swap
 		inventory[from] = dst
 		inventory[to] = src
+	Audio.play_sfx("clack")   # a drag-drop landing — every no-op path returned earlier, so only real moves clack
 	inventory_changed.emit()
 
 
@@ -1685,6 +1686,7 @@ func advance_romance(npc_name: String) -> int:
 		return romance_stage(npc_name)
 	var next_stage : int = romance_stage(npc_name) + 1
 	npc_romance[npc_name] = next_stage
+	Audio.play_sfx("chime", -6.0)   # a soft heart-beat as the courtship deepens mid-chat
 	romance_changed.emit(npc_name, next_stage)
 	_save()
 	return next_stage

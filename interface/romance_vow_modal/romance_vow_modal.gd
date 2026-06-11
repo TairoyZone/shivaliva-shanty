@@ -76,6 +76,7 @@ func _on_yes() -> void:
 
 func _show_result() -> void:
 
+	Audio.play_sfx("chime")   # the vow seals — a warm beat alongside the heart pop-in
 	for c in _content.get_children():
 		c.queue_free()
 	_add_title("Sweethearts")
