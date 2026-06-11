@@ -159,9 +159,11 @@ func interact() -> void:
 	# the AI plays the courtship out IN the chat. Married/partnered + soured + strangers never see it.
 	var rom_persona : NpcPersonality = _resolve_personality()
 	if rom_persona != null and rom_persona.romance_appetite > 0.0 and rom_persona.partner.is_empty() \
-			and not PlayerState.is_sweetheart(npc_name) \
-			and PlayerState.get_affinity(npc_name) >= PlayerState.COURT_MIN_AFFINITY:
-		opts.append({"label": "Court", "action": _court})
+			and not PlayerState.is_sweetheart(npc_name):
+		if PlayerState.romance_stage(npc_name) >= 2 and PlayerState.get_affinity(npc_name) >= PlayerState.VOW_MIN_AFFINITY:
+			opts.append({"label": "Propose", "action": _propose})   # Smitten + Confidant → the deterministic vow
+		elif PlayerState.get_affinity(npc_name) >= PlayerState.COURT_MIN_AFFINITY:
+			opts.append({"label": "Court", "action": _court})
 	opts.append({"label": "Profile", "action": _open_profile})
 	var at : Vector2 = get_global_transform_with_canvas().origin + Vector2(0.0, -36.0)
 	NpcMenu.open(self, at, npc_name, portrait_color, opts)
@@ -196,6 +198,13 @@ func open_chat() -> void:
 func _court() -> void:
 
 	_chat()
+
+
+# Propose → the deterministic Sweetheart VOW modal (a clean player confirm, NEVER an AI call). Shown in the
+# radial menu only at Smitten + Confidant; on "Aye" it makes you Sweethearts (monogamous). See [RomanceVowModal].
+func _propose() -> void:
+
+	RomanceVowModal.open(self, npc_name, portrait_color)
 
 
 # This NPC's [NpcPersonality] profile, matched by name from the [NpcRegistry] (null if unlisted).
