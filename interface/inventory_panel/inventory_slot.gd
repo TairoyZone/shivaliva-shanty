@@ -1,6 +1,7 @@
-## ONE backpack cell with native Godot drag-and-drop (the reliable virtual-method pattern). Holds its slot
-## index + a back-ref to the [InventoryPanel] for the shared preview helper; the move routes through
-## PlayerState.move_inventory, which re-emits inventory_changed so the panel rebuilds. (Troy 2026-06-11.)
+## ONE backpack cell — items AND weapons, the same class (Troy 2026-06-11: "item class is item class in the
+## inventory"). Native Godot drag-drop (the virtual-method pattern) to rearrange, PLUS double-click a WEAPON to
+## equip it. Holds its slot index + a back-ref to the [InventoryPanel] for the drag preview; moves route
+## through PlayerState.move_inventory, which re-emits inventory_changed so the panel rebuilds.
 class_name InventorySlot
 extends Panel
 
@@ -10,14 +11,13 @@ var inv_panel : InventoryPanel = null
 
 
 func _ready() -> void:
-	# CRITICAL: the item ICON (WoodIcon/OreIcon) sets mouse_filter = STOP in its OWN _ready (it shows tooltips
-	# elsewhere), which would steal the drag — you could only grab the bare 8px frame, not the icon. OUR _ready
-	# runs AFTER the children's, so force every descendant mouse-transparent: now the whole cell is draggable.
+	# The item ICON sets mouse_filter = STOP in its OWN _ready (tooltips elsewhere), which would steal the drag
+	# so only the bare frame is grabbable. OUR _ready runs AFTER the children's, so force every descendant
+	# mouse-transparent: the whole cell (icon included) is then draggable AND double-clickable.
 	pass_mouse_through(self)
 
 
-## Make every Control descendant of [param node] ignore the mouse, so a parent cell owns the whole drag area.
-## Static so [WeaponSlot] reuses it. Run from _ready (after children's _ready) or it gets overridden.
+## Make every Control descendant of [param node] ignore the mouse, so the cell owns the whole interaction area.
 static func pass_mouse_through(node: Node) -> void:
 	for child in node.get_children():
 		if child is Control:
@@ -25,8 +25,29 @@ static func pass_mouse_through(node: Node) -> void:
 		pass_mouse_through(child)
 
 
-# Begin a drag: pick up this slot's stack (hold SHIFT to split off half). Returns null on an empty slot, so
-# empty slots are drop targets only. Returning non-null is what STARTS the drag.
+# Double-click a WEAPON to equip it (double-click the equipped one to go back to bare fists). Single-click +
+# drag are untouched — drag rearranges a weapon exactly like any other item.
+func _gui_input(event: InputEvent) -> void:
+
+	if not (event is InputEventMouseButton):
+		return
+	var mb : InputEventMouseButton = event
+	if not (mb.double_click and mb.button_index == MOUSE_BUTTON_LEFT):
+		return
+	if slot_index < 0 or slot_index >= PlayerState.inventory.size():
+		return
+	var slot : Dictionary = PlayerState.inventory[slot_index]
+	if slot.is_empty():
+		return
+	var wid : String = String(slot["id"])
+	if not PlayerState.is_weapon(wid):
+		return
+	PlayerState.equip_weapon(SkirmishWeapon.DEFAULT_WEAPON if PlayerState.equipped_weapon == wid else wid)
+	accept_event()
+
+
+# Begin a drag: pick up this slot's stack (hold SHIFT to split off half). Null on an empty slot (drop target
+# only). Returning non-null is what STARTS the drag.
 func _get_drag_data(_at: Vector2) -> Variant:
 
 	if inv_panel == null or slot_index < 0 or slot_index >= PlayerState.inventory.size():
@@ -45,22 +66,12 @@ func _get_drag_data(_at: Vector2) -> Variant:
 
 func _can_drop_data(_at: Vector2, data: Variant) -> bool:
 
-	if not (data is Dictionary):
-		return false
-	var kind : String = String((data as Dictionary).get("kind", ""))
-	# An item move, OR the EQUIPPED weapon dropped here to unequip it back into the bag.
-	return kind == "item" or (kind == "weapon" and String((data as Dictionary).get("action", "")) == "unequip")
+	return data is Dictionary and String((data as Dictionary).get("kind", "")) == "item"
 
 
-# Drop onto this slot: an item → EMPTY place / SAME merge / DIFFERENT swap (PlayerState.move_inventory); the
-# equipped weapon → unequip back to bare fists (it already lives in owned_weapons).
+# Drop onto this slot: EMPTY → place; SAME item → merge to cap (leftover stays); DIFFERENT → swap. The rules
+# (weapons included — a weapon is just an item) live in PlayerState.move_inventory.
 func _drop_data(_at: Vector2, data: Variant) -> void:
 
-	if not (data is Dictionary):
-		return
-	var d : Dictionary = data
-	var kind : String = String(d.get("kind", ""))
-	if kind == "item":
-		PlayerState.move_inventory(int(d["from"]), slot_index, int(d.get("amount", -1)))
-	elif kind == "weapon" and String(d.get("action", "")) == "unequip":
-		PlayerState.equip_weapon(SkirmishWeapon.DEFAULT_WEAPON)
+	if data is Dictionary and String((data as Dictionary).get("kind", "")) == "item":
+		PlayerState.move_inventory(int(data["from"]), slot_index, int(data.get("amount", -1)))

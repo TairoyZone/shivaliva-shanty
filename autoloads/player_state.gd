@@ -152,6 +152,13 @@ const DEFAULT_MAX_STACK : int = 50
 ## Slots the backpack starts with. Expandable later (buy a bigger
 ## backpack) via [method expand_inventory]; the value persists.
 const INVENTORY_START_CAPACITY : int = 6
+## Stardew-style backpack UPGRADES — pay gold to grow the bag, the ONLY way to add inventory space (buying an
+## ITEM never expands it). Each tier = a TARGET slot count + its cost; start = INVENTORY_START_CAPACITY (6).
+const INVENTORY_BAG_TIERS : Array = [
+	{"slots": 12, "cost": 300},
+	{"slots": 18, "cost": 900},
+	{"slots": 24, "cost": 2400},
+]
 # Tier thresholds (inclusive lower bound). Used for dialogue gating +
 # the eventual hire/crew system — Confidant is the "can recruit" tier.
 # Rapport runs NEGATIVE too (Troy 2026-06-10: "NPCs can hate players") — treat them badly enough
@@ -835,6 +842,8 @@ func _init_inventory() -> void:
 
 func _max_stack(item_id: String) -> int:
 
+	if is_weapon(item_id):
+		return 1   # weapons don't stack — each is its own slot
 	var def : Dictionary = ITEM_DEFS.get(item_id, {})
 	return int(def.get("max_stack", DEFAULT_MAX_STACK))
 
@@ -981,6 +990,27 @@ func expand_inventory(extra: int) -> void:
 		inventory.append({})
 	inventory_changed.emit()
 	_save()
+
+
+## The next backpack upgrade ({slots, cost}), or {} if the bag is fully upgraded.
+func next_bag_upgrade() -> Dictionary:
+
+	for tier in INVENTORY_BAG_TIERS:
+		if int(tier["slots"]) > inventory_capacity:
+			return tier
+	return {}
+
+
+## Buy the next backpack upgrade if one's available AND affordable — spends gold, grows the bag. true on
+## success. The ONLY path that adds inventory space (an item purchase must FIT existing slots, never expand).
+func buy_bag_upgrade() -> bool:
+
+	var tier : Dictionary = next_bag_upgrade()
+	if tier.is_empty() or total_coins < int(tier["cost"]):
+		return false
+	add_coins(-int(tier["cost"]), "Bigger backpack")
+	expand_inventory(int(tier["slots"]) - inventory_capacity)
+	return true
 
 
 # Fire the change signals + persist after any add/remove. Emits the
@@ -1319,33 +1349,55 @@ func _set_open_holes(value: int) -> void:
 ## use. Switched here (the inventory) only, never mid-fight. Persisted.
 func equip_weapon(weapon_id: String) -> void:
 
-	if not owned_weapons.has(weapon_id):
+	if not owns_weapon(weapon_id):
 		return
 	equipped_weapon = weapon_id
+	weapons_changed.emit()
+	inventory_changed.emit()   # the backpack re-highlights the equipped weapon item
 	_save()
 
 
+## True if the player has this weapon — bare fists (DEFAULT_WEAPON) are always available; otherwise it's the
+## equipped one or a weapon ITEM sitting in the bag (weapons are items now — ONE class with everything else).
 func owns_weapon(weapon_id: String) -> bool:
 
-	return owned_weapons.has(weapon_id)
+	if weapon_id == SkirmishWeapon.DEFAULT_WEAPON or equipped_weapon == weapon_id:
+		return true
+	return _inventory_has(weapon_id)
 
 
-## True if [param weapon_id] is unowned and the player can afford [param gold_cost].
+## True if a non-empty slot holds [param item_id].
+func _inventory_has(item_id: String) -> bool:
+
+	for slot in inventory:
+		if slot is Dictionary and not slot.is_empty() and String(slot["id"]) == item_id:
+			return true
+	return false
+
+
+## True if [param item_id] is a real (buyable) weapon — drives the weapon icon, the 1-per-slot stack cap, and
+## double-click-to-equip. Bare fists (DEFAULT_WEAPON) is NOT a carried item.
+func is_weapon(item_id: String) -> bool:
+
+	return item_id != SkirmishWeapon.DEFAULT_WEAPON and SkirmishWeapon.DESCRIPTIONS.has(item_id)
+
+
+## True if [param weapon_id] is unowned, affordable, AND there's bag room (a weapon is an item now; a purchase
+## never grows the bag — buy a bigger backpack first).
 func can_buy_weapon(weapon_id: String, gold_cost: int) -> bool:
 
-	return not owns_weapon(weapon_id) and total_coins >= gold_cost
+	return not owns_weapon(weapon_id) and total_coins >= gold_cost and space_for(weapon_id) >= 1
 
 
-## Buy a weapon at the forge: spend gold, add it to [member owned_weapons]. Returns true
-## on success. No-op if already owned or unaffordable. Persisted.
+## Buy a weapon at the forge: spend gold, drop it into the BAG as an item (then double-click to equip). Returns
+## true on success. No-op if already owned, unaffordable, or the bag is full.
 func buy_weapon(weapon_id: String, gold_cost: int) -> bool:
 
 	if not can_buy_weapon(weapon_id, gold_cost):
 		return false
 	add_coins(-gold_cost, "Bought the %s" % weapon_id.capitalize())
-	owned_weapons.append(weapon_id)
+	add_item(weapon_id, 1)
 	weapons_changed.emit()
-	_save()
 	return true
 
 
@@ -2132,6 +2184,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "player_name", player_name)
 	config.set_value(SAVE_SECTION, "owned_weapons", owned_weapons)
 	config.set_value(SAVE_SECTION, "equipped_weapon", equipped_weapon)
+	config.set_value(SAVE_SECTION, "weapons_model", "items_v1")
 	config.set_value(SAVE_SECTION, "npc_affinity", npc_affinity)
 	config.set_value(SAVE_SECTION, "npc_favor_done", npc_favor_done)
 	config.set_value(SAVE_SECTION, "crew", crew)
@@ -2195,6 +2248,18 @@ func _load() -> void:
 	)
 	inventory_capacity = int(config.get_value(SAVE_SECTION, "inventory_capacity", INVENTORY_START_CAPACITY))
 	_load_inventory(config)
+	# Weapons-are-items migration (2026-06-11): fold the old owned_weapons list into the bag as items (the
+	# equipped one too — equipped_weapon still just flags it). Direct slot insert to skip add_item's sfx/log.
+	if String(config.get_value(SAVE_SECTION, "weapons_model", "")) != "items_v1":
+		for wid in owned_weapons:
+			var w : String = String(wid)
+			if w == SkirmishWeapon.DEFAULT_WEAPON or _inventory_has(w):
+				continue
+			for i in inventory.size():
+				if (inventory[i] as Dictionary).is_empty():
+					inventory[i] = {"id": w, "count": 1}
+					break
+		owned_weapons = [SkirmishWeapon.DEFAULT_WEAPON]
 	_suppress_save = false
 	# Mark already-earned trophies as seen so loading never spam-toasts; only live earns notify.
 	_seed_trophies_seen()

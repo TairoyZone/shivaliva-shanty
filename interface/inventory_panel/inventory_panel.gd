@@ -47,7 +47,7 @@ var _dim : ColorRect
 var _window : PanelContainer
 ## The "items" (Backpack) page — a Weapon equip bar above the backpack slot grid.
 var _items_page : VBoxContainer
-var _weapon_bar : HBoxContainer
+var _bag_row : HBoxContainer       # the Stardew-style "buy a bigger backpack" upgrade row
 var _grid : GridContainer
 ## The Hearts tab — a [RelationshipsView] (Stardew-style social page).
 var _hearts_view : RelationshipsView
@@ -149,27 +149,24 @@ func _build_skeleton() -> void:
 	_obj_page = _build_objectives_page()
 	vbox.add_child(_obj_page)
 
-	# Items page — a WEAPON equip bar above the backpack slot grid.
+	# Items page — the backpack slot grid (weapons are items in it; double-click a weapon to equip) + a
+	# Stardew-style "bigger bag" upgrade row beneath.
 	_items_page = VBoxContainer.new()
 	_items_page.add_theme_constant_override("separation", 10)
 	vbox.add_child(_items_page)
-	var wlabel : Label = Label.new()
-	wlabel.text = "Weapon"
-	wlabel.add_theme_font_size_override("font_size", 16)
-	wlabel.add_theme_color_override("font_color", COLOR_TITLE)
-	_items_page.add_child(wlabel)
-	_weapon_bar = HBoxContainer.new()
-	_weapon_bar.add_theme_constant_override("separation", int(SLOT_SEP))
-	_items_page.add_child(_weapon_bar)
-	var wrule : ColorRect = ColorRect.new()
-	wrule.color = Color(0.40, 0.28, 0.14, 0.8)
-	wrule.custom_minimum_size = Vector2(0, 2)
-	_items_page.add_child(wrule)
+	var whint : Label = Label.new()
+	whint.text = "Double-click a weapon to equip it"
+	whint.add_theme_font_size_override("font_size", 13)
+	whint.add_theme_color_override("font_color", Color(0.78, 0.66, 0.42, 1.0))
+	_items_page.add_child(whint)
 	_grid = GridContainer.new()
 	_grid.columns = COLS
 	_grid.add_theme_constant_override("h_separation", int(SLOT_SEP))
 	_grid.add_theme_constant_override("v_separation", int(SLOT_SEP))
 	_items_page.add_child(_grid)
+	_bag_row = HBoxContainer.new()
+	_bag_row.add_theme_constant_override("separation", 8)
+	_items_page.add_child(_bag_row)
 
 	# Hearts + Profile pages (hidden until their tab is picked).
 	_hearts_view = RelationshipsView.new()
@@ -832,25 +829,13 @@ func _refresh() -> void:
 		return
 	if _grid == null:
 		return
-	# ONE equip slot = the weapon in hand (empty = bare fists). Owned-but-unequipped weapons live in the
-	# BACKPACK below; equipping pulls one up here, unequipping (click it again) drops it back. (Troy 2026-06-10)
-	if _weapon_bar != null:
-		for child in _weapon_bar.get_children():
-			child.queue_free()
-		_weapon_bar.add_child(_make_weapon_slot(PlayerState.equipped_weapon))
-	# Backpack grid = your real items PLUS every owned weapon you're NOT holding (each fills a slot), padded
-	# to capacity. A bought weapon sits here until equipped; unequipping returns it here.
+	# POSITIONAL grid: ONE cell per inventory slot. Weapons are ITEMS in here too (the equipped one shows a
+	# gold border); double-click a weapon to equip/unequip, drag to rearrange — all the same InventorySlot.
 	for child in _grid.get_children():
 		child.queue_free()
-	# POSITIONAL grid: ONE cell per inventory slot (empties shown as gaps), each carrying its slot index — so
-	# you can drag an item to ANY slot and arrange your bag, the Minecraft/Stardew way (Troy 2026-06-11).
 	for i in PlayerState.inventory.size():
 		_grid.add_child(_make_slot(PlayerState.inventory[i], i))
-	# Owned-but-unequipped weapons sit AFTER the item grid (each its own cell). Click to equip (drag: TODO).
-	for wid in PlayerState.owned_weapons:
-		var w : String = String(wid)
-		if w != SkirmishWeapon.DEFAULT_WEAPON and w != PlayerState.equipped_weapon:
-			_grid.add_child(_make_backpack_weapon(w))
+	_refresh_bag_row()
 
 
 func _make_slot(slot: Dictionary, index: int = -1) -> Control:
@@ -868,9 +853,17 @@ func _make_slot(slot: Dictionary, index: int = -1) -> Control:
 	panel.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	var filled : bool = not slot.is_empty()
-	panel.add_theme_stylebox_override("panel", _slot_style(filled))
+	# A weapon ITEM that's currently equipped gets a gold border — the only "equipped" marker now.
+	var equipped : bool = filled and String(slot["id"]) == PlayerState.equipped_weapon and PlayerState.is_weapon(String(slot["id"]))
+	panel.add_theme_stylebox_override("panel", _slot_style(filled, equipped))
 	if not filled:
 		return panel
+	if PlayerState.is_weapon(String(slot["id"])):
+		var wname : String = SkirmishWeapon.display_name(String(slot["id"]))
+		if equipped:
+			panel.tooltip_text = "%s — equipped\nDouble-click to unarm" % wname
+		else:
+			panel.tooltip_text = "%s\n%s\nDouble-click to equip" % [wname, String(SkirmishWeapon.DESCRIPTIONS.get(String(slot["id"]), ""))]
 	var icon : Control = _make_item_icon(String(slot["id"]))
 	if icon != null:
 		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -880,21 +873,22 @@ func _make_slot(slot: Dictionary, index: int = -1) -> Control:
 		icon.offset_bottom = -8.0
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		panel.add_child(icon)
-	var count : Label = Label.new()
-	count.text = str(int(slot["count"]))
-	count.add_theme_font_size_override("font_size", 15)
-	count.add_theme_color_override("font_color", COLOR_COUNT)
-	count.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
-	count.add_theme_constant_override("outline_size", 4)
-	count.set_anchors_preset(Control.PRESET_FULL_RECT)
-	count.offset_left = 4.0
-	count.offset_top = 4.0
-	count.offset_right = -5.0
-	count.offset_bottom = -3.0
-	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	count.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(count)
+	if int(slot["count"]) > 1:   # never paint a "1" on a single item / weapon
+		var count : Label = Label.new()
+		count.text = str(int(slot["count"]))
+		count.add_theme_font_size_override("font_size", 15)
+		count.add_theme_color_override("font_color", COLOR_COUNT)
+		count.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+		count.add_theme_constant_override("outline_size", 4)
+		count.set_anchors_preset(Control.PRESET_FULL_RECT)
+		count.offset_left = 4.0
+		count.offset_top = 4.0
+		count.offset_right = -5.0
+		count.offset_bottom = -3.0
+		count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		count.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		panel.add_child(count)
 	return panel
 
 
@@ -983,6 +977,10 @@ func _make_item_icon(item_id: String) -> Control:
 		return WoodIcon.new()
 	if item_id == PlayerState.ITEM_ORE:
 		return OreIcon.new()
+	if PlayerState.is_weapon(item_id):   # weapons are items now — draw their weapon icon
+		var w : WeaponIcon = WeaponIcon.new()
+		w.weapon_id = item_id
+		return w
 	var placeholder : ColorRect = ColorRect.new()
 	placeholder.color = Color(0.5, 0.5, 0.55, 1.0)
 	return placeholder
@@ -1029,11 +1027,47 @@ func make_drag_preview(item_id: String, count: int) -> Control:
 	return root
 
 
-func _slot_style(filled: bool) -> StyleBoxFlat:
+func _slot_style(filled: bool, equipped: bool = false) -> StyleBoxFlat:
 
 	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = COLOR_SLOT_BG
-	s.border_color = COLOR_SLOT_BORDER if filled else COLOR_SLOT_EMPTY_BORDER
-	s.set_border_width_all(2)
+	s.bg_color = Color(0.24, 0.17, 0.08, 1.0) if equipped else COLOR_SLOT_BG
+	s.border_color = COLOR_TITLE if equipped else (COLOR_SLOT_BORDER if filled else COLOR_SLOT_EMPTY_BORDER)
+	s.set_border_width_all(3 if equipped else 2)
 	s.set_corner_radius_all(6)
 	return s
+
+
+# The Stardew-style backpack-upgrade row beneath the grid: the next tier's slots + cost, or "fully upgraded".
+func _refresh_bag_row() -> void:
+
+	if _bag_row == null:
+		return
+	for child in _bag_row.get_children():
+		child.queue_free()
+	var up : Dictionary = PlayerState.next_bag_upgrade()
+	if up.is_empty():
+		var done : Label = Label.new()
+		done.text = "Backpack fully upgraded"
+		done.add_theme_font_size_override("font_size", 13)
+		done.add_theme_color_override("font_color", Color(0.7, 0.62, 0.42, 1.0))
+		_bag_row.add_child(done)
+		return
+	var cost : int = int(up["cost"])
+	var lbl : Label = Label.new()
+	lbl.text = "Bigger Backpack — %d slots" % int(up["slots"])
+	lbl.add_theme_font_size_override("font_size", 13)
+	lbl.add_theme_color_override("font_color", COLOR_COUNT)
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_bag_row.add_child(lbl)
+	var buy : Button = Button.new()
+	buy.text = "%d g" % cost
+	buy.focus_mode = Control.FOCUS_NONE
+	buy.disabled = PlayerState.total_coins < cost
+	buy.pressed.connect(_on_buy_bag)
+	_bag_row.add_child(buy)
+
+
+func _on_buy_bag() -> void:
+
+	if PlayerState.buy_bag_upgrade():
+		Audio.play_sfx("thunk")   # bag bought → expand_inventory → inventory_changed → _refresh rebuilds the row
