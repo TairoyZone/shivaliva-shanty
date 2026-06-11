@@ -44,7 +44,7 @@ tile_set = ExtResource("2_tileset")
 [node name="JadeNpc" parent="YSortNode2D" instance=ExtResource("4_npc")]
 position = Vector2(-16, -120)
 npc_name = "Mossy Jade"
-dialog_lines = Array[String](["Mind the green bottles. The red ones mind themselves.", "Patience steeps the strongest brew.", "I watch a great deal more than I let on."])
+dialog_lines = Array[String](["There's a warm seat and a warmer kettle, dear. Nothing here needs hurrying.", "Comfrey's nearly dry. One more day on the rafter and it's ready for bruises.", "No shop here — just a bench, a brew, and an ear. All three are free.", "Looking for coin or wares? The forge and workshop want hands. I only grow things here.", "These blooms shouldn't live this high in the sky. They do anyway. I've stopped asking.", "The Stardust below, the sky above, and us rooted snug between. I find that comforting.", "Brian and Geneva grew like two vines on one stake. Can't tell whose leaf is whose now.", "Mind the green bottles, dear. The red ones mind themselves."])
 portrait_color = Color(0.3, 0.62, 0.36, 1)
 
 [node name="DoorOut" parent="YSortNode2D" instance=ExtResource("3_door")]

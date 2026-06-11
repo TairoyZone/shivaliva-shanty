@@ -46,7 +46,7 @@ tile_set = ExtResource("2_tileset")
 [node name="JerichoNpc" parent="YSortNode2D" instance=ExtResource("4_npc")]
 position = Vector2(-16, -120)
 npc_name = "Stormy Jericho"
-dialog_lines = Array[String](["Ships in by dusk, weather willing.", "I've moored vessels in gales that'd peel the paint off you.", "Take the wheel yonder and sign onto a crew, sailor — no craft of yer own needed yet. A few good runs out there and you'll have gold enough for one."])
+dialog_lines = Array[String](["Mornin'. State yer business or stand clear of the ropes.", "Ships in by dusk, weather willing.", "I've moored vessels in gales that'd peel the paint off you.", "Take the helm there. Sign onto a crew. No ship of yer own needed.", "Buying a ship? Not here. Godfrey's Workshop. I crew 'em and fly 'em, that's all.", "Holes in the hull? My Patchworks bench. Mend 'em or feed the Stardust.", "The Stardust keeps what it takes. Check yer lines twice.", "Talk less. Moor better."])
 portrait_color = Color(0.5, 0.5, 0.62, 1)
 
 [node name="SkyHelm" parent="YSortNode2D" instance=ExtResource("5_helm")]

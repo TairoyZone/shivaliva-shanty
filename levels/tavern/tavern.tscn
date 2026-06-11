@@ -64,31 +64,31 @@ spawn_offset = Vector2(-60, -30)
 [node name="BrianNpc" parent="YSortNode2D" unique_id=1857623763 instance=ExtResource("6_npc")]
 position = Vector2(208, -176)
 npc_name = "Hearty Brian"
-dialog_lines = Array[String](["Welcome to the Inn, friend — pull up a stool.", "Everyone on Cradle Rock passes through here eventually.", "Hungry? Thirsty? Want to lose some gold at cards? We've got all three."])
+dialog_lines = Array[String](["Hah! There's a face I'm glad to see! Pull up a stool — the fire's just right.", "Hungry? Thirsty? Want to lose some gold at cards? We've got all three.", "Gem-drop bracket's up on the board! Gold buys you in, whole pot to the winner!", "Been at the bread since dawn. The flour wins every fight, but the loaves are worth it!", "Cold winds out there tonight. The Stardust can keep its glitter — I've got a hearth!", "Geneva runs this place, truth be told. I just laugh loud enough to fill it!", "Nobody leaves my common room hungry! Sad, maybe. Broke at cards, often. Hungry, never!", "Don't mind the old ledger, friend! Numbers always look grimmer before supper."])
 portrait_color = Color(0.92, 0.66, 0.3, 1)
 
 [node name="MiaNpc" parent="YSortNode2D" unique_id=1139953103 instance=ExtResource("6_npc")]
 position = Vector2(-176, -96)
 npc_name = "Spritely Mia"
-dialog_lines = Array[String](["Smell that? Tonight's special — and no, you can't have it yet.", "Quick hands, hot pans. That's the whole secret.", "Sit, eat, lose at cards. In that order, ideally."])
+dialog_lines = Array[String](["Oh, hello hello! Sit, sit — the pot's nearly singing. D'you hear it? I hear it!", "Smell that? Tonight's special. No, you can't have a taste yet. Not even a little one!", "See this wee skyship? Carved it between orders. Don't touch! ...Okay, touch gently.", "After work, are you? The forge hires miners, the workshop lumberjacks. Me, I've stew and a smile.", "The Stardust below swirls like soup wanting a stir. Don't fall in! It is not soup.", "Someday I'll cook aboard a ship bound for somewhere far. Shh — don't tell the pot.", "Kerr lost to Ellison again, so I carved him a luck-charm. He grumbled. He kept it!", "Brian and Geneva still hold hands at the cards. I want that someday! ...Also more thyme."])
 portrait_color = Color(0.95, 0.55, 0.65, 1)
 
 [node name="KerrNpc" parent="YSortNode2D" unique_id=643999588 instance=ExtResource("6_npc")]
 position = Vector2(-40, 136)
 npc_name = "Flint Kerr"
-dialog_lines = Array[String](["You here to play, or just to watch?", "I don't bluff. ...Or do I.", "Sit at my table if you think you're quick enough."])
+dialog_lines = Array[String](["Oh-ho, fresh blood. Come closer — I don't bite. The steel does.", "You here to scrap, or just to stand there looking unsharpened?", "Hear that? Shhk, shhk. That's the sound of me being better at this than anyone.", "Fancy a bout? The Spar post's right here in the Inn. Pick a foe. I'd pick me.", "No, I don't sell blades — Cinder Troy's smithy handles that. I just prove they work.", "Ellison? We're about even. ...Don't go checking the tally. Next time. That's the point.", "Mia's stew is the only thing on this rock sharper than my steel. Don't tell her.", "I've lost exactly one spar on purpose. The others— there were no others. Moving on."])
 portrait_color = Color(0.78, 0.32, 0.32, 1)
 
 [node name="EllisonNpc" parent="YSortNode2D" unique_id=2641224 instance=ExtResource("6_npc")]
 position = Vector2(-40, -232)
 npc_name = "Hollow Ellison"
-dialog_lines = Array[String](["Every island remembers more than its people do.", "I've forgotten more stories than most folk ever hear.", "Sit by the fire. I'll tell you something true. Mostly true."])
+dialog_lines = Array[String](["...Ah. You again. Good. The fire was getting quiet.", "Sit by the fire. I'll tell you something true. Mostly true.", "Every island remembers more than its people do.", "If it's a fight you want, the Spar post is just there. I'll be gentle. Mostly.", "Kerr counts our duels. I stopped. The number only matters to one of us.", "Brian and Geneva. Married all this time, still smiling. Some stories end well.", "From far enough away, every fight looks slow. That's where I stand.", "Some words keep better unsent. ...Hm. Forget I said that."])
 portrait_color = Color(0.62, 0.55, 0.72, 1)
 
 [node name="GenevaNpc" parent="YSortNode2D" instance=ExtResource("6_npc")]
 position = Vector2(300, -150)
 npc_name = "Merry Geneva"
-dialog_lines = Array[String](["Brian pours the drinks — I keep this whole place from falling to bits.", "Married that big-hearted oaf more years ago than I'll admit. Wouldn't trade him.", "Sit, eat, play a hand — mind your manners and there's always a seat for you."])
+dialog_lines = Array[String](["In you come, love — out of the wind and into a seat. The stew's hot and so's the gossip.", "Brian pours the drinks — I keep this whole place from falling to bits.", "Married that big-hearted oaf more years ago than I'll admit. Wouldn't trade him.", "Fancy a hand of poker or a turn at gem-drop? Pick a table, love — friendly or for gold.", "We float on a rock over endless Stardust, and folk still grumble about a wobbly stool.", "Kerr's never once beaten Ellison in a duel, and it gnaws at him. You never heard it from me.", "This ladle's settled more arguments than any blade on Cradle Rock. Don't test it, pet.", "What Brian doesn't know about this inn could fill a cellar. Bless his trusting heart."])
 portrait_color = Color(0.46, 0.68, 0.6, 1)
 
 [node name="TournamentBoard" parent="YSortNode2D" instance=ExtResource("7_tboard")]

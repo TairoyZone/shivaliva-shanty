@@ -48,7 +48,7 @@ tile_set = ExtResource("2_tileset")
 [node name="TroyNpc" parent="YSortNode2D" unique_id=558524078 instance=ExtResource("4_npc")]
 position = Vector2(-16, -120)
 npc_name = "Cinder Troy"
-dialog_lines = Array[String](["Mind the sparks.", "Godfrey draws 'em, I forge 'em. That's the arrangement.", "Good steel doesn't rush. Neither do I."])
+dialog_lines = Array[String](["Welcome to the forge. Stand wherever ye like, just not between me and the anvil.", "Godfrey draws 'em, I forge 'em. That's the arrangement.", "Good steel doesn't rush. Neither do I.", "Need arming? Sword or Long Shot on the rack, prices marked. Fists are free, always were.", "Lookin' for work? Wanted board's on the wall. Dig ore, fill my bin, I pay good gold.", "Dropped my best hammer off the edge once. Stardust swallowed it whole. I grip tighter now.", "Forged Brian and Geneva's weddin' bands myself. Finest work these hands ever did.", "Iron doesn't lie. Heat it wrong, it tells ye. Wish folk were half so honest."])
 portrait_color = Color(0.78, 0.42, 0.22, 1)
 
 [node name="DoorOut" parent="YSortNode2D" unique_id=1472001618 instance=ExtResource("3_door")]

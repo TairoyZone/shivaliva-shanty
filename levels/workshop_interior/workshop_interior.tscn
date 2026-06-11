@@ -49,7 +49,7 @@ tile_set = ExtResource("2_tileset")
 [node name="GodfreyNpc" parent="YSortNode2D" unique_id=394935966 instance=ExtResource("4_npc")]
 position = Vector2(-16, -120)
 npc_name = "Cogwise Godfrey"
-dialog_lines = Array[String](["Give me a blueprint and a week, I'll give you a ship.", "Every problem is just math you haven't finished yet.", "I've been watching how you play, you know. I always am."])
+dialog_lines = Array[String](["Ah, a visitor! Hold this gear a tick — no, wait, where was I? Ah yes. Welcome!", "Give me a blueprint and a week, I'll give you a ship.", "Every problem is just math you haven't finished yet.", "That Wanted poster's mine. Chop timber at the Grove, drop it at my pile, I pay per log.", "Driftpod, Cloud Cutter, Sky Galleon. Prices at the desk. The wanting-to-fly part is free.", "The Stardust isn't empty, it's unfinished. Like all my best work.", "Triple-check the ballast clamp. Always. No particular reason. None whatsoever.", "A heart is just a flywheel with feelings. Write that down — no, wait, I'll write it down."])
 portrait_color = Color(0.3, 0.55, 0.82, 1)
 
 [node name="DoorOut" parent="YSortNode2D" unique_id=512464127 instance=ExtResource("3_door")]
