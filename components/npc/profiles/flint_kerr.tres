@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Flint Kerr"
+composure = 0.3
 pronouns = "he/him"
 duel_appetite = 0.85
 skirmish_skill = 0.8

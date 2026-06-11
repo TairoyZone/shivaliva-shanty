@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Cogwise Godfrey"
+composure = 0.5
 pronouns = "he/him"
 duel_appetite = 0.25
 skirmish_skill = 0.45

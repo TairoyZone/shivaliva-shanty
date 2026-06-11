@@ -662,6 +662,44 @@ func reply_declines_romance(lc: String) -> bool:
 	return _any_phrase(lc, ROMANCE_DECLINE_PHRASES)
 
 
+# Table-talk fallback classifiers — the model-independent backstop for when the chat AI drops the [[TILT]] /
+# [[COWED]] / [[FIRED_UP]] tag. CONSERVATIVE like the duel ones: an EXPLICIT taunt only, friendly/polite chat
+# never counts. Lowercase substring matching (pass text.to_lower()). See [[talk-moves-the-game-spec]].
+const TILT_TAUNT_PHRASES : Array[String] = [
+	"you're bluffing", "youre bluffing", "you'll fold", "youll fold", "you always fold", "you'll choke",
+	"youll choke", "you'll crack", "youll crack", "you're scared", "youre scared", "too scared", "you can't beat",
+	"you cant beat", "i dare you", "prove it", "you've got nothing", "youve got nothing", "send it to my side",
+	"send them my way", "you'll lose", "youll lose", "is that all", "you're sweating", "youre sweating", "easy money"]
+const COW_TAUNT_PHRASES : Array[String] = [
+	"you should fold", "just fold", "play it safe", "don't risk it", "dont risk it", "you're beat", "youre beat",
+	"give up", "back down", "you're done", "youre done", "quit while", "you can't win", "you cant win",
+	"don't push it", "dont push it"]
+const TABLE_BRUSHOFF_PHRASES : Array[String] = [
+	"save your breath", "nice try", "not falling for", "won't work", "wont work", "keep talking", "talk all you",
+	"we'll see", "well see about", "doesn't rattle", "doesnt rattle", "not biting", "i'm unmoved", "im unmoved",
+	"all bluster"]
+const TABLE_TALK_POLITE : Array[String] = [
+	"good game", "well played", "nice hand", "thank you", "good luck", "no worries", "well done", "good round"]
+
+
+## What table-talk does the PLAYER's line carry? COWED (steer them passive) beats TILT (bait). NEUTRAL = no
+## taunt, or a polite line. Pass text.to_lower(). The deterministic fallback for a dropped [[mood]] tag.
+func table_taunt_kind(lc: String) -> int:
+
+	if _any_phrase(lc, TABLE_TALK_POLITE):
+		return NpcMood.NEUTRAL
+	if _any_phrase(lc, COW_TAUNT_PHRASES):
+		return NpcMood.COWED
+	if _any_phrase(lc, TILT_TAUNT_PHRASES):
+		return NpcMood.TILT
+	return NpcMood.NEUTRAL
+
+
+## Did the NPC's reply verbally BRUSH OFF the taunt (so the fallback must NOT tilt them)? Pass text.to_lower().
+func reply_brushes_off(lc: String) -> bool:
+	return _any_phrase(lc, TABLE_BRUSHOFF_PHRASES)
+
+
 ## The CURRENT scene's place — fed into the prompt so NPCs reference their ACTUAL surroundings (Troy 2026-06-08),
 ## keyed by the scene file's stem. Sky-canon flavour (see [[sky-canon]]); empty for unknown / puzzle scenes.
 const PLACES : Dictionary = {
@@ -935,6 +973,7 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 			cleaned = "You've quite a way about you, you know that?" if rom_ok else "..."
 		var _pre_tt : String = cleaned
 		cleaned = file_table_talk_if_marked(cleaned, _persona.npc_name)   # talk-moves-the-game mood tags
+		var tt_tagged : bool = cleaned != _pre_tt   # a [[TILT]]/[[COWED]]/[[FIRED_UP]] tag was found + filed
 		if cleaned.is_empty() and cleaned != _pre_tt:
 			cleaned = "Heh. We'll see about that."   # a tag-only reply — keep it light, never blank
 		reply = cleaned
@@ -956,6 +995,15 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 			# not merely "didn't match a decline", so a soft in-character no can't slip through as a yes.
 			if is_romance_overture(pov_lc) and reply_accepts_romance(rep_lc) and not reply_declines_romance(rep_lc):
 				PlayerState.advance_romance(_persona.npc_name)
+		# Table-talk fallback (dropped [[mood]] tag): in a LIVE versus game, a clear player taunt at a shakeable
+		# NPC (composure below the iron threshold) that the reply did NOT verbally brush off nudges the mood.
+		# Conservative, like the duel fallback; only when no tag already fired, so it never double-files.
+		if not tt_tagged and not _messages.is_empty():
+			var tt_tree : SceneTree = get_tree()
+			if tt_tree != null and tt_tree.current_scene != null and tt_tree.current_scene.has_method("npc_chat_context") and _persona.composure < 0.85:
+				var taunt_kind : int = table_taunt_kind(String(_messages.back().get("content", "")).to_lower())
+				if taunt_kind != NpcMood.NEUTRAL and not reply_brushes_off(reply.to_lower()):
+					NpcMood.nudge(_persona.npc_name, taunt_kind)
 	_messages.append({"role": "assistant", "content": reply})
 	_persist_history()   # remember this exchange across scenes + reloads (free — no extra AI call)
 	npc_replied.emit(reply)

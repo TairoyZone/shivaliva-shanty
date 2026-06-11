@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Hollow Ellison"
+composure = 0.85
 pronouns = "she/her"
 duel_appetite = 0.7
 skirmish_skill = 0.9
