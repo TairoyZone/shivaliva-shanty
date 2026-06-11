@@ -86,10 +86,13 @@ func _show_result() -> void:
 	ok.pressed.connect(_close)
 	row.add_child(ok)
 	_content.add_child(row)
-	# A small celebratory beat (animate-everything) — a drawn heart that swells in over the panel.
+	# A small celebratory beat (animate-everything) — a drawn heart that swells in between title + text.
+	# SIZE_SHRINK_CENTER is load-bearing: in a VBox a bare Control expands to FULL WIDTH, and the heart drew
+	# as two giant lobes swallowing the modal (caught by the screenshot harness 2026-06-11).
 	var heart : RomanceHeart = RomanceHeart.new()
 	heart.color = Color(1.0, 0.45, 0.6, 1.0)
 	heart.custom_minimum_size = Vector2(64, 64)
+	heart.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	heart.scale = Vector2(0.2, 0.2)
 	heart.pivot_offset = Vector2(32, 32)
 	_content.add_child(heart)
@@ -159,14 +162,15 @@ class RomanceHeart extends Control:
 	var color : Color = Color(1.0, 0.45, 0.6, 1.0)
 
 	func _draw() -> void:
-		var w : float = size.x
-		var r : float = w * 0.26
-		var cx : float = w * 0.5
-		var ly : float = r * 1.05            # lobe centre height
-		draw_circle(Vector2(cx - r * 0.84, ly), r, color)   # left lobe
-		draw_circle(Vector2(cx + r * 0.84, ly), r, color)   # right lobe
-		# Bottom point: a triangle from the lobes' outer edges down to the tip.
+		# Measure off the SMALLER dimension so the heart stays a heart whatever box it lands in.
+		var d : float = minf(size.x, size.y)
+		var cx : float = size.x * 0.5
+		var r : float = d * 0.27
+		var ly : float = d * 0.30            # lobe centre height
+		draw_circle(Vector2(cx - r, ly), r, color)   # left lobe
+		draw_circle(Vector2(cx + r, ly), r, color)   # right lobe
+		# Bottom point: a triangle from just below the lobes' outer tangents down to the tip.
 		draw_colored_polygon(PackedVector2Array([
-			Vector2(cx - r * 1.7, ly),
-			Vector2(cx + r * 1.7, ly),
-			Vector2(cx, size.y * 0.96)]), color)
+			Vector2(cx - r * 1.96, ly + r * 0.2),
+			Vector2(cx + r * 1.96, ly + r * 0.2),
+			Vector2(cx, d * 0.95)]), color)
