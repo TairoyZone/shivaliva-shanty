@@ -236,6 +236,9 @@ var game_minutes : float = 480.0
 ## name that doesn't fade from chat history). "" = unnamed (chat falls back to "traveller"). Persisted; set via
 ## [method set_player_name]. See [NpcBrain.compose_system]. (Troy 2026-06-10.)
 var player_name : String = ""
+## The player's chosen gender ("Male" / "Female" / "Other"), picked at New Game beside the name. Identity for
+## now; full character cosmetics land post-MVP. Persisted. (Troy 2026-06-11.)
+var player_gender : String = ""
 
 ## Persistent per-ship CONDITION, keyed by ship id → {"open_holes": int}. The ACTIVE ship's holes
 ## drive the Loft's Stardust rise (more holes ⇒ floods faster) + the sink; the Patchworks seals them.
@@ -1561,6 +1564,13 @@ func set_player_name(new_name: String) -> void:
 	_save()
 
 
+## Set + persist the player's gender (picked at New Game). One of "Male" / "Female" / "Other".
+func set_player_gender(g: String) -> void:
+
+	player_gender = g
+	_save()
+
+
 # --- Crew (hire + ranks) — the foundation for "start a crew" ------------
 
 ## Can the player recruit this NPC? Only a CONFIDANT (the design's "can recruit" tier). NOTE: this gates the
@@ -2236,6 +2246,7 @@ func clear_save() -> void:
 	active_ship = ""
 	game_minutes = 480.0   # a fresh game wakes at 08:00
 	player_name = ""       # named at the New Game prompt
+	player_gender = ""
 	owned_weapons = ["brawl"]
 	equipped_weapon = "brawl"
 	npc_affinity = {}
@@ -2290,6 +2301,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "active_ship", active_ship)
 	config.set_value(SAVE_SECTION, "game_minutes", game_minutes)
 	config.set_value(SAVE_SECTION, "player_name", player_name)
+	config.set_value(SAVE_SECTION, "player_gender", player_gender)
 	config.set_value(SAVE_SECTION, "owned_weapons", owned_weapons)
 	config.set_value(SAVE_SECTION, "equipped_weapon", equipped_weapon)
 	config.set_value(SAVE_SECTION, "weapons_model", "items_v1")
@@ -2340,6 +2352,7 @@ func _load() -> void:
 	active_ship = String(config.get_value(SAVE_SECTION, "active_ship", ""))
 	game_minutes = float(config.get_value(SAVE_SECTION, "game_minutes", 480.0))
 	player_name = String(config.get_value(SAVE_SECTION, "player_name", ""))
+	player_gender = String(config.get_value(SAVE_SECTION, "player_gender", ""))
 	owned_weapons = config.get_value(SAVE_SECTION, "owned_weapons", ["brawl"])
 	equipped_weapon = String(config.get_value(SAVE_SECTION, "equipped_weapon", "brawl"))
 	npc_affinity = config.get_value(SAVE_SECTION, "npc_affinity", {})

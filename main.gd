@@ -15,6 +15,8 @@ const FIRST_SCENE : String = "res://levels/player_shanty_interior/player_shanty_
 var _confirm : CanvasLayer = null
 ## The New Game name field (lives inside the name-prompt overlay).
 var _name_edit : LineEdit = null
+## The New Game gender pick ("Male" / "Female" / "Other"), chosen beside the name (identity now; cosmetics post-MVP).
+var _chosen_gender : String = "Other"
 
 
 func _ready() -> void:
@@ -166,6 +168,26 @@ func _show_name_prompt() -> void:
 	edit.text_submitted.connect(func(_t: String) -> void: _begin_from_edit())   # Enter submits
 	vbox.add_child(edit)
 	_name_edit = edit
+	# Gender pick (identity now; full character cosmetics post-MVP). A 3-way radio — defaults to Other so there's
+	# always a value, and any romanceable NPC is open to any player regardless (orientation-agnostic).
+	var glabel : Label = Label.new()
+	glabel.text = "And you are…"
+	glabel.add_theme_font_size_override("font_size", 15)
+	glabel.add_theme_color_override("font_color", Color(0.82, 0.74, 0.56, 1.0))
+	glabel.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(glabel)
+	var grow : HBoxContainer = HBoxContainer.new()
+	grow.alignment = BoxContainer.ALIGNMENT_CENTER
+	grow.add_theme_constant_override("separation", 10)
+	var ggroup : ButtonGroup = ButtonGroup.new()
+	for g in ["Male", "Female", "Other"]:
+		var gb : Button = _make_button(g, Color(0.92, 0.86, 0.66, 1.0))
+		gb.toggle_mode = true
+		gb.button_group = ggroup
+		gb.button_pressed = (g == _chosen_gender)
+		gb.toggled.connect(_on_gender_toggled.bind(g))
+		grow.add_child(gb)
+	vbox.add_child(grow)
 	var row : HBoxContainer = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	vbox.add_child(row)
@@ -187,12 +209,19 @@ func _begin_from_edit() -> void:
 	_begin_named_game(entered)
 
 
+func _on_gender_toggled(toggled_on: bool, g: String) -> void:
+
+	if toggled_on:
+		_chosen_gender = g
+
+
 func _begin_named_game(chosen_name: String) -> void:
 
 	_close_confirm()
 	_name_edit = null
 	PlayerState.clear_save()
 	PlayerState.set_player_name(chosen_name)   # persisted — the cast remembers it all game
+	PlayerState.set_player_gender(_chosen_gender)
 	get_tree().change_scene_to_file(FIRST_SCENE)
 
 
