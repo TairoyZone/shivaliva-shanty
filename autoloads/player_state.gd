@@ -2275,6 +2275,7 @@ func clear_save() -> void:
 	npc_battle_record = {}
 	npc_chat_log = {}
 	recent_duel = {}
+	NpcMood.clear_all()   # a transient table mood never carries into a fresh game
 	tournaments_won = 0
 	last_scene = ""
 	last_position = Vector2.ZERO

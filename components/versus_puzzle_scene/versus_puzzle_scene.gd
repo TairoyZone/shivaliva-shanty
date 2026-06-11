@@ -59,21 +59,29 @@ func _pressure_phrase(_asker: String) -> String:
 	return ""
 
 
-## Optional active-mood note for the chatting opponent (surfaced once NpcMood ships). Purely additive.
-func _active_mood_note(_asker: String) -> String:
+## An active-mood note for the chatting opponent, so their banter matches what the player just did to them
+## (2nd person — the prompt addresses the NPC as "you"). "" when no mood is live.
+func _active_mood_note(asker: String) -> String:
+	match NpcMood.current_kind(asker):
+		NpcMood.TILT:
+			return "(The traveller's needling has gotten under your skin — you're playing rattled and loose right now.)"
+		NpcMood.FIRED_UP:
+			return "(The traveller's got your blood up — you're feeling bold and aggressive right now.)"
+		NpcMood.COWED:
+			return "(The traveller's gotten in your head — you're playing cautious and tight right now.)"
 	return ""
 
 
 # ── Talk-influence seam (no-ops until the NpcMood autoload ships) ────────────────────────────────────────
 # The shared accessor every concrete AI reads. Sign convention: + = rattled (toward blunder/looser),
-# − = confident / steely. Returns neutral 0.0 until NpcMood exists; then this one method changes.
-func mood_bias(_name: String) -> float:
-	return 0.0
+# − = confident / steely. 0 when there's no live mood. Read it on the MAIN thread (it lazily clears expiries).
+func mood_bias(name: String) -> float:
+	return NpcMood.bias(name)
 
 
-## Tick the opponent's mood once, at the AI decision point. No-op until NpcMood exists.
-func tick_opponent_mood(_name: String) -> void:
-	pass
+## Tick the opponent's mood once, at the AI decision point (ages it one step toward neutral).
+func tick_opponent_mood(name: String) -> void:
+	NpcMood.tick(name)
 
 
 ## Per-game AI-biasing hook: override to fold `mood_bias(name)` into your own AI knobs, and CALL it at your

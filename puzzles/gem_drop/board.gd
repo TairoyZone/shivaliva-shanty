@@ -182,6 +182,10 @@ var _sim_depth : int = MINIMAX_DEPTH
 ## search depth. Set by the scene controller at start; null falls back
 ## to neutral defaults so the board still runs solo for tests.
 var ai_personality : NpcPersonality = null
+## Talk-influence bias for the AI seat, SET BY THE SCENE on the main thread before each search
+## (gem_drop._on_turn_changed → [VersusPuzzleScene].mood_bias). + = rattled (chases points, under-defends,
+## may think shallower); − = cowed (over-defends, scores less). Snapshotted into the _sim_ weights below.
+var mood_bias : float = 0.0
 # Histogram of which columns the human has dropped into this session.
 # Indexed 0..SCORING_SLOTS-1; only ENTRY_POSITIONS see real counts.
 # Drives the AI's "perception" — high-perception NPCs (Godfrey,
@@ -888,10 +892,15 @@ func _begin_ai_search() -> void:
 	_sim_switch_snapshot = _snapshot_switches_for_sim()
 	_sim_scoring_values = scoring_values.duplicate()
 	_sim_human_drops = _human_drops_by_col.duplicate()
-	_sim_w_score = ai_personality.w_score if ai_personality != null else 1.0
-	_sim_w_denial = ai_personality.w_denial if ai_personality != null else 1.0
+	# Fold the talk-influence mood into the snapshotted weights (capped → an edge, not a cheat). + = chase
+	# points + under-defend (lets YOU score — "send the gems my way"); − = over-defend + score less.
+	var mb : float = clampf(mood_bias, -1.0, 1.0)
+	_sim_w_score = (ai_personality.w_score if ai_personality != null else 1.0) * (1.0 + 0.4 * mb)
+	_sim_w_denial = (ai_personality.w_denial if ai_personality != null else 1.0) * (1.0 - 0.4 * mb)
 	_sim_perception = ai_personality.perception if ai_personality != null else 0.0
 	_sim_depth = _personality_depth()
+	if mb >= 0.6 and _sim_depth >= 4:
+		_sim_depth -= 1   # near-max tilt: a rattled deep-thinker literally thinks one ply shallower
 	_ai_searching = true
 	_ai_search_watchdog = 0.0
 	_ai_thread = Thread.new()

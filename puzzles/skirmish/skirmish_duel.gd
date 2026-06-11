@@ -198,15 +198,22 @@ func _ai_act() -> void:
 
 	if _duel_over or _opponent_board.is_over() or _opponent_board.piece_type() < 0:
 		return
+	# TABLE-TALK MOOD — the traveller in this foe's head plays them a touch worse (|bias| degrades skill),
+	# and RILING them up (positive) also makes them blunder recklessly. Capped → an edge, not a cheat. Tick
+	# ages the mood one step per decision. mood_bias()/tick come from [VersusPuzzleScene] → [NpcMood].
+	var mb : float = mood_bias(_opponent_name)
+	tick_opponent_mood(_opponent_name)
+	var eff_skill : float = clampf(_opponent_skill - 0.22 * absf(mb), 0.0, 1.0)
+	var eff_blunder : float = clampf(BASE_BLUNDER + 0.25 * maxf(mb, 0.0), 0.0, 1.0)
 	var grid : Array = _opponent_board.grid_rows()
 	var piece : int = _opponent_board.piece_type()
 	var pl : Dictionary
-	# A weak foe sometimes BLUNDERS a piece to a random spot; otherwise it plays
-	# the best placement, degraded by skill-scaled noise inside best_placement.
-	if randf() < BASE_BLUNDER * (1.0 - _opponent_skill):
+	# A weak (or rattled) foe sometimes BLUNDERS a piece to a random spot; otherwise it plays the best
+	# placement, degraded by skill-scaled noise inside best_placement.
+	if randf() < eff_blunder * (1.0 - eff_skill):
 		pl = SkirmishAI.random_placement(grid, piece)
 	else:
-		pl = SkirmishAI.best_placement(grid, piece, _opponent_skill)
+		pl = SkirmishAI.best_placement(grid, piece, eff_skill)
 	_opponent_board.ai_place(int(pl["rot"]), int(pl["px"]))
 
 

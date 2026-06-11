@@ -1016,7 +1016,10 @@ func _on_turn_changed(player_index: int) -> void:
 		return
 	if _board.current_player_index != player_index:
 		return
-	var decision : Dictionary = PokerAI.decide(_board, player)
+	# Table talk in this NPC's head nudges their decision (0.0 when no mood is live); tick ages it a step.
+	var mb : float = mood_bias(player.player_name)
+	tick_opponent_mood(player.player_name)
+	var decision : Dictionary = PokerAI.decide(_board, player, mb)
 	_board.apply_action(decision["action"], decision["amount"])
 
 

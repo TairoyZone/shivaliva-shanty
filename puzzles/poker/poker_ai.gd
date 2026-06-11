@@ -41,7 +41,7 @@ const PERCEPTION_MAX_SHIFT : float = 0.20
 ## Top-level decision. Always returns a legal action. Players without
 ## a [member PokerPlayer.personality] fall back to a balanced default
 ## profile so the AI never crashes on missing knobs.
-static func decide(board: PokerBoard, player: PokerPlayer) -> Dictionary:
+static func decide(board: PokerBoard, player: PokerPlayer, mood: float = 0.0) -> Dictionary:
 
 	var p : NpcPersonality = player.personality
 	# Defaults if the player wasn't given a personality (shouldn't
@@ -76,6 +76,14 @@ static func decide(board: PokerBoard, player: PokerPlayer) -> Dictionary:
 		# Aggressive human → AI folds less (their bets are likely bluffs).
 		patience -= agg_delta * effective_perception * PERCEPTION_MAX_SHIFT
 		patience = clampf(patience, 0.0, 1.0)
+
+	# TABLE-TALK MOOD — the traveller got in this NPC's head (capped like the perception shifts above, so a
+	# moved NPC still plays its own game — an edge, not a cheat). + = rattled/baited → looser calls, more
+	# bluffs, lighter folds; − = cowed → tighter, folds more. 0.0 when no mood is live. See [NpcMood].
+	if not is_zero_approx(mood):
+		aggr = clampf(aggr + mood * 0.18, 0.0, 1.0)
+		bluff = clampf(bluff + mood * 0.15, 0.0, 0.9)
+		patience = clampf(patience - mood * 0.12, 0.0, 1.0)
 
 	var strength : float = _estimate_strength(player, board.community_cards)
 	var to_call : int = board.get_amount_to_call()

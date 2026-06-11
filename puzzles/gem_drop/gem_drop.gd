@@ -200,6 +200,11 @@ func _on_turn_changed(player: int) -> void:
 	_ai_turn_label.visible = not human_active
 	_you_label.modulate = HUMAN_COLOR if human_active else HUMAN_COLOR * INACTIVE_DIM
 	_ai_label.modulate = AI_COLOR if not human_active else AI_COLOR * INACTIVE_DIM
+	if not human_active and _opponent != null:
+		# The AI's turn — fold the talk-influence mood into the board's next search. Set on the MAIN thread here;
+		# _begin_ai_search reads it before the worker thread starts (safe). Tick ages it one step per AI move.
+		_board.mood_bias = mood_bias(_opponent.npc_name)
+		tick_opponent_mood(_opponent.npc_name)
 
 
 func _on_game_complete(winner: int, human_rounds: int, ai_rounds: int) -> void:
