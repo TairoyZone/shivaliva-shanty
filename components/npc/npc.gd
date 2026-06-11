@@ -154,6 +154,14 @@ func interact() -> void:
 	# chat/trade/spar (the core) stay open, per the parlor LAW. Make amends and the option returns.
 	if NPC_FAVORS.has(npc_name) and PlayerState.get_affinity(npc_name) >= 0:
 		opts.append({"label": "Favour", "action": _open_favor_modal})
+	# Court → the Sweethearts romance path. Only for a ROMANCEABLE, single NPC (their .tres opts in via
+	# romance_appetite, no partner) once you're at least Friends, and not once they're already your Sweetheart —
+	# the AI plays the courtship out IN the chat. Married/partnered + soured + strangers never see it.
+	var rom_persona : NpcPersonality = _resolve_personality()
+	if rom_persona != null and rom_persona.romance_appetite > 0.0 and rom_persona.partner.is_empty() \
+			and not PlayerState.is_sweetheart(npc_name) \
+			and PlayerState.get_affinity(npc_name) >= PlayerState.COURT_MIN_AFFINITY:
+		opts.append({"label": "Court", "action": _court})
 	opts.append({"label": "Profile", "action": _open_profile})
 	var at : Vector2 = get_global_transform_with_canvas().origin + Vector2(0.0, -36.0)
 	NpcMenu.open(self, at, npc_name, portrait_color, opts)
@@ -178,6 +186,14 @@ func _chat() -> void:
 ## Public entry to start this NPC's private chat — used by the chat box's scope selector (pick "→ Name")
 ## as well as the radial Chat option.
 func open_chat() -> void:
+
+	_chat()
+
+
+# Court → open this NPC's private chat as a COURTSHIP. The romance plays out IN the conversation (the AI warms
+# in-character, advancing Fond → Smitten as real overtures land — see [NpcBrain._romance_block]); this option
+# just makes the pursuit a clear, discoverable choice. Gated in interact() to romanceable, single, Friends+ NPCs.
+func _court() -> void:
 
 	_chat()
 

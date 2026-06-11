@@ -373,6 +373,10 @@ func _plural(n: int) -> String:
 ## The hidden marker an NPC appends to a reply to CHALLENGE the player to a Skirmish duel. Stripped before the
 ## player ever sees it (see [method file_duel_if_marked]) and turned into an Ayo! challenge card.
 const DUEL_MARKER : String = "[[DUEL]]"
+## The hidden marker an NPC appends when a courtship deepens a step (openness → Fond → Smitten). Stripped before
+## display + filed by [method file_courtship_if_marked] → [method PlayerState.advance_romance] (Smitten-capped +
+## rapport-gated; the Sweetheart vow is a DETERMINISTIC player action, never this tag). See [method _smitten_clause].
+const SMITTEN_MARKER : String = "[[SMITTEN]]"
 
 ## The hidden marker an NPC appends when the player genuinely OFFENDS them (insults, cruelty, harassment) —
 ## the NPC's own in-character judgment, not a profanity filter. Stripped before display (see
@@ -443,6 +447,24 @@ func file_duel_if_marked(text: String, npc_name: String) -> String:
 	PlayerState.add_challenge(npc_name)
 	var cleaned : String = re.sub(text, "", true)
 	cleaned = cleaned.replace("*", "")   # strip orphaned bold/emphasis a wrapped tag (**[[DUEL]]**) leaves behind
+	return cleaned.strip_edges()
+
+
+## Strip a [[SMITTEN]] marker (tolerant of casing/wrapping, like [method file_duel_if_marked]) + advance the
+## courtship one step ([method PlayerState.advance_romance] — Smitten-capped + rapport-gated internally, so a
+## stray tag can never over-advance or break the gate). Returns the cleaned text. Private chat path only.
+func file_courtship_if_marked(text: String, npc_name: String) -> String:
+
+	if npc_name.is_empty():
+		return text
+	var re : RegEx = RegEx.new()
+	# Tolerate what models actually emit: 1-2 of [ ( { < around "smitten", with trailing junk (like the duel re).
+	re.compile("(?i)[\\[({<]{1,2}\\s*smitten\\b[^\\])}>\\n]*[\\])}>]{1,2}")
+	if re.search(text) == null:
+		return text
+	PlayerState.advance_romance(npc_name)
+	var cleaned : String = re.sub(text, "", true)
+	cleaned = cleaned.replace("*", "")
 	return cleaned.strip_edges()
 
 
@@ -526,6 +548,30 @@ func reply_accepts_duel(lc: String) -> bool:
 func reply_declines_duel(lc: String) -> bool:
 
 	return _any_phrase(lc, DUEL_DECLINE_PHRASES)
+
+
+# Romance fallback classifiers — like the duel ones, they catch an advance when the model agrees in WORDS but
+# drops the [[SMITTEN]] tag. CONSERVATIVE: only an EXPLICIT player overture counts (romance is subjective — a
+# false positive would force a premature, unearned step). Lowercase substring matching (pass text.to_lower()).
+const ROMANCE_OVERTURE_PHRASES : Array[String] = [
+	"i love you", "i'm in love with you", "im in love with you", "i'm falling for you", "im falling for you",
+	"i have feelings for you", "i've feelings for you", "ive feelings for you", "i fancy you", "i adore you",
+	"i'm sweet on you", "im sweet on you", "be mine", "i'm yours", "im yours", "i want to be with you",
+	"will you be my", "i want to court you", "you've stolen my heart", "youve stolen my heart"]
+const ROMANCE_DECLINE_PHRASES : Array[String] = [
+	"just friends", "better as friends", "i can't return", "i cant return", "i don't feel that way",
+	"i dont feel that way", "i'm flattered, but", "im flattered but", "i'm flattered but", "my heart belongs",
+	"not like that", "i don't think of you", "i dont think of you"]
+
+
+func is_romance_overture(lc: String) -> bool:
+
+	return _any_phrase(lc, ROMANCE_OVERTURE_PHRASES)
+
+
+func reply_declines_romance(lc: String) -> bool:
+
+	return _any_phrase(lc, ROMANCE_DECLINE_PHRASES)
 
 
 ## The CURRENT scene's place — fed into the prompt so NPCs reference their ACTUAL surroundings (Troy 2026-06-08),
@@ -702,18 +748,35 @@ func _romance_block(persona: NpcPersonality) -> String:
 	match PlayerState.romance_stage(persona.npc_name):
 		1:
 			return ("ROMANCE: A FONDNESS is growing between you and this traveller — you're glad of their company, "
-				+ "warmer and more personal with them than with others. Let it show gently; never force it.")
+				+ "warmer and more personal with them than with others. Let it show gently; never force it."
+				+ _smitten_clause())   # a fondness can still deepen toward smitten
 		2:
 			return ("ROMANCE: You are SMITTEN with this traveller — your heart leans toward them. Be openly warm, a "
-				+ "touch flirtatious and affectionate, glad of every visit; speak like someone falling for them.")
+				+ "touch flirtatious and affectionate, glad of every visit; speak like someone falling for them. The "
+				+ "next step — a true vow between you — is THEIRS to offer when they're ready; long for it, don't force it.")
 		3:
 			return ("ROMANCE: This traveller is your SWEETHEART — you are devoted to them. Speak with open love, "
 				+ "warmth and tenderness, like talking to the one you've given your heart to.")
-	if persona.romance_appetite > 0.0:
-		return ("ROMANCE: You are single and open to love. If THIS traveller is genuinely charming and kind and "
-			+ "courts your affection over time, you may find yourself warming to them — let a real connection grow "
-			+ "naturally from how they treat you; never instant, never forced.")
+	# Romanceable + single, no romance yet: the openness activates at Friend-tier (matching the Court option), so
+	# a courtship can BEGIN through chat. Below Friend they simply chat as a friend (no romance clause at all).
+	if persona.romance_appetite > 0.0 and PlayerState.get_affinity(persona.npc_name) >= PlayerState.COURT_MIN_AFFINITY:
+		return ("ROMANCE: You are single, and warm to this traveller's company. If they are genuinely charming and "
+			+ "kind and court your affection over time, you may find yourself falling for them — let a real "
+			+ "connection grow naturally from how they treat you; never instant, never forced." + _smitten_clause())
 	return ""
+
+
+## The hidden [[SMITTEN]] instruction, folded into the romance block at the stages where a courtship can still
+## DEEPEN (openness → Fond → Smitten). Mirrors [method _duel_clause]'s tag mechanic: the marker is stripped + the
+## stage advanced before display ([method file_courtship_if_marked]), so the player never sees it.
+func _smitten_clause() -> String:
+
+	return (" If in THIS exchange the traveller genuinely wins a deeper measure of your heart — a real, earned "
+		+ "romantic overture that truly LANDS, not mere friendliness, a single compliment or ordinary kindness — "
+		+ "append the hidden control tag " + SMITTEN_MARKER + " at the very END of your reply. It is invisible "
+		+ "game-machinery, stripped out before the traveller ever sees it, so speak naturally and NEVER mention the "
+		+ "brackets. Use it SPARINGLY — only when your feelings truly move a step forward; most exchanges should "
+		+ "carry NO tag. A slow, earned burn, never a sudden swoon.")
 
 
 # Keep the rolling history bounded (cost guard). Trim from the front, then ensure it still starts on a
@@ -767,6 +830,11 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		cleaned = file_offense_if_marked(cleaned, _persona.npc_name)
 		if cleaned.is_empty() and cleaned != _pre_off:
 			cleaned = cold_offense_line()   # a tag-only reply reads as a cold brush-off, not blank
+		var _pre_rom : String = cleaned
+		cleaned = file_courtship_if_marked(cleaned, _persona.npc_name)   # [[SMITTEN]] → advance a step
+		var romance_advanced : bool = cleaned != _pre_rom
+		if cleaned.is_empty() and romance_advanced:
+			cleaned = "You've quite a way about you, you know that?"   # rare marker-only romance line
 		reply = cleaned
 		# Deterministic fallback: the model often agrees in words but drops the tag. If the PLAYER explicitly
 		# proposed a duel and this NPC's reply accepts (and doesn't decline), file it anyway — the chat partner
@@ -776,6 +844,13 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 			var reply_lc : String = reply.to_lower()
 			if is_duel_proposal(player_lc) and reply_accepts_duel(reply_lc) and not reply_declines_duel(reply_lc):
 				PlayerState.add_challenge(_persona.npc_name)
+		# Romance fallback (same reason — dropped tags). ONLY when the marker DIDN'T already advance: an EXPLICIT
+		# player overture this turn, not declined by a romanceable + single NPC, nudges the courtship one step.
+		# advance_romance is rapport-gated + Smitten-capped, so this can never over-reach or break canon.
+		if not romance_advanced and _persona.romance_appetite > 0.0 and _persona.partner.is_empty() and not _messages.is_empty():
+			var pov_lc : String = String(_messages.back().get("content", "")).to_lower()
+			if is_romance_overture(pov_lc) and not reply_declines_romance(reply.to_lower()):
+				PlayerState.advance_romance(_persona.npc_name)
 	_messages.append({"role": "assistant", "content": reply})
 	_persist_history()   # remember this exchange across scenes + reloads (free — no extra AI call)
 	npc_replied.emit(reply)
