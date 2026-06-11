@@ -124,6 +124,14 @@ const MASTERY_PUZZLES : Dictionary = {
 	"loft": {"name": "Lofting", "thresholds": [0, 120, 280, 480, 750, 1100]},
 	"patchworks": {"name": "Patchworks", "thresholds": [0, 400, 1200, 2600, 4500, 7000]},
 }
+## ⭐ SUSTAINED mastery (Troy 2026-06-11): ranks are EARNED over MANY runs, never set by one best session. Each
+## run adds "quality" = score ÷ that puzzle's PAR (= its thresholds[3] above, the old single-session "Master"
+## score), capped at MASTERY_SESSION_CAP so no single run dominates, ×MASTERY_PAR_POINTS. puzzle_mastery
+## ACCUMULATES that. So `thresholds` above now only supplies PAR (the per-puzzle score scale); the RANK ladder
+## is shared, in accumulated points: a par run ≈ +25 pts, Master ≈ 14 par runs, Legend ≈ 50.
+const MASTERY_RANK_POINTS : Array = [0, 50, 150, 350, 700, 1250]
+const MASTERY_PAR_POINTS : float = 25.0   # a par-quality run's points (a 2× run = 50, the cap)
+const MASTERY_SESSION_CAP : float = 2.0   # most quality one run can count for — so it can never one-shot a rank
 
 # --- Inventory (Stardew-style slot backpack) -------------------------
 ## The canonical item id for raw lumber. Future puzzles add more ids
@@ -1823,16 +1831,18 @@ func consume_lobby_setup() -> Dictionary:
 func record_puzzle_result(puzzle_id: String, score: int) -> Dictionary:
 
 	if not MASTERY_PUZZLES.has(puzzle_id):
-		return {"best": score, "tier_index": 0, "tier_name": MASTERY_TIERS[0],
+		return {"best": 0, "tier_index": 0, "tier_name": MASTERY_TIERS[0],
 			"is_new_best": false, "ranked_up": false}
-	var old_best : int = int(puzzle_mastery.get(puzzle_id, 0))
-	var old_tier : int = _mastery_tier_index(puzzle_id, old_best)
-	var is_new_best : bool = score > old_best
-	var best : int = maxi(old_best, score)
-	if is_new_best:
-		puzzle_mastery[puzzle_id] = best
+	# SUSTAINED: add this run's (capped) quality to the accumulated total, then read the rank off the shared
+	# points ladder — so it climbs over many runs and one great run can't jump it.
+	var gain : float = clampf(float(score) / _mastery_par(puzzle_id), 0.0, MASTERY_SESSION_CAP) * MASTERY_PAR_POINTS
+	var old_points : float = float(puzzle_mastery.get(puzzle_id, 0.0))
+	var old_tier : int = _mastery_tier_index_points(old_points)
+	var new_points : float = old_points + gain
+	if gain > 0.0:
+		puzzle_mastery[puzzle_id] = new_points
 		_save()
-	var new_tier : int = _mastery_tier_index(puzzle_id, best)
+	var new_tier : int = _mastery_tier_index_points(new_points)
 	var ranked_up : bool = new_tier > old_tier
 	if ranked_up:
 		Audio.play_sfx("powerup")   # the rank-up fanfare (borrowed GDQuest lib — richer than the synth chime)
@@ -1840,8 +1850,8 @@ func record_puzzle_result(puzzle_id: String, score: int) -> Dictionary:
 		var pname : String = String((MASTERY_PUZZLES.get(puzzle_id, {}) as Dictionary).get("name", puzzle_id))
 		log_event("Ranked up: %s — %s" % [pname, MASTERY_TIERS[new_tier]], Color(0.98, 0.86, 0.5))
 	check_new_trophies()
-	return {"best": best, "tier_index": new_tier, "tier_name": MASTERY_TIERS[new_tier],
-		"is_new_best": is_new_best, "ranked_up": ranked_up}
+	return {"best": roundi(new_points), "tier_index": new_tier, "tier_name": MASTERY_TIERS[new_tier],
+		"is_new_best": gain > 0.0, "ranked_up": ranked_up}
 
 
 ## Detect trophies that JUST became earned (vs trophies_seen) + announce each via
@@ -1950,27 +1960,32 @@ func _seed_trophies_seen() -> void:
 			trophies_seen.append(id)
 
 
-## The player's best recorded score for a puzzle (0 if never played).
+## The player's accumulated mastery POINTS for a puzzle, rounded (0 if never played). Climbs every run.
 func mastery_best(puzzle_id: String) -> int:
 
-	return int(puzzle_mastery.get(puzzle_id, 0))
+	return roundi(float(puzzle_mastery.get(puzzle_id, 0.0)))
 
 
 ## {index, name} of a puzzle's current mastery tier.
 func mastery_tier(puzzle_id: String) -> Dictionary:
 
-	var idx : int = _mastery_tier_index(puzzle_id, mastery_best(puzzle_id))
+	var idx : int = _mastery_tier_index_points(float(puzzle_mastery.get(puzzle_id, 0.0)))
 	return {"index": idx, "name": MASTERY_TIERS[idx]}
 
 
-# Highest tier index whose threshold the score has reached.
-func _mastery_tier_index(puzzle_id: String, score: int) -> int:
+# That puzzle's PAR — the score a single "strong" run makes (its old single-session Master threshold) = 1.0 quality.
+func _mastery_par(puzzle_id: String) -> float:
 
-	var cfg : Dictionary = MASTERY_PUZZLES.get(puzzle_id, {})
-	var thresholds : Array = cfg.get("thresholds", [0])
+	var t : Array = (MASTERY_PUZZLES.get(puzzle_id, {}) as Dictionary).get("thresholds", [0, 0, 0, 1])
+	return maxf(1.0, float(t[mini(3, t.size() - 1)]))
+
+
+# Highest rank index whose ACCUMULATED-points threshold has been reached.
+func _mastery_tier_index_points(points: float) -> int:
+
 	var idx : int = 0
-	for i in thresholds.size():
-		if score >= int(thresholds[i]):
+	for i in MASTERY_RANK_POINTS.size():
+		if points >= float(MASTERY_RANK_POINTS[i]):
 			idx = i
 		else:
 			break
@@ -2106,6 +2121,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "has_seen_intro", has_seen_intro)
 	config.set_value(SAVE_SECTION, "frontier_unlocked", frontier_unlocked)
 	config.set_value(SAVE_SECTION, "puzzle_mastery", puzzle_mastery)
+	config.set_value(SAVE_SECTION, "mastery_model", "sustained_v1")
 	config.set_value(SAVE_SECTION, "trophies_seen", trophies_seen)
 	config.set_value(SAVE_SECTION, "trophies_claimed", trophies_claimed)
 	config.set_value(SAVE_SECTION, "owned_ships", owned_ships)
@@ -2150,6 +2166,10 @@ func _load() -> void:
 	has_seen_intro = bool(config.get_value(SAVE_SECTION, "has_seen_intro", false))
 	frontier_unlocked = bool(config.get_value(SAVE_SECTION, "frontier_unlocked", false))
 	puzzle_mastery = config.get_value(SAVE_SECTION, "puzzle_mastery", {})
+	# Sustained-mastery migration (2026-06-11): old saves stored best-SCORES here, not accumulated points —
+	# reset once so ranks are re-earned under the new model.
+	if String(config.get_value(SAVE_SECTION, "mastery_model", "")) != "sustained_v1":
+		puzzle_mastery = {}
 	trophies_seen = config.get_value(SAVE_SECTION, "trophies_seen", [])
 	trophies_claimed = config.get_value(SAVE_SECTION, "trophies_claimed", [])
 	owned_ships = config.get_value(SAVE_SECTION, "owned_ships", [])

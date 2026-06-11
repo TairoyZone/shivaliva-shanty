@@ -369,7 +369,7 @@ func _make_skill_row(puzzle_id: String) -> Control:
 
 	var cfg : Dictionary = PlayerState.MASTERY_PUZZLES[puzzle_id]
 	var display_name : String = String(cfg.get("name", puzzle_id))
-	var thresholds : Array = cfg.get("thresholds", [0])
+	var thresholds : Array = PlayerState.MASTERY_RANK_POINTS   # sustained mastery: the shared rank-points ladder
 	var best : int = PlayerState.mastery_best(puzzle_id)
 	var tier : Dictionary = PlayerState.mastery_tier(puzzle_id)
 	var tier_idx : int = int(tier["index"])
