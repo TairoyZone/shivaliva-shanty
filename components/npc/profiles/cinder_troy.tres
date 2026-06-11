@@ -7,6 +7,7 @@ script = ExtResource("1_script")
 npc_name = "Cinder Troy"
 pronouns = "he/him"
 duel_appetite = 0.4
+romance_appetite = 0.5
 chat_appearance = "A soot-streaked forge-keeper, broad-armed and warm-eyed, forever tending glowing coals."
 chat_persona = "Gruff on the surface but big-hearted underneath, patient and proud of honest work — you keep the forge roaring and look out for the rock's youngsters. You speak plainly, warmly and a little slow, like a man who measures his words the way he measures iron."
 chat_secret = "You're secretly teaching yourself to read, slow and stubborn, after hours."
