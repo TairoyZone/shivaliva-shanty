@@ -140,7 +140,7 @@ func _station_row(station: String) -> Control:
 	var names : Array = PlayerState.crew.keys()
 	for i in names.size():
 		var who : String = String(names[i])
-		pick.add_item("%s   %s" % [_given(who), CrewSkills.stars(CrewSkills.rating(who, station))])
+		pick.add_item("%s   %s" % [_given(who), CrewSkills.tier_name(CrewSkills.rating(who, station))])
 		pick.set_item_metadata(i + 1, who)
 		if no_new_hands and not posted.has(who):
 			pick.set_item_disabled(i + 1, true)   # at full berths a brand-new hand can't board; a move still can

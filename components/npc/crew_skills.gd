@@ -60,3 +60,16 @@ static func stars(rating_val: int) -> String:
 
 	var n : int = clampi(rating_val, 0, 5)
 	return "★".repeat(n) + "☆".repeat(5 - n)
+
+
+## The player-facing TITLE for a 1–5 skill — named ranks instead of a star string (Troy 2026-06-11: titles read
+## as character, stars read as filler). Mirrors the spar picker's Novice/Regular/Expert tone.
+static func tier_name(rating_val: int) -> String:
+
+	match clampi(rating_val, 0, 5):
+		1: return "Novice"
+		2: return "Fair"
+		3: return "Capable"
+		4: return "Skilled"
+		5: return "Master"
+	return "—"

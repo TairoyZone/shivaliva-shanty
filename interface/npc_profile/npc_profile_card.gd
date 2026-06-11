@@ -262,7 +262,7 @@ func _skill_row(skill: String, value: int) -> Control:
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(l)
 	var st : Label = Label.new()
-	st.text = CrewSkills.stars(value)
+	st.text = CrewSkills.tier_name(value)
 	st.add_theme_font_size_override("font_size", 14)
 	st.add_theme_color_override("font_color", Color(0.95, 0.78, 0.30, 1.0))
 	row.add_child(st)
