@@ -19,6 +19,7 @@ func _ready() -> void:
 	layer = 40
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build()
+	add_child(EscToClose.new(_on_cancel))   # ESC backs out, like every window (esc-closes-every-window rule)
 	get_tree().paused = true
 
 
