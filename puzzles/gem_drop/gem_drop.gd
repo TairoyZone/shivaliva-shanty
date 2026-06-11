@@ -1,8 +1,9 @@
 ## Gem Drop — the playable parlor-game scene launched by the
 ## [GemDropTable] prop at the Inn. Inherits HUD-hiding, ESC return,
 ## click-to-dismiss, and the winnings helper from [PuzzleScene]; this
-## script only owns puzzle-specific UI label bindings + signal wiring.
-extends PuzzleScene
+## script only owns puzzle-specific UI label bindings + signal wiring. Extends [VersusPuzzleScene] so the
+## NPC opponent inherits situational awareness + the talk-influence seam (open board → no _own_secret_view).
+extends VersusPuzzleScene
 
 
 ## Active player's score label glows in their identity color; the
@@ -117,13 +118,15 @@ func _opponent_full_name() -> String:
 	return _opponent.npc_name if _opponent != null else "Rival"
 
 
-# Live GEM DROP state for a chatting opponent — situational awareness, the poker hook on the gem table (Troy
-# 2026-06-10). Open board, so nothing's hidden: the asker is the AI opponent (the only NPC here). NpcBrain
-# folds this into their chat prompt. See [[npc-situational-awareness]].
-func npc_chat_context(_asker: String) -> String:
+# Live GEM DROP state for a chatting opponent — situational awareness via the [VersusPuzzleScene] hooks (Troy
+# 2026-06-10). OPEN board, so nothing's hidden: _own_secret_view stays the base's "" (no secret to show).
+# `you` = the AI seat asking; the human is the traveller. See [[npc-situational-awareness]].
+func _versus_ready() -> bool:
+	return _board != null
 
-	if _board == null:
-		return ""
+
+func _public_frame() -> String:
+
 	var human : int = GemDropBoard.HUMAN_PLAYER
 	var you : int = 1 - human   # the opponent asking = the AI seat
 	var lines : PackedStringArray = PackedStringArray()
@@ -132,15 +135,20 @@ func npc_chat_context(_asker: String) -> String:
 	lines.append("This round: you %d, the traveller %d." % [_board.player_scores[you], _board.player_scores[human]])
 	lines.append("Rounds won so far: you %d, the traveller %d." % [_board.rounds_won[you], _board.rounds_won[human]])
 	lines.append("It's YOUR turn to drop a gem." if _board.current_player == you else "It's the traveller's turn — you're waiting on them.")
+	return "\n".join(lines)
+
+
+func _lead_phrase(_asker: String) -> String:
+
+	var human : int = GemDropBoard.HUMAN_PLAYER
+	var you : int = 1 - human
 	var yt : int = _board.total_scores[you]
 	var tt : int = _board.total_scores[human]
 	if yt > tt:
-		lines.append("You're ahead on total points (%d to %d)." % [yt, tt])
+		return "You're ahead on total points (%d to %d)." % [yt, tt]
 	elif tt > yt:
-		lines.append("You're behind on total points (%d to %d) — they've got the edge." % [yt, tt])
-	else:
-		lines.append("You're level on total points (%d each)." % yt)
-	return "\n".join(lines)
+		return "You're behind on total points (%d to %d) — they've got the edge." % [yt, tt]
+	return "You're level on total points (%d each)." % yt
 
 
 func _on_round_advanced(new_round: int, new_target: int) -> void:

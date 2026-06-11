@@ -14,8 +14,9 @@
 ##     captures the player's choice via [signal PokerActionPanel.action_chosen].
 ##   • On hand_complete the opponents' hole cards flip face-up, a
 ##     status line announces winners, and a "Next Hand" button lets
-##     the player deal another. ESC returns to the tavern.
-extends PuzzleScene
+##     the player deal another. ESC returns to the tavern. Extends [VersusPuzzleScene] for the
+##     situational-awareness hooks (own-cards-only _own_secret_view) + the talk-influence seam.
+extends VersusPuzzleScene
 
 
 const SEAT_SCENE : PackedScene = preload("res://puzzles/poker/seat.tscn")
@@ -838,17 +839,20 @@ func _on_pot_changed(total: int) -> void:
 
 
 # --- NPC chat context: live table awareness for the seated cast ------------------------------------------
-# The seated NPCs chat via the shared ChatBox/RoomChat; NpcBrain.compose_system calls this (duck-typed) to
-# ground each one in the LIVE hand so they react like real players. HIDDEN-INFO SAFE: a player only ever sees
-# their OWN hole cards + the shared board + showdown-revealed results — never a rival's hidden cards.
-# [param asker] = the NPC asking (their display name). See [[npc-situational-awareness]].
-func npc_chat_context(asker: String) -> String:
+# The seated NPCs chat via the shared ChatBox/RoomChat; [VersusPuzzleScene]'s default npc_chat_context
+# assembles their prompt from the hooks below (duck-typed by NpcBrain.compose_system) so each reacts like a
+# real player. HIDDEN-INFO SAFE BY CONSTRUCTION: only _own_secret_view sees a secret, and the base only ever
+# passes the ASKER's own name — a player sees ONLY their OWN hole cards + the shared board + showdown-revealed
+# results, never a rival's. See [[npc-situational-awareness]].
+func _versus_ready() -> bool:
+	return _board != null and not _board.players.is_empty()
 
-	if _board == null or _board.players.is_empty():
-		return ""
+
+# The shared, PUBLIC frame — intro, the revealed board (clamped to what's on-screen), pot, all stacks.
+func _public_frame() -> String:
+
 	var lines : PackedStringArray = PackedStringArray()
 	lines.append("POKER — you're at the table playing this hand right now; react to it naturally, like a player at the felt:")
-	# The shared, PUBLIC frame.
 	var phase_name : String = PokerBoard.PHASE_NAMES[_board.phase]
 	# Clamp the board to what's actually been revealed ON-SCREEN: an all-in run-out fills community_cards
 	# logically a beat before the cards animate onto the felt, so reading the raw array would let an NPC "see"
@@ -877,38 +881,49 @@ func npc_chat_context(asker: String) -> String:
 			s += " (in %d)" % p.current_bet
 		stacks.append(s)
 	lines.append("Stacks (chips) — " + ", ".join(stacks) + ".")
-	# A PRE-COMPUTED chip-leader callout: the small chat model is bad at numeric comparison (it once boasted
-	# "more chips than you" while holding fewer), so name who's actually ahead instead of trusting it to compare.
+	return "\n".join(lines)
+
+
+# A PRE-COMPUTED chip-leader callout: the small chat model is bad at numeric comparison (it once boasted
+# "more chips than you" while holding fewer), so name who's actually ahead instead of trusting it to compare.
+func _lead_phrase(_asker: String) -> String:
+
 	var leader : PokerPlayer = _board.players[0]
 	for p in _board.players:
 		if p.chips > leader.chips:
 			leader = p
-	lines.append("Chip leader right now: %s with %d." % [_who_name(leader), leader.chips])
-	# The asker's OWN private view — ONLY their own hole cards (never a rival's), PLUS how their stack compares
-	# to the traveller's, stated plainly (same reason: don't make the model do the math).
+	return "Chip leader right now: %s with %d." % [_who_name(leader), leader.chips]
+
+
+# The asker's OWN private view — ONLY their own hole cards (never a rival's), PLUS how their stack compares to
+# the traveller's, stated plainly. Returns "" if the asker isn't seated (a spectator gets no secret).
+func _own_secret_view(asker: String) -> String:
+
 	var me : PokerPlayer = _player_named(asker)
-	if me != null:
-		var pv : String = "You are %s with %d chips" % [asker, me.chips]
-		if not me.hole_cards.is_empty():
-			pv += ", holding %s" % _cards_str(me.hole_cards)
-		if me.folded:
-			pv += " (you've folded this hand)"
-		elif me.all_in:
-			pv += " (you're all-in)"
-		pv += "."
-		var human : PokerPlayer = _board.players[0]
-		if me != human:
-			if me.chips > human.chips:
-				pv += " You're ahead of the traveller on chips (%d to %d)." % [me.chips, human.chips]
-			elif me.chips < human.chips:
-				pv += " The traveller is ahead of you on chips (%d to %d)." % [human.chips, me.chips]
-			else:
-				pv += " You and the traveller are dead even on chips (%d each)." % me.chips
-		lines.append(pv)
-	# Recent action this hand (the rolling event buffer).
-	if not _chat_events.is_empty():
-		lines.append("Just happened: " + " ".join(_chat_events))
-	return "\n".join(lines)
+	if me == null:
+		return ""
+	var pv : String = "You are %s with %d chips" % [asker, me.chips]
+	if not me.hole_cards.is_empty():
+		pv += ", holding %s" % _cards_str(me.hole_cards)
+	if me.folded:
+		pv += " (you've folded this hand)"
+	elif me.all_in:
+		pv += " (you're all-in)"
+	pv += "."
+	var human : PokerPlayer = _board.players[0]
+	if me != human:
+		if me.chips > human.chips:
+			pv += " You're ahead of the traveller on chips (%d to %d)." % [me.chips, human.chips]
+		elif me.chips < human.chips:
+			pv += " The traveller is ahead of you on chips (%d to %d)." % [human.chips, me.chips]
+		else:
+			pv += " You and the traveller are dead even on chips (%d each)." % me.chips
+	return pv
+
+
+# Recent action this hand (the rolling event buffer).
+func _pressure_phrase(_asker: String) -> String:
+	return ("Just happened: " + " ".join(_chat_events)) if not _chat_events.is_empty() else ""
 
 
 func _push_chat_event(text: String) -> void:

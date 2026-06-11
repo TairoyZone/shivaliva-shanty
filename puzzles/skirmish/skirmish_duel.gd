@@ -6,8 +6,8 @@
 ##
 ## THIN SLICE: 1v1, no weapon classes / cancel window / teams yet. The opponent
 ## is a heuristic bot ([SkirmishAI]) placing one piece every AI_THINK_TIME on
-## the main thread. Extends [PuzzleScene] (HUD hide / Leave / click-to-dismiss).
-extends PuzzleScene
+## the main thread. Extends [VersusPuzzleScene] (situational-awareness hooks + talk-influence seam; open board).
+extends VersusPuzzleScene
 
 
 const PORTRAIT_SCENE : PackedScene = preload("res://components/portrait/portrait.tscn")
@@ -430,23 +430,30 @@ func _resolve_opponent() -> String:
 	return "Sparring Partner"
 
 
-# Live SKIRMISH DUEL state for a chatting foe — situational awareness, the poker hook in the duel (Troy
-# 2026-06-10). Both boards are on-screen, so nothing's hidden: who's burying whom via the garbage exchange.
+# Live SKIRMISH DUEL state for a chatting foe — situational awareness via the [VersusPuzzleScene] hooks (Troy
+# 2026-06-10). Both boards are on-screen, so nothing's hidden: _own_secret_view stays the base's "".
 # The asker is the opponent (the only NPC here). NpcBrain folds this in. See [[npc-situational-awareness]].
-func npc_chat_context(_asker: String) -> String:
+func _versus_ready() -> bool:
+	return _opponent_board != null and _player_board != null
 
-	if _opponent_board == null or _player_board == null:
-		return ""
+
+func _public_frame() -> String:
+
 	var lines : PackedStringArray = PackedStringArray()
 	lines.append("SKIRMISH — you're in a one-on-one block-stacking DUEL with the traveller right now: clear lines to dump garbage on the other board; whoever tops out first loses. React like a fighter mid-bout (a little trash talk fits).")
 	lines.append("You've dumped %d garbage row%s on the traveller; they've dumped %d on you." % [
 		_opp_lines_sent, "" if _opp_lines_sent == 1 else "s", _lines_sent])
-	if _opp_lines_sent > _lines_sent:
-		lines.append("You've got the upper hand — piling the pressure on them.")
-	elif _lines_sent > _opp_lines_sent:
-		lines.append("You're on the back foot — they're burying your board faster than you're theirs.")
-	else:
-		lines.append("It's neck and neck so far.")
-	if _duel_over:
-		lines.append("The duel's just ended.")
 	return "\n".join(lines)
+
+
+func _lead_phrase(_asker: String) -> String:
+
+	if _opp_lines_sent > _lines_sent:
+		return "You've got the upper hand — piling the pressure on them."
+	elif _lines_sent > _opp_lines_sent:
+		return "You're on the back foot — they're burying your board faster than you're theirs."
+	return "It's neck and neck so far."
+
+
+func _pressure_phrase(_asker: String) -> String:
+	return "The duel's just ended." if _duel_over else ""
