@@ -906,7 +906,9 @@ func _make_weapon_slot(weapon_id: String) -> Control:
 	var equipped : bool = PlayerState.equipped_weapon == weapon_id
 	var cell : VBoxContainer = VBoxContainer.new()
 	cell.add_theme_constant_override("separation", 3)
-	var panel : Panel = Panel.new()
+	var panel : WeaponSlot = WeaponSlot.new()   # the EQUIP slot: a weapon drop-target (equip) + drag source (unequip)
+	panel.weapon_id = weapon_id
+	panel.is_equip_slot = true
 	panel.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
 	var s : StyleBoxFlat = StyleBoxFlat.new()
 	s.bg_color = Color(0.24, 0.17, 0.08, 1.0) if equipped else COLOR_SLOT_BG
@@ -940,7 +942,9 @@ func _make_weapon_slot(weapon_id: String) -> Control:
 # to the Weapon slot above (and whatever was equipped drops back down here). Same square look as an item slot.
 func _make_backpack_weapon(weapon_id: String) -> Control:
 
-	var panel : Panel = Panel.new()
+	var panel : WeaponSlot = WeaponSlot.new()   # a stored weapon: drag it onto the equip slot to equip
+	panel.weapon_id = weapon_id
+	panel.is_equip_slot = false
 	panel.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
 	panel.add_theme_stylebox_override("panel", _slot_style(true))
 	panel.tooltip_text = "%s\n%s\nClick to equip" % [SkirmishWeapon.display_name(weapon_id),
@@ -961,7 +965,8 @@ func _make_backpack_weapon(weapon_id: String) -> Control:
 
 func _on_weapon_input(event: InputEvent, weapon_id: String) -> void:
 
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+	# Fire on RELEASE (not press) so STARTING a drag from this cell never also counts as a click.
+	if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		# Click to EQUIP; click the EQUIPPED one again to UNEQUIP — back to bare fists (Troy 2026-06-10:
 		# gear is a choice made here in the bag, never forced).
 		if PlayerState.equipped_weapon == weapon_id and weapon_id != SkirmishWeapon.DEFAULT_WEAPON:
