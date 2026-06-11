@@ -53,12 +53,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		_return_to_launching_scene()
 		return
-	# ESC opens the PAUSE MENU in here too (Resume / Options / Quit). The HUD owns ESC→pause in the walkable
-	# world, but it's HIDDEN inside a puzzle, so the pause menu would otherwise be unreachable (Troy 2026-06-11).
-	# Leaving the puzzle is still the deliberate Leave button; ESC only pauses, and Resume drops you right back in.
+	# ESC follows the SAME priority as the overworld: close an open panel / the chat log FIRST, else open the
+	# pause menu. The HUD owns that chain (_on_escape) but is HIDDEN inside a puzzle, so reuse it directly rather
+	# than duplicate it — otherwise ESC would skip straight to pause over an open log (Troy 2026-06-11). Leaving
+	# is still the deliberate Leave button; the pause menu's Resume drops you right back in.
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
-		PauseMenu.open(self)
+		HUD._on_escape()
 
 
 ## Override → true to dock the Leave button at the TOP-left instead of the default BOTTOM-left — for scenes
