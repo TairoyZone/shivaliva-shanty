@@ -160,8 +160,11 @@ func interact() -> void:
 	var rom_persona : NpcPersonality = _resolve_personality()
 	if rom_persona != null and rom_persona.romance_appetite > 0.0 and rom_persona.partner.is_empty() \
 			and not PlayerState.is_sweetheart(npc_name):
-		if PlayerState.romance_stage(npc_name) >= 2 and PlayerState.get_affinity(npc_name) >= PlayerState.VOW_MIN_AFFINITY:
-			opts.append({"label": "Propose", "action": _propose})   # Smitten + Confidant → the deterministic vow
+		if PlayerState.romance_stage(npc_name) >= 2:
+			# Smitten: Propose at Confidant. If rapport has since dipped below it, show NEITHER (don't fall
+			# through to a stray "Court" label on an NPC who's already mid-courtship).
+			if PlayerState.get_affinity(npc_name) >= PlayerState.VOW_MIN_AFFINITY:
+				opts.append({"label": "Propose", "action": _propose})   # the deterministic vow
 		elif PlayerState.get_affinity(npc_name) >= PlayerState.COURT_MIN_AFFINITY:
 			opts.append({"label": "Court", "action": _court})
 	opts.append({"label": "Profile", "action": _open_profile})
@@ -207,11 +210,17 @@ func _propose() -> void:
 	RomanceVowModal.open(self, npc_name, portrait_color)
 
 
-# This NPC's [NpcPersonality] profile, matched by name from the [NpcRegistry] (null if unlisted).
+# This NPC's [NpcPersonality] profile, matched by name from the [NpcRegistry] (null if unlisted). Memoized —
+# the registry is static for this node's lifetime, so the menu-open path (interact + the chosen action) resolves once.
+var _cached_persona : NpcPersonality = null
+
 func _resolve_personality() -> NpcPersonality:
 
+	if _cached_persona != null:
+		return _cached_persona
 	for profile in NpcRegistry.all():
 		if profile.npc_name == npc_name:
+			_cached_persona = profile
 			return profile
 	return null
 

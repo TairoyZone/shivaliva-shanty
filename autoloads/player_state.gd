@@ -1676,9 +1676,11 @@ func advance_romance(npc_name: String) -> int:
 	if npc_name.is_empty() or get_affinity(npc_name) < COURT_MIN_AFFINITY:
 		return romance_stage(npc_name)
 	var capped : int = ROMANCE_STAGES.size() - 2   # Smitten — never the Sweetheart vow
-	var next_stage : int = mini(romance_stage(npc_name) + 1, capped)
-	if next_stage == romance_stage(npc_name):
-		return next_stage
+	# Bail when already AT/ABOVE the cap, BEFORE computing the next stage — else an already-Smitten or Sweetheart
+	# NPC would be written back DOWN to Smitten (a silent demotion). Only legitimate upward steps proceed.
+	if romance_stage(npc_name) >= capped:
+		return romance_stage(npc_name)
+	var next_stage : int = romance_stage(npc_name) + 1
 	npc_romance[npc_name] = next_stage
 	romance_changed.emit(npc_name, next_stage)
 	_save()
@@ -1692,9 +1694,12 @@ func become_sweetheart(npc_name: String) -> bool:
 
 	if npc_name.is_empty() or get_affinity(npc_name) < VOW_MIN_AFFINITY:
 		return false
+	# ATOMIC monogamy: sever any existing Sweetheart ONLY now the new vow is greenlit (gate already passed), so a
+	# failed vow can never strand the player single. The UI still warns who they'd be leaving (current_sweetheart).
 	var existing : String = current_sweetheart()
 	if existing != "" and existing != npc_name:
-		return false   # already spoken for — leave the first (the UI handles the confirm)
+		npc_romance.erase(existing)
+		romance_changed.emit(existing, 0)
 	npc_romance[npc_name] = ROMANCE_STAGES.size() - 1
 	romance_changed.emit(npc_name, romance_stage(npc_name))
 	_save()
@@ -1719,6 +1724,11 @@ func set_romance_stage(npc_name: String, stage: int) -> void:
 	if s == 0:
 		npc_romance.erase(npc_name)
 	else:
+		if s >= ROMANCE_STAGES.size() - 1:   # seeding a Sweetheart — keep monogamy true by construction
+			var existing : String = current_sweetheart()
+			if existing != "" and existing != npc_name:
+				npc_romance.erase(existing)
+				romance_changed.emit(existing, 0)
 		npc_romance[npc_name] = s
 	romance_changed.emit(npc_name, s)
 	_save()

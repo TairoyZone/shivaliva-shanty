@@ -65,9 +65,8 @@ func _on_yes() -> void:
 
 	if _done:
 		return
-	var existing : String = PlayerState.current_sweetheart()
-	if existing != "" and existing != _npc_name:
-		PlayerState.break_up(existing)   # monogamy — leave the first before the new vow
+	# become_sweetheart now leaves any existing Sweetheart ATOMICALLY (only once the vow gate passes), so a
+	# failed vow can never strand the player single — no pre-emptive break_up here.
 	if not PlayerState.become_sweetheart(_npc_name):
 		_render_prompt()   # rapport slipped below the vow gate between opening + confirming — bail gracefully
 		return

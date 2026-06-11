@@ -453,7 +453,7 @@ func file_duel_if_marked(text: String, npc_name: String) -> String:
 ## Strip a [[SMITTEN]] marker (tolerant of casing/wrapping, like [method file_duel_if_marked]) + advance the
 ## courtship one step ([method PlayerState.advance_romance] — Smitten-capped + rapport-gated internally, so a
 ## stray tag can never over-advance or break the gate). Returns the cleaned text. Private chat path only.
-func file_courtship_if_marked(text: String, npc_name: String) -> String:
+func file_courtship_if_marked(text: String, npc_name: String, eligible: bool) -> String:
 
 	if npc_name.is_empty():
 		return text
@@ -462,7 +462,10 @@ func file_courtship_if_marked(text: String, npc_name: String) -> String:
 	re.compile("(?i)[\\[({<]{1,2}\\s*smitten\\b[^\\])}>\\n]*[\\])}>]{1,2}")
 	if re.search(text) == null:
 		return text
-	PlayerState.advance_romance(npc_name)
+	# STRIP the tag regardless (it must NEVER reach the player), but only ADVANCE for a romanceable, single NPC —
+	# a married / non-romanceable NPC must never be put on the romance track by a stray or coaxed tag.
+	if eligible:
+		PlayerState.advance_romance(npc_name)
 	var cleaned : String = re.sub(text, "", true)
 	cleaned = cleaned.replace("*", "")
 	return cleaned.strip_edges()
@@ -555,18 +558,37 @@ func reply_declines_duel(lc: String) -> bool:
 # false positive would force a premature, unearned step). Lowercase substring matching (pass text.to_lower()).
 const ROMANCE_OVERTURE_PHRASES : Array[String] = [
 	"i love you", "i'm in love with you", "im in love with you", "i'm falling for you", "im falling for you",
-	"i have feelings for you", "i've feelings for you", "ive feelings for you", "i fancy you", "i adore you",
-	"i'm sweet on you", "im sweet on you", "be mine", "i'm yours", "im yours", "i want to be with you",
-	"will you be my", "i want to court you", "you've stolen my heart", "youve stolen my heart"]
+	"i have feelings for you", "i've feelings for you", "ive feelings for you", "i fancy you",
+	"i want to court you", "i want to be with you", "you've stolen my heart", "youve stolen my heart",
+	"will you be my sweetheart", "be my sweetheart", "will you be mine"]
+# A platonic anchor in the SAME message vetoes the overture (mirrors how DUEL_NEGATIONS short-circuits a duel),
+# so "you're my best friend, i adore you" or "be my partner for the tournament" never reads as a confession.
+const ROMANCE_PLATONIC_VETO : Array[String] = [
+	"friend", "teammate", "partner for", "tournament", "team up", "buddy", "pal"]
 const ROMANCE_DECLINE_PHRASES : Array[String] = [
-	"just friends", "better as friends", "i can't return", "i cant return", "i don't feel that way",
-	"i dont feel that way", "i'm flattered, but", "im flattered but", "i'm flattered but", "my heart belongs",
-	"not like that", "i don't think of you", "i dont think of you"]
+	"just friends", "better as friends", "good friend", "see you as a friend", "only see you as", "nothing more",
+	"i can't return", "i cant return", "i don't feel that way", "i dont feel that way", "i'm flattered, but",
+	"im flattered but", "i'm flattered but", "my heart belongs", "not like that", "i don't think of you",
+	"i dont think of you", "not interested"]
+# Affirmative NPC reciprocation — the fallback advances ONLY when the reply clearly RETURNS the feeling, not
+# merely when it fails to match a decline (a soft in-character no would otherwise slip through as a yes).
+const ROMANCE_ACCEPT_PHRASES : Array[String] = [
+	"i feel the same", "i feel it too", "i feel it as well", "my heart too", "my heart's yours", "my hearts yours",
+	"i'm yours", "im yours", "i've fallen for you", "ive fallen for you", "i'm falling for you too",
+	"you've won my heart", "youve won my heart", "i care for you too", "i love you too", "i fancy you too",
+	"i'm sweet on you too", "i think i love you", "i'd be yours", "i'd like that", "i would like that"]
 
 
 func is_romance_overture(lc: String) -> bool:
 
+	if _any_phrase(lc, ROMANCE_PLATONIC_VETO):
+		return false   # a platonic anchor in the same breath isn't a confession
 	return _any_phrase(lc, ROMANCE_OVERTURE_PHRASES)
+
+
+func reply_accepts_romance(lc: String) -> bool:
+
+	return _any_phrase(lc, ROMANCE_ACCEPT_PHRASES)
 
 
 func reply_declines_romance(lc: String) -> bool:
@@ -830,11 +852,15 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		cleaned = file_offense_if_marked(cleaned, _persona.npc_name)
 		if cleaned.is_empty() and cleaned != _pre_off:
 			cleaned = cold_offense_line()   # a tag-only reply reads as a cold brush-off, not blank
+		# Romance can only advance for a romanceable, SINGLE NPC (same predicate as the fallback below) — but the
+		# [[SMITTEN]] tag is STRIPPED regardless so it never reaches the player, even from a married NPC.
+		var rom_ok : bool = _persona.romance_appetite > 0.0 and _persona.partner.is_empty()
 		var _pre_rom : String = cleaned
-		cleaned = file_courtship_if_marked(cleaned, _persona.npc_name)   # [[SMITTEN]] → advance a step
-		var romance_advanced : bool = cleaned != _pre_rom
-		if cleaned.is_empty() and romance_advanced:
-			cleaned = "You've quite a way about you, you know that?"   # rare marker-only romance line
+		cleaned = file_courtship_if_marked(cleaned, _persona.npc_name, rom_ok)
+		var romance_advanced : bool = rom_ok and cleaned != _pre_rom
+		if cleaned.is_empty() and cleaned != _pre_rom:
+			# a marker-only reply: a warm beat for a real courtship, a neutral one otherwise (never a married flirt)
+			cleaned = "You've quite a way about you, you know that?" if rom_ok else "..."
 		reply = cleaned
 		# Deterministic fallback: the model often agrees in words but drops the tag. If the PLAYER explicitly
 		# proposed a duel and this NPC's reply accepts (and doesn't decline), file it anyway — the chat partner
@@ -847,9 +873,12 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		# Romance fallback (same reason — dropped tags). ONLY when the marker DIDN'T already advance: an EXPLICIT
 		# player overture this turn, not declined by a romanceable + single NPC, nudges the courtship one step.
 		# advance_romance is rapport-gated + Smitten-capped, so this can never over-reach or break canon.
-		if not romance_advanced and _persona.romance_appetite > 0.0 and _persona.partner.is_empty() and not _messages.is_empty():
+		if not romance_advanced and rom_ok and not _messages.is_empty():
 			var pov_lc : String = String(_messages.back().get("content", "")).to_lower()
-			if is_romance_overture(pov_lc) and not reply_declines_romance(reply.to_lower()):
+			var rep_lc : String = reply.to_lower()
+			# Two-gate (like the duel fallback): an explicit player overture AND an affirmative NPC reciprocation —
+			# not merely "didn't match a decline", so a soft in-character no can't slip through as a yes.
+			if is_romance_overture(pov_lc) and reply_accepts_romance(rep_lc) and not reply_declines_romance(rep_lc):
 				PlayerState.advance_romance(_persona.npc_name)
 	_messages.append({"role": "assistant", "content": reply})
 	_persist_history()   # remember this exchange across scenes + reloads (free — no extra AI call)
