@@ -166,6 +166,17 @@ duel scene) · `gem_drop` · `poker` (cards + `test_*.gd` logic tests) · `lumbe
 - **New puzzle:** copy `puzzles/loft/` (stone + board + scene + 2 `.tscn`s) as the skeleton → rename
   `class_name`s → implement the mechanic in the Board → add `"<id>": {...}` to `MASTERY_PUZZLES` →
   drop a `Puzzle` prop (`puzzle_scene = res://puzzles/<id>/<id>.tscn`) into a location.
+- **New VERSUS puzzle (a chat-able AI opponent):** do the **New puzzle** steps but extend
+  **`VersusPuzzleScene`** (`components/versus_puzzle_scene/`) instead of `PuzzleScene`. You inherit for free: a
+  default `npc_chat_context(asker)` emitting the standard situational-awareness shape (`_public_frame` →
+  `_lead_phrase` → `_own_secret_view` → `_pressure_phrase` → `_active_mood_note`), **hidden-info-safe by
+  construction** (only `_own_secret_view` ever sees a secret, keyed solely on the asker — never a rival's),
+  plus the talk-influence seam (`mood_bias`/`tick_opponent_mood`/`_apply_opponent_mood`, no-ops until NpcMood).
+  Fill ONLY the hooks you need (all default to `""`/`true`/`0.0`): `_versus_ready`, `_public_frame`
+  (MUTUALLY-VISIBLE state only), `_lead_phrase` + `_pressure_phrase` (PLAIN-WORDS, pre-computed — the chat
+  model can't compare numbers), `_own_secret_view` (the asker's OWN hidden view only; **`""` for OPEN
+  boards**). NEVER re-implement `npc_chat_context` — that defeats the base. Ref: gem_drop (open, simplest) ·
+  skirmish_duel (1v1) · poker (hidden cards + multi-seat).
 - **New NPC:** instance the `Npc` scene, set `@export`s + assign a `NpcPersonality` `.tres`;
   optionally add a one-line entry to `Npc.NPC_FAVORS`.
 - **New prop/door/building:** a scene with `Interactable`/`Puzzle`/`Door`/`Building` attached + its
