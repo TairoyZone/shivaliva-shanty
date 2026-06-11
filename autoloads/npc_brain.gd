@@ -328,6 +328,9 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 	var duel : String = _duel_clause(persona)
 	if not duel.is_empty():
 		parts.append(duel)
+	var table_talk : String = _table_talk_clause(persona)
+	if not table_talk.is_empty():
+		parts.append(table_talk)
 	return "\n\n".join(parts)
 
 
@@ -385,6 +388,14 @@ const SMITTEN_MARKER : String = "[[SMITTEN]]"
 const OFFENSE_MARKER : String = "[[OFFENDED]]"
 const OFFENSE_HIT : int = 4
 
+## TALK-MOVES-THE-GAME markers — in a live VERSUS game the NPC appends one when the traveller's table talk
+## genuinely LANDS, nudging a decaying [NpcMood] that biases their next few AI moves a capped amount. Stripped
+## before display + filed by [method file_table_talk_if_marked]; gated by composure (see [method
+## _table_talk_clause]) — a stoic refuses simply by not appending one. See [[talk-moves-the-game-spec]].
+const TILT_MARKER : String = "[[TILT]]"          # rattled / baited → reckless, looser, bolder
+const COWED_MARKER : String = "[[COWED]]"        # intimidated / pressured → cautious, passive, tighter
+const FIRED_UP_MARKER : String = "[[FIRED_UP]]"  # hyped / dared → bold, aggressive
+
 ## A short, COLD retort for when an NPC's reply is the offense tag ALONE (no spoken words) — so a
 ## tag-only line reads as a cold brush-off, never blank and (in the room path) never a warm canned
 ## fallback over a souring. WORDED, not "…", so the room path's _is_silent doesn't treat it as silence.
@@ -429,6 +440,37 @@ func _duel_clause(persona: NpcPersonality) -> String:
 		+ "are spoken aloud; the tag is silent. Only append the tag to YOUR OWN acceptance or challenge — never "
 		+ "when you are merely commenting on, or spectating, someone else's bout. Do NOT use it in ordinary, calm, "
 		+ "or friendly chat.")
+
+
+## Opt-in TALK-MOVES-THE-GAME instruction, folded into the prompt ONLY during a live VERSUS game (a scene with
+## npc_chat_context) AND only for a shakeable NPC (composure below the iron threshold) — a stoic is never even
+## offered the tag, so they refuse by omission. The NPC appends a mood marker when the traveller's table talk
+## truly gets to them; it's stripped + filed ([method file_table_talk_if_marked]) into [NpcMood].
+func _table_talk_clause(persona: NpcPersonality) -> String:
+
+	var tree : SceneTree = get_tree()
+	if tree == null or tree.current_scene == null or not tree.current_scene.has_method("npc_chat_context"):
+		return ""   # not in a versus game — table talk can't move anything
+	var composure : float = clampf(persona.composure, 0.0, 1.0)
+	if composure >= 0.85:
+		return ""   # unshakeable — never offer the tag (refuse-by-omission, like duel_appetite==0)
+	var temperament : String
+	if composure < 0.4:
+		temperament = "You've a thin skin and a proud streak at the table — a sharp taunt, a dare, or a jab at your play can genuinely get under your skin or fire you up."
+	elif composure < 0.65:
+		temperament = "You're fairly steady, but a well-aimed needle or a real dare can still get to you when the moment's tense."
+	else:
+		temperament = "You're hard to rattle — only a genuinely cutting or perfectly-timed line moves you at all."
+	return ("TABLE TALK: this is a head-to-head game and the traveller may try to get in your head — bait you "
+		+ "into a reckless play, rattle you, pressure you into folding or playing it safe, or hype you up. "
+		+ temperament + " IF (and ONLY if) their words truly land given how the game is actually going, react in "
+		+ "your spoken reply AND append the matching hidden tag at the very end: " + TILT_MARKER + " if they've "
+		+ "rattled or baited you into playing looser and more recklessly; " + FIRED_UP_MARKER + " if they've hyped "
+		+ "or dared you into bold aggression; " + COWED_MARKER + " if they've cowed you into cautious, tight play. "
+		+ "The tag is invisible game-machinery — stripped before the traveller sees it, so speak naturally and "
+		+ "NEVER mention the brackets. MOST table talk should NOT move you: if you brush it off, append NO tag and "
+		+ "say so in character (\"Save your breath.\"). Only ONE tag, only when it genuinely lands, only about YOUR "
+		+ "OWN state — never for ordinary chat, and never about another player.")
 
 
 ## If [param text] carries the hidden duel marker, file a Skirmish challenge from [param npc_name] (it lands in
@@ -483,6 +525,30 @@ func file_offense_if_marked(text: String, npc_name: String) -> String:
 	if re.search(text) == null:
 		return text
 	PlayerState.add_affinity(npc_name, -OFFENSE_HIT)
+	var cleaned : String = re.sub(text, "", true)
+	cleaned = cleaned.replace("*", "")
+	return cleaned.strip_edges()
+
+
+## If [param text] carries a talk-moves-the-game mood marker ([[TILT]] / [[COWED]] / [[FIRED_UP]]), push the
+## matching mood onto [param npc_name] via [NpcMood] and STRIP the marker (same tolerant matching as the duel
+## marker). Returns the cleaned text. Only meaningful in a versus game; harmless elsewhere (nothing reads it).
+func file_table_talk_if_marked(text: String, npc_name: String) -> String:
+
+	if npc_name.is_empty():
+		return text
+	var re : RegEx = RegEx.new()
+	re.compile("(?i)[\\[({<]{1,2}\\s*(tilt|cowed|fired[ _]?up)\\b[^\\])}>\\n]*[\\])}>]{1,2}")
+	var hit : RegExMatch = re.search(text)
+	if hit == null:
+		return text
+	var word : String = hit.get_string(1).to_lower().replace(" ", "").replace("_", "")
+	var kind : int = NpcMood.TILT
+	if word == "cowed":
+		kind = NpcMood.COWED
+	elif word == "firedup":
+		kind = NpcMood.FIRED_UP
+	NpcMood.nudge(npc_name, kind)
 	var cleaned : String = re.sub(text, "", true)
 	cleaned = cleaned.replace("*", "")
 	return cleaned.strip_edges()
@@ -867,6 +933,10 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		if cleaned.is_empty() and cleaned != _pre_rom:
 			# a marker-only reply: a warm beat for a real courtship, a neutral one otherwise (never a married flirt)
 			cleaned = "You've quite a way about you, you know that?" if rom_ok else "..."
+		var _pre_tt : String = cleaned
+		cleaned = file_table_talk_if_marked(cleaned, _persona.npc_name)   # talk-moves-the-game mood tags
+		if cleaned.is_empty() and cleaned != _pre_tt:
+			cleaned = "Heh. We'll see about that."   # a tag-only reply — keep it light, never blank
 		reply = cleaned
 		# Deterministic fallback: the model often agrees in words but drops the tag. If the PLAYER explicitly
 		# proposed a duel and this NPC's reply accepts (and doesn't decline), file it anyway — the chat partner

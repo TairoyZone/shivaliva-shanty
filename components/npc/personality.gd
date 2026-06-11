@@ -112,6 +112,12 @@ extends Resource
 ## boarding. DECOUPLED from search_depth (card-game wits) so the fiction holds: the bladesmith out-fights the
 ## tinker even though the tinker out-thinks him at gem-drop (Troy 2026-06-11).
 @export_range(0.0, 1.0) var skirmish_skill : float = 0.5
+## TABLE-TALK COMPOSURE (0..1) — how unshakeable this NPC is when the traveller needles / baits / hypes them in
+## a VERSUS game (poker, Gem Drop, Skirmish). LOW = bait-able (a taunt can tilt them into a looser, sloppier
+## play); HIGH = it washes off (and they say so). At ≥0.85 the talk-influence tag is omitted from the prompt
+## entirely (refuse-by-omission, like duel_appetite==0). Distinct from `patience` (fold-tightness) and
+## `perception` (reading YOU). Drives [NpcBrain._table_talk_clause] + [NpcMood]. See [[talk-moves-the-game-spec]].
+@export_range(0.0, 1.0) var composure : float = 0.6
 ## ROMANCEABLE? 0.0 = not romanceable (the default — nobody is courtable until you deliberately raise this).
 ## Above 0 = single + open to a courtship, biasing how readily they warm to one in chat (the AI's [[SMITTEN]]
 ## nudge). See [NpcBrain._romance_block].
