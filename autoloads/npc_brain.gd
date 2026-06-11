@@ -767,25 +767,31 @@ func _romance_block(persona: NpcPersonality) -> String:
 		return ("ROMANCE: You are happily and faithfully partnered to %s, and devoted to them. If the traveller "
 			+ "flirts with you or makes a romantic advance, decline it warmly, kindly and without wavering — "
 			+ "mention %s if it helps — and never reciprocate or lead them on.") % [persona.partner, persona.partner]
+	var txt : String = ""
 	match PlayerState.romance_stage(persona.npc_name):
 		1:
-			return ("ROMANCE: A FONDNESS is growing between you and this traveller — you're glad of their company, "
+			txt = ("ROMANCE: A FONDNESS is growing between you and this traveller — you're glad of their company, "
 				+ "warmer and more personal with them than with others. Let it show gently; never force it."
 				+ _smitten_clause())   # a fondness can still deepen toward smitten
 		2:
-			return ("ROMANCE: You are SMITTEN with this traveller — your heart leans toward them. Be openly warm, a "
+			txt = ("ROMANCE: You are SMITTEN with this traveller — your heart leans toward them. Be openly warm, a "
 				+ "touch flirtatious and affectionate, glad of every visit; speak like someone falling for them. The "
 				+ "next step — a true vow between you — is THEIRS to offer when they're ready; long for it, don't force it.")
 		3:
-			return ("ROMANCE: This traveller is your SWEETHEART — you are devoted to them. Speak with open love, "
+			txt = ("ROMANCE: This traveller is your SWEETHEART — you are devoted to them. Speak with open love, "
 				+ "warmth and tenderness, like talking to the one you've given your heart to.")
-	# Romanceable + single, no romance yet: the openness activates at Friend-tier (matching the Court option), so
-	# a courtship can BEGIN through chat. Below Friend they simply chat as a friend (no romance clause at all).
-	if persona.romance_appetite > 0.0 and PlayerState.get_affinity(persona.npc_name) >= PlayerState.COURT_MIN_AFFINITY:
-		return ("ROMANCE: You are single, and warm to this traveller's company. If they are genuinely charming and "
-			+ "kind and court your affection over time, you may find yourself falling for them — let a real "
-			+ "connection grow naturally from how they treat you; never instant, never forced." + _smitten_clause())
-	return ""
+		_:
+			# Romanceable + single, no romance yet: the openness activates at Friend-tier (matching the Court
+			# option), so a courtship can BEGIN through chat. Below Friend they chat as a friend (no clause).
+			if persona.romance_appetite > 0.0 and PlayerState.get_affinity(persona.npc_name) >= PlayerState.COURT_MIN_AFFINITY:
+				txt = ("ROMANCE: You are single, and warm to this traveller's company. If they are genuinely charming "
+					+ "and kind and court your affection over time, you may find yourself falling for them — let a real "
+					+ "connection grow naturally from how they treat you; never instant, never forced." + _smitten_clause())
+	if txt.is_empty():
+		return ""
+	if not persona.chat_romance.is_empty():
+		txt += " YOUR OWN WAY OF LOVING: " + persona.chat_romance   # this NPC's distinct romantic voice
+	return txt
 
 
 ## The hidden [[SMITTEN]] instruction, folded into the romance block at the stages where a courtship can still

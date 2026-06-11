@@ -112,6 +112,10 @@ extends Resource
 ## Above 0 = single + open to a courtship, biasing how readily they warm to one in chat (the AI's [[SMITTEN]]
 ## nudge). See [NpcBrain._romance_block].
 @export_range(0.0, 1.0) var romance_appetite : float = 0.0
+## OPTIONAL distinct romantic VOICE — folded into the romance prompt while being courted, so each sweetheart
+## flirts in their OWN way (Jade's quiet bloom vs Kerr's flustered swagger). Blank = the generic per-stage tone.
+## See [NpcBrain._romance_block].
+@export_multiline var chat_romance : String = ""
 ## If set, this NPC is already PARTNERED to the named NPC (e.g. Brian ↔ Merry Geneva) — OFF-LIMITS: courtship is
 ## hidden + the AI faithfully declines any advance, naming the partner. Canon/flavour, never a gameplay block.
 @export var partner : String = ""
