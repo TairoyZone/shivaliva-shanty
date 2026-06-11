@@ -269,7 +269,11 @@ func _maybe_post_fight_banter() -> void:
 	await get_tree().create_timer(0.5).timeout   # let the scene settle so it reads as "noticing you walk back"
 	if not is_instance_valid(self) or not is_inside_tree():
 		return
-	SpeechBubble.say(self, _banter_line(player_won))
+	var line : String = _banter_line(player_won)
+	SpeechBubble.say(self, line)
+	# Fold the remark into the REGULAR chat log (not a separate float that vanishes), so it reads as part of the
+	# conversation — and you can pick it up via Chat (the AI knows the fight through _battle_block). Troy 2026-06-12.
+	PlayerState.log_event("%s: %s" % [npc_name, line], portrait_color.lightened(0.35))
 
 
 # A canned post-fight line. [param player_won] = the player beat this NPC (so the NPC CONCEDES); else they GLOAT.
