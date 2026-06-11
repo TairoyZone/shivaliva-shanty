@@ -989,13 +989,14 @@ func make_drag_preview(item_id: String, count: int) -> Control:
 
 	var root : Control = Control.new()
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var panel : Panel = Panel.new()
+	# Just the ITEM (icon + count) rides the cursor — NO slot frame (the Minecraft/Stardew look: you hold the
+	# thing, not the box). A plain Control draws nothing behind the icon.
+	var panel : Control = Control.new()
 	panel.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
 	panel.size = Vector2(SLOT_SIZE, SLOT_SIZE)
 	panel.position = Vector2(-SLOT_SIZE * 0.5, -SLOT_SIZE * 0.5)
-	panel.modulate = Color(1.0, 1.0, 1.0, 0.85)
+	panel.modulate = Color(1.0, 1.0, 1.0, 0.9)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_theme_stylebox_override("panel", _slot_style(true))
 	var icon : Control = _make_item_icon(item_id)
 	if icon != null:
 		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
