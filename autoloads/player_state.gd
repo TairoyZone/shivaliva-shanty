@@ -154,10 +154,11 @@ const DEFAULT_MAX_STACK : int = 50
 const INVENTORY_START_CAPACITY : int = 6
 ## Stardew-style backpack UPGRADES — pay gold to grow the bag, the ONLY way to add inventory space (buying an
 ## ITEM never expands it). Each tier = a TARGET slot count + its cost; start = INVENTORY_START_CAPACITY (6).
-## Only TWO upgrades, ever (Troy 2026-06-11) — 6 → 12 → 18, then maxed. No indefinite growth.
+## THREE upgrades max (Troy 2026-06-11) — 6 → 12 → 18 → 24, then maxed. No indefinite growth.
 const INVENTORY_BAG_TIERS : Array = [
 	{"slots": 12, "cost": 300},
 	{"slots": 18, "cost": 900},
+	{"slots": 24, "cost": 2400},
 ]
 # Tier thresholds (inclusive lower bound). Used for dialogue gating +
 # the eventual hire/crew system — Confidant is the "can recruit" tier.

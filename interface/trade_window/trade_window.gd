@@ -205,8 +205,11 @@ func _render() -> void:
 func _your_column() -> Control:
 
 	var box : VBoxContainer = _column_box("You")
-	# Current offer — framed item slots (+ a gold-gift chip).
-	box.add_child(_sub("Offering"))
+	# Current offer — a DROP ZONE (drag items in from the bag below) holding framed slots (+ a gold-gift chip).
+	box.add_child(_sub("Offering" + ("   ·   drag items here" if _favor.is_empty() else "")))
+	var zone : TradeOfferZone = TradeOfferZone.new()
+	zone.window = self
+	zone.add_theme_stylebox_override("panel", _offer_zone_style())
 	var offer : HBoxContainer = _slot_strip()
 	var offered : bool = false
 	for id in _offer_items:
@@ -218,12 +221,13 @@ func _your_column() -> Control:
 	if _offer_gold > 0:
 		offer.add_child(_gold_chip(_offer_gold))
 	if not offered and _offer_gold <= 0:
-		offer.add_child(_make_caption("(nothing yet)"))
-	box.add_child(offer)
+		offer.add_child(_make_caption("(drop items here)" if _favor.is_empty() else "(nothing yet)"))
+	zone.add_child(offer)
+	box.add_child(zone)
 
-	# Add-from-bag slots (general mode only — a favour offer is fixed).
+	# Your bag (general mode only — a favour offer is fixed). DRAG a cell onto the offer above, or click it.
 	if _favor.is_empty():
-		box.add_child(_sub("Add from your bag"))
+		box.add_child(_sub("Your bag"))
 		var bag : HBoxContainer = _slot_strip()
 		var any_item : bool = false
 		for id in PlayerState.ITEM_DEFS:
@@ -233,7 +237,10 @@ func _your_column() -> Control:
 				continue
 			any_item = true
 			var spare : int = have - int(_offer_items.get(sid, 0))
-			bag.add_child(_slot_button(sid, "+ (%d)" % spare, _add_item.bind(sid) if spare > 0 else Callable(), spare > 0))
+			if spare > 0:
+				bag.add_child(_make_bag_cell(sid, spare))   # draggable (or click) to offer
+			else:
+				bag.add_child(_slot_button(sid, "+ (0)", Callable(), false))
 		if not any_item:
 			bag.add_child(_make_caption("Bag empty"))
 		box.add_child(bag)
@@ -381,6 +388,57 @@ func _item_icon(item_id: String) -> Control:
 	var ph : ColorRect = ColorRect.new()
 	ph.color = Color(0.5, 0.5, 0.55, 1.0)
 	return ph
+
+
+# A DRAGGABLE bag cell (a [TradeBagCell]) — drag it onto the Offering zone (or click) to put one up.
+func _make_bag_cell(item_id: String, spare: int) -> Control:
+
+	var holder : VBoxContainer = VBoxContainer.new()
+	holder.alignment = BoxContainer.ALIGNMENT_CENTER
+	holder.add_theme_constant_override("separation", 2)
+	var cell : TradeBagCell = TradeBagCell.new()
+	cell.item_id = item_id
+	cell.window = self
+	cell.custom_minimum_size = Vector2(54.0, 54.0)
+	cell.add_theme_stylebox_override("panel", _slot_style("normal"))
+	cell.tooltip_text = "Drag onto your offer (or click) — %d to spare" % spare
+	var icon : Control = _item_icon(item_id)
+	icon.position = Vector2(7.0, 7.0)
+	icon.size = Vector2(40.0, 40.0)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.add_child(icon)
+	holder.add_child(cell)
+	holder.add_child(_tiny("+ (%d)" % spare))
+	return holder
+
+
+# A translucent item icon that rides the cursor while dragging from the bag (TradeBagCell calls this).
+func make_item_preview(item_id: String) -> Control:
+
+	var root : Control = Control.new()
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var icon : Control = _item_icon(item_id)
+	icon.size = Vector2(40.0, 40.0)
+	icon.position = Vector2(-20.0, -20.0)
+	icon.modulate = Color(1.0, 1.0, 1.0, 0.9)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(icon)
+	return root
+
+
+# The subtle framed drop area behind the Offering strip.
+func _offer_zone_style() -> StyleBoxFlat:
+
+	var s : StyleBoxFlat = StyleBoxFlat.new()
+	s.bg_color = Color(0.1, 0.12, 0.15, 0.55)
+	s.border_color = Color(0.5, 0.55, 0.66, 0.45)
+	s.set_border_width_all(1)
+	s.set_corner_radius_all(8)
+	s.content_margin_left = 10
+	s.content_margin_right = 10
+	s.content_margin_top = 8
+	s.content_margin_bottom = 8
+	return s
 
 
 func _slot_style(state: String) -> StyleBoxFlat:
