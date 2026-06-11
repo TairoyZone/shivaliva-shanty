@@ -28,6 +28,7 @@ const ALL : Array = [
 	{"id": "tournament_champ", "name": "Tournament Champion", "desc": "Win a Gem Drop tournament."},
 	{"id": "full_purse", "name": "Full Purse", "desc": "Earn 1,000 gold across your career."},
 	{"id": "friend_of_inn", "name": "Friend of the Inn", "desc": "Befriend the whole cast of Cradle Rock."},
+	{"id": "sweetheart", "name": "Sweetheart", "desc": "Win an islander's heart and become sweethearts."},
 ]
 
 
@@ -53,6 +54,8 @@ static func is_earned(id: String) -> bool:
 			return PlayerState.lifetime_coins_earned >= FULL_PURSE_GOLD
 		"friend_of_inn":
 			return _all_cast_friended()
+		"sweetheart":
+			return PlayerState.has_been_sweetheart
 	return false
 
 

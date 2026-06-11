@@ -98,6 +98,13 @@ func _make_npc_card(profile: NpcPersonality) -> Control:
 	sub.add_theme_color_override("font_color",
 		Color(0.92, 0.45, 0.38, 1.0) if affinity < 0 else COLOR_INK_SOFT)
 	col.add_child(sub)
+	var rom : String = _romance_note(who, profile)
+	if not rom.is_empty():
+		var rlabel : Label = Label.new()
+		rlabel.text = rom
+		rlabel.add_theme_font_size_override("font_size", 14)
+		rlabel.add_theme_color_override("font_color", COLOR_HEART)
+		col.add_child(rlabel)
 
 	var hearts : Label = Label.new()
 	hearts.text = _hearts_text(affinity)
@@ -106,6 +113,19 @@ func _make_npc_card(profile: NpcPersonality) -> Control:
 	hearts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(hearts)
 	return card
+
+
+# The romance status line for a card ("" if none): a married NPC reads "Married to X"; an active courtship reads
+# its stage; your Sweetheart is named. Surfaces the Sweethearts state on the Hearts page.
+func _romance_note(who: String, profile: NpcPersonality) -> String:
+
+	if not profile.partner.is_empty():
+		return "Married to %s" % profile.partner
+	if PlayerState.is_sweetheart(who):
+		return "Your Sweetheart"
+	if PlayerState.romance_stage(who) > 0:
+		return "Courting — %s" % PlayerState.romance_stage_name(who)
+	return ""
 
 
 # Shown when you've no hearties yet — so the empty tab reads as "go make friends", not "broken".

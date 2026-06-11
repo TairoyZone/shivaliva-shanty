@@ -89,6 +89,9 @@ func _render() -> void:
 	# Your standing with them.
 	_content.add_child(_section("Standing"))
 	_content.add_child(_kv("Rapport", PlayerState.affinity_tier(_npc_name)))
+	var rom : String = _romance_standing()
+	if not rom.is_empty():
+		_content.add_child(_kv("Romance", rom))
 	_content.add_child(_hearts_bar())
 	var done : int = int(PlayerState.npc_favor_done.get(_npc_name, 0))
 	if done > 0:
@@ -214,6 +217,20 @@ func _hire() -> void:
 
 func _dismiss() -> void:
 	PlayerState.dismiss_crew(_npc_name)
+
+## This NPC's romance standing line, or "": your Sweetheart / an active courtship / "Married to X" for the
+## partnered cast (resolved from their .tres). Surfaces the Sweethearts state on the NPC's profile card.
+func _romance_standing() -> String:
+
+	if PlayerState.is_sweetheart(_npc_name):
+		return "Your sweetheart"
+	if PlayerState.romance_stage(_npc_name) > 0:
+		return "Courting — %s" % PlayerState.romance_stage_name(_npc_name)
+	for p in NpcRegistry.all():
+		if p.npc_name == _npc_name and not p.partner.is_empty():
+			return "Married to %s" % p.partner
+	return ""
+
 
 func _promote() -> void:
 	PlayerState.cycle_crew_rank(_npc_name, 1)

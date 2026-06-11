@@ -155,6 +155,9 @@ func _make_left_column() -> Control:
 	if closest_aff > 0:
 		col.add_child(_kv_line("Closest", "%s (%s)" % [
 			_given_name(closest_name), PlayerState.affinity_tier(closest_name)]))
+	var sweetheart : String = PlayerState.current_sweetheart()
+	if sweetheart != "":
+		col.add_child(_kv_line("Sweetheart", _given_name(sweetheart)))
 
 	var gap : Control = Control.new()
 	gap.custom_minimum_size = Vector2(0, 10)

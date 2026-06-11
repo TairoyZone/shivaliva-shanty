@@ -721,6 +721,9 @@ signal crew_changed
 ## (only ever one Sweetheart). Persisted. See the Sweethearts design / [[npc-romance]].
 var npc_romance : Dictionary = {}
 signal romance_changed(npc_name: String, stage: int)
+## MONOTONIC keepsake — true once you've EVER made a Sweetheart vow (stays true through a later break-up, so the
+## Sweetheart trophy never un-earns; earn-and-keep). Persisted.
+var has_been_sweetheart : bool = false
 
 ## Favours the player has ACCEPTED but not yet turned in (name → {item,
 ## amount}). Persisted. Surfaced in the Objectives log via
@@ -1701,6 +1704,7 @@ func become_sweetheart(npc_name: String) -> bool:
 		npc_romance.erase(existing)
 		romance_changed.emit(existing, 0)
 	npc_romance[npc_name] = ROMANCE_STAGES.size() - 1
+	has_been_sweetheart = true   # monotonic keepsake — the Sweetheart trophy never un-earns
 	romance_changed.emit(npc_name, romance_stage(npc_name))
 	_save()
 	return true
@@ -2263,6 +2267,7 @@ func clear_save() -> void:
 	npc_favor_done = {}
 	crew = {}
 	npc_romance = {}
+	has_been_sweetheart = false
 	active_favors = {}
 	pending_challenges = []
 	npc_battle_record = {}
@@ -2319,6 +2324,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "npc_favor_done", npc_favor_done)
 	config.set_value(SAVE_SECTION, "crew", crew)
 	config.set_value(SAVE_SECTION, "npc_romance", npc_romance)
+	config.set_value(SAVE_SECTION, "has_been_sweetheart", has_been_sweetheart)
 	config.set_value(SAVE_SECTION, "active_favors", active_favors)
 	config.set_value(SAVE_SECTION, "pending_challenges", pending_challenges)
 	config.set_value(SAVE_SECTION, "npc_battle_record", npc_battle_record)
@@ -2369,6 +2375,7 @@ func _load() -> void:
 	npc_favor_done = config.get_value(SAVE_SECTION, "npc_favor_done", {})
 	crew = config.get_value(SAVE_SECTION, "crew", {})
 	npc_romance = config.get_value(SAVE_SECTION, "npc_romance", {})
+	has_been_sweetheart = bool(config.get_value(SAVE_SECTION, "has_been_sweetheart", false))
 	active_favors = config.get_value(SAVE_SECTION, "active_favors", {})
 	pending_challenges = config.get_value(SAVE_SECTION, "pending_challenges", [])
 	npc_battle_record = config.get_value(SAVE_SECTION, "npc_battle_record", {})
