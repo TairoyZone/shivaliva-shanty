@@ -581,6 +581,8 @@ func _update_highlight() -> void:
 
 func _show_results(player_won: bool, is_new_best: bool) -> void:
 
+	if player_won:
+		Audio.play_sfx("chime")   # the boarding WIN beat ("ko" already covers fighters going down)
 	var layer : CanvasLayer = CanvasLayer.new()
 	layer.layer = 9
 	add_child(layer)

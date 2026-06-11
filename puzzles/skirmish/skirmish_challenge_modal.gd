@@ -64,38 +64,38 @@ func _build() -> void:
 	list.add_theme_constant_override("separation", 8)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
-	# Easiest foes first (by their search_depth "wits"), so a new player
+	# Easiest foes first (by their FISTS skill — skirmish_skill, not card wits), so a new player
 	# naturally starts gentle. Each button is colour-coded by difficulty.
 	var cast : Array[NpcPersonality] = NpcRegistry.all().duplicate()
-	cast.sort_custom(func(a, b): return a.search_depth < b.search_depth)
+	cast.sort_custom(func(a, b): return a.skirmish_skill < b.skirmish_skill)
 	for profile in cast:
-		var diff : String = _difficulty_tier(profile.search_depth)
+		var diff : String = _difficulty_tier(profile.skirmish_skill)
 		var btn : Button = _make_walnut_button("%s   ·   %s" % [profile.npc_name, diff],
-			_difficulty_color(profile.search_depth))
+			_difficulty_color(profile.skirmish_skill))
 		btn.pressed.connect(_on_pick.bind(profile))
 		list.add_child(btn)
 
-	vbox.add_child(_make_caption("Tougher foes think harder. New to sparring? Spritely Mia is the gentlest start."))
+	vbox.add_child(_make_caption("Tougher foes fight sharper. New to sparring? Start near the top of the list."))
 	var back : Button = _make_walnut_button("Never mind", Color(0.95, 0.84, 0.56, 1.0))
 	back.pressed.connect(_on_cancel)
 	vbox.add_child(back)
 
 
-# Player-facing difficulty from the foe's search_depth "wits" (1..5).
-func _difficulty_tier(search_depth: int) -> String:
+# Player-facing difficulty from the foe's FISTS skill (skirmish_skill, 0..1).
+func _difficulty_tier(skill: float) -> String:
 
-	if search_depth <= 2:
+	if skill < 0.34:
 		return "Novice"
-	if search_depth == 3:
+	if skill < 0.62:
 		return "Regular"
 	return "Expert"
 
 
-func _difficulty_color(search_depth: int) -> Color:
+func _difficulty_color(skill: float) -> Color:
 
-	if search_depth <= 2:
+	if skill < 0.34:
 		return Color(0.55, 0.92, 0.55)   # green — gentle
-	if search_depth == 3:
+	if skill < 0.62:
 		return Color(0.95, 0.85, 0.40)   # gold — even
 	return Color(1.0, 0.62, 0.34)        # orange — tough
 

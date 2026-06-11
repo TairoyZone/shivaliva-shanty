@@ -256,6 +256,7 @@ func _on_player_ko(_final_score: int) -> void:
 
 
 func _on_opponent_ko(_final_score: int) -> void:
+	Audio.play_sfx("chime")   # VICTORY beat — losing had "ko" but winning was mute (audio-gap audit)
 	get_tree().root.add_child(ScreenFlash.make(Color(1.0, 0.86, 0.42), 0.42))   # gold — you won (borrow #5)
 	_end_duel(true)
 
@@ -419,8 +420,8 @@ func _resolve_opponent() -> String:
 		if not cast.is_empty():
 			_opponent_profile = cast[randi() % cast.size()]
 	if _opponent_profile != null:
-		# search_depth 1..5 → skill 0..1 (cast runs 2..4 = 0.25 / 0.5 / 0.75).
-		_opponent_skill = clampf(float(_opponent_profile.search_depth - 1) / 4.0, 0.0, 1.0)
+		# The dedicated fists stat — NOT search_depth (card wits), so the fiction holds (Kerr > Godfrey at steel).
+		_opponent_skill = clampf(_opponent_profile.skirmish_skill, 0.0, 1.0)
 		_opponent_aggression = clampf(_opponent_profile.aggression, 0.0, 1.0)
 		var w : String = _opponent_profile.skirmish_weapon
 		_opponent_weapon = w if not w.is_empty() else "brawl"

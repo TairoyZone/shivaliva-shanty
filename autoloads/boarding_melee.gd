@@ -220,7 +220,7 @@ func _make_ai(profile: NpcPersonality, enemy: bool) -> BoardingCombatant:
 	elif profile != null:
 		c.cname = profile.npc_name
 		c.portrait = profile.portrait_color
-		c.skill = clampf(float(profile.search_depth - 1) / 4.0, 0.0, 1.0)
+		c.skill = clampf(profile.skirmish_skill, 0.0, 1.0)   # the dedicated fists stat, not card wits
 		c.aggr = clampf(profile.aggression, 0.0, 1.0)
 		var w : String = profile.skirmish_weapon
 		c.weapon = w if not w.is_empty() else "brawl"

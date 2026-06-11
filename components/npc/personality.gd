@@ -108,6 +108,10 @@ extends Resource
 ## At 0 the duel marker is omitted from the prompt entirely, so they cannot start a fight. See
 ## [NpcBrain._duel_clause]; the marker is stripped before display + filed as an Ayo! challenge.
 @export_range(0.0, 1.0) var duel_appetite : float = 0.12
+## SKIRMISH fighting skill (0..1) — drives the foe's placement accuracy, blunder rate and pace in a duel or
+## boarding. DECOUPLED from search_depth (card-game wits) so the fiction holds: the bladesmith out-fights the
+## tinker even though the tinker out-thinks him at gem-drop (Troy 2026-06-11).
+@export_range(0.0, 1.0) var skirmish_skill : float = 0.5
 ## ROMANCEABLE? 0.0 = not romanceable (the default — nobody is courtable until you deliberately raise this).
 ## Above 0 = single + open to a courtship, biasing how readily they warm to one in chat (the AI's [[SMITTEN]]
 ## nudge). See [NpcBrain._romance_block].
