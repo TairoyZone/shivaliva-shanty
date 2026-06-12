@@ -1,10 +1,11 @@
 ## TouchControlBar — a data-driven row of large touch buttons a puzzle declares via [PuzzleScene._touch_spec].
 ## Each spec entry is a Dictionary:
-##   {"label": String, "hold": bool, and ONE of "action": StringName | "callable": Callable}
-##   HOLD + action  -> presses/releases the InputMap action on touch-down/up, so the puzzle's EXISTING polled DAS
-##                     auto-repeat works unchanged (move left/right, soft-drop). A finger sliding off releases it.
-##   TAP + callable -> calls the method once on press — the reliable path for rotate / flip / toss.
-##   TAP + action   -> a momentary press for puzzles that poll is_action_just_pressed.
+##   {"label": String, "hold": bool, and ONE of "action": StringName | "key": int (a KEY_* code) | "callable": Callable}
+##   HOLD presses on touch-down + releases on touch-up (or finger-slide-off) — for held inputs (move, soft-drop)
+##   so the puzzle's existing DAS auto-repeat works unchanged. TAP fires once on press (rotate, flip, toss).
+## An "action" synthesizes BOTH the polled state (Input.action_press) AND an InputEventAction, and a "key"
+## synthesizes an InputEventKey — so it works whether the puzzle POLLS (Input.is_action_pressed in _process) or
+## reads EVENTS (event.is_action_pressed / event.keycode in _unhandled_input). A "callable" just calls a method.
 ## Built ONLY on touch (PuzzleScene gates it on TouchEnv). One bar, one place — every action puzzle just declares
 ## its buttons (inheritance over duplication). Anchored bottom-right, >=72px targets, placeholder styling.
 class_name TouchControlBar
@@ -13,7 +14,7 @@ extends HBoxContainer
 const BTN_SIZE : float = 72.0
 
 var _spec : Array = []
-var _held : Dictionary = {}   # Button -> the StringName action it is holding
+var _held : Dictionary = {}   # Button -> the {kind, value} it is holding down
 
 
 func setup(spec: Array) -> void:
@@ -37,44 +38,70 @@ func _make_button(entry: Dictionary) -> Button:
 	btn.add_theme_font_size_override("font_size", 30)
 	_style_button(btn)
 	var hold : bool = bool(entry.get("hold", false))
+	var what : Dictionary = {}
 	if entry.has("action"):
-		var action : StringName = StringName(entry["action"])
-		if hold:
-			btn.button_down.connect(_press.bind(btn, action))
-			btn.button_up.connect(_release.bind(btn))
-			btn.mouse_exited.connect(_release.bind(btn))   # finger slid off the button -> release the held action
-		else:
-			btn.pressed.connect(_tap_action.bind(action))
+		what = {"kind": "action", "value": StringName(entry["action"])}
+	elif entry.has("key"):
+		what = {"kind": "key", "value": int(entry["key"])}
 	elif entry.has("callable"):
 		btn.pressed.connect(entry["callable"] as Callable)
+		return btn
+	if hold:
+		btn.button_down.connect(_press.bind(btn, what))
+		btn.button_up.connect(_release.bind(btn))
+		btn.mouse_exited.connect(_release.bind(btn))   # finger slid off the button -> release the held input
+	else:
+		btn.pressed.connect(_tap.bind(what))
 	return btn
 
 
-func _press(btn: Button, action: StringName) -> void:
+func _press(btn: Button, what: Dictionary) -> void:
 
 	if _held.has(btn):
 		return
-	_held[btn] = action
-	Input.action_press(action)
+	_held[btn] = what
+	_set_down(what, true)
 
 
 func _release(btn: Button) -> void:
 
 	if not _held.has(btn):
 		return
-	Input.action_release(_held[btn])
+	var what : Dictionary = _held[btn]
 	_held.erase(btn)
+	_set_down(what, false)
 
 
-func _tap_action(action: StringName) -> void:
+func _tap(what: Dictionary) -> void:
 
-	# A momentary press so a polled is_action_just_pressed fires; released next idle frame.
-	Input.action_press(action)
-	_release_action_deferred.call_deferred(action)
+	_set_down(what, true)
+	_set_down_deferred.call_deferred(what, false)   # release next idle frame (one clean press)
 
 
-func _release_action_deferred(action: StringName) -> void:
-	Input.action_release(action)
+func _set_down_deferred(what: Dictionary, down: bool) -> void:
+	_set_down(what, down)
+
+
+# Drive the input down/up, covering BOTH polled (Input.action_press) and event-based (parse_input_event) readers.
+func _set_down(what: Dictionary, down: bool) -> void:
+
+	if what.get("kind", "") == "action":
+		var a : StringName = what["value"]
+		if down:
+			Input.action_press(a)
+		else:
+			Input.action_release(a)
+		var ev : InputEventAction = InputEventAction.new()
+		ev.action = a
+		ev.pressed = down
+		Input.parse_input_event(ev)
+	elif what.get("kind", "") == "key":
+		var k : int = int(what["value"])
+		var ev : InputEventKey = InputEventKey.new()
+		ev.keycode = k
+		ev.physical_keycode = k
+		ev.pressed = down
+		Input.parse_input_event(ev)
 
 
 func _style_button(btn: Button) -> void:
@@ -89,9 +116,9 @@ func _style_button(btn: Button) -> void:
 	btn.add_theme_color_override("font_color", Color(0.97, 0.87, 0.55, 1.0))
 
 
-# Release any held action if the bar is freed mid-press (scene change / leave) so nothing sticks down.
+# Release anything held if the bar is freed mid-press (scene change / leave) so no input sticks down.
 func _exit_tree() -> void:
 
 	for btn in _held.keys():
-		Input.action_release(_held[btn])
+		_set_down(_held[btn], false)
 	_held.clear()

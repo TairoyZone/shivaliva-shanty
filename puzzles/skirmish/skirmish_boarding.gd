@@ -11,6 +11,18 @@
 extends PuzzleScene
 
 
+# TOUCH controls (mobile web): move/soft-drop held, rotate tap, plus target-cycle (the A/D keys). See [[touch-input-foundation]].
+func _touch_spec() -> Array:
+	return [
+		{"label": "◄", "action": "ui_left", "hold": true},
+		{"label": "►", "action": "ui_right", "hold": true},
+		{"label": "↻", "action": "ui_up"},
+		{"label": "▼", "action": "ui_down", "hold": true},
+		{"label": "◄T", "key": KEY_A},
+		{"label": "T►", "key": KEY_D},
+	]
+
+
 const PORTRAIT_SCENE : PackedScene = preload("res://components/portrait/portrait.tscn")
 const SHIP_DECK_SCENE : String = "res://levels/ship_deck/ship_deck.tscn"
 

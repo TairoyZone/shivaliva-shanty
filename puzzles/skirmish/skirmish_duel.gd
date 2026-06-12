@@ -10,6 +10,16 @@
 extends VersusPuzzleScene
 
 
+# TOUCH controls (mobile web): move + soft-drop are held, rotate is a tap. See [[touch-input-foundation]].
+func _touch_spec() -> Array:
+	return [
+		{"label": "◄", "action": "ui_left", "hold": true},
+		{"label": "►", "action": "ui_right", "hold": true},
+		{"label": "↻", "action": "ui_up"},
+		{"label": "▼", "action": "ui_down", "hold": true},
+	]
+
+
 const PORTRAIT_SCENE : PackedScene = preload("res://components/portrait/portrait.tscn")
 
 

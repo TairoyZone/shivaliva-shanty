@@ -5,6 +5,16 @@
 extends VoyageStationScene
 
 
+# TOUCH controls (mobile web): rotate/flip/toss (the X/C/F/T keys); pick + place a piece by TAP (synthetic click). See [[touch-input-foundation]].
+func _touch_spec() -> Array:
+	return [
+		{"label": "↺", "key": KEY_X},
+		{"label": "↻", "key": KEY_C},
+		{"label": "⇄", "key": KEY_F},
+		{"label": "Toss", "key": KEY_T},
+	]
+
+
 const GRID_W : int = 8
 const GRID_H : int = 8
 const CELL : float = 50.0

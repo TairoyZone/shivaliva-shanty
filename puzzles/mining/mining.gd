@@ -12,6 +12,18 @@
 extends PuzzleScene
 
 
+# TOUCH controls (mobile web): a d-pad moves the 2x2 cursor (held); the rotate buttons crumble (C/X keys). See [[touch-input-foundation]].
+func _touch_spec() -> Array:
+	return [
+		{"label": "◄", "action": "ui_left", "hold": true},
+		{"label": "►", "action": "ui_right", "hold": true},
+		{"label": "▲", "action": "ui_up", "hold": true},
+		{"label": "▼", "action": "ui_down", "hold": true},
+		{"label": "↺", "key": KEY_X},
+		{"label": "↻", "key": KEY_C},
+	]
+
+
 ## Combo step names by chunk-count (index = chunks dug in one move).
 const COMBO_NAMES : Array = [
 	"", "", "DOUBLE HAUL", "TRIPLE HAUL", "MOTHERLODE", "MOTHERLODE",
