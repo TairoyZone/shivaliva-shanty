@@ -111,6 +111,7 @@ func hear(line: String) -> void:
 			return
 		_last_overheard_ms = now
 	_record("Traveller", text)   # the player's line goes into the room memory (context for every reply)
+	_last_overheard_ms = Time.get_ticks_msec()   # ANY player line (addressed or overheard) re-arms the ambient quiet gate
 	var responders : Array = _select(present, mentioned, room_address, lc)
 	if responders.is_empty():
 		return
@@ -130,6 +131,8 @@ func _maybe_ambient_remark() -> void:
 	var tree : SceneTree = get_tree()
 	if tree == null or tree.paused or tree.current_scene == null:
 		return   # don't blurt over a pause menu / modal, or with no scene
+	if ChatBox != null and (ChatBox.is_typing() or ChatBox.is_log_open()):
+		return   # the player has the chat bar open / is composing — let them drive, don't barge a bubble in
 	var now : int = Time.get_ticks_msec()
 	if now - _last_ambient_check_ms < AMBIENT_TICK_MS:
 		return
@@ -162,7 +165,7 @@ func _maybe_ambient_remark() -> void:
 		return
 	# Final gate: even chosen, a remark only fires sometimes (chattiness-scaled). Reset the pacing either way.
 	var chosen : NpcPersonality = best["persona"]
-	var fire_chance : float = AMBIENT_BASE_CHANCE * clampf(0.3 + chosen.chattiness, 0.0, 1.0)
+	var fire_chance : float = AMBIENT_BASE_CHANCE * clampf(chosen.chattiness, 0.0, 1.0)   # no floor — a low-chattiness NPC approaches silence
 	_last_ambient_ms = now
 	_ambient_gap = randi_range(AMBIENT_GAP_MIN_MS, AMBIENT_GAP_MAX_MS)
 	if randf() > fire_chance:
@@ -170,6 +173,7 @@ func _maybe_ambient_remark() -> void:
 	var others : PackedStringArray = PackedStringArray()
 	for e in present:
 		others.append(_short(e["persona"].npc_name))
+	_cooldowns[chosen.npc_name] = now   # reserve the self-remark cooldown up front, so even a (silent) ambient reply still paces them
 	_queue.append({"r": best, "others": others, "token": _scene_token, "ambient": true})
 	_pump()
 
@@ -563,6 +567,7 @@ func _say(node: Node, persona: NpcPersonality, text: String) -> void:
 	SpeechBubble.say(node, text)
 	PlayerState.log_event("%s: %s" % [_short(persona.npc_name), text], persona.portrait_color.lightened(0.35))
 	_cooldowns[persona.npc_name] = Time.get_ticks_msec()   # cool down only when they ACTUALLY spoke (not on silence)
+	_last_overheard_ms = Time.get_ticks_msec()             # any spoken line re-arms the AMBIENT_QUIET gate (no barging in right after)
 	_record(_short(persona.npc_name), text)                # their line joins the room memory
 
 
