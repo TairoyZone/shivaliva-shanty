@@ -113,6 +113,8 @@ func hear(line: String) -> void:
 	_record("Traveller", text)   # the player's line goes into the room memory (context for every reply)
 	_last_overheard_ms = Time.get_ticks_msec()   # ANY player line (addressed or overheard) re-arms the ambient quiet gate
 	var responders : Array = _select(present, mentioned, room_address, lc)
+	if NpcBrain.is_duel_proposal(lc):
+		_ensure_keen_fighter(present, responders)   # a thrown-down duel: the keenest present fighter must engage it
 	if responders.is_empty():
 		return
 	var others : PackedStringArray = PackedStringArray()
@@ -317,6 +319,28 @@ func _select(present: Array, mentioned: Dictionary, room_address: bool, lc: Stri
 		if not best.is_empty():
 			responders.append(best)
 	return responders
+
+
+# A duel was thrown down to the room: make sure the KEENEST present fighter (highest duel_appetite, off-cooldown)
+# actually ANSWERS it (answer=true), so a scrapper like Kerr engages an open challenge instead of the chattiest
+# soul giving idle flavour while the dare goes nowhere (Troy 2026-06-12). Upgrades them if already responding.
+func _ensure_keen_fighter(present: Array, responders: Array) -> void:
+
+	var best : Dictionary = {}
+	var best_app : float = 0.25   # skip pacifists — only a genuinely game NPC bites
+	for e in present:
+		var persona : NpcPersonality = e["persona"]
+		if persona.duel_appetite <= best_app or _in_flight(persona.npc_name):
+			continue
+		best_app = persona.duel_appetite
+		best = {"node": e["node"], "persona": persona, "answer": true, "chance": 3.0}
+	if best.is_empty():
+		return
+	for r in responders:
+		if String(r["persona"].npc_name) == String(best["persona"].npc_name):
+			r["answer"] = true   # already in the pool — just force them to answer, never maybe-silent
+			return
+	responders.push_front(best)
 
 
 func _reply_chance(persona: NpcPersonality, node: Node, player: Node, lc: String) -> float:

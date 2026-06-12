@@ -83,6 +83,10 @@ var _persona : NpcPersonality = null
 var _messages : Array = []             # [{role, content}] rolling history for the active conversation
 var _busy : bool = false
 var _offline_warned : bool = false   # one-shot "AI offline" notice so a transport outage never masquerades as dumb canned replies
+var _consecutive_failures : int = 0  # gate the offline notice — a single cold-start timeout shouldn't flash it (Troy 2026-06-12)
+var _warm_http : HTTPRequest = null  # the keep-warm pinger's own request (separate from chat traffic)
+const OFFLINE_THRESHOLD : int = 3    # consecutive failures before we actually tell the player the AI is offline
+const WARM_INTERVAL_S : float = 600.0  # ping the proxy /health this often so Render's free tier never sleeps (15-min idle)
 
 
 func _ready() -> void:
@@ -93,6 +97,7 @@ func _ready() -> void:
 	add_child(_http)
 	_http.request_completed.connect(_on_request_completed)
 	_load_config()
+	_setup_keep_warm()   # wake the proxy now + keep it awake, so cold-starts don't flash "AI offline" / lag the first chat
 
 
 # Endpoint + secret + the AI toggle come from config so the proxy URL can change WITHOUT recompiling, in two
@@ -130,6 +135,40 @@ func _apply_chat_cfg(path: String) -> void:
 	_dev_key = String(cfg.get_value("npc_chat", "dev_api_key", _dev_key))
 	_dev_url = String(cfg.get_value("npc_chat", "dev_url", _dev_url))
 	_dev_model = String(cfg.get_value("npc_chat", "dev_model", _dev_model))
+
+
+# Keep the proxy AWAKE. Render's free tier sleeps after ~15 min idle; the first request to a cold proxy times
+# out → a false "AI offline" + a laggy first reply (Troy 2026-06-12, the web bug). So ping /health NOW (start it
+# waking before anyone chats) and every WARM_INTERVAL_S after. Proxy path only; dev-direct providers don't sleep.
+func _setup_keep_warm() -> void:
+
+	if not ai_enabled or not _dev_key.is_empty():
+		return
+	_warm_http = HTTPRequest.new()
+	_warm_http.timeout = 25.0
+	add_child(_warm_http)
+	_warm_http.request_completed.connect(_on_warm_done)
+	var t : Timer = Timer.new()
+	t.wait_time = WARM_INTERVAL_S
+	t.autostart = true
+	t.timeout.connect(_keep_warm)
+	add_child(t)
+	_keep_warm()   # the first wake-up ping, right at startup
+
+
+func _keep_warm() -> void:
+
+	if _warm_http == null:
+		return
+	var slash : int = endpoint.rfind("/")
+	var health : String = (endpoint.substr(0, slash) if slash > 8 else endpoint) + "/health"
+	_warm_http.request(health, PackedStringArray(), HTTPClient.METHOD_GET)   # ERR_BUSY (a ping still in flight) is fine
+
+
+func _on_warm_done(result: int, code: int, _headers: PackedStringArray, _body: PackedByteArray) -> void:
+
+	if result == HTTPRequest.RESULT_SUCCESS and code == 200:
+		note_online()   # the proxy answered /health → it's up; clear any stale offline state
 
 
 ## Options toggle: enable/disable live AI chat. Persisted to user://settings.cfg; when off, an NPC's "Chat"
@@ -173,6 +212,7 @@ func is_busy() -> bool:
 func note_online() -> void:
 
 	_offline_warned = false
+	_consecutive_failures = 0
 
 
 ## A request FAILED (network/non-200) → the LLM is unreachable. Surface it ONCE in the log so a dead proxy /
@@ -180,7 +220,10 @@ func note_online() -> void:
 ## private path + RoomChat's ambient pool.
 func note_offline() -> void:
 
-	if _offline_warned:
+	# Don't flash the notice on a single transient failure (a cold-start timeout while the proxy wakes) — only when
+	# failures PERSIST past OFFLINE_THRESHOLD, so a real outage still surfaces but a one-off cold start doesn't.
+	_consecutive_failures += 1
+	if _consecutive_failures < OFFLINE_THRESHOLD or _offline_warned:
 		return
 	_offline_warned = true
 	PlayerState.log_event("NPC AI offline — replies are canned. Start your proxy or set SHANTY_NPC_KEY (see proxy/README).",
@@ -654,8 +697,13 @@ func is_duel_proposal(lc: String) -> bool:
 		return false
 	if _any_phrase(lc, DUEL_PROPOSAL_PHRASES):
 		return true
+	if not _any_phrase(lc, DUEL_NOUNS):
+		return false
+	# A duel noun counts when aimed at someone (you/me) OR thrown OPEN to the room (anyone / who's up for it) — so
+	# "duel anyone?", "anyone want to spar", "who's up for a fight" all register, not just direct challenges (Troy 2026-06-12).
 	var directed : bool = lc.find("you") != -1 or lc.find(" me") != -1 or lc.begins_with("me")
-	return directed and _any_phrase(lc, DUEL_NOUNS)
+	var room_call : bool = _any_phrase(lc, ["anyone", "anybody", "any taker", "who want", "who's up", "whos up", "any of you", "someone"])
+	return directed or room_call
 
 
 ## Does an NPC's reply ACCEPT or issue a bout (a first-person-commitment idiom)? Pass text.to_lower().
