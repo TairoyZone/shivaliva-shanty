@@ -71,6 +71,18 @@ func _ready() -> void:
 			c.board.visible = true
 	_build_ui()
 	_layout()
+	# CHAT-REACHABLE roster — wire the NPC brain into the boarding (the 1v1 duel does it too): every combatant
+	# that maps to a cast member becomes addressable (the chat scope menu + RoomChat find them in the "npc"
+	# group), and the brain + per-NPC memory carry across scenes. Bubbles float by their board; the LOG carries
+	# the conversation regardless. (Troy 2026-06-12 — closes the boarding's chat gap vs the duel.)
+	for c in _combatants:
+		var persona : NpcPersonality = _persona_for(String(c.cname))
+		if persona != null:
+			var chat : OpponentChat = OpponentChat.new()
+			add_child(chat)
+			chat.setup(persona)
+			if is_instance_valid(c.board):
+				chat.position = c.board.position + Vector2(0.0, -24.0)
 	BoardingMelee.combatant_defeated.connect(_on_combatant_defeated)
 	BoardingMelee.targets_changed.connect(_on_targets_changed)
 	BoardingMelee.melee_resolved.connect(_on_melee_resolved)
@@ -96,6 +108,24 @@ func _exit_tree() -> void:
 			if is_instance_valid(c.board):
 				c.board.visible = false
 		BoardingMelee.set_player_present(false)
+
+
+# The cast persona whose name matches a combatant (for chat); an unknown/generic brigand returns null (no chat).
+func _persona_for(cname: String) -> NpcPersonality:
+
+	for p in NpcRegistry.all():
+		if p.npc_name == cname:
+			return p
+	return null
+
+
+# Situational awareness for a chatting combatant — they know they're mid-boarding (NpcBrain folds this in).
+func npc_chat_context(_asker: String) -> String:
+
+	if BoardingMelee != null and BoardingMelee.has_active() and not BoardingMelee.is_resolved():
+		return ("BOARDING — you're in the thick of a crew-vs-crew boarding fight with the traveller right now, "
+			+ "blades drawn and blocks flying. React like a fighter mid-brawl; a little trash talk fits.")
+	return ""
 
 
 # --- Layout: player centre, windowed crew columns ---------------------

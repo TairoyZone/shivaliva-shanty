@@ -540,7 +540,7 @@ func _process(_delta: float) -> void:
 	var sc : Node = get_tree().current_scene if get_tree() != null else null
 	# UNIVERSAL now: chat is available in EVERY gameplay scene — the overworld AND every puzzle/voyage — hidden
 	# by default; only the title has no chat (Troy 2026-06-10, the Minecraft/Stardew/Valorant model).
-	var should : bool = chat_visible and sc != null and not _is_title(sc)
+	var should : bool = chat_visible and sc != null and not _is_title(sc) and (_in_private or _has_addressable_npc())
 	if should != visible:
 		visible = should
 		if not visible:
@@ -558,6 +558,18 @@ func _process(_delta: float) -> void:
 	var feed_visible : bool = not _bar_open
 	if EventFeed != null and EventFeed.visible != feed_visible:
 		EventFeed.visible = feed_visible
+
+
+# Is there anyone in the scene to actually talk to? Keeps the chat bar from showing a dead "speak" affordance
+# in the empty outdoor overworld (shore/forest/mine/Driftspar) where no Npc is placed (Troy 2026-06-12).
+func _has_addressable_npc() -> bool:
+
+	if get_tree() == null:
+		return false
+	for n in get_tree().get_nodes_in_group("npc"):
+		if is_instance_valid(n) and ("npc_name" in n):
+			return true
+	return false
 
 
 # The title screen (main.tscn) is the one scene with no chat — everything else is gameplay.
