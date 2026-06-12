@@ -557,6 +557,7 @@ func _wire_signals() -> void:
 	_board.pot_changed.connect(_on_pot_changed)
 	_board.turn_changed.connect(_on_turn_changed)
 	_board.hand_complete.connect(_on_hand_complete)
+	_board.all_in_runout.connect(_on_all_in_runout)
 	_action_panel.action_chosen.connect(_on_action_chosen)
 	_result_btn.pressed.connect(_on_next_hand_pressed)
 
@@ -1021,6 +1022,16 @@ func _on_turn_changed(player_index: int) -> void:
 	tick_opponent_mood(player.player_name)
 	var decision : Dictionary = PokerAI.decide(_board, player, mb)
 	_board.apply_action(decision["action"], decision["amount"])
+
+
+# Everyone's all-in (or one caller) and the board is about to run out — table every LIVE hand face-up NOW, so the
+# player watches the cards come out with all hands visible, not hidden until the end (Troy 2026-06-12). Mirrors the
+# non-folded reveal in _on_hand_complete; the final showdown still runs its full reveal + result panel.
+func _on_all_in_runout() -> void:
+
+	for i in _seats.size():
+		if i < _board.players.size() and not _board.players[i].folded:
+			_seats[i].hole_cards_face_up = true
 
 
 func _on_hand_complete(awards: Array) -> void:

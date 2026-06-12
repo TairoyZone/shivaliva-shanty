@@ -62,6 +62,10 @@ signal blinds_posted(sb_index: int, sb_amount: int, bb_index: int, bb_amount: in
 signal pot_changed(total: int)
 signal turn_changed(player_index: int)
 signal hand_complete(awards: Array)
+## Betting is closed because everyone still in is all-in (or one caller) and the board will RUN OUT to showdown
+## with no more action — the cue to TABLE every live hand face-up immediately (Troy 2026-06-12), so the player
+## watches the cards come out with all hands visible instead of staying hidden until the end.
+signal all_in_runout()
 
 # --- Tunables ----------------------------------------------------------
 @export var small_blind_amount : int = 5
@@ -464,6 +468,7 @@ func _advance_phase() -> void:
 
 func _fast_forward_to_showdown() -> void:
 
+	all_in_runout.emit()   # everyone's all-in: table the live hands face-up BEFORE the board runs out
 	# Deal any community cards we haven't yet.
 	if community_cards.is_empty():
 		community_cards.append_array(deck.deal(3))
