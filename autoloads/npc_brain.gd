@@ -13,11 +13,11 @@ extends Node
 ## point it at your deployed proxy for the public demo. Override at runtime without recompiling via
 ## user://settings.cfg: [npc_chat] endpoint="https://..."  (and optional secret="...").
 const DEFAULT_ENDPOINT : String = "http://127.0.0.1:8787/chat"
-## DEV-DIRECT (no terminal): if a dev key is found — user://settings.cfg [npc_chat] dev_api_key, else the
-## SHANTY_NPC_KEY environment variable — the game calls this OpenAI-compatible LLM (DeepSeek) DIRECTLY with
-## that key, skipping the proxy. Neither source ships: user:// is per-machine + not bundled in an export,
-## and an env var lives in YOUR OS only. ⚠️ For the PUBLIC demo leave both blank — the build must never
-## carry a key; that path uses the proxy. (A determined player could also drop their OWN key here = BYOK.)
+## DEV-DIRECT (no terminal): if the SHANTY_NPC_KEY environment variable is set, the game calls this
+## OpenAI-compatible LLM (DeepSeek) DIRECTLY with that key, skipping the proxy. That source never ships — an
+## env var lives in YOUR OS only. (The old user://settings.cfg dev_api_key + its Options field were removed
+## 2026-06-12: the deployed proxy holds the key now, so a player never sees or sets one.) ⚠️ For the PUBLIC
+## demo leave it unset; that path uses the proxy — the build must never carry a key.
 const DEV_DIRECT_URL : String = "https://api.deepseek.com/chat/completions"
 const DEV_DIRECT_MODEL : String = "deepseek-chat"
 const REPLY_MAX_TOKENS : int = 300        # short, snappy NPC lines (cheap + low latency; proxy also caps)
@@ -74,7 +74,7 @@ signal thinking_started               # a request went out — show a "…" / ty
 var ai_enabled : bool = true           # Options toggle — when off, "Chat" falls back to a canned line
 var endpoint : String = DEFAULT_ENDPOINT
 var _secret : String = ""              # optional x-shanty-key header (matches the proxy's SHARED_SECRET)
-var _dev_key : String = ""             # DEV-ONLY direct key (settings.cfg or SHANTY_NPC_KEY env) — blank = use the proxy
+var _dev_key : String = ""             # DEV-ONLY direct key (SHANTY_NPC_KEY env var only) — blank = use the proxy
 var _dev_url : String = DEV_DIRECT_URL
 var _dev_model : String = DEV_DIRECT_MODEL
 var _using_direct : bool = false       # which path the in-flight request used (decides how the reply is parsed)
@@ -111,10 +111,9 @@ func _load_config() -> void:
 
 	_apply_chat_cfg("res://npc_chat.cfg")     # bundled release config (the deployed proxy for all players)
 	_apply_chat_cfg("user://settings.cfg")    # per-machine override (dev/tester)
-	# DEV-DIRECT key: a last-resort SHANTY_NPC_KEY env var (set it once, no terminal) if no config supplied one.
-	# Blank on a player's machine -> the proxy path. See DEV_DIRECT_URL above.
-	if _dev_key.is_empty():
-		_dev_key = OS.get_environment("SHANTY_NPC_KEY")
+	# DEV-DIRECT key: the SHANTY_NPC_KEY env var (set it once, no terminal) is the ONLY dev-direct source now
+	# (the settings.cfg dev_api_key field was removed 2026-06-12). Unset on a player's machine -> the proxy path.
+	_dev_key = OS.get_environment("SHANTY_NPC_KEY")
 	# Defense-in-depth: in an EXPORTED build, if nothing moved the endpoint off the local dev default AND there's
 	# no dev key, the bundled npc_chat.cfg almost certainly didn't ship (the export include_filter must pack this
 	# non-resource .cfg). Make that LOUD instead of silently degrading to "AI offline" for every player.
@@ -132,7 +131,6 @@ func _apply_chat_cfg(path: String) -> void:
 	ai_enabled = bool(cfg.get_value("npc_chat", "enabled", ai_enabled))
 	endpoint = String(cfg.get_value("npc_chat", "endpoint", endpoint))
 	_secret = String(cfg.get_value("npc_chat", "secret", _secret))
-	_dev_key = String(cfg.get_value("npc_chat", "dev_api_key", _dev_key))
 	_dev_url = String(cfg.get_value("npc_chat", "dev_url", _dev_url))
 	_dev_model = String(cfg.get_value("npc_chat", "dev_model", _dev_model))
 
