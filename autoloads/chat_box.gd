@@ -287,14 +287,23 @@ func _build_touch_chat_button() -> void:
 	add_child(_chat_btn)
 
 
-# Place the touch Chat button. Flush in the BOTTOM-right corner everywhere — EXCEPT an action puzzle, where the
-# bottom corners are its control bar and the top corners are its own score/status HUD, so it goes TOP-CENTRE
-# (just right of centre, beside the Leave button), Troy 2026-06-12.
-func _place_chat_button(action_puzzle: bool) -> void:
+# Place the touch Chat button. A touch action puzzle whose HUD we moved to the bottom -> TOP-right corner (beside
+# the score/status it vacated). An action puzzle that HASN'T swapped -> TOP-centre (clear of its top-corner HUD,
+# beside Leave). Everything else -> flush BOTTOM-right corner (Troy 2026-06-12).
+func _place_chat_button(action_puzzle: bool, swapped: bool) -> void:
 
 	if _chat_btn == null:
 		return
-	if action_puzzle:
+	if swapped:
+		_chat_btn.anchor_left = 1.0
+		_chat_btn.anchor_right = 1.0
+		_chat_btn.anchor_top = 0.0
+		_chat_btn.anchor_bottom = 0.0
+		_chat_btn.offset_left = -18.0 - 96.0
+		_chat_btn.offset_right = -18.0
+		_chat_btn.offset_top = 16.0
+		_chat_btn.offset_bottom = 16.0 + 64.0
+	elif action_puzzle:
 		_chat_btn.anchor_left = 0.5
 		_chat_btn.anchor_right = 0.5
 		_chat_btn.anchor_top = 0.0
@@ -634,10 +643,11 @@ func _process(_delta: float) -> void:
 		_last_scene = sc
 		if _in_private:
 			_exit_private()
-		# TOP-right ONLY inside an action puzzle (its touch control bar owns the bottom corners); BOTTOM-right
-		# corner everywhere else — overworld, tap puzzles, future co-op scenes (Troy 2026-06-12).
+		# Chat by scene: a touch action puzzle whose HUD we centred at the top -> TOP-right corner; an action
+		# puzzle that hasn't swapped yet -> top-centre; else the flush bottom-right corner (Troy 2026-06-12).
 		var action_puzzle : bool = sc is PuzzleScene and sc.has_method("_has_touch_bar") and bool(sc.call("_has_touch_bar"))
-		_place_chat_button(action_puzzle)
+		var hud_swapped : bool = sc is PuzzleScene and sc.has_method("touch_hud_swapped") and bool(sc.call("touch_hud_swapped"))
+		_place_chat_button(action_puzzle, hud_swapped)
 	# The fading idle LOG is the EventFeed (shows everywhere, lingers ~8s then fades — the Minecraft/Stardew
 	# corner). Hide it only while the bar's OPEN (the scrollable history shows the same lines then).
 	var feed_visible : bool = not _bar_open

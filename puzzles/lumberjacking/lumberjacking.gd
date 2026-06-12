@@ -45,6 +45,11 @@ const CHAIN_NAMES : Array = [
 @onready var _difficulty_label : Label = $UI/TopBar/DifficultyPanel/DifficultyLabel
 
 
+# The score/status bar PuzzleScene centres at the TOP on touch (so Leave/Chat take the corners). See _relocate_touch_hud.
+func _touch_hud_node() -> Control:
+	return $UI/TopBar
+
+
 ## Running SCORE this session (combo/chain skill metric → mastery rank) and
 ## WOOD haul (fused-block currency → backpack). Mirrored from the board's
 ## score_changed / wood_changed signals for the HUD + the final commit.

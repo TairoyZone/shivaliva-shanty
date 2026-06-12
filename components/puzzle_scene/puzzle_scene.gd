@@ -21,12 +21,14 @@ class_name PuzzleScene
 
 
 var _awaiting_dismiss : bool = false
+var _hud_swapped : bool = false   # touch action puzzle: did we relocate this puzzle's top HUD to the bottom?
 
 
 func _ready() -> void:
 
 	if HUD:
 		HUD.visible = false
+	_relocate_touch_hud()   # action puzzle on touch: centre its top HUD so Leave/Chat take the top corners
 	_build_leave_button()
 	_build_touch_controls()
 
@@ -70,6 +72,33 @@ func _leave_at_top_left() -> bool:
 	return false
 
 
+## Override → the puzzle's TOP score/status HUD container (a single Control) so PuzzleScene CENTRES it at the top
+## on touch, freeing the top CORNERS for the Leave + Chat buttons (Troy 2026-06-12). Default null = no relocation
+## (the buttons fall back to top-centre, clear of the corners).
+func _touch_hud_node() -> Control:
+	return null
+
+
+## True once this puzzle's top HUD has been relocated to the bottom (so Leave/Chat take the top corners). ChatBox
+## reads this to place the Chat button to match.
+func touch_hud_swapped() -> bool:
+	return _hud_swapped
+
+
+# Centre the puzzle's top HUD (if it declares one) at the TOP, content-sized — between the Leave (top-left) and
+# Chat (top-right) buttons that take the corners. MINSIZE preset so an HBox HUD still lays its children out (a
+# zero-width grown anchor would not).
+func _relocate_touch_hud() -> void:
+
+	if not _has_touch_bar():
+		return
+	var hud : Control = _touch_hud_node()
+	if hud == null:
+		return
+	hud.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 16)
+	_hud_swapped = true
+
+
 # Persistent "Leave" button, bottom-left, on its own high CanvasLayer so
 # it sits above the puzzle's own UI. Replaces the old instant-ESC exit:
 # leaving is now an explicit click. Leaving mid-hand forfeits whatever's
@@ -85,19 +114,19 @@ func _build_leave_button() -> void:
 	var btn : Button = Button.new()
 	btn.text = "← Leave"
 	btn.focus_mode = Control.FOCUS_NONE
-	# BOTTOM-left corner by default. Chat scenes (poker) override _leave_at_top_left() -> TOP-left. A touch ACTION
-	# puzzle -> TOP-CENTRE: the bottom corners are its control bar and the top corners are its own score/status
-	# HUD, so the centre is the only clear spot (Troy 2026-06-12, the Lumberjacking overlap).
-	if _has_touch_bar():
+	# Placement: a touch action puzzle that RELOCATED its HUD to the bottom (_hud_swapped) — or poker — puts Leave
+	# in the TOP-left corner. A touch action puzzle that HASN'T yet -> TOP-CENTRE (clear of its top-corner HUD).
+	# Everything else -> the default BOTTOM-left (Troy 2026-06-12).
+	if _hud_swapped or _leave_at_top_left():
+		btn.offset_left = 20.0
+		btn.offset_right = 140.0
+		btn.offset_top = 16.0
+		btn.offset_bottom = 56.0
+	elif _has_touch_bar():
 		btn.anchor_left = 0.5
 		btn.anchor_right = 0.5
 		btn.offset_left = -128.0
 		btn.offset_right = -8.0
-		btn.offset_top = 16.0
-		btn.offset_bottom = 56.0
-	elif _leave_at_top_left():
-		btn.offset_left = 20.0
-		btn.offset_right = 140.0
 		btn.offset_top = 16.0
 		btn.offset_bottom = 56.0
 	else:
