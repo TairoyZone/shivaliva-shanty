@@ -5,6 +5,9 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Cinder Troy"
+chattiness = 0.4
+humour = 0.4
+charisma = 0.6
 composure = 0.45
 pronouns = "he/him"
 duel_appetite = 0.4

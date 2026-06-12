@@ -5,6 +5,9 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Hollow Ellison"
+chattiness = 0.12
+humour = 0.25
+charisma = 0.45
 composure = 0.85
 pronouns = "she/her"
 duel_appetite = 0.7

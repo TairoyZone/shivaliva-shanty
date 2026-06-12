@@ -29,6 +29,15 @@ const MIN_CHARS : int = 3
 const TRANSCRIPT_MAX : int = 10        # rolling room memory fed into each reply (so they don't repeat / respond in context)
 const BANTER_CHAINS : bool = false     # (vestigial flag — banter now emerges for free from the shared transcript + stagger)
 
+# --- AMBIENT UNPROMPTED REMARKS (Troy 2026-06-12) — NPCs pipe up on their OWN: observant, personality-gated.
+# See [[ambient-npc-remarks]]. The gates keep it sparse + cheap: most ticks fire NO LLM call at all.
+const AMBIENT_TICK_MS : int = 8000          # how often we even CONSIDER an unprompted remark (a cheap check, not a call)
+const AMBIENT_GAP_MIN_MS : int = 20000      # randomized global pacing between actual remarks (the room breathes)
+const AMBIENT_GAP_MAX_MS : int = 45000
+const AMBIENT_NPC_COOLDOWN_MS : int = 40000 # an NPC won't self-remark again this soon (a name / room-address can still pull them)
+const AMBIENT_QUIET_MS : int = 7000         # wait this long after ANY spoken line before piping up unprompted (don't barge in)
+const AMBIENT_BASE_CHANCE : float = 0.6     # base fire chance once the gap elapses, scaled by chattiness — silence stays the default
+
 ## Tiny per-NPC interest keywords → a topic nudge (the smith perks up at "blade"). Cheap liveliness.
 const INTERESTS : Dictionary = {
 	"Flint Kerr": ["blade", "sword", "ore", "forge", "steel", "duel", "spar", "sharp"],
@@ -50,6 +59,9 @@ var _last_scene : Node = null
 var _last_overheard_ms : int = -100000
 var _last_proposal_ms : int = -100000   # when the player last dared the room to a duel (arms the accept-fallback window)
 var _queue : Array = []                # responders waiting their TURN — fired one at a time so each sees the prior reply (awareness)
+var _last_ambient_ms : int = -100000   # when an unprompted remark last fired (global pacing)
+var _last_ambient_check_ms : int = 0   # throttles the per-frame ambient consideration to AMBIENT_TICK_MS
+var _ambient_gap : int = 30000         # the current randomized gap until the next allowed unprompted remark
 
 
 func _ready() -> void:
@@ -60,7 +72,7 @@ func _ready() -> void:
 		h.timeout = 20.0
 		add_child(h)
 		var slot : Dictionary = {"http": h, "busy": false, "npc": null, "persona": null, "token": -1,
-			"answer": false, "fallback": [], "using_direct": false, "thinking": null}
+			"answer": false, "fallback": [], "using_direct": false, "thinking": null, "ambient": false}
 		h.request_completed.connect(_on_slot_done.bind(slot))
 		_pool.append(slot)
 
@@ -70,6 +82,7 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 
 	_check_scene()
+	_maybe_ambient_remark()
 
 
 ## THE ENTRY POINT — ChatBox calls this on the PUBLIC speak path. May wake present NPCs.
@@ -107,6 +120,70 @@ func hear(line: String) -> void:
 	_dispatch(responders, others, _scene_token)
 
 
+# THE UNPROMPTED PATH — called every frame; mostly a no-op. When the gates open, ONE present NPC (weighted by
+# chattiness + charisma + proximity) may make a brief, observant remark on their own. Hidden-info-safe + cheap:
+# the probability roll happens BEFORE any LLM call, so most ticks cost nothing. See [[ambient-npc-remarks]].
+func _maybe_ambient_remark() -> void:
+
+	if not NpcBrain.ai_enabled:
+		return
+	var tree : SceneTree = get_tree()
+	if tree == null or tree.paused or tree.current_scene == null:
+		return   # don't blurt over a pause menu / modal, or with no scene
+	var now : int = Time.get_ticks_msec()
+	if now - _last_ambient_check_ms < AMBIENT_TICK_MS:
+		return
+	_last_ambient_check_ms = now
+	if now - _last_ambient_ms < _ambient_gap:
+		return   # global pacing — the room only breathes so often
+	if _any_busy() or not _queue.is_empty():
+		return   # a real conversation is live — don't pile on
+	if now - _last_overheard_ms < AMBIENT_QUIET_MS:
+		return   # someone spoke a beat ago — let the quiet settle first
+	var present : Array = _present_npcs()
+	if present.is_empty():
+		return
+	var player : Node = _player_node()
+	# Pick ONE candidate, weighted by chattiness/charisma/proximity/affinity (randomized so it's not always the same).
+	var best : Dictionary = {}
+	var best_w : float = 0.0
+	for e in present:
+		var persona : NpcPersonality = e["persona"]
+		var nm : String = persona.npc_name
+		if _in_flight(nm):
+			continue
+		if now - int(_cooldowns.get(nm, -100000)) < AMBIENT_NPC_COOLDOWN_MS:
+			continue
+		var w : float = _ambient_weight(persona, e["node"], player) * randf()
+		if w > best_w:
+			best_w = w
+			best = {"node": e["node"], "persona": persona, "answer": false, "chance": 1.0}
+	if best.is_empty():
+		return
+	# Final gate: even chosen, a remark only fires sometimes (chattiness-scaled). Reset the pacing either way.
+	var chosen : NpcPersonality = best["persona"]
+	var fire_chance : float = AMBIENT_BASE_CHANCE * clampf(0.3 + chosen.chattiness, 0.0, 1.0)
+	_last_ambient_ms = now
+	_ambient_gap = randi_range(AMBIENT_GAP_MIN_MS, AMBIENT_GAP_MAX_MS)
+	if randf() > fire_chance:
+		return   # stayed quiet this round (paced, so we don't re-roll instantly next tick)
+	var others : PackedStringArray = PackedStringArray()
+	for e in present:
+		others.append(_short(e["persona"].npc_name))
+	_queue.append({"r": best, "others": others, "token": _scene_token, "ambient": true})
+	_pump()
+
+
+# How likely this NPC is the one to pipe up unprompted — chatty, charming, near + liked souls hold the floor.
+func _ambient_weight(persona: NpcPersonality, node: Node, player: Node) -> float:
+
+	var w : float = 0.15 + persona.chattiness
+	w += 0.20 * persona.charisma
+	w += 0.15 * _proximity01(node, player)
+	w += 0.10 * _affinity01(persona.npc_name)
+	return w
+
+
 func _check_scene() -> void:
 
 	var tree : SceneTree = get_tree()
@@ -114,6 +191,7 @@ func _check_scene() -> void:
 	if sc != _last_scene:
 		_last_scene = sc
 		_scene_token += 1
+		_last_ambient_ms = Time.get_ticks_msec()   # a fresh room waits a beat before anyone pipes up unprompted
 		_transcript.clear()   # a new room = a fresh conversation
 		_queue.clear()        # drop any responders still waiting their turn from the old room
 		for slot in _pool:
@@ -239,9 +317,10 @@ func _select(present: Array, mentioned: Dictionary, room_address: bool, lc: Stri
 
 func _reply_chance(persona: NpcPersonality, node: Node, player: Node, lc: String) -> float:
 
-	# Derived "talkativeness" — no extraversion field, so synthesise: pushy + impatient + blurty.
-	var talk : float = clampf(0.55 * persona.aggression + 0.30 * (1.0 - persona.patience)
-		+ 0.15 * persona.risk_tolerance, 0.0, 1.0)
+	# Talkativeness — now driven mostly by the real `chattiness` knob, blended with the old synth (pushy + impatient
+	# + blurty) so a quiet-but-aggressive NPC still isn't silent and the reactive path matches the ambient one.
+	var synth : float = 0.55 * persona.aggression + 0.30 * (1.0 - persona.patience) + 0.15 * persona.risk_tolerance
+	var talk : float = clampf(0.6 * persona.chattiness + 0.4 * synth, 0.0, 1.0)
 	var p : float = AMBIENT_BASE
 	p += 0.45 * talk
 	p += 0.18 * _affinity01(persona.npc_name)
@@ -294,7 +373,7 @@ func _hits_interest(npc_name: String, lc: String) -> bool:
 func _dispatch(responders: Array, others: PackedStringArray, token: int) -> void:
 
 	for r in responders:
-		_queue.append({"r": r, "others": others, "token": token})
+		_queue.append({"r": r, "others": others, "token": token, "ambient": false})
 	_pump()
 
 
@@ -308,7 +387,7 @@ func _pump() -> void:
 	if int(job["token"]) != _scene_token:
 		_pump()   # stale (scene changed) — skip to the next
 		return
-	_fire(job["r"], job["others"], int(job["token"]))
+	_fire(job["r"], job["others"], int(job["token"]), bool(job.get("ambient", false)))
 
 
 func _any_busy() -> bool:
@@ -319,7 +398,7 @@ func _any_busy() -> bool:
 	return false
 
 
-func _fire(r: Dictionary, others: PackedStringArray, token: int) -> void:
+func _fire(r: Dictionary, others: PackedStringArray, token: int, ambient := false) -> void:
 
 	var slot : Dictionary = _free_slot()
 	if slot.is_empty():
@@ -332,6 +411,7 @@ func _fire(r: Dictionary, others: PackedStringArray, token: int) -> void:
 	slot["persona"] = persona
 	slot["token"] = token
 	slot["answer"] = answer
+	slot["ambient"] = ambient
 	slot["fallback"] = (node.dialog_lines if "dialog_lines" in node else [])
 	# Instant "…" feedback above the NPC the moment we dispatch, so a reply never reads as dead air; the real line
 	# REPLACES it (see _on_slot_done). ONLY for an ADDRESSED responder — they always resolve to a line (a reply or
@@ -339,7 +419,7 @@ func _fire(r: Dictionary, others: PackedStringArray, token: int) -> void:
 	# sees a "…" that resolves to nothing (Troy 2026-06-11: that "about to reply → never replies" read as broken).
 	slot["thinking"] = SpeechBubble.say(node, "…") if (answer and is_instance_valid(node)) else null
 	var system : String = NpcBrain.compose_system(persona, false)   # ambient: no secret, saves tokens
-	var user : String = _user_turn(answer, others, _short(persona.npc_name))
+	var user : String = _ambient_turn(others, _short(persona.npc_name)) if ambient else _user_turn(answer, others, _short(persona.npc_name))
 	var payload : Dictionary = NpcBrain.build_payload(system, [{"role": "user", "content": user}])
 	slot["using_direct"] = bool(payload["using_direct"])
 	if slot["http"].request(String(payload["url"]), payload["headers"], HTTPClient.METHOD_POST, String(payload["body"])) != OK:
@@ -386,11 +466,42 @@ func _convo_block(self_short: String) -> String:
 	return "Recent conversation in the room (most recent last):\n" + "\n".join(lines) + "\n\n"
 
 
+# The UNPROMPTED user turn — nobody addressed them; they're just being observant. The system prompt already
+# grounds WHO they are, WHERE they are, the TIME, and any live scene situation; this asks for a fitting aside.
+func _ambient_turn(others: PackedStringArray, self_short: String) -> String:
+
+	var nearby : Array = []
+	for o in others:
+		if String(o) != self_short:
+			nearby.append(String(o))
+	var intro : String = ""
+	if not nearby.is_empty():
+		intro = "Others here with you: %s.\n" % ", ".join(nearby)
+	var convo : String = _convo_block(self_short)
+	return (intro + convo + "Nobody has said anything to you just now — you are simply going about your moment. If "
+		+ "something about where you are, the time of day, what you are doing, one of the others here, or the "
+		+ "traveller naturally prompts a brief remark, say ONE short, in-character line out loud — an observation, a "
+		+ "quip, a passing thought, a bit of small talk — that fits YOUR personality and does NOT repeat anything "
+		+ "already said above. Otherwise reply with exactly: (silent). Most of the time, quiet is the right answer. "
+		+ "No narration, no quotes, no your own name, no control tags.")
+
+
+# Strip any stray hidden control tag ([[DUEL]] etc.) from an AMBIENT line so a spontaneous aside never leaks a
+# marker into the bubble (and, unlike the addressed path, never FILES one).
+func _strip_control_tags(text: String) -> String:
+
+	var re : RegEx = RegEx.new()
+	if re.compile("(?i)[\\[({<]{1,2}\\s*(DUEL|OFFENDED|SMITTEN|TILT|COWED|FIRED_UP)\\s*[\\])}>]{1,2}") != OK:
+		return text
+	return re.sub(text, "", true).strip_edges()
+
+
 func _on_slot_done(result: int, code: int, _headers: PackedStringArray, body: PackedByteArray, slot: Dictionary) -> void:
 
 	var node : Node = slot["npc"]
 	var persona : NpcPersonality = slot["persona"]
 	var answer : bool = slot["answer"]
+	var ambient : bool = bool(slot.get("ambient", false))
 	var token : int = slot["token"]
 	var fallback : Array = slot["fallback"]
 	var using_direct : bool = slot["using_direct"]
@@ -411,7 +522,10 @@ func _on_slot_done(result: int, code: int, _headers: PackedStringArray, body: Pa
 	else:
 		NpcBrain.note_offline()   # surfaces the "AI offline" notice once (so canned fallbacks aren't mistaken for dumb AI)
 	# File any duel challenge BEFORE the silent/empty gate — a marker-only line still issues the challenge.
-	if persona != null and not reply.is_empty():
+	# AMBIENT remarks never file control tags (a spontaneous aside shouldn't start a duel / grudge) — just strip them.
+	if ambient:
+		reply = _strip_control_tags(reply)
+	elif persona != null and not reply.is_empty():
 		var cleaned : String = NpcBrain.file_duel_if_marked(reply, persona.npc_name)
 		if cleaned.is_empty() and cleaned != reply:
 			cleaned = "Reckon it's time we settled this — meet me when you're ready."   # marker-only line

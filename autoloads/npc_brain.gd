@@ -289,6 +289,7 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 	if not persona.chat_persona.is_empty():
 		who += " " + persona.chat_persona
 	parts.append(who)
+	parts.append(_temperament_clause(persona))   # humour + charisma → voice colour on EVERY line
 	if not persona.chat_role.is_empty():
 		parts.append("WHAT YOU DO + OFFER (this is real and right here — never deny it): " + persona.chat_role)
 	if not persona.chat_locale.is_empty():
@@ -336,6 +337,26 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 	if not table_talk.is_empty():
 		parts.append(table_talk)
 	return "\n\n".join(parts)
+
+
+# TEMPERAMENT — humour + charisma → a short voice-colouring line folded into EVERY chat (private, ambient, table),
+# so two NPCs with the same job still feel different: a funny charmer vs a dry, blunt one (Troy 2026-06-12).
+func _temperament_clause(persona: NpcPersonality) -> String:
+
+	var bits : PackedStringArray = PackedStringArray()
+	if persona.humour >= 0.66:
+		bits.append("You have a quick, playful wit — you like to joke, tease, and find the funny side of a moment (keep it natural, never forced).")
+	elif persona.humour >= 0.33:
+		bits.append("You have a mild, dry sense of humour — the odd wry line, but you don't clown around.")
+	else:
+		bits.append("You're dry and matter-of-fact, and you rarely joke.")
+	if persona.charisma >= 0.66:
+		bits.append("You're warm and charming, easy to like, and good at drawing people in.")
+	elif persona.charisma >= 0.33:
+		bits.append("You're personable enough — neither magnetic nor cold.")
+	else:
+		bits.append("You're blunt and a little awkward socially; warmth doesn't come easily to you.")
+	return "YOUR TEMPERAMENT: " + " ".join(bits)
 
 
 # SKIRMISH MEMORY — the head-to-head duel record shapes how the NPC talks about fighting (and stops them

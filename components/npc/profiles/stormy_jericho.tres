@@ -5,6 +5,9 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Stormy Jericho"
+chattiness = 0.2
+humour = 0.3
+charisma = 0.5
 composure = 0.88
 pronouns = "he/him"
 duel_appetite = 0.6

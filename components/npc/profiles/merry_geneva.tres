@@ -5,6 +5,9 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Merry Geneva"
+chattiness = 0.85
+humour = 0.75
+charisma = 0.8
 pronouns = "she/her"
 duel_appetite = 0.2
 skirmish_skill = 0.4

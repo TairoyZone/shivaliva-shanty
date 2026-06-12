@@ -5,6 +5,9 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Spritely Mia"
+chattiness = 0.85
+humour = 0.7
+charisma = 0.75
 composure = 0.35
 pronouns = "she/her"
 duel_appetite = 0.1

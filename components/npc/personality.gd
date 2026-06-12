@@ -118,6 +118,16 @@ extends Resource
 ## entirely (refuse-by-omission, like duel_appetite==0). Distinct from `patience` (fold-tightness) and
 ## `perception` (reading YOU). Drives [NpcBrain._table_talk_clause] + [NpcMood]. See [[talk-moves-the-game-spec]].
 @export_range(0.0, 1.0) var composure : float = 0.6
+## HOW TALKATIVE (0..1) — how readily this NPC makes UNPROMPTED, observant remarks on their own (RoomChat's
+## ambient-remark loop) and how eagerly they answer an overheard line. High = pipes up often; low = mostly quiet
+## until spoken to. The BALANCE knob so a room feels alive without everyone talking at once. See [[ambient-npc-remarks]].
+@export_range(0.0, 1.0) var chattiness : float = 0.35
+## HOW FUNNY (0..1) — wit / jokeyness, folded into the chat VOICE (NpcBrain._temperament_clause). High = quick to
+## joke and tease; low = dry and matter-of-fact. Flavour only — does NOT change how often they speak.
+@export_range(0.0, 1.0) var humour : float = 0.4
+## HOW CHARMING (0..1) — social warmth / magnetism, folded into the chat voice + a small nudge on being the one to
+## pipe up unprompted. High = warm, easy to like; low = blunt, a little awkward.
+@export_range(0.0, 1.0) var charisma : float = 0.5
 ## ROMANCEABLE? 0.0 = not romanceable (the default — nobody is courtable until you deliberately raise this).
 ## Above 0 = single + open to a courtship, biasing how readily they warm to one in chat (the AI's [[SMITTEN]]
 ## nudge). See [NpcBrain._romance_block].

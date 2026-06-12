@@ -5,6 +5,9 @@
 [resource]
 script = ExtResource("1_script")
 npc_name = "Mossy Jade"
+chattiness = 0.3
+humour = 0.35
+charisma = 0.65
 pronouns = "she/her"
 duel_appetite = 0.05
 skirmish_skill = 0.15
