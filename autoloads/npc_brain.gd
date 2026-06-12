@@ -125,8 +125,17 @@ func _load_config() -> void:
 # layering res:// then user:// makes res:// the base and user:// the override. Missing file = no-op.
 func _apply_chat_cfg(path: String) -> void:
 
+	if not FileAccess.file_exists(path):
+		return
+	# Read + PARSE the text (not ConfigFile.load) so we can strip a leading UTF-8 BOM first. A BOM-prefixed
+	# npc_chat.cfg (PowerShell writes one by default) makes ConfigFile read the first section header as a BOM glued onto [npc_chat]
+	# → every key reads MISSING → endpoint silently falls back to the localhost default → "AI offline" for EVERY
+	# player. Cost us a brutal hunt; never again (Troy 2026-06-12).
+	var text : String = FileAccess.get_file_as_string(path)
+	if text.begins_with("\uFEFF"):
+		text = text.substr(1)
 	var cfg : ConfigFile = ConfigFile.new()
-	if cfg.load(path) != OK:
+	if cfg.parse(text) != OK:
 		return
 	ai_enabled = bool(cfg.get_value("npc_chat", "enabled", ai_enabled))
 	endpoint = String(cfg.get_value("npc_chat", "endpoint", endpoint))
