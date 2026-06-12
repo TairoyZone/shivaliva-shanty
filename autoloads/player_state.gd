@@ -818,7 +818,9 @@ func _ready() -> void:
 
 func _notification(what: int) -> void:
 
-	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		# On web / mobile a tab-close may never fire CLOSE_REQUEST, so also flush on FOCUS_OUT (tab-switch,
+		# phone-lock, backgrounding) — the reliable moment to persist before user:// syncs to IndexedDB.
 		save_session()
 
 

@@ -903,6 +903,12 @@ func _begin_ai_search() -> void:
 		_sim_depth -= 1   # near-max tilt: a rattled deep-thinker literally thinks one ply shallower
 	_ai_searching = true
 	_ai_search_watchdog = 0.0
+	if OS.has_feature("web"):
+		# The web build ships WITHOUT thread support (a mobile browser may have no real threads), so run the
+		# search INLINE and report on a later idle frame via call_deferred — same contract as the thread path,
+		# just a brief one-turn hitch instead of a hard freeze. Desktop keeps the real background Thread below.
+		call_deferred("_threaded_search_and_report")
+		return
 	_ai_thread = Thread.new()
 	_ai_thread.start(_threaded_search_and_report)
 

@@ -84,6 +84,7 @@ func _build_menu() -> void:
 
 	var quit : Button = _make_button("Quit", Color(0.92, 0.72, 0.62, 1.0))
 	quit.pressed.connect(_on_quit)
+	quit.visible = not OS.has_feature("web")   # a browser tab can't quit itself — hide it on web
 	vbox.add_child(quit)
 
 
@@ -227,6 +228,8 @@ func _begin_named_game(chosen_name: String) -> void:
 
 func _on_quit() -> void:
 
+	if OS.has_feature("web"):
+		return   # no-op on web (button is hidden there); get_tree().quit() just freezes the canvas
 	get_tree().quit()
 
 
