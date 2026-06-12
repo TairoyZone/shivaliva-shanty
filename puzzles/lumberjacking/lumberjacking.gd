@@ -11,8 +11,8 @@ extends PuzzleScene
 # TOUCH controls (mobile web): move held, rotate taps (ui_up=CCW, ui_down=CW), soft-drop held (Space). See [[touch-input-foundation]].
 func _touch_spec() -> Array:
 	return [
-		{"label": "◄", "action": "ui_left", "hold": true},
-		{"label": "►", "action": "ui_right", "hold": true},
+		{"label": "◄", "action": "ui_left", "hold": true, "side": "left"},
+		{"label": "►", "action": "ui_right", "hold": true, "side": "left"},
 		{"label": "↺", "action": "ui_up"},
 		{"label": "↻", "action": "ui_down"},
 		{"label": "▼", "key": KEY_SPACE, "hold": true},

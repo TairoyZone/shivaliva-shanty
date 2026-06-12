@@ -30,9 +30,20 @@ func _process(_delta: float) -> void:
 	visible = _should_show()
 
 
+## A scene can SUPPRESS the panel entirely (e.g. a touch action-puzzle that needs the right edge for its control
+## bar — the rail just overlaps the fight; Troy 2026-06-12). Restored on puzzle exit.
+var _suppressed : bool = false
+
+func set_suppressed(v: bool) -> void:
+	_suppressed = v
+	visible = _should_show()
+
+
 # Show in the overworld (the HUD is up) and inside puzzles (a PuzzleScene is current); hide on the title.
 func _should_show() -> bool:
 
+	if _suppressed:
+		return false
 	var scene : Node = get_tree().current_scene if get_tree() != null else null
 	if scene == null:
 		return false

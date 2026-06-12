@@ -63,11 +63,11 @@ func _build_content() -> void:
 		Color(0.46, 0.66, 0.36, 1.0), _close))
 	_content.add_child(_make_button("Options", Color(0.80, 0.86, 0.96, 1.0), Color(0.14, 0.13, 0.20, 0.94),
 		Color(0.40, 0.42, 0.58, 1.0), func() -> void: OptionsPanel.open(self)))
-	_content.add_child(_make_button("Quit to Title", Color(0.92, 0.72, 0.52, 1.0), Color(0.20, 0.12, 0.07, 0.94),
+	_content.add_child(_make_button("Save & Quit", Color(0.92, 0.72, 0.52, 1.0), Color(0.20, 0.12, 0.07, 0.94),
 		Color(0.55, 0.38, 0.18, 1.0), _on_quit_to_title))
 
 	var hint : Label = Label.new()
-	hint.text = "Esc to resume"
+	hint.text = "Tap Resume to continue" if TouchEnv.is_touch() else "Esc to resume"
 	hint.add_theme_font_size_override("font_size", 14)
 	hint.add_theme_color_override("font_color", Color(0.8, 0.68, 0.42, 0.85))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -138,6 +138,7 @@ func _on_quit_to_title() -> void:
 	if get_tree() == null:
 		return
 	PlayerState.clear_voyage()
+	PlayerState.save_session()   # explicit write so "Save & Quit" is literally true (autosave already covers it)
 	_was_paused = false
 	get_tree().paused = false
 	queue_free()   # root-parented → the scene swap won't reap it; remove it so it can't linger over the title

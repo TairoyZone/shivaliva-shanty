@@ -15,10 +15,10 @@ extends PuzzleScene
 # TOUCH controls (mobile web): a d-pad moves the 2x2 cursor (held); the rotate buttons crumble (C/X keys). See [[touch-input-foundation]].
 func _touch_spec() -> Array:
 	return [
-		{"label": "◄", "action": "ui_left", "hold": true},
-		{"label": "►", "action": "ui_right", "hold": true},
-		{"label": "▲", "action": "ui_up", "hold": true},
-		{"label": "▼", "action": "ui_down", "hold": true},
+		{"label": "◄", "action": "ui_left", "hold": true, "side": "left"},
+		{"label": "►", "action": "ui_right", "hold": true, "side": "left"},
+		{"label": "▲", "action": "ui_up", "hold": true, "side": "left"},
+		{"label": "▼", "action": "ui_down", "hold": true, "side": "left"},
 		{"label": "↺", "key": KEY_X},
 		{"label": "↻", "key": KEY_C},
 	]

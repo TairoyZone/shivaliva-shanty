@@ -33,6 +33,7 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 
+	UserPanel.set_suppressed(false)   # un-hide the rail (a touch action-puzzle may have suppressed it)
 	UserPanel.set_puzzle_help("")   # clear this puzzle's how-to from the persistent Tutorial tab
 	if HUD:
 		HUD.visible = true
@@ -88,7 +89,7 @@ func _build_leave_button() -> void:
 	# Chat scenes (poker) override _leave_at_top_left() so the bottom-left chat bar doesn't collide with it.
 	btn.offset_left = 20.0
 	btn.offset_right = 140.0
-	if _leave_at_top_left():
+	if _leave_at_top_left() or _has_touch_bar():
 		btn.offset_top = 16.0
 		btn.offset_bottom = 56.0
 	else:
@@ -134,6 +135,12 @@ func _touch_spec() -> Array:
 	return []
 
 
+# True when this puzzle shows an on-screen touch control bar — its buttons claim the bottom corners, so the Leave
+# button moves to the top-left and the UserPanel rail is hidden (Troy 2026-06-12).
+func _has_touch_bar() -> bool:
+	return TouchEnv.is_touch() and not _touch_spec().is_empty()
+
+
 # Spawn the shared touch button bar from _touch_spec() on a touch device — one inherited seam, every action puzzle
 # just declares its buttons. On its own CanvasLayer below the Leave button (layer 20) so Leave stays tappable.
 func _build_touch_controls() -> void:
@@ -143,6 +150,7 @@ func _build_touch_controls() -> void:
 	var spec : Array = _touch_spec()
 	if spec.is_empty():
 		return
+	UserPanel.set_suppressed(true)   # the right-edge rail overlaps the fight's controls — hide it (Troy 2026-06-12)
 	var layer : CanvasLayer = CanvasLayer.new()
 	layer.layer = 18
 	layer.name = "TouchControlsLayer"

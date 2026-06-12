@@ -1,17 +1,16 @@
-## TouchControlBar — a data-driven row of large touch buttons a puzzle declares via [PuzzleScene._touch_spec].
-## Each spec entry is a Dictionary:
-##   {"label": String, "hold": bool, and ONE of "action": StringName | "key": int (a KEY_* code) | "callable": Callable}
-##   HOLD presses on touch-down + releases on touch-up (or finger-slide-off) — for held inputs (move, soft-drop)
-##   so the puzzle's existing DAS auto-repeat works unchanged. TAP fires once on press (rotate, flip, toss).
-## An "action" synthesizes BOTH the polled state (Input.action_press) AND an InputEventAction, and a "key"
-## synthesizes an InputEventKey — so it works whether the puzzle POLLS (Input.is_action_pressed in _process) or
-## reads EVENTS (event.is_action_pressed / event.keycode in _unhandled_input). A "callable" just calls a method.
-## Built ONLY on touch (PuzzleScene gates it on TouchEnv). One bar, one place — every action puzzle just declares
-## its buttons (inheritance over duplication). Anchored bottom-right, >=72px targets, placeholder styling.
+## TouchControlBar — a data-driven set of large touch buttons a puzzle declares via [PuzzleScene._touch_spec].
+## Each spec entry:
+##   {"label": String, "hold": bool, "side": "left" | "right" (default "right"), and ONE of
+##    "action": StringName | "key": int (a KEY_* code) | "callable": Callable}
+## Buttons split into a BOTTOM-LEFT group and a BOTTOM-RIGHT group by `side`, gamepad-style — movement under the
+## left thumb, rotate/drop under the right — instead of all bunching in one corner over the chat/leave buttons
+## (Troy 2026-06-12, the Skirmish overlap). HOLD presses on touch-down / releases on up (held DAS inputs); TAP
+## fires once. An "action" synthesizes BOTH the polled state + an InputEventAction, a "key" an InputEventKey
+## (so it works whether the puzzle polls or reads events); a "callable" calls a method. Built ONLY on touch.
 class_name TouchControlBar
-extends HBoxContainer
+extends Control
 
-const BTN_SIZE : float = 72.0
+const BTN_SIZE : float = 80.0
 
 var _spec : Array = []
 var _held : Dictionary = {}   # Button -> the {kind, value} it is holding down
@@ -23,10 +22,27 @@ func setup(spec: Array) -> void:
 
 func _ready() -> void:
 
-	add_theme_constant_override("separation", 14)
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE   # only the buttons catch taps; everything else passes to the board
+	var left : HBoxContainer = _new_row()
+	var right : HBoxContainer = _new_row()
 	for entry in _spec:
-		add_child(_make_button(entry))
-	set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 24)
+		var btn : Button = _make_button(entry)
+		if String(entry.get("side", "right")) == "left":
+			left.add_child(btn)
+		else:
+			right.add_child(btn)
+	add_child(left)
+	add_child(right)
+	left.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 24)
+	right.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 24)
+
+
+func _new_row() -> HBoxContainer:
+
+	var h : HBoxContainer = HBoxContainer.new()
+	h.add_theme_constant_override("separation", 16)
+	return h
 
 
 func _make_button(entry: Dictionary) -> Button:
@@ -35,7 +51,7 @@ func _make_button(entry: Dictionary) -> Button:
 	btn.text = String(entry.get("label", "?"))
 	btn.focus_mode = Control.FOCUS_NONE
 	btn.custom_minimum_size = Vector2(BTN_SIZE, BTN_SIZE)
-	btn.add_theme_font_size_override("font_size", 30)
+	btn.add_theme_font_size_override("font_size", 32)
 	_style_button(btn)
 	var hold : bool = bool(entry.get("hold", false))
 	var what : Dictionary = {}

@@ -159,8 +159,8 @@ func _on_escape() -> void:
 	PauseMenu.open(self)
 
 
-# Mobile: an on-screen menu button (top-left, under the purse) runs the Esc chain — there's no Esc on a phone.
-# Closes an open panel/log first, else opens the pause menu (Resume / Options / Quit-to-Title = save + exit).
+# Mobile: an on-screen menu button (top-left CORNER — the purse is top-right) runs the Esc chain — no Esc on a
+# phone. Closes an open panel/log first, else opens the pause menu (Resume / Options / Save & Quit).
 # Gated on TouchEnv so the desktop HUD is unchanged (Troy 2026-06-12).
 func _build_touch_menu_button() -> void:
 
@@ -182,9 +182,9 @@ func _build_touch_menu_button() -> void:
 	btn.anchor_left = 0.0
 	btn.anchor_top = 0.0
 	btn.offset_left = 16.0
-	btn.offset_top = 66.0
+	btn.offset_top = 16.0
 	btn.offset_right = 16.0 + 54.0
-	btn.offset_bottom = 66.0 + 54.0
+	btn.offset_bottom = 16.0 + 54.0
 	btn.pressed.connect(_on_escape)
 	add_child(btn)
 

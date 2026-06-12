@@ -287,6 +287,27 @@ func _build_touch_chat_button() -> void:
 	add_child(_chat_btn)
 
 
+# Move the touch Chat button clear of a puzzle's bottom-corner control bar: TOP-right inside a PuzzleScene,
+# its usual BOTTOM-right in the overworld (Troy 2026-06-12, the Skirmish overlap). Anchored to the right edge
+# either way; only the vertical anchor flips. Called on every scene change from _process.
+func _place_chat_button(in_puzzle: bool) -> void:
+
+	if _chat_btn == null:
+		return
+	_chat_btn.offset_right = -70.0
+	_chat_btn.offset_left = -70.0 - 96.0
+	if in_puzzle:
+		_chat_btn.anchor_top = 0.0
+		_chat_btn.anchor_bottom = 0.0
+		_chat_btn.offset_top = 22.0
+		_chat_btn.offset_bottom = 22.0 + 64.0
+	else:
+		_chat_btn.anchor_top = 1.0
+		_chat_btn.anchor_bottom = 1.0
+		_chat_btn.offset_top = -22.0 - 64.0
+		_chat_btn.offset_bottom = -22.0
+
+
 # Summon the input bar + the recent log (Enter, or the start of a private chat). Focuses the field so you can
 # type straight away.
 func _open_bar() -> void:
@@ -605,6 +626,7 @@ func _process(_delta: float) -> void:
 		_last_scene = sc
 		if _in_private:
 			_exit_private()
+		_place_chat_button(sc is PuzzleScene)   # TOP-right in a puzzle (clear of its bottom control bar), else bottom-right
 	# The fading idle LOG is the EventFeed (shows everywhere, lingers ~8s then fades — the Minecraft/Stardew
 	# corner). Hide it only while the bar's OPEN (the scrollable history shows the same lines then).
 	var feed_visible : bool = not _bar_open
