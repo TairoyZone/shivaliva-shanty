@@ -14,6 +14,8 @@ const BTN_SIZE : float = 80.0
 
 var _spec : Array = []
 var _held : Dictionary = {}   # Button -> the {kind, value} it is holding down
+var _left : HBoxContainer      # the bottom-LEFT button group (movement)
+var _right : HBoxContainer     # the bottom-RIGHT button group (rotate / drop)
 
 
 func setup(spec: Array) -> void:
@@ -22,20 +24,36 @@ func setup(spec: Array) -> void:
 
 func _ready() -> void:
 
-	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE   # only the buttons catch taps; everything else passes to the board
-	var left : HBoxContainer = _new_row()
-	var right : HBoxContainer = _new_row()
+	_left = _new_row()
+	_right = _new_row()
 	for entry in _spec:
 		var btn : Button = _make_button(entry)
 		if String(entry.get("side", "right")) == "left":
-			left.add_child(btn)
+			_left.add_child(btn)
 		else:
-			right.add_child(btn)
-	add_child(left)
-	add_child(right)
-	left.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 24)
-	right.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 24)
+			_right.add_child(btn)
+	add_child(_left)
+	add_child(_right)
+	# A Control .new()'d under a CanvasLayer is NOT auto-laid-out to the viewport (see InventoryPanel._fit_viewport)
+	# — it stays (0,0), so the bottom-corner groups anchor to nothing and VANISH. Force the size + re-fit on resize
+	# (Troy 2026-06-12, the disappeared Skirmish controls).
+	_fit()
+	var vp : Viewport = get_viewport()
+	if vp != null:
+		vp.size_changed.connect(_fit)
+
+
+func _fit() -> void:
+
+	var vp : Viewport = get_viewport()
+	if vp == null:
+		return
+	set_anchors_preset(Control.PRESET_TOP_LEFT)
+	position = Vector2.ZERO
+	size = vp.get_visible_rect().size
+	_left.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 24)
+	_right.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 24)
 
 
 func _new_row() -> HBoxContainer:
