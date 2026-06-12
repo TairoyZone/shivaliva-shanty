@@ -220,7 +220,8 @@ func _build_rail() -> void:
 func _make_rail_button(glyph: String, tab: String, tip: String, launcher: Callable = Callable()) -> Button:
 
 	var btn : Button = Button.new()
-	btn.custom_minimum_size = Vector2(46.0, 46.0)
+	var rs : float = 60.0 if TouchEnv.is_touch() else 46.0   # bigger touch targets on a phone (Troy 2026-06-12)
+	btn.custom_minimum_size = Vector2(rs, rs)
 	btn.tooltip_text = tip
 	btn.focus_mode = Control.FOCUS_NONE
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP

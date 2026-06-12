@@ -6,9 +6,13 @@
 class_name NpcMenu
 extends CanvasLayer
 
-const RING_RADIUS : float = 98.0
-const BTN_SIZE : float = 78.0
-const PORTRAIT_SIZE : float = 82.0
+const RING_RADIUS_BASE : float = 98.0
+const BTN_SIZE_BASE : float = 78.0
+const PORTRAIT_SIZE_BASE : float = 82.0
+# Bigger touch targets on a phone (gated on TouchEnv so the desktop menu is unchanged — Troy 2026-06-12).
+@onready var RING_RADIUS : float = RING_RADIUS_BASE * (1.22 if TouchEnv.is_touch() else 1.0)
+@onready var BTN_SIZE : float = BTN_SIZE_BASE * (1.22 if TouchEnv.is_touch() else 1.0)
+@onready var PORTRAIT_SIZE : float = PORTRAIT_SIZE_BASE * (1.18 if TouchEnv.is_touch() else 1.0)
 const GROUP : StringName = &"npc_menu"
 
 var _center : Vector2 = Vector2.ZERO
