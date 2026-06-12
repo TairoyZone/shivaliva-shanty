@@ -1,6 +1,6 @@
 # Shivaliva Shanty — Project Report
 
-_Last updated: 2026-06-12_
+_Last updated: 2026-06-13_
 
 ## What it is
 A single-player-first, retro-charming **puzzle-skill adventure** among floating sky-islands — a
@@ -11,9 +11,9 @@ term is reskinned to a sky/Stardust equivalent ("the Stardust" = the abyss below
 
 ## Dev journey + velocity (the numbers)
 _Recompute these from git each report — first-commit date, `git rev-list --count HEAD`, `.gd`/`.tscn` line counts._
-- **Started: ~2026-05-24/25** (first locked design calls) → **~19 days** as of 2026-06-12.
-- **337 commits** (git baseline 2026-06-03).
-- **~36,000 lines of hand-built game** — **~32,641 GDScript** across **188 `.gd` files** + **~3,000 lines** across **88 scenes**.
+- **Started: ~2026-05-24/25** (first locked design calls) → **~20 days** as of 2026-06-13.
+- **348 commits** (git baseline 2026-06-03).
+- **~36,000 lines of hand-built game** — **~32,767 GDScript** across **188 `.gd` files** + **~3,000 lines** across **88 scenes** (plus a 242-line key-safe chat proxy).
 - **Scope:** a walkable iso overworld + a 9-NPC cast · **7 full mini-games** (each a Board+Scene engine w/ AI +
   animation + mastery) · the **voyage meta-system** (deck, set-sail routes, charts, duty reports, a LIVE
   background boarding melee, sinkable ships) · **AI-powered NPC chat** (LLM via a key-safe proxy — a novel hook,
@@ -21,7 +21,7 @@ _Recompute these from git each report — first-commit date, `git rev-list --cou
   a social parlor · and a **mobile-web (HTML5) port** with full touch controls.
 - **What it'd take a normal person:** this scope is realistically **~10–14 months** of solid solo-dev work
   (7 polished mini-games alone ≈ 4–6 months) — **1.5–2+ years for most hobbyists** (many never finish). Troy
-  did it in **~19 days → roughly a 20–30× pace.**
+  did it in **~20 days → roughly a 20–30× pace.**
 
 ## Status: DEMO LIVE on itch.io (Windows + mobile web) → polishing from real play
 **Locked 2026-06-05:** the core loop is done. **7 puzzles is the final count — no more puzzles.** Since
@@ -32,6 +32,12 @@ players. Builds zip to **`build/`** — that is the upload source of truth (`Shi
 (Driftspar) stays intentionally empty for now. Default work = bug-fix / feel-tune / smooth onboarding, not new
 content. (Public handle: **Trojan Bulldog**; in public copy NEVER say "AI" — frame the chat as "intelligent
 NPCs". See [[marketing-voice-rules]].)
+
+**📱 MOBILE / WEB IS NOW A PRIMARY REACH PLAY** (Troy 2026-06-13): YPP fans on Reddit have explicitly asked for a
+mobile *Puzzle Pirates*, and a touch-friendly browser build is the cheapest path to that under-served audience —
+so mobile-web polish is a strategic priority, not just a side port. The HTML5 build now has on-screen touch
+controls for every action puzzle, a centred slidable tab rail, and a corner-button layout that clears each
+puzzle's own HUD. Lots still to tune on real devices, but reachability-wise this may be the single best move.
 
 **The 7 puzzles:**
 
@@ -97,14 +103,20 @@ The endgame loop, reskinned from YPP pillaging. You job onto a crew at the Skydo
 - Build proactively, flag only big design forks; commit freely; **never push without an explicit ask.**
 
 ## Session changelog (newest first — older per-session detail intentionally condensed)
-- **2026-06-12 — Mobile-web (HTML5) port + touch foundation + polish tail.** Built the phone/web build in
-  phases: `TouchEnv` flag, an 8-dir `VirtualJoystick`, a data-driven `TouchControlBar` (per-puzzle
-  `_touch_spec`), a custom `web/shell.html` loading screen, a keep-warm pinger so the free-tier chat proxy
-  never flashes a false "offline", DejaVu bundled for web glyphs. Long playtest-fix tail from real device play:
-  gem-drop web freeze, broken web icons, lagged/false-offline replies, NPCs ignoring duel calls, poker all-in
-  card reveal, chat click-outside-dismiss, a mobile ≡ menu + **Save & Quit**, removed the NPC breathing-bob
-  (read as floating). **Skirmish touch layout** split gamepad-style: movement bottom-left, rotate/drop
-  bottom-right, the tab rail hidden in fights, Leave top-left, Chat top-right. Builds zip to `build/`.
+- **2026-06-12→13 — Mobile-web port + a touch-UI marathon + a SILENT NPC-chat outage fixed.** Built the phone/web
+  build in phases (`TouchEnv` flag, 8-dir `VirtualJoystick`, data-driven `TouchControlBar` via per-puzzle
+  `_touch_spec`, a custom `web/shell.html` loading screen, a keep-warm proxy pinger, DejaVu for web glyphs).
+  🚨 **The headline: NPC chat was OFFLINE for EVERY player** — a UTF-8 BOM on `npc_chat.cfg` (PowerShell writes
+  one by default) made Godot's `ConfigFile` misread the section, so `endpoint` silently fell back to dead
+  `localhost` and all chat went into the void. Hidden for ages because the dev's direct key bypassed the proxy;
+  PURGING that key (player-facing key field removed + the settings.cfg path dropped) is what exposed it. Fixed:
+  the loader now strips a BOM (see [[bom-breaks-godot-configfile]]). **Touch-UI fixes:** the L/R control-bar split
+  (movement bottom-left, rotate/drop bottom-right); a control bar that rendered 0×0 under its CanvasLayer (now
+  viewport-fitted); an input crash (a synthesised `InputEventAction` has no `echo` → now emits a real key event);
+  the **action-puzzle layout** (Leave→top-left, Chat→top-right, the puzzle's score/status HUD centred at the top
+  via a generic `_touch_hud_node` seam — Lumberjacking done, others queued); the tab rail **vertically centred +
+  a slide-away tuck handle, now shown on every scene**; mobile HUD alignment + **Save & Quit**. Re-exported to
+  `build/`. ⚠️ NEEDS a real-device pass; Skirmish/Mining/Patchworks still need the one-line HUD-node opt-in.
 - **2026-06-11→12 — itch.io demo ships + "talk moves the game".** Went PUBLIC with a Windows release + all-
   procedural key art + a devlog; marketing voice locked. New hook: chat a versus opponent and landing words
   (gated by per-NPC `composure`) tilts a decaying `NpcMood` that biases the AI's next moves (bluffier poker,
