@@ -66,6 +66,7 @@ func _ready() -> void:
 	# Co-op seam: spawn each session player (a loop-of-one in single-player). See [[multiplayer-direction]].
 	for id in SessionState.players:
 		_spawn_player(int(id))
+	_build_touch_joystick()
 
 
 ## Spawn the player for [param id] + parent it under the iso Y-sort root (falls back to self for legacy
@@ -88,6 +89,20 @@ func _spawn_player(id: int) -> void:
 		# Record where the local player landed so a quit-now resume restores them here.
 		PlayerState.last_scene = scene_file_path
 		PlayerState.last_position = p.global_position
+
+
+# On a touch device, a virtual stick drives overworld movement (the world is action-based — Input.get_vector on
+# move_* — not tap-to-walk). Its own CanvasLayer (layer 5) so it floats over the world but under the HUD/panels.
+# Gated on TouchEnv, so the desktop build never sees it. See [[touch-input-foundation]].
+func _build_touch_joystick() -> void:
+
+	if not TouchEnv.is_touch():
+		return
+	var layer : CanvasLayer = CanvasLayer.new()
+	layer.layer = 5
+	layer.name = "TouchJoystickLayer"
+	add_child(layer)
+	layer.add_child(VirtualJoystick.new())
 
 
 ## Add the shared procedural Stardust SKY + drifting clouds behind an OUTDOOR location, so the islands +
