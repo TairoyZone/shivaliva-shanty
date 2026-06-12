@@ -287,25 +287,25 @@ func _build_touch_chat_button() -> void:
 	add_child(_chat_btn)
 
 
-# Move the touch Chat button clear of a puzzle's bottom-corner control bar: TOP-right inside a PuzzleScene,
-# its usual BOTTOM-right in the overworld (Troy 2026-06-12, the Skirmish overlap). Anchored to the right edge
-# either way; only the vertical anchor flips. Called on every scene change from _process.
-func _place_chat_button(in_puzzle: bool) -> void:
+# Place the touch Chat button. Flush in the BOTTOM-right corner everywhere — EXCEPT an action puzzle whose
+# touch control bar owns the bottom corners, where it moves to the TOP-right so it never overlaps the
+# rotate/drop buttons (Troy 2026-06-12). Anchored to the right edge either way; only the vertical anchor flips.
+func _place_chat_button(top_right: bool) -> void:
 
 	if _chat_btn == null:
 		return
-	_chat_btn.offset_right = -70.0
-	_chat_btn.offset_left = -70.0 - 96.0
-	if in_puzzle:
+	_chat_btn.offset_right = -18.0
+	_chat_btn.offset_left = -18.0 - 96.0
+	if top_right:
 		_chat_btn.anchor_top = 0.0
 		_chat_btn.anchor_bottom = 0.0
-		_chat_btn.offset_top = 22.0
-		_chat_btn.offset_bottom = 22.0 + 64.0
+		_chat_btn.offset_top = 18.0
+		_chat_btn.offset_bottom = 18.0 + 64.0
 	else:
 		_chat_btn.anchor_top = 1.0
 		_chat_btn.anchor_bottom = 1.0
-		_chat_btn.offset_top = -22.0 - 64.0
-		_chat_btn.offset_bottom = -22.0
+		_chat_btn.offset_top = -18.0 - 64.0
+		_chat_btn.offset_bottom = -18.0
 
 
 # Summon the input bar + the recent log (Enter, or the start of a private chat). Focuses the field so you can
@@ -613,7 +613,9 @@ func _process(_delta: float) -> void:
 	var sc : Node = get_tree().current_scene if get_tree() != null else null
 	# UNIVERSAL now: chat is available in EVERY gameplay scene — the overworld AND every puzzle/voyage — hidden
 	# by default; only the title has no chat (Troy 2026-06-10, the Minecraft/Stardew/Valorant model).
-	var should : bool = chat_visible and sc != null and not _is_title(sc) and (_in_private or _has_addressable_npc())
+	# On TOUCH the Chat button rides EVERY non-title scene (so it's always one tap away — and ready for co-op
+	# chat later, even where no NPC stands), Troy 2026-06-12. On desktop it stays NPC-gated (no dead bar).
+	var should : bool = chat_visible and sc != null and not _is_title(sc) and (_in_private or _has_addressable_npc() or TouchEnv.is_touch())
 	if should != visible:
 		visible = should
 		if not visible:
@@ -626,7 +628,10 @@ func _process(_delta: float) -> void:
 		_last_scene = sc
 		if _in_private:
 			_exit_private()
-		_place_chat_button(sc is PuzzleScene)   # TOP-right in a puzzle (clear of its bottom control bar), else bottom-right
+		# TOP-right ONLY inside an action puzzle (its touch control bar owns the bottom corners); BOTTOM-right
+		# corner everywhere else — overworld, tap puzzles, future co-op scenes (Troy 2026-06-12).
+		var action_puzzle : bool = sc is PuzzleScene and sc.has_method("_has_touch_bar") and bool(sc.call("_has_touch_bar"))
+		_place_chat_button(action_puzzle)
 	# The fading idle LOG is the EventFeed (shows everywhere, lingers ~8s then fades — the Minecraft/Stardew
 	# corner). Hide it only while the bar's OPEN (the scrollable history shows the same lines then).
 	var feed_visible : bool = not _bar_open

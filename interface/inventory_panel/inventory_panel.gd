@@ -71,6 +71,15 @@ var _rail_buttons : Dictionary = {}   # tab id → its rail Button (for active-s
 var _current_tab : String = "items"
 var _is_open : bool = false           # is the content pane EXPANDED (the rail is always visible)
 
+# The tab rail (the icon strip) can be TUCKED off-screen right + pulled back (Troy 2026-06-12). RAIL_EDGE_MARGIN
+# is how far its right edge sits from the screen edge when shown; the handle is a slim grip just left of it.
+const RAIL_EDGE_MARGIN : float = 12.0
+const HANDLE_W : float = 26.0
+const HANDLE_GAP : float = 6.0
+var _rail_holder : PanelContainer     # the icon strip (right-anchored + vertically CENTERED; slides off-screen)
+var _rail_toggle : Button             # the slim handle left of the strip — tucks it away / pulls it back
+var _rail_collapsed : bool = false
+
 
 func _ready() -> void:
 
@@ -189,23 +198,27 @@ func _build_skeleton() -> void:
 	_update_rail_styles()
 
 
-# The always-visible left tab rail — a slim brass strip of icon buttons.
+# The always-visible tab rail — a slim brass strip of icon buttons, vertically CENTERED on the RIGHT edge
+# (between the top purse and the bottom Chat button). A slim handle just left of it TUCKS the strip off-screen
+# to the right (animated) + pulls it back, so it never crowds the play area. Two separately-anchored nodes (NOT
+# an HBox — a zero-width grown anchor fails to lay a multi-child container out), Troy 2026-06-12.
 func _build_rail() -> void:
 
-	var holder : PanelContainer = PanelContainer.new()
-	holder.add_theme_stylebox_override("panel", _rail_bg_style())
-	holder.anchor_left = 1.0
-	holder.anchor_right = 1.0
-	holder.anchor_top = 0.0
-	holder.offset_left = -58.0
-	holder.offset_right = -12.0
-	holder.offset_top = 150.0   # below the top-right purse + journal "!"
-	holder.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	holder.grow_vertical = Control.GROW_DIRECTION_END
-	add_child(holder)
+	# The strip — right-anchored, vertically centered, grows LEFT to fit its icons (the proven _window pattern).
+	_rail_holder = PanelContainer.new()
+	_rail_holder.add_theme_stylebox_override("panel", _rail_bg_style())
+	_rail_holder.anchor_left = 1.0
+	_rail_holder.anchor_right = 1.0
+	_rail_holder.anchor_top = 0.5
+	_rail_holder.anchor_bottom = 0.5
+	_rail_holder.offset_left = -RAIL_EDGE_MARGIN
+	_rail_holder.offset_right = -RAIL_EDGE_MARGIN
+	_rail_holder.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_rail_holder.grow_vertical = Control.GROW_DIRECTION_BOTH
+	add_child(_rail_holder)
 	var col : VBoxContainer = VBoxContainer.new()
 	col.add_theme_constant_override("separation", 7)
-	holder.add_child(col)
+	_rail_holder.add_child(col)
 	for def in RAIL_TABS:
 		var btn : Button = _make_rail_button(String(def["glyph"]), String(def["tab"]), String(def["tip"]))
 		_rail_buttons[String(def["tab"])] = btn
@@ -215,6 +228,83 @@ func _build_rail() -> void:
 	var jobs_btn : Button = _make_rail_button("jobs", "", "Shoppe Jobs — Mining & Woodcutting", _open_jobs)
 	_style_rail_button(jobs_btn, false)
 	col.add_child(jobs_btn)
+
+	# The tuck handle — a separate right-anchored, vertically-centered grip parked just LEFT of the strip. It
+	# animates in tandem with the strip (toggle_rail). Added LAST so it draws above the dim + pane.
+	_rail_toggle = _make_rail_handle()
+	_rail_toggle.anchor_left = 1.0
+	_rail_toggle.anchor_right = 1.0
+	_rail_toggle.anchor_top = 0.5
+	_rail_toggle.anchor_bottom = 0.5
+	add_child(_rail_toggle)
+	_rail_holder.resized.connect(_layout_handle)   # re-park once the strip measures its width
+	_layout_handle()
+
+
+# A slim vertical handle that TUCKS the rail off-screen right / pulls it back.
+func _make_rail_handle() -> Button:
+
+	var b : Button = Button.new()
+	var h : float = 84.0 if TouchEnv.is_touch() else 64.0
+	b.custom_minimum_size = Vector2(HANDLE_W, h)
+	b.text = "›"   # › = tuck away to the right (shown); flips to ‹ (pull back) when tucked
+	b.focus_mode = Control.FOCUS_NONE
+	b.mouse_filter = Control.MOUSE_FILTER_STOP
+	b.tooltip_text = "Hide / show the side tabs"
+	b.add_theme_font_size_override("font_size", 22)
+	b.add_theme_color_override("font_color", Color(0.97, 0.87, 0.55, 1.0))
+	for state in ["normal", "hover", "pressed"]:
+		var s : StyleBoxFlat = StyleBoxFlat.new()
+		s.bg_color = Color(0.27, 0.17, 0.09, 1.0) if state == "pressed" else Color(0.16, 0.11, 0.06, 0.92)
+		s.border_color = Color(Palette.BRASS_FRAME.r, Palette.BRASS_FRAME.g, Palette.BRASS_FRAME.b, 0.6)
+		s.set_border_width_all(2)
+		s.corner_radius_top_left = 11
+		s.corner_radius_bottom_left = 11
+		s.corner_radius_top_right = 0
+		s.corner_radius_bottom_right = 0
+		b.add_theme_stylebox_override(state, s)
+	b.pressed.connect(toggle_rail)
+	return b
+
+
+# Width of the icon strip once laid out (a sensible fallback before it measures).
+func _strip_width() -> float:
+
+	var w : float = _rail_holder.size.x if _rail_holder != null else 0.0
+	return w if w > 1.0 else 84.0
+
+
+# Park the handle: vertically centered, and horizontally just LEFT of the strip (shown) or at the edge (tucked).
+func _layout_handle() -> void:
+
+	if _rail_toggle == null:
+		return
+	var hh : float = _rail_toggle.custom_minimum_size.y
+	_rail_toggle.offset_top = -hh * 0.5
+	_rail_toggle.offset_bottom = hh * 0.5
+	var right_off : float = -RAIL_EDGE_MARGIN if _rail_collapsed else -(RAIL_EDGE_MARGIN + _strip_width() + HANDLE_GAP)
+	_rail_toggle.offset_right = right_off
+	_rail_toggle.offset_left = right_off - HANDLE_W
+
+
+## Tuck the tab rail off-screen to the right (or pull it back), animated — the handle stays at the edge while
+## tucked, so you can pull it back. The toggle the player taps to declutter the play area (Troy 2026-06-12).
+func toggle_rail() -> void:
+
+	if _rail_holder == null or _rail_toggle == null:
+		return
+	_rail_collapsed = not _rail_collapsed
+	if _rail_collapsed and _is_open:
+		close()   # don't strand an open pane behind a tucked rail
+	var strip_w : float = _strip_width()
+	var strip_off : float = (strip_w + RAIL_EDGE_MARGIN) if _rail_collapsed else -RAIL_EDGE_MARGIN
+	var handle_off : float = -RAIL_EDGE_MARGIN if _rail_collapsed else -(RAIL_EDGE_MARGIN + strip_w + HANDLE_GAP)
+	_rail_toggle.text = "‹" if _rail_collapsed else "›"
+	var tw : Tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_rail_holder, "offset_left", strip_off, 0.24)
+	tw.tween_property(_rail_holder, "offset_right", strip_off, 0.24)
+	tw.tween_property(_rail_toggle, "offset_right", handle_off, 0.24)
+	tw.tween_property(_rail_toggle, "offset_left", handle_off - HANDLE_W, 0.24)
 
 
 func _make_rail_button(glyph: String, tab: String, tip: String, launcher: Callable = Callable()) -> Button:
