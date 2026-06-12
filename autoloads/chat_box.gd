@@ -28,6 +28,7 @@ var _log_scroll : ScrollContainer
 var _log_open : bool = false
 var _bar : PanelContainer       # the summoned input bar — HIDDEN by default; Enter reveals it (the Minecraft /
 var _bar_open : bool = false    # Valorant / Stardew model — Troy 2026-06-10). The fading idle log = the EventFeed.
+var _chat_btn : Button = null   # touch only: a visible "Chat" button that summons the bar (no Enter key on a phone)
 
 # Private NPC chat state (one conversation at a time; routed through this bar).
 var _in_private : bool = false
@@ -93,6 +94,7 @@ func _build_ui() -> void:
 	add_child(bar)
 	_bar = bar
 	bar.visible = false   # HIDDEN by default — Enter summons it (see _open_bar)
+	_build_touch_chat_button()   # on touch, a visible button stands in for Enter-to-open (no keyboard on a phone)
 	var hb : HBoxContainer = HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 6)
 	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE   # only the actual controls (LineEdit/buttons) catch clicks
@@ -233,6 +235,31 @@ func _unhandled_input(event: InputEvent) -> void:
 		var vp : Viewport = get_viewport()
 		if vp != null:
 			vp.set_input_as_handled()
+
+
+# On a touch device there's no Enter key, so a visible "Chat" button summons the bar (Troy 2026-06-12). Shown
+# only when the bar is closed (managed in _process); bottom-right, clear of the overworld joystick (bottom-left).
+func _build_touch_chat_button() -> void:
+
+	if not TouchEnv.is_touch():
+		return
+	_chat_btn = Button.new()
+	_chat_btn.text = "Chat"
+	_chat_btn.focus_mode = Control.FOCUS_NONE
+	_chat_btn.custom_minimum_size = Vector2(96.0, 64.0)
+	_chat_btn.add_theme_font_size_override("font_size", 22)
+	_style_chat_button(_chat_btn)
+	_chat_btn.anchor_left = 1.0
+	_chat_btn.anchor_right = 1.0
+	_chat_btn.anchor_top = 1.0
+	_chat_btn.anchor_bottom = 1.0
+	_chat_btn.offset_right = -70.0
+	_chat_btn.offset_left = -70.0 - 96.0
+	_chat_btn.offset_bottom = -22.0
+	_chat_btn.offset_top = -22.0 - 64.0
+	_chat_btn.pressed.connect(_open_bar)
+	_chat_btn.visible = false
+	add_child(_chat_btn)
 
 
 # Summon the input bar + the recent log (Enter, or the start of a private chat). Focuses the field so you can
@@ -558,6 +585,8 @@ func _process(_delta: float) -> void:
 	var feed_visible : bool = not _bar_open
 	if EventFeed != null and EventFeed.visible != feed_visible:
 		EventFeed.visible = feed_visible
+	if _chat_btn != null:
+		_chat_btn.visible = not _bar_open   # the touch "Chat" button shows whenever the bar is tucked away
 
 
 # Is there anyone in the scene to actually talk to? Keeps the chat bar from showing a dead "speak" affordance
