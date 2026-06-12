@@ -287,23 +287,29 @@ func _build_touch_chat_button() -> void:
 	add_child(_chat_btn)
 
 
-# Place the touch Chat button. Flush in the BOTTOM-right corner everywhere — EXCEPT an action puzzle whose
-# touch control bar owns the bottom corners, where it moves to the TOP-right so it never overlaps the
-# rotate/drop buttons (Troy 2026-06-12). Anchored to the right edge either way; only the vertical anchor flips.
-func _place_chat_button(top_right: bool) -> void:
+# Place the touch Chat button. Flush in the BOTTOM-right corner everywhere — EXCEPT an action puzzle, where the
+# bottom corners are its control bar and the top corners are its own score/status HUD, so it goes TOP-CENTRE
+# (just right of centre, beside the Leave button), Troy 2026-06-12.
+func _place_chat_button(action_puzzle: bool) -> void:
 
 	if _chat_btn == null:
 		return
-	_chat_btn.offset_right = -18.0
-	_chat_btn.offset_left = -18.0 - 96.0
-	if top_right:
+	if action_puzzle:
+		_chat_btn.anchor_left = 0.5
+		_chat_btn.anchor_right = 0.5
 		_chat_btn.anchor_top = 0.0
 		_chat_btn.anchor_bottom = 0.0
-		_chat_btn.offset_top = 18.0
-		_chat_btn.offset_bottom = 18.0 + 64.0
+		_chat_btn.offset_left = 8.0
+		_chat_btn.offset_right = 8.0 + 96.0
+		_chat_btn.offset_top = 16.0
+		_chat_btn.offset_bottom = 16.0 + 64.0
 	else:
+		_chat_btn.anchor_left = 1.0
+		_chat_btn.anchor_right = 1.0
 		_chat_btn.anchor_top = 1.0
 		_chat_btn.anchor_bottom = 1.0
+		_chat_btn.offset_left = -18.0 - 96.0
+		_chat_btn.offset_right = -18.0
 		_chat_btn.offset_top = -18.0 - 64.0
 		_chat_btn.offset_bottom = -18.0
 

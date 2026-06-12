@@ -85,14 +85,24 @@ func _build_leave_button() -> void:
 	var btn : Button = Button.new()
 	btn.text = "← Leave"
 	btn.focus_mode = Control.FOCUS_NONE
-	# BOTTOM-left corner by default — its long-standing home, which every puzzle's HUD is laid out around.
-	# Chat scenes (poker) override _leave_at_top_left() so the bottom-left chat bar doesn't collide with it.
-	btn.offset_left = 20.0
-	btn.offset_right = 140.0
-	if _leave_at_top_left() or _has_touch_bar():
+	# BOTTOM-left corner by default. Chat scenes (poker) override _leave_at_top_left() -> TOP-left. A touch ACTION
+	# puzzle -> TOP-CENTRE: the bottom corners are its control bar and the top corners are its own score/status
+	# HUD, so the centre is the only clear spot (Troy 2026-06-12, the Lumberjacking overlap).
+	if _has_touch_bar():
+		btn.anchor_left = 0.5
+		btn.anchor_right = 0.5
+		btn.offset_left = -128.0
+		btn.offset_right = -8.0
+		btn.offset_top = 16.0
+		btn.offset_bottom = 56.0
+	elif _leave_at_top_left():
+		btn.offset_left = 20.0
+		btn.offset_right = 140.0
 		btn.offset_top = 16.0
 		btn.offset_bottom = 56.0
 	else:
+		btn.offset_left = 20.0
+		btn.offset_right = 140.0
 		btn.anchor_top = 1.0
 		btn.anchor_bottom = 1.0
 		btn.offset_top = -56.0
