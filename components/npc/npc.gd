@@ -118,9 +118,8 @@ func _setup_name_tag() -> void:
 			return
 	_tooltip.text = npc_name
 	_tooltip.modulate = NAME_TAG_COLOR
-	# Readable over the busy overworld: the rounded display face, a touch bigger, with a heavier dark outline so
-	# the name pops against any backdrop (Troy 2026-06-12 — the thin default tag was hard to read).
-	_tooltip.add_theme_font_override("font", load("res://assets/fonts/Fredoka.ttf"))
+	# Readable over the busy overworld: a touch bigger with a heavier dark outline so the name pops against any
+	# backdrop (Troy 2026-06-12 — the default tag was hard to read). Default font kept (Troy prefers it).
 	_tooltip.add_theme_font_size_override("font_size", 18)
 	_tooltip.add_theme_constant_override("outline_size", 6)
 	_tooltip.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.08, 1.0))
