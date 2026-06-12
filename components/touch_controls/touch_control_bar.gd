@@ -98,8 +98,8 @@ func _set_down(what: Dictionary, down: bool) -> void:
 	elif what.get("kind", "") == "key":
 		var k : int = int(what["value"])
 		var ev : InputEventKey = InputEventKey.new()
-		ev.keycode = k
-		ev.physical_keycode = k
+		ev.keycode = k as Key
+		ev.physical_keycode = k as Key
 		ev.pressed = down
 		Input.parse_input_event(ev)
 
