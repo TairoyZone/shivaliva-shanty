@@ -37,6 +37,7 @@ func _ready() -> void:
 func _style_title() -> void:
 
 	_title.text = "Shivaliva Shanty"
+	_title.add_theme_font_override("font", load("res://assets/fonts/Fredoka.ttf"))   # the cozy rounded display face for the title
 	_title.add_theme_font_size_override("font_size", 64)
 	_title.add_theme_color_override("font_color", Color(0.98, 0.95, 0.86, 1.0))
 	_title.add_theme_color_override("font_outline_color", Color(0.04, 0.03, 0.02, 0.95))

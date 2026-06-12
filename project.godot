@@ -13,11 +13,9 @@ config_version=5
 config/name="Shivaliva Shanty"
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
-config/icon="res://icon.svg"
 boot_splash/bg_color=Color(0.07, 0.05, 0.17, 1)
 boot_splash/image="res://assets/branding/splash.png"
-boot_splash/fullsize=true
-boot_splash/use_filter=true
+config/icon="res://icon.svg"
 
 [autoload]
 
@@ -42,6 +40,10 @@ DevCheats="*res://autoloads/dev_cheats.gd"
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
+
+[gui]
+
+theme/custom_font="res://assets/fonts/Nunito.ttf"
 
 [input]
 
@@ -86,4 +88,5 @@ interact={
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.07, 0.05, 0.17, 1)
 2d/snapping/use_gpu_pixel_snap=true
