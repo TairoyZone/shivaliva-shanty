@@ -40,7 +40,7 @@ const WORLD_RULES : String = (
 	# The player's name: there's no stored name, so the only way an NPC learns it is the player saying it. Without
 	# this clause the model mis-parses "I'm Troy" as the player confusing the NPC with a same-named LOCAL (Cinder
 	# Troy) — Mia literally replied "I'm Mia, not Troy" to an introduction (Troy 2026-06-10). Names collide; handle it.
-	+ "The traveller is a visitor whose name you DON'T know until they tell you. If they introduce themselves "
+	+ "If you don't ALREADY know the traveller's name, you only learn it when they tell you. If they introduce themselves "
 	+ "('I'm <name>', 'my name is <name>'), that is THEIR OWN name — accept it, remember it, and use it. Names "
 	+ "repeat in the sky: a visitor may share a name with a local (there's a smith called Cinder Troy, for "
 	+ "instance). NEVER assume they mean that local, never think they're confusing you with someone, and never "
@@ -299,7 +299,7 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 	parts.append(GameClock.prompt_line())   # TIME OF DAY so greetings match the hour (not always "evening")
 	if not PlayerState.player_name.is_empty():
 		# The player named themselves at New Game — the cast knows + remembers it (permanent, never trims out).
-		parts.append("The traveller before you is named %s — you know them by that name; use it naturally when it fits (don't overuse it)." % PlayerState.player_name)
+		parts.append("The traveller before you is named %s — you ALREADY know them by that name from before, so do NOT treat them as a stranger or ask who they are; greet and refer to them by name, naturally (don't overuse it)." % PlayerState.player_name)
 	parts.append(ISLAND_GAZETTEER)   # world-map grounding so directions/whereabouts are real, not invented
 	var pronoun_roster : String = _cast_pronouns_block()
 	if not pronoun_roster.is_empty():
