@@ -326,6 +326,14 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 		var romance : String = _romance_block(persona)
 		if not romance.is_empty():
 			parts.append(romance)
+	else:
+		# ROOM / AMBIENT path: the full message history isn't sent here (only the private chat sends it in the
+		# message array), so fold a short recap of recent exchanges into the prompt — keeps a public table fight
+		# (or an apology) remembered back in the tavern (Troy 2026-06-12). Hidden-info-safe: the player's OWN
+		# shared history with this NPC, never a rival's secrets.
+		var room_mem : String = _recent_memory_clause(persona.npc_name)
+		if not room_mem.is_empty():
+			parts.append(room_mem)
 	parts.append(_affinity_block(persona.npc_name))
 	var battle : String = _battle_block(persona.npc_name)
 	if not battle.is_empty():
@@ -357,6 +365,24 @@ func _temperament_clause(persona: NpcPersonality) -> String:
 	else:
 		bits.append("You're blunt and a little awkward socially; warmth doesn't come easily to you.")
 	return "YOUR TEMPERAMENT: " + " ".join(bits)
+
+
+# A short recap of recent PERSISTENT exchanges with the traveller, for the ROOM / AMBIENT path only (the private
+# chat already gets the full history in its message array). Last few turns, to bound tokens. Hidden-info-safe —
+# it is the player's own shared history with THIS npc. Empty for someone they've never traded words with.
+func _recent_memory_clause(npc_name: String) -> String:
+
+	var hist : Array = PlayerState.npc_chat_history(npc_name)
+	if hist.is_empty():
+		return ""
+	var lines : PackedStringArray = PackedStringArray()
+	var start : int = maxi(0, hist.size() - 6)
+	for i in range(start, hist.size()):
+		var turn : Dictionary = hist[i]
+		var who : String = "The traveller" if String(turn.get("role", "")) == "user" else "You"
+		lines.append("%s: %s" % [who, String(turn.get("content", ""))])
+	return ("WHAT RECENTLY PASSED between you and the traveller (oldest first — carry this forward, do NOT act "
+		+ "like it never happened):\n" + "\n".join(lines))
 
 
 # SKIRMISH MEMORY — the head-to-head duel record shapes how the NPC talks about fighting (and stops them

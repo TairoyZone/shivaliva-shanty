@@ -557,6 +557,8 @@ func _on_slot_done(result: int, code: int, _headers: PackedStringArray, body: Pa
 		return
 	_kill_dots(thinking)
 	_say(node, persona, reply)
+	if not ambient and persona != null:
+		_record_to_room_memory(persona.npc_name, reply)   # a public exchange now sticks in the NPC's lasting memory
 	_pump()   # the next queued responder can now react to what was just said
 
 
@@ -576,6 +578,26 @@ func _record(speaker: String, text: String) -> void:
 	_transcript.append({"speaker": speaker, "text": text})
 	while _transcript.size() > TRANSCRIPT_MAX:
 		_transcript.remove_at(0)
+
+
+# Persist a PUBLIC room exchange into the NPC's LASTING per-NPC memory, so a notable table moment (a fight, an
+# apology) is still remembered back in the tavern — not wiped with the ephemeral room transcript on scene change
+# (Troy 2026-06-12). The triggering player line is the most recent "Traveller" entry in the transcript.
+func _record_to_room_memory(npc_name: String, reply: String) -> void:
+
+	if npc_name.is_empty() or reply.is_empty():
+		return
+	var player_line : String = ""
+	for i in range(_transcript.size() - 1, -1, -1):
+		if String(_transcript[i].get("speaker", "")) == "Traveller":
+			player_line = String(_transcript[i].get("text", ""))
+			break
+	if player_line.is_empty():
+		return
+	var hist : Array = PlayerState.npc_chat_history(npc_name)
+	hist.append({"role": "user", "content": player_line})
+	hist.append({"role": "assistant", "content": reply})
+	PlayerState.save_npc_chat(npc_name, hist)
 
 
 func _kill_dots(bubble: Variant) -> void:
