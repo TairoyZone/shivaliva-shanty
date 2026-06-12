@@ -61,9 +61,9 @@ func _build_content() -> void:
 
 	_content.add_child(_make_button("Resume", Color(0.86, 0.94, 0.82, 1.0), Color(0.16, 0.22, 0.14, 0.94),
 		Color(0.46, 0.66, 0.36, 1.0), _close))
-	_content.add_child(_make_button("⚙  Options", Color(0.80, 0.86, 0.96, 1.0), Color(0.14, 0.13, 0.20, 0.94),
+	_content.add_child(_make_button("Options", Color(0.80, 0.86, 0.96, 1.0), Color(0.14, 0.13, 0.20, 0.94),
 		Color(0.40, 0.42, 0.58, 1.0), func() -> void: OptionsPanel.open(self)))
-	_content.add_child(_make_button("⏻  Quit to Title", Color(0.92, 0.72, 0.52, 1.0), Color(0.20, 0.12, 0.07, 0.94),
+	_content.add_child(_make_button("Quit to Title", Color(0.92, 0.72, 0.52, 1.0), Color(0.20, 0.12, 0.07, 0.94),
 		Color(0.55, 0.38, 0.18, 1.0), _on_quit_to_title))
 
 	var hint : Label = Label.new()

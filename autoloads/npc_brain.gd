@@ -183,7 +183,7 @@ func note_offline() -> void:
 	if _offline_warned:
 		return
 	_offline_warned = true
-	PlayerState.log_event("⚠ NPC AI offline — replies are canned. Start your proxy or set SHANTY_NPC_KEY (see proxy/README).",
+	PlayerState.log_event("NPC AI offline — replies are canned. Start your proxy or set SHANTY_NPC_KEY (see proxy/README).",
 		Color(0.98, 0.7, 0.38))
 
 

@@ -65,7 +65,7 @@ func _build_content() -> void:
 	_edit.text_submitted.connect(func(_t: String) -> void: _on_christen())
 	row.add_child(_edit)
 	var dice : Button = Button.new()
-	dice.text = "🎲"
+	dice.text = "↻"
 	dice.tooltip_text = "Roll a name"
 	dice.focus_mode = Control.FOCUS_NONE
 	dice.add_theme_font_size_override("font_size", 17)
