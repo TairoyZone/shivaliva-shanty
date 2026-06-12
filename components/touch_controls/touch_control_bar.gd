@@ -125,10 +125,7 @@ func _set_down(what: Dictionary, down: bool) -> void:
 			Input.action_press(a)
 		else:
 			Input.action_release(a)
-		var ev : InputEventAction = InputEventAction.new()
-		ev.action = a
-		ev.pressed = down
-		Input.parse_input_event(ev)
+		Input.parse_input_event(_action_event(a, down))
 	elif what.get("kind", "") == "key":
 		var k : int = int(what["value"])
 		var ev : InputEventKey = InputEventKey.new()
@@ -136,6 +133,25 @@ func _set_down(what: Dictionary, down: bool) -> void:
 		ev.physical_keycode = k as Key
 		ev.pressed = down
 		Input.parse_input_event(ev)
+
+
+# Build the EVENT to deliver for an action button. Prefer a COPY of the action's real KEY binding so it looks
+# exactly like a keyboard press — INCLUDING an `echo` property. A bare InputEventAction has NO `echo`, which
+# crashes the standard "ignore key-repeat" guard `if event.is_action_pressed(...) and not event.echo`
+# (Troy 2026-06-12). Falls back to InputEventAction only if the action has no key binding.
+func _action_event(action: StringName, down: bool) -> InputEvent:
+
+	if InputMap.has_action(action):
+		for e in InputMap.action_get_events(action):
+			if e is InputEventKey:
+				var k : InputEventKey = (e as InputEventKey).duplicate()
+				k.pressed = down
+				k.echo = false
+				return k
+	var a : InputEventAction = InputEventAction.new()
+	a.action = action
+	a.pressed = down
+	return a
 
 
 func _style_button(btn: Button) -> void:
