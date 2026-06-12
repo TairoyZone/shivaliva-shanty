@@ -182,26 +182,6 @@ func set_ai_enabled(on: bool) -> void:
 	cfg.save("user://settings.cfg")
 
 
-## Set + persist the DEV-DIRECT key (from the Options field). Saved to user://settings.cfg — a PER-MACHINE
-## file that is NOT bundled in an export, so it works like the course (paste once, just works) WITHOUT ever
-## shipping the key. Takes effect on the very next reply; no restart. Leave blank for the public build (proxy).
-func set_dev_key(key: String) -> void:
-
-	_dev_key = key.strip_edges()
-	var cfg : ConfigFile = ConfigFile.new()
-	cfg.load("user://settings.cfg")
-	cfg.set_value("npc_chat", "dev_api_key", _dev_key)
-	cfg.save("user://settings.cfg")
-	if not _dev_key.is_empty():
-		note_online()   # clear any stale "offline" warning; the next call will use this key directly
-
-
-## Is a dev-direct key set (so chat goes straight to the LLM, no proxy needed)?
-func has_dev_key() -> bool:
-
-	return not _dev_key.is_empty()
-
-
 ## True while a request is in flight (the panel disables input). One conversation at a time.
 func is_busy() -> bool:
 

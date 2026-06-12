@@ -73,7 +73,6 @@ func _ready() -> void:
 	vbox.add_child(_make_slider("Sound volume", Audio.sfx_volume, Audio.set_sfx_volume))
 	vbox.add_child(_make_toggle("Show chat", ChatBox.chat_visible, ChatBox.set_chat_visible))
 	vbox.add_child(_make_toggle("AI NPC chat", NpcBrain.ai_enabled, NpcBrain.set_ai_enabled))
-	vbox.add_child(_make_key_field())
 
 	var spacer : Control = Control.new()
 	spacer.custom_minimum_size = Vector2(0.0, 10.0)
@@ -142,36 +141,6 @@ func _make_slider(text: String, value: float, setter: Callable) -> VBoxContainer
 	sl.value_changed.connect(func(v: float) -> void: setter.call(v))
 	box.add_child(sl)
 	return box
-
-
-# Paste-your-key field (DeepSeek) — the course-simple path: saved to user://settings.cfg (per-machine, never
-# shipped), works on the very next reply, no proxy / env var / restart. Leave blank for the public build.
-func _make_key_field() -> Control:
-
-	var box : VBoxContainer = VBoxContainer.new()
-	box.add_theme_constant_override("separation", 3)
-	var lbl : Label = Label.new()
-	lbl.text = "NPC AI key (DeepSeek)"
-	lbl.add_theme_font_size_override("font_size", 16)
-	lbl.add_theme_color_override("font_color", Color(0.9, 0.83, 0.62, 1.0))
-	box.add_child(lbl)
-	var le : LineEdit = LineEdit.new()
-	le.secret = true
-	le.placeholder_text = "✓ key set — paste a new one to change" if NpcBrain.has_dev_key() else "Paste sk-…  (saved locally, never shipped)"
-	le.add_theme_font_size_override("font_size", 14)
-	le.text_submitted.connect(func(t: String) -> void: _save_key(le, t))
-	le.focus_exited.connect(func() -> void: _save_key(le, le.text))
-	box.add_child(le)
-	return box
-
-
-func _save_key(le: LineEdit, text: String) -> void:
-
-	if text.strip_edges().is_empty():
-		return
-	NpcBrain.set_dev_key(text)
-	le.text = ""
-	le.placeholder_text = "✓ key set — paste a new one to change"
 
 
 func _panel_style() -> StyleBoxFlat:
