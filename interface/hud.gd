@@ -90,6 +90,7 @@ func _ready() -> void:
 	# explicit flush remains the primary path either way.
 	if has_signal("visibility_changed"):
 		visibility_changed.connect(_on_visibility_changed)
+	_build_touch_menu_button()   # mobile: an on-screen way to open the pause menu (no Esc on a phone)
 
 
 func _on_purse_resized() -> void:
@@ -156,6 +157,36 @@ func _on_escape() -> void:
 		ChatBox.close_log()
 		return
 	PauseMenu.open(self)
+
+
+# Mobile: an on-screen menu button (top-left, under the purse) runs the Esc chain — there's no Esc on a phone.
+# Closes an open panel/log first, else opens the pause menu (Resume / Options / Quit-to-Title = save + exit).
+# Gated on TouchEnv so the desktop HUD is unchanged (Troy 2026-06-12).
+func _build_touch_menu_button() -> void:
+
+	if not TouchEnv.is_touch():
+		return
+	var btn : Button = Button.new()
+	btn.text = "≡"
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.custom_minimum_size = Vector2(54.0, 54.0)
+	btn.add_theme_font_size_override("font_size", 30)
+	for state in ["normal", "hover", "pressed"]:
+		var s : StyleBoxFlat = StyleBoxFlat.new()
+		s.bg_color = Color(0.30, 0.20, 0.10, 0.96) if state == "pressed" else Color(0.18, 0.11, 0.06, 0.92)
+		s.set_border_width_all(2)
+		s.border_color = Color(0.78, 0.58, 0.24, 1.0)
+		s.set_corner_radius_all(10)
+		btn.add_theme_stylebox_override(state, s)
+	btn.add_theme_color_override("font_color", Color(0.97, 0.87, 0.55, 1.0))
+	btn.anchor_left = 0.0
+	btn.anchor_top = 0.0
+	btn.offset_left = 16.0
+	btn.offset_top = 66.0
+	btn.offset_right = 16.0 + 54.0
+	btn.offset_bottom = 66.0 + 54.0
+	btn.pressed.connect(_on_escape)
+	add_child(btn)
 
 
 func _unhandled_input(event: InputEvent) -> void:

@@ -226,6 +226,14 @@ func _style_chat_input(le: LineEdit) -> void:
 # Enter (when not already typing) drops focus into the chat bar — but never over an open dialog/backpack.
 func _unhandled_input(event: InputEvent) -> void:
 
+	# A click / tap OUTSIDE the open chat bar dismisses it — mobile has no Esc, and it's expected on desktop too
+	# (Troy 2026-06-12). Checked BEFORE the is_typing early-return so it fires while the input is focused.
+	if _bar_open and _is_outside_press(event):
+		_close_bar()
+		var vp0 : Viewport = get_viewport()
+		if vp0 != null:
+			vp0.set_input_as_handled()
+		return
 	if not visible or is_typing():
 		return
 	if Overlay.is_active or (HUD != null and HUD.is_inventory_open()):
@@ -235,6 +243,23 @@ func _unhandled_input(event: InputEvent) -> void:
 		var vp : Viewport = get_viewport()
 		if vp != null:
 			vp.set_input_as_handled()
+
+
+# A left-click / tap landing OUTSIDE the open bar + its log panel (clicking the world / the felt closes the chat).
+func _is_outside_press(event: InputEvent) -> bool:
+
+	var pos : Vector2
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		pos = event.position
+	elif event is InputEventScreenTouch and event.pressed:
+		pos = event.position
+	else:
+		return false
+	if _bar != null and _bar.visible and _bar.get_global_rect().has_point(pos):
+		return false
+	if _log_panel != null and _log_panel.visible and _log_panel.get_global_rect().has_point(pos):
+		return false
+	return true
 
 
 # On a touch device there's no Enter key, so a visible "Chat" button summons the bar (Troy 2026-06-12). Shown
