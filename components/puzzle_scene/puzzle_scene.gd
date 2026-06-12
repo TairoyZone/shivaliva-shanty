@@ -28,6 +28,7 @@ func _ready() -> void:
 	if HUD:
 		HUD.visible = false
 	_build_leave_button()
+	_build_touch_controls()
 
 
 func _exit_tree() -> void:
@@ -124,6 +125,31 @@ func _build_leave_button() -> void:
 	btn.add_theme_color_override("font_hover_color", Color(1.0, 0.92, 0.6, 1.0))
 	btn.pressed.connect(_return_to_launching_scene)   # the click SFX comes from the global Audio button hook
 	layer.add_child(btn)
+
+
+## Override -> a touch-control spec for THIS puzzle: an Array of {label, action/callable, hold} dicts (see
+## [TouchControlBar]). Empty (default) = a tap-only puzzle (Loft / Gem Drop / poker) that needs no on-screen
+## buttons. Each action puzzle fills this in (Phase 2). See [[touch-input-foundation]].
+func _touch_spec() -> Array:
+	return []
+
+
+# Spawn the shared touch button bar from _touch_spec() on a touch device — one inherited seam, every action puzzle
+# just declares its buttons. On its own CanvasLayer below the Leave button (layer 20) so Leave stays tappable.
+func _build_touch_controls() -> void:
+
+	if not TouchEnv.is_touch():
+		return
+	var spec : Array = _touch_spec()
+	if spec.is_empty():
+		return
+	var layer : CanvasLayer = CanvasLayer.new()
+	layer.layer = 18
+	layer.name = "TouchControlsLayer"
+	add_child(layer)
+	var bar : TouchControlBar = TouchControlBar.new()
+	bar.setup(spec)
+	layer.add_child(bar)
 
 
 ## Puzzle instructions feed the persistent USER PANEL's Tutorial tab — the Sunshine-widget rail is always
