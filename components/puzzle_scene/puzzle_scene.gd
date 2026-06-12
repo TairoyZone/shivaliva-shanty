@@ -35,7 +35,6 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 
-	UserPanel.set_suppressed(false)   # un-hide the rail (a touch action-puzzle may have suppressed it)
 	UserPanel.set_puzzle_help("")   # clear this puzzle's how-to from the persistent Tutorial tab
 	if HUD:
 		HUD.visible = true
@@ -189,7 +188,6 @@ func _build_touch_controls() -> void:
 	var spec : Array = _touch_spec()
 	if spec.is_empty():
 		return
-	UserPanel.set_suppressed(true)   # the right-edge rail overlaps the fight's controls — hide it (Troy 2026-06-12)
 	var layer : CanvasLayer = CanvasLayer.new()
 	layer.layer = 18
 	layer.name = "TouchControlsLayer"
