@@ -15,6 +15,10 @@ const FIRST_SCENE : String = "res://levels/player_shanty_interior/player_shanty_
 var _confirm : CanvasLayer = null
 ## The New Game name field (lives inside the name-prompt overlay).
 var _name_edit : LineEdit = null
+## The "Set sail" button — disabled until the name is valid (required + not already taken).
+var _set_sail_btn : Button = null
+## A small validation line under the name field (e.g. "that name's taken").
+var _name_hint : Label = null
 ## The New Game gender pick ("Male" / "Female" / "Other"), chosen beside the name (identity now; cosmetics post-MVP).
 var _chosen_gender : String = "Other"
 
@@ -166,9 +170,32 @@ func _show_name_prompt() -> void:
 	edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	edit.add_theme_font_size_override("font_size", 22)
 	edit.custom_minimum_size = Vector2(0, 46)
+	edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	edit.text_submitted.connect(func(_t: String) -> void: _begin_from_edit())   # Enter submits
-	vbox.add_child(edit)
+	edit.text_changed.connect(func(_t: String) -> void: _refresh_name_validity())
+	# Field + a dice button to roll a random UNUSED name (for players who'd rather not type one).
+	var name_row : HBoxContainer = HBoxContainer.new()
+	name_row.add_theme_constant_override("separation", 8)
+	name_row.add_child(edit)
+	var dice : Button = _make_button("", Color(0.92, 0.86, 0.66, 1.0))
+	dice.custom_minimum_size = Vector2(56, 46)
+	dice.tooltip_text = "Roll a random name"
+	dice.pressed.connect(_roll_name)
+	var die_icon : DieIcon = DieIcon.new()   # procedural die face (the font has no die glyph)
+	die_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	die_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dice.add_child(die_icon)
+	name_row.add_child(dice)
+	vbox.add_child(name_row)
 	_name_edit = edit
+	# Validation line (a name is REQUIRED + must be unused — empty/taken disables "Set sail").
+	var hint : Label = Label.new()
+	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_color_override("font_color", Color(0.96, 0.62, 0.5, 1.0))
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.custom_minimum_size = Vector2(0, 16)
+	vbox.add_child(hint)
+	_name_hint = hint
 	# Gender pick (identity now; full character cosmetics post-MVP). A 3-way radio — defaults to Other so there's
 	# always a value, and any romanceable NPC is open to any player regardless (orientation-agnostic).
 	var glabel : Label = Label.new()
@@ -195,18 +222,65 @@ func _show_name_prompt() -> void:
 	var go : Button = _make_button("Set sail", Color(0.80, 1.0, 0.66, 1.0))
 	go.pressed.connect(_begin_from_edit)
 	row.add_child(go)
+	_set_sail_btn = go
 	_confirm = layer
 	add_child(layer)
+	_refresh_name_validity()   # start disabled — a name is required before you can sail
 	edit.grab_focus()
+
+
+# Names already claimed in the shared world — the single source the dice + the validator both read. The NPC cast
+# now; once online/co-op lands, the server's registered player names fold into THIS list so cross-player
+# uniqueness is enforced through the same path (Troy 2026-06-13: names must be unique for online/co-op).
+func _taken_names() -> Array:
+
+	var taken : Array = []
+	for p in NpcRegistry.all():
+		taken.append(p.npc_name)
+	return taken
+
+
+# Roll a random unused name into the field (excluding the cast + the current entry, so a re-roll always changes).
+func _roll_name() -> void:
+
+	if not is_instance_valid(_name_edit):
+		return
+	var taken : Array = _taken_names()
+	if not _name_edit.text.strip_edges().is_empty():
+		taken.append(_name_edit.text)
+	_name_edit.text = RandomName.roll(taken)
+	_refresh_name_validity()
+
+
+# A name is REQUIRED and must be unused: enable "Set sail" only when valid, and explain when it isn't.
+func _refresh_name_validity() -> void:
+
+	if not is_instance_valid(_name_edit) or not is_instance_valid(_set_sail_btn):
+		return
+	var raw : String = _name_edit.text.strip_edges()
+	var valid : bool = RandomName.is_available(raw, _taken_names())
+	_set_sail_btn.disabled = not valid
+	_set_sail_btn.modulate = Color(1, 1, 1, 1) if valid else Color(1, 1, 1, 0.45)
+	if is_instance_valid(_name_hint):
+		if raw.is_empty():
+			_name_hint.text = ""
+		elif not valid:
+			_name_hint.text = "That name's already taken — pick another or roll one."
+		else:
+			_name_hint.text = ""
 
 
 func _begin_from_edit() -> void:
 
-	var entered : String = ""
-	if is_instance_valid(_name_edit):
-		entered = _name_edit.text.strip_edges()
-	if entered.is_empty():
-		entered = "Traveller"   # a sensible default for a no-name start
+	if not is_instance_valid(_name_edit):
+		return
+	var entered : String = _name_edit.text.strip_edges()
+	# A name is REQUIRED + must be unused. If not, stay on the prompt and say why (covers Enter, which
+	# bypasses the disabled button).
+	if not RandomName.is_available(entered, _taken_names()):
+		_refresh_name_validity()
+		_name_edit.grab_focus()
+		return
 	_begin_named_game(entered)
 
 
@@ -288,6 +362,9 @@ func _close_confirm() -> void:
 	if is_instance_valid(_confirm):
 		_confirm.queue_free()
 	_confirm = null
+	_name_edit = null
+	_set_sail_btn = null
+	_name_hint = null
 
 
 # --- Styling ---------------------------------------------------------
