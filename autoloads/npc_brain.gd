@@ -9,10 +9,12 @@
 extends Node
 
 
-## The proxy endpoint. Default = a LOCAL proxy you run for dev (proxy/server.js, no key in the game);
-## point it at your deployed proxy for the public demo. Override at runtime without recompiling via
-## user://settings.cfg: [npc_chat] endpoint="https://..."  (and optional secret="...").
-const DEFAULT_ENDPOINT : String = "http://127.0.0.1:8787/chat"
+## The proxy endpoint. Default = the DEPLOYED proxy, so the public build ALWAYS reaches it even if npc_chat.cfg
+## fails to load — which it DID on the WEB export: FileAccess.file_exists returns false there for a bundled
+## non-resource .cfg, so the endpoint silently stayed on the old localhost default and every web player got
+## "AI offline" (Troy 2026-06-13). Override (e.g. a local dev proxy) via npc_chat.cfg / user://settings.cfg:
+## [npc_chat] endpoint="http://127.0.0.1:8787/chat".
+const DEFAULT_ENDPOINT : String = "https://shivaliva-shanty.onrender.com/chat"
 ## DEV-DIRECT (no terminal): if the SHANTY_NPC_KEY environment variable is set, the game calls this
 ## OpenAI-compatible LLM (DeepSeek) DIRECTLY with that key, skipping the proxy. That source never ships — an
 ## env var lives in YOUR OS only. (The old user://settings.cfg dev_api_key + its Options field were removed
@@ -114,24 +116,22 @@ func _load_config() -> void:
 	# DEV-DIRECT key: the SHANTY_NPC_KEY env var (set it once, no terminal) is the ONLY dev-direct source now
 	# (the settings.cfg dev_api_key field was removed 2026-06-12). Unset on a player's machine -> the proxy path.
 	_dev_key = OS.get_environment("SHANTY_NPC_KEY")
-	# Defense-in-depth: in an EXPORTED build, if nothing moved the endpoint off the local dev default AND there's
-	# no dev key, the bundled npc_chat.cfg almost certainly didn't ship (the export include_filter must pack this
-	# non-resource .cfg). Make that LOUD instead of silently degrading to "AI offline" for every player.
-	if endpoint == DEFAULT_ENDPOINT and _dev_key.is_empty() and not OS.has_feature("editor"):
-		push_warning("[NpcBrain] endpoint still = %s with no dev key — npc_chat.cfg was NOT bundled; NPC chat is OFFLINE for players. Fix the export include_filter (it must pack npc_chat.cfg)." % DEFAULT_ENDPOINT)
+	# (The old "endpoint stuck at localhost" warning is gone — DEFAULT_ENDPOINT is now the deployed proxy, so a
+	# missing or unreadable cfg just leaves the working default in place.)
 
 
 # Fold one ConfigFile's [npc_chat] section over the CURRENT values — absent keys keep what's already set, so
 # layering res:// then user:// makes res:// the base and user:// the override. Missing file = no-op.
 func _apply_chat_cfg(path: String) -> void:
 
-	if not FileAccess.file_exists(path):
+	# Open + read the TEXT — NOT FileAccess.file_exists (returns false on the WEB export for a bundled non-resource
+	# .cfg, which skipped the whole config → endpoint stuck on localhost → "AI offline" for web players,
+	# Troy 2026-06-13), and NOT ConfigFile.load (can't strip a BOM). Reading the text also lets us drop a leading
+	# UTF-8 BOM (PowerShell writes one; a BOM made ConfigFile mis-read [npc_chat] → keys MISSING, Troy 2026-06-12).
+	var f : FileAccess = FileAccess.open(path, FileAccess.READ)
+	if f == null:
 		return
-	# Read + PARSE the text (not ConfigFile.load) so we can strip a leading UTF-8 BOM first. A BOM-prefixed
-	# npc_chat.cfg (PowerShell writes one by default) makes ConfigFile read the first section header as a BOM glued onto [npc_chat]
-	# → every key reads MISSING → endpoint silently falls back to the localhost default → "AI offline" for EVERY
-	# player. Cost us a brutal hunt; never again (Troy 2026-06-12).
-	var text : String = FileAccess.get_file_as_string(path)
+	var text : String = f.get_as_text()
 	if text.begins_with("\uFEFF"):
 		text = text.substr(1)
 	var cfg : ConfigFile = ConfigFile.new()
