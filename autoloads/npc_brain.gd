@@ -69,6 +69,25 @@ const VOICE_RULES : String = (
 	+ "speech. Above all, let YOUR OWN personality (described below) drive how you sound — your rhythm, your mood, "
 	+ "your word choice — so you come across as one specific person. Two different characters must never sound alike.")
 
+# ANTI-"AI" TELLS — the model defaults to a helpful, polished, relentlessly-pleasant ASSISTANT voice, and that is
+# the single biggest thing that makes the cast read as a chatbot instead of a person (Troy 2026-06-13: "remove any
+# tell that makes them sound like AI, the way they talk"). A hard list of don'ts plus a push toward real, imperfect
+# human speech. Shared by EVERY chat path (private, ambient, table).
+const HUMAN_RULES : String = (
+	"SOUND LIKE A REAL PERSON, NOT AN ASSISTANT (this is the most important rule). You are someone living your own "
+	+ "day. You are NOT here to serve, help, or please the traveller, so you have MOODS: you can be short, blunt, "
+	+ "distracted, busy, tired, wry, teasing, or simply not in the mood to talk. "
+	+ "Never play helpdesk: no 'How can I help you?', no 'is there anything else?', no 'let me know if', and never "
+	+ "lay out a tidy list of options or steps. "
+	+ "Do not open with filler like 'Ah,', 'Well,', 'Oh,', 'Certainly', 'Of course', or 'Indeed'. Just start talking. "
+	+ "Do not over-explain, summarize, or repeat back what was just said. Leave things unsaid and trust the listener. "
+	+ "Do not hedge with 'perhaps', 'it seems', or 'I think maybe', and do not end every line with a question. Most "
+	+ "replies are just a reply. "
+	+ "Never use an em-dash. Use a comma or a full stop instead. "
+	+ "Being a little rough or imperfect is GOOD: a shrug, a 'dunno', a half-thought, trailing off, a dry joke, "
+	+ "answering only the part you care about. React to THIS moment the way a real person would, not the way a "
+	+ "chatbot tries to be useful.")
+
 signal npc_replied(text: String)     # a reply came back (also appended to history)
 signal chat_failed(reason: String)   # the request failed — caller should fall back to canned lines
 signal thinking_started               # a request went out — show a "…" / typing state
@@ -312,7 +331,7 @@ func _system_prompt() -> String:
 ## tokens — a passing remark shouldn't risk leaking a secret). The part you tweak via the .tres chat fields.
 func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 
-	var parts : PackedStringArray = PackedStringArray([WORLD_RULES, VOICE_RULES])
+	var parts : PackedStringArray = PackedStringArray([WORLD_RULES, VOICE_RULES, HUMAN_RULES])
 	var who : String = "You are %s." % persona.npc_name
 	if not persona.chat_appearance.is_empty():
 		who += " " + persona.chat_appearance

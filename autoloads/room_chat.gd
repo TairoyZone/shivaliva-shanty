@@ -506,12 +506,13 @@ func _ambient_turn(others: PackedStringArray, self_short: String) -> String:
 	if not nearby.is_empty():
 		intro = "Others here with you: %s.\n" % ", ".join(nearby)
 	var convo : String = _convo_block(self_short)
-	return (intro + convo + "Nobody has said anything to you just now — you are simply going about your moment. If "
-		+ "something about where you are, the time of day, what you are doing, one of the others here, or the "
-		+ "traveller naturally prompts a brief remark, say ONE short, in-character line out loud — an observation, a "
-		+ "quip, a passing thought, a bit of small talk — that fits YOUR personality and does NOT repeat anything "
-		+ "already said above. Otherwise reply with exactly: (silent). Most of the time, quiet is the right answer. "
-		+ "No narration, no quotes, no your own name, no control tags.")
+	return (intro + convo + "Nobody has said anything to you just now. You are just going about your moment. "
+		+ "Notice ONE specific, concrete thing about THIS exact moment: something you can see, hear, or are doing "
+		+ "right now, the light or the hour, what one of the others is up to, or the traveller hanging about. Mutter "
+		+ "a brief, offhand line about it, the way a real person thinks out loud. Keep it specific to right here, not "
+		+ "a generic line that could be said in any place at any time. It must fit YOUR personality and NOT repeat "
+		+ "anything already said above. If nothing actually catches your eye, reply with exactly: (silent). Most of "
+		+ "the time, quiet is the right answer. No narration, no quotes, no your own name, no control tags.")
 
 
 # Strip any stray hidden control tag ([[DUEL]] etc.) from an AMBIENT line so a spontaneous aside never leaks a
