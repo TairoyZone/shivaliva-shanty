@@ -25,9 +25,12 @@ static func say(npc: Node2D, text: String, y: float = -118.0) -> SpeechBubble:
 func _ready() -> void:
 
 	z_index = 100
+	# Bigger + wider on touch — the 17px bubble reads tiny on a phone (Troy 2026-06-13).
+	var fs : int = 25 if TouchEnv.is_touch() else FONT_SIZE
+	var maxw : float = 330.0 if TouchEnv.is_touch() else MAX_WIDTH
 	var label : Label = Label.new()
 	label.text = _text
-	label.add_theme_font_size_override("font_size", FONT_SIZE)
+	label.add_theme_font_size_override("font_size", fs)
 	label.add_theme_color_override("font_color", Color(0.99, 0.97, 0.9, 1.0))
 	label.add_theme_color_override("font_outline_color", Color(0.04, 0.03, 0.06, 0.9))
 	label.add_theme_constant_override("outline_size", 2)
@@ -37,8 +40,8 @@ func _ready() -> void:
 	var font : Font = label.get_theme_font("font")
 	if font == null:
 		font = ThemeDB.fallback_font
-	var natural : float = font.get_string_size(_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, FONT_SIZE).x
-	label.custom_minimum_size = Vector2(minf(natural + 2.0, MAX_WIDTH), 0.0)
+	var natural : float = font.get_string_size(_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x
+	label.custom_minimum_size = Vector2(minf(natural + 2.0, maxw), 0.0)
 
 	var pill : PanelContainer = PanelContainer.new()
 	pill.add_theme_stylebox_override("panel", _bubble_style())

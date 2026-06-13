@@ -175,10 +175,17 @@ func _brass(a: float) -> Color:
 	return Color(Palette.BRASS_FRAME.r, Palette.BRASS_FRAME.g, Palette.BRASS_FRAME.b, a)
 
 
+# Touch screens shrink the whole 1280×720 canvas to fit a phone, so chat text reads TINY. Bump every chat font
+# (and the field/bar) on touch only — desktop stays exactly as tuned (Troy 2026-06-13).
+func _chat_font(desktop: int, touch: int) -> int:
+
+	return touch if TouchEnv.is_touch() else desktop
+
+
 # A small warm-brass button (Send / Log / the private-chat target chip) — matches the NPC chat panel.
 func _style_chat_button(btn: Button) -> void:
 
-	btn.add_theme_font_size_override("font_size", 14)
+	btn.add_theme_font_size_override("font_size", _chat_font(14, 18))
 	btn.add_theme_color_override("font_color", Color(0.95, 0.86, 0.58, 1.0))
 	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	btn.add_theme_constant_override("outline_size", 2)
@@ -203,7 +210,9 @@ func _style_chat_button(btn: Button) -> void:
 # A subtly warm input field — dark walnut trough, faint brass rim that brightens on focus.
 func _style_chat_input(le: LineEdit) -> void:
 
-	le.add_theme_font_size_override("font_size", 15)
+	le.add_theme_font_size_override("font_size", _chat_font(15, 23))
+	if TouchEnv.is_touch():
+		le.custom_minimum_size = Vector2(0.0, 40.0)   # a taller, tappable field for the bigger touch font
 	le.add_theme_color_override("font_color", Color(0.96, 0.93, 0.85, 1.0))
 	le.add_theme_color_override("font_placeholder_color", Color(0.78, 0.72, 0.60, 0.6))
 	var normal : StyleBoxFlat = StyleBoxFlat.new()
@@ -363,13 +372,15 @@ func _apply_kbd_layout(on: bool) -> void:
 	if _bar == null or _log_panel == null:
 		return
 	if on:
+		# This branch runs only on touch (gated in _open_bar): a TALLER full-width bar in the top half so the
+		# bigger touch font + tappable field fit, with the log filling the space above it.
 		_bar.anchor_left = 0.0
 		_bar.anchor_right = 1.0
 		_bar.anchor_top = 0.5
 		_bar.anchor_bottom = 0.5
 		_bar.offset_left = 14.0
 		_bar.offset_right = -14.0
-		_bar.offset_top = -58.0
+		_bar.offset_top = -84.0
 		_bar.offset_bottom = -10.0
 		_log_panel.anchor_left = 0.0
 		_log_panel.anchor_right = 1.0
@@ -378,7 +389,7 @@ func _apply_kbd_layout(on: bool) -> void:
 		_log_panel.offset_left = 14.0
 		_log_panel.offset_right = -14.0
 		_log_panel.offset_top = 14.0
-		_log_panel.offset_bottom = -62.0
+		_log_panel.offset_bottom = -90.0
 	else:
 		_bar.anchor_left = 0.0
 		_bar.anchor_right = 0.0
@@ -558,7 +569,7 @@ func _style_popup(menu: PopupMenu) -> void:
 	menu.add_theme_color_override("font_color", Color(0.95, 0.90, 0.78, 1.0))
 	menu.add_theme_color_override("font_hover_color", Color(1.0, 0.96, 0.72, 1.0))
 	menu.add_theme_color_override("font_disabled_color", Color(0.70, 0.66, 0.58, 0.7))
-	menu.add_theme_font_size_override("font_size", 15)
+	menu.add_theme_font_size_override("font_size", _chat_font(15, 20))
 
 
 func _connect_npc_signals() -> void:
@@ -644,7 +655,7 @@ func _append_log(text: String, color: Color) -> void:
 		return
 	var l : Label = Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 14)
+	l.add_theme_font_size_override("font_size", _chat_font(14, 19))
 	l.add_theme_color_override("font_color", color)
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	l.add_theme_constant_override("outline_size", 3)

@@ -46,6 +46,10 @@ func _ready() -> void:
 
 	if Engine.is_editor_hint():
 		return
+	# On a phone the 16px label (nametags + prop tooltips) reads tiny — bump every world label on touch from
+	# this one base spot (Troy 2026-06-13). NPC nametags reuse this same Tooltip, so they scale too.
+	if TouchEnv.is_touch():
+		_tooltip.add_theme_font_size_override("font_size", 24)
 	_tooltip.visible = false
 
 
