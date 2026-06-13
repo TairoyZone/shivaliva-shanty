@@ -11,6 +11,12 @@
 extends PuzzleScene
 
 
+# The crew headers sit above the boards, so the far top CORNERS are free — Leave top-left, Chat top-right
+# (Troy 2026-06-13).
+func _touch_buttons_at_corners() -> bool:
+	return true
+
+
 # TOUCH controls (mobile web): move/soft-drop held, rotate tap, plus target-cycle (the A/D keys). See [[touch-input-foundation]].
 func _touch_spec() -> Array:
 	return [

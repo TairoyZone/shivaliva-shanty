@@ -12,9 +12,9 @@
 extends PuzzleScene
 
 
-# Mining's "ORE MINER · CHUNKS" bar already sits at the top-centre with free corners, so Leave + Chat take the
-# corners on touch instead of overlapping it (Troy 2026-06-13, verified by screenshot).
-func _touch_hud_at_top_centre() -> bool:
+# Mining's "ORE MINER · CHUNKS" bar sits at the top-centre with free corners, so Leave + Chat take the corners
+# (Troy 2026-06-13, verified by screenshot).
+func _touch_buttons_at_corners() -> bool:
 	return true
 
 

@@ -78,9 +78,10 @@ func _touch_hud_node() -> Control:
 	return null
 
 
-## Override → true if the puzzle's HUD already sits at the TOP-CENTRE (e.g. Mining's "ORE MINER" bar) with its
-## corners free, so the Leave + Chat buttons just take the corners — no HUD relocation needed (Troy 2026-06-13).
-func _touch_hud_at_top_centre() -> bool:
+## Override → true if the puzzle's own HUD leaves the top CORNERS free (e.g. Mining's centre bar, Skirmish's
+## headers above the boards), so the Leave + Chat buttons take the corners — no HUD relocation needed (Troy
+## 2026-06-13).
+func _touch_buttons_at_corners() -> bool:
 	return false
 
 
@@ -97,8 +98,8 @@ func _relocate_touch_hud() -> void:
 
 	if not _has_touch_bar():
 		return
-	if _touch_hud_at_top_centre():
-		_hud_swapped = true   # HUD already at the top-centre (Mining) — just send Leave/Chat to the free corners
+	if _touch_buttons_at_corners():
+		_hud_swapped = true   # the puzzle's HUD leaves the corners free — just send Leave/Chat there
 		return
 	var hud : Control = _touch_hud_node()
 	if hud == null:

@@ -11,6 +11,12 @@
 extends PuzzleScene
 
 
+# Skirmish's headers sit above the boards, so the far top CORNERS are free — Leave top-left, Chat top-right,
+# off the centre (Troy 2026-06-13).
+func _touch_buttons_at_corners() -> bool:
+	return true
+
+
 # TOUCH controls (mobile web): move + soft-drop are held, rotate is a tap. See [[touch-input-foundation]].
 func _touch_spec() -> Array:
 	return [
