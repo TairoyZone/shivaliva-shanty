@@ -17,16 +17,16 @@ func _touch_buttons_at_corners() -> bool:
 	return true
 
 
-# TOUCH controls (mobile web): a left-right JOYSTICK (bottom-left) shifts the piece; rotate is a tap and soft-drop
-# is held (bottom-right). See [[touch-input-foundation]].
+# TOUCH controls (mobile web): the JOYSTICK (bottom-left) shifts the piece AND soft-drops it (pull down) —
+# real mobile-Tetris feel, so there's no separate soft-drop button (Troy 2026-06-13). Rotate is the one tap
+# button (bottom-right). See [[touch-input-foundation]].
 func _touch_joystick() -> String:
-	return "horizontal"
+	return "drop"
 
 
 func _touch_spec() -> Array:
 	return [
 		{"label": "↻", "action": "ui_up"},
-		{"label": "▼", "action": "ui_down", "hold": true},
 	]
 
 

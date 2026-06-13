@@ -36,6 +36,17 @@ func _initialize() -> void:
 	print("both mode (4-way): ", "PASS" if both_ok else "FAIL")
 	ok = ok and both_ok
 
+	# PuzzleJoystick "drop" (left/right + pull-DOWN soft-drop; UP does nothing — no hard drop).
+	stick.set_mode("drop")
+	var drop_ok : bool = stick._actions_for(Vector2(R, 0)) == ["ui_right"] \
+		and stick._actions_for(Vector2(-R, 0)) == ["ui_left"] \
+		and stick._actions_for(Vector2(0, R)) == ["ui_down"] \
+		and stick._actions_for(Vector2(0, -R)) == [] \
+		and stick._actions_for(Vector2(R * 0.3, R)) == ["ui_down"] \
+		and stick._actions_for(Vector2(R, R * 0.3)) == ["ui_right"]
+	print("drop mode (left/right + down, no hard drop): ", "PASS" if drop_ok else "FAIL")
+	ok = ok and drop_ok
+
 	# PuzzleJoystick "horizontal" (left/right only; vertical ignored).
 	stick.set_mode("horizontal")
 	var horiz_ok : bool = stick._actions_for(Vector2(R, 0)) == ["ui_right"] \

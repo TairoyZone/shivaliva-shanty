@@ -80,6 +80,43 @@ func _initialize() -> void:
 		" revealing=", board._revealing, " piece=", board._piece, " over=", board._over, "]")
 	ok = ok and b_ok
 
+	# --- Test C: the post-spawn soft-drop lockout must AUTO-EXPIRE on touch (a held joystick-down sends no
+	# release to clear it), so hold-to-soft-drop survives spawns — but stay release-only on desktop. ---
+	# Clean active-piece state at the top (slow normal gravity won't lock it during the short pump).
+	for r in rows:
+		for c in cols:
+			board._grid[r][c] = -1
+	board._over = false
+	board._clearing = false
+	board._revealing = false
+	board._topping_out = false
+	board._piece = 0
+	board._rot = 0
+	board._px = 3
+	board._py = 0
+	board._soft = false
+
+	# TOUCH: lockout set on a spawn -> auto-expires within the grace.
+	board._is_touch = true
+	board._soft_lockout = true
+	board._soft_lockout_t = SkirmishBoard.SOFT_LOCKOUT_TOUCH_GRACE
+	for _i in range(16):   # ~0.26s of frames, well past the 0.12s grace
+		board._process(0.016)
+	var touch_expired : bool = not board._soft_lockout
+
+	# DESKTOP: same lockout must PERSIST (cleared only by a key release, not a timer).
+	board._is_touch = false
+	board._soft_lockout = true
+	board._soft_lockout_t = SkirmishBoard.SOFT_LOCKOUT_TOUCH_GRACE
+	for _i in range(16):
+		board._process(0.016)
+	var desktop_persists : bool = board._soft_lockout
+
+	var c_ok : bool = touch_expired and desktop_persists
+	print("Test C (soft-drop lockout: touch auto-expires, desktop persists): ", "PASS" if c_ok else "FAIL",
+		"  [touch_expired=", touch_expired, " desktop_persists=", desktop_persists, "]")
+	ok = ok and c_ok
+
 	board.free()
 	print("RESULT: ", "ALL PASS" if ok else "FAILURE")
 	quit(0 if ok else 1)

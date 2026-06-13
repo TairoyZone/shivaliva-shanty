@@ -92,6 +92,12 @@ const SOFT_DROP_INTERVAL : float = 0.03
 ## timer reset on press (see [method set_soft_drop]) the piece can't burst on a
 ## key-press; this is the remaining guard so a frame HITCH can't teleport it.
 const MAX_FALL_STEPS_PER_FRAME : int = 3
+## On TOUCH, a held soft-drop (the joystick pulled down) never delivers a key-RELEASE, so the post-spawn
+## lockout (set in [method _spawn]) would never clear and soft-drop would die after the first piece. So on
+## touch the lockout AUTO-EXPIRES after this brief grace — long enough that a fresh piece isn't slammed down
+## the instant it appears, short enough that holding down keeps fast-dropping piece after piece (real
+## mobile-Tetris feel, Troy 2026-06-13). Desktop keeps the release-to-rearm behaviour unchanged.
+const SOFT_LOCKOUT_TOUCH_GRACE : float = 0.12
 ## AI piece-fall speed BAND (sec/row). Each piece picks a FRESH random pace in a
 ## skill-scaled range (set in [method ai_place]) so the foe drops like a believable
 ## HUMAN — "sometimes slow, sometimes fast", never a robotic constant (Troy). A
@@ -185,8 +191,14 @@ var _fall_t : float = 0.0
 var _soft : bool = false
 ## Set on each spawn: a held soft-drop key is IGNORED until released + re-pressed, so a
 ## key held through a lock never slams the fresh piece down the instant it appears
-## (Troy's stress case). Cleared by releasing the key (see [method set_soft_drop]).
+## (Troy's stress case). Cleared by releasing the key (see [method set_soft_drop]) — or, on
+## TOUCH, auto-expired after [constant SOFT_LOCKOUT_TOUCH_GRACE] since a held stick sends no release.
 var _soft_lockout : bool = false
+## Countdown for the touch lockout auto-expire (see above). Counts down only while [member _is_touch].
+var _soft_lockout_t : float = 0.0
+## Cached [method TouchEnv.is_touch] (read once in _ready — TouchEnv.is_touch loads a file, never call it
+## per-frame). Gates the touch-only soft-drop lockout auto-expire.
+var _is_touch : bool = false
 
 ## When true, the board ignores gravity/soft-drop — an external AI drives
 ## placement via [method ai_place]. Used for the opponent board in a duel.
@@ -226,6 +238,7 @@ var _telegraph_drops : int = 0
 
 func _ready() -> void:
 
+	_is_touch = TouchEnv.is_touch()   # cache once — gates the touch-only soft-drop lockout auto-expire
 	for r in TOTAL_ROWS:
 		var row : Array = []
 		var ages : Array = []
@@ -281,6 +294,12 @@ func _process(delta: float) -> void:
 	if _ai_controlled:
 		_process_ai(delta)
 		return
+	# TOUCH: auto-expire the post-spawn soft-drop lockout (a held stick sends no release to clear it), so
+	# holding the joystick DOWN keeps fast-dropping piece after piece. Desktop clears it on key-release instead.
+	if _soft_lockout and _is_touch:
+		_soft_lockout_t -= delta
+		if _soft_lockout_t <= 0.0:
+			_soft_lockout = false
 	_fall_t += delta
 	# Soft-drop uses a fixed fast rate (but never slower than gravity); normal fall
 	# uses the level-scaled gravity. Cap steps/frame + drop the backlog so a hitch
@@ -402,6 +421,7 @@ func _spawn() -> void:
 	_py = 0
 	_ai_dropping = false  # a fresh AI piece sits at the top until ai_place commits
 	_soft_lockout = true  # a held soft-drop key must be re-pressed before it grabs this piece
+	_soft_lockout_t = SOFT_LOCKOUT_TOUCH_GRACE  # ...or auto-expire on touch (no release event there)
 	# Spawn at the CENTRE if it's clear; otherwise SCOOT to the nearest open slot along the
 	# top (a piece that can still fit a gap is NOT a KO — Troy). Top-out only when it fits
 	# NOWHERE across the top row = the stack is genuinely blocked wall-to-wall.
