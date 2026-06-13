@@ -77,6 +77,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventScreenTouch:
 		if event.pressed:
+			# Never track the finger the movement stick owns — so driving the stick can't pan the camera, and a
+			# second finger reads as a clean one-finger look-around, not a two-finger pinch (Troy 2026-06-14).
+			if event.index == VirtualJoystick.active_index:
+				return
 			_touches[event.index] = event.position
 			if _touches.size() == 1:
 				_pan_start = event.position
@@ -94,10 +98,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		if not _touches.has(event.index):
 			return
 		_touches[event.index] = event.position
-		if _touches.size() >= 2:
+		# Pinch-zoom ONLY when the movement stick is idle. While you're driving the stick, a second finger is a
+		# look-around PAN, never a zoom, so moving + panning together never zooms the view (Troy 2026-06-14).
+		if _touches.size() >= 2 and VirtualJoystick.active_index == -1:
 			_pinch()
 			get_viewport().set_input_as_handled()   # a 2-finger gesture is ours
-		elif _touches.size() == 1:
+		else:
 			_one_finger_pan(event)
 
 

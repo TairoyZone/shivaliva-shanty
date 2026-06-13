@@ -29,6 +29,13 @@ var _touch_index : int = -1               # the finger (or _MOUSE) currently dri
 var _knob : Vector2 = Vector2.ZERO        # knob offset from centre
 var _held : Array = []                    # actions we are currently holding, so we release exactly those
 
+## The finger index the stick currently OWNS, mirrored to a STATIC so PinchZoom can see it WITHOUT a node lookup
+## (-1 = the stick is idle). This is the Mobile-Legends move-vs-look split: while the stick owns a finger, the
+## camera's PinchZoom skips that finger entirely AND refuses to pinch-zoom, so moving the stick can never pan or
+## zoom the view, and a SECOND finger reads as a clean look-around pan (never a two-finger pinch). One stick at a
+## time in a scene, so a static is safe. (Troy 2026-06-14: "i dont want it to zoom in that state combination.")
+static var active_index : int = -1
+
 
 func _ready() -> void:
 
@@ -55,6 +62,7 @@ func _input(event: InputEvent) -> void:
 		if event.pressed:
 			if _touch_index == -1 and _zone().has_point(event.position):
 				_touch_index = event.index
+				active_index = event.index   # claim it globally so PinchZoom ignores this finger + won't zoom
 				_update(event.position - global_position)
 				_consume()
 		elif event.index == _touch_index:
@@ -67,6 +75,7 @@ func _input(event: InputEvent) -> void:
 		if event.pressed:
 			if _touch_index == -1 and _zone().has_point(event.position):
 				_touch_index = _MOUSE
+				active_index = _MOUSE
 				_update(event.position - global_position)
 				_consume()
 		elif _touch_index == _MOUSE:
@@ -113,6 +122,7 @@ func _actions_for(v: Vector2) -> Array:
 func _release() -> void:
 
 	_touch_index = -1
+	active_index = -1   # the stick is idle again → PinchZoom resumes normal pan + pinch-zoom
 	_knob = Vector2.ZERO
 	_set_actions([])
 	queue_redraw()
@@ -145,3 +155,4 @@ func _exit_tree() -> void:
 	for a in _held:
 		Input.action_release(a)
 	_held = []
+	active_index = -1   # freed mid-drag (a scene change while moving) — don't leave the static stuck "engaged"

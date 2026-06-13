@@ -89,6 +89,43 @@ func _initialize() -> void:
 	print("puzzle: clampToCanvas=%s viewOnCanvas=%s staysPut=%s" % [q1, q2, q3])
 	ok = ok and q1 and q2 and q3
 
+	# --- MOVE + LOOK (the movement stick owns a finger): a 2-finger drag must PAN, never ZOOM (Troy 2026-06-14) ---
+	# The bug: driving the joystick + dragging a look-finger pinch-zoomed the view. The stick now claims its finger
+	# (VirtualJoystick.active_index), so PinchZoom skips it AND refuses to zoom while the stick is engaged.
+	TouchEnv._cached_touch = 1            # force the touch gate so PinchZoom._unhandled_input runs in headless
+	VirtualJoystick.active_index = 5      # pretend the stick owns finger 5 (the moving thumb)
+	var camM : Camera2D = Camera2D.new()
+	camM.zoom = Vector2.ONE
+	camM.position = Vector2(640.0, 360.0)
+	var pzm : PinchZoom = PinchZoom.new()
+	pzm.setup(camM, 1.0, 2.6, Vector2(240.0, 160.0), true)
+	root.add_child(camM)
+	root.add_child(pzm)
+	pzm._base_pos = camM.position
+	# The stick's OWN finger pressing must be ignored (never tracked → can't pan/zoom).
+	var pj : InputEventScreenTouch = InputEventScreenTouch.new()
+	pj.index = 5; pj.pressed = true; pj.position = Vector2(120.0, 600.0)
+	pzm._unhandled_input(pj)
+	var m0 : bool = not pzm._touches.has(5)
+	# Two LOOK fingers down WHILE the stick is engaged → a drag must PAN, not pinch-zoom.
+	pzm._touches = {0: Vector2(300.0, 200.0), 1: Vector2(500.0, 200.0)}; pzm._panning = true
+	var dm : InputEventScreenDrag = InputEventScreenDrag.new()
+	dm.index = 1; dm.position = Vector2(540.0, 200.0); dm.relative = Vector2(40.0, 0.0)
+	pzm._unhandled_input(dm)
+	var m1 : bool = is_equal_approx(camM.zoom.x, 1.0)             # ZERO zoom while moving
+	var m2 : bool = not is_equal_approx(camM.position.x, 640.0)   # it PANNED instead
+	# Stick released → normal pinch-zoom resumes.
+	VirtualJoystick.active_index = -1
+	pzm._touches = {0: Vector2(100.0, 0.0), 1: Vector2(200.0, 0.0)}; pzm._last_dist = -1.0
+	pzm._pinch()
+	pzm._touches = {0: Vector2(50.0, 0.0), 1: Vector2(250.0, 0.0)}
+	pzm._pinch()
+	var m3 : bool = camM.zoom.x > 1.05                            # zoom works again once the stick lets go
+	print("move+look: stickFingerIgnored=%s noZoomWhileMoving=%s pansInstead=%s zoomResumes=%s" % [m0, m1, m2, m3])
+	ok = ok and m0 and m1 and m2 and m3
+	TouchEnv._cached_touch = -1           # reset the forced gate
+	camM.free(); pzm.free()
+
 	cam.free(); pz.free(); camO.free(); pzo.free(); camP.free(); pzp.free()
 	print("RESULT: ", "ALL PASS" if ok else "FAILURE")
 	quit(0 if ok else 1)
