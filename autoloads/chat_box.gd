@@ -335,6 +335,8 @@ func _open_bar() -> void:
 		_bar.visible = true
 	if not _log_open:
 		_toggle_log()          # show the recent history alongside the input (the "Enter shows the log" beat)
+	if TouchEnv.is_touch():
+		_apply_kbd_layout(true)   # float the chat into the TOP half so the phone keyboard doesn't bury it
 	if _input != null:
 		_input.grab_focus()
 
@@ -349,6 +351,51 @@ func _close_bar() -> void:
 		_toggle_log()
 	if _bar != null:
 		_bar.visible = false
+	if TouchEnv.is_touch():
+		_apply_kbd_layout(false)   # back to the bottom-left
+
+
+# TOUCH: while you're typing, the phone's virtual keyboard fills the bottom of the screen — so float the whole
+# chat into the TOP half (log up top, input bar just above the keyboard line) instead of leaving it buried at the
+# bottom where the keyboard hides it. Restored to the bottom-left when the bar closes (Troy 2026-06-13).
+func _apply_kbd_layout(on: bool) -> void:
+
+	if _bar == null or _log_panel == null:
+		return
+	if on:
+		_bar.anchor_left = 0.0
+		_bar.anchor_right = 1.0
+		_bar.anchor_top = 0.5
+		_bar.anchor_bottom = 0.5
+		_bar.offset_left = 14.0
+		_bar.offset_right = -14.0
+		_bar.offset_top = -58.0
+		_bar.offset_bottom = -10.0
+		_log_panel.anchor_left = 0.0
+		_log_panel.anchor_right = 1.0
+		_log_panel.anchor_top = 0.0
+		_log_panel.anchor_bottom = 0.5
+		_log_panel.offset_left = 14.0
+		_log_panel.offset_right = -14.0
+		_log_panel.offset_top = 14.0
+		_log_panel.offset_bottom = -62.0
+	else:
+		_bar.anchor_left = 0.0
+		_bar.anchor_right = 0.0
+		_bar.anchor_top = 1.0
+		_bar.anchor_bottom = 1.0
+		_bar.offset_left = 14.0
+		_bar.offset_right = 634.0
+		_bar.offset_top = -58.0
+		_bar.offset_bottom = -10.0
+		_log_panel.anchor_left = 0.0
+		_log_panel.anchor_right = 0.0
+		_log_panel.anchor_top = 1.0
+		_log_panel.anchor_bottom = 1.0
+		_log_panel.offset_left = 14.0
+		_log_panel.offset_right = 634.0
+		_log_panel.offset_top = -322.0
+		_log_panel.offset_bottom = -62.0
 
 
 # Escape while typing dismisses the bar (without opening the backpack).
