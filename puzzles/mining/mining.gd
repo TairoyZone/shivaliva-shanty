@@ -60,13 +60,20 @@ var _meter_count : Label = null
 func _ready() -> void:
 
 	super._ready()
+	var controls : String
+	if TouchEnv.is_touch():
+		controls = ("• Move the 2x2 cursor with the ◄ ► ▲ ▼ buttons\n"
+			+ "• Rotate it: ↻ = clockwise, ↺ = counter-clockwise\n")
+	else:
+		controls = ("• Move the 2x2 cursor with the arrow keys or the mouse\n"
+			+ "• Rotate it: C / right-click = clockwise,  X / left-click = counter-clockwise\n")
+	var use_tool : String = "tap" if TouchEnv.is_touch() else "click"
 	set_help_text("How to mine\n\n"
-		+ "• Move the 2x2 cursor with the arrow keys or the mouse\n"
-		+ "• Rotate it: C / right-click = clockwise,  X / left-click = counter-clockwise\n"
+		+ controls
 		+ "• Line up 3+ of the same color to crumble that rock\n"
 		+ "• Clear the rock UNDER an ore chunk to dig it down to the floor — chunks are the only thing that scores\n"
 		+ "• Dig several chunks in one move for a combo bonus\n"
-		+ "• Big clears drop a TOOL — frame it (the cursor shrinks to 1x1) and click to use it\n"
+		+ "• Big clears drop a TOOL — frame it (the cursor shrinks to 1x1) and %s to use it\n" % use_tool
 		+ "• Fill the 'TO GET' meter beside the board (one pip per chunk you dig) to finish the shift")
 	_board.ore_changed.connect(_on_ore_changed)
 	_board.progress_changed.connect(_on_progress_changed)
@@ -299,7 +306,7 @@ func _show_results_panel(ore_kept: int, overflow: int, chunks_extracted: int) ->
 			16, Color(1.0, 0.62, 0.42, 1.0))
 	_add_result_label(vbox, "Deliver it to Cinder Troy at the Forge for gold",
 		15, Color(0.6, 0.66, 0.78, 1.0))
-	_add_result_label(vbox, "Click anywhere to head back", 15, Color(0.6, 0.66, 0.78, 1.0))
+	_add_result_label(vbox, dismiss_hint(), 15, Color(0.6, 0.66, 0.78, 1.0))
 
 
 func _add_result_label(parent: VBoxContainer, text: String, size: int, color: Color) -> void:

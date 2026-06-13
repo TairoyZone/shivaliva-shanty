@@ -477,13 +477,27 @@ func _build_ui() -> void:
 	if _members(true).size() > VISIBLE_PER_COL:
 		_build_scroll_ctrl(true)
 
+	var controls : String
+	var target_line : String
+	var defend_line : String
+	var scroll_line : String
+	if TouchEnv.is_touch():
+		controls = "• ◄  ► :  move    ↻ :  rotate    ▼ :  soft drop\n"
+		target_line = "• TAP a foe, or the ◄T / T► buttons, to switch your target.\n"
+		defend_line = "• TAP a MATE to DEFEND them (green ring) — your clears un-bury THEIR board instead.\n"
+		scroll_line = "• Big crews scroll — tap the ▲ ▼ by a column (◄T / T► auto-scrolls your target in).\n"
+	else:
+		controls = "• ←  → :  move    ↑ :  rotate    ↓ / SPACE :  soft drop\n"
+		target_line = "• CLICK a foe, or press [A] / [D], to switch your target.\n"
+		defend_line = "• CLICK a MATE to DEFEND them (green ring) — your clears un-bury THEIR board instead.\n"
+		scroll_line = "• Big crews scroll — use the ▲ ▼ by a column ([A]/[D] auto-scrolls your target in).\n"
 	set_help_text("SKIRMISH — boarding (crew vs crew).\n\n"
-		+ "• ←  → :  move    ↑ :  rotate    ↓ / SPACE :  soft drop\n"
+		+ controls
 		+ "• Clear lines to mail GARBAGE to the foe you've TARGETED (gold ring).\n"
 		+ "• Incoming attacks land as grey X-blocks — they clog your stack + can't clear until they ripen.\n"
-		+ "• CLICK a foe, or press [A] / [D], to switch your target.\n"
-		+ "• CLICK a MATE to DEFEND them (green ring) — your clears un-bury THEIR board instead.\n"
-		+ "• Big crews scroll — use the ▲ ▼ by a column ([A]/[D] auto-scrolls your target in).\n"
+		+ target_line
+		+ defend_line
+		+ scroll_line
 		+ "• The dots by each fighter show how many foes are on them.\n"
 		+ "• The fight goes on with or without you — Leave to step away, then rejoin from the deck.\n"
 		+ "• Top out a whole crew to win. Your mates fight on even if you fall.")
@@ -672,7 +686,7 @@ func _show_results(player_won: bool, is_new_best: bool) -> void:
 	_add_result_label(vbox, "Attack sent:  %d" % sent, 18, Color(0.85, 0.9, 1.0, 1.0))
 	if is_new_best:
 		_add_result_label(vbox, "A new best!", 17, Color(0.7, 1.0, 0.7, 1.0))
-	_add_result_label(vbox, "Click anywhere to head back", 15, Color(0.6, 0.66, 0.78, 1.0))
+	_add_result_label(vbox, dismiss_hint(), 15, Color(0.6, 0.66, 0.78, 1.0))
 
 
 func _add_result_label(parent: VBoxContainer, text: String, size: int, color: Color) -> void:

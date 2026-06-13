@@ -68,7 +68,7 @@ func show_dialog(speaker: String, lines: Array[String]) -> void:
 		return
 	_apply_dialog_style()
 	_title_label.text = speaker
-	_hint_label.text = "[E] / [Space] to continue"
+	_hint_label.text = "Tap to continue" if TouchEnv.is_touch() else "[E] / [Space] to continue"
 	_pending_lines = lines.duplicate()
 	_show_next_line()
 	is_active = true
@@ -80,7 +80,7 @@ func show_lore(title: String, body: String) -> void:
 		return
 	_apply_lore_style()
 	_title_label.text = title
-	_hint_label.text = "[E] to close"
+	_hint_label.text = "Tap to close" if TouchEnv.is_touch() else "[E] to close"
 	_pending_lines.clear()
 	_panel.visible = true
 	is_active = true
@@ -118,7 +118,7 @@ func _show_next_line() -> void:
 	var line : String = _pending_lines.pop_front()
 	# On the FINAL line E closes rather than continues — mirror show_lore's "[E] to close" hint.
 	if _pending_lines.is_empty():
-		_hint_label.text = "[E] to close"
+		_hint_label.text = "Tap to close" if TouchEnv.is_touch() else "[E] to close"
 	_panel.visible = true
 	_type_line(line)
 

@@ -39,6 +39,17 @@ func _ready() -> void:
 	ModalFx.appear(_panel, _dim)   # fade + pop in (animate-everything)
 
 
+# The welcome body, worded for the platform — touch players use the stick + taps, not WASD / E / J keys.
+func _body_for_platform() -> String:
+
+	if not TouchEnv.is_touch():
+		return BODY_TEXT
+	return (BODY_TEXT \
+		.replace("Move with WASD or the arrow keys, and press E to open doors, talk to folk, and work any station.",
+			"Use the stick (bottom-left) to move, and tap doors, folk, and stations to interact.") \
+		.replace(" (or press J)", ""))
+
+
 func _build() -> void:
 
 	var dim : ColorRect = ColorRect.new()
@@ -78,7 +89,7 @@ func _build() -> void:
 	vbox.add_child(title)
 
 	var body : Label = Label.new()
-	body.text = BODY_TEXT
+	body.text = _body_for_platform()
 	body.add_theme_font_size_override("font_size", 18)
 	body.add_theme_color_override("font_color", Color(0.92, 0.84, 0.62, 1.0))
 	body.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.55))

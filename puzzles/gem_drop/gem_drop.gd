@@ -59,8 +59,14 @@ func _touch_pinch_zoom() -> bool:
 func _ready() -> void:
 
 	super._ready()
+	var controls : String
+	if TouchEnv.is_touch():
+		controls = ("• Tap an entry slot at the top to drop a gem (your turn only)\n"
+			+ "• Pinch to zoom the table in, drag with one finger to pan around\n")
+	else:
+		controls = "• Click an entry slot at the top to drop a gem (your turn only)\n"
 	set_help_text("How to play\n\n"
-		+ "• Click an entry slot at the top to drop a gem (your turn only)\n"
+		+ controls
 		+ "• A gem RESTS on an empty pad, BOUNCES off an occupied pad, and FLIPS a switch when it crosses the lever side\n"
 		+ "• Odd flips drop the resting gem off the pad — bumped gems can merge with falling ones into multi-coins (xN score)\n"
 		+ "• First to the round target wins the round\n"
@@ -219,7 +225,7 @@ func _on_game_complete(winner: int, human_rounds: int, ai_rounds: int) -> void:
 	_ai_turn_label.visible = false
 	# Rapport — playing a full match builds a little rapport with the opponent; winning earns a bit more.
 	var gain : int = PLAY_AFFINITY + (WIN_AFFINITY_BONUS if winner == GemDropBoard.HUMAN_PLAYER else 0)
-	var tail : String = "click anywhere or ESC to return"
+	var tail : String = "tap anywhere to return" if TouchEnv.is_touch() else "click anywhere or ESC to return"
 	if _friendly:
 		tail = "Friendly game — +%d rapport with %s   ·   %s" % [gain, _opponent_short_name(), tail]
 	if winner == GemDropBoard.HUMAN_PLAYER:

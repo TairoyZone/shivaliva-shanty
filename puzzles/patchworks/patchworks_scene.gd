@@ -67,12 +67,22 @@ var _hull_bar : MeterBar       # voyage-only: the hull she's mending — drops L
 func _ready() -> void:
 
 	super._ready()
+	var controls : String
+	var toss_line : String
+	if TouchEnv.is_touch():
+		controls = ("• Tap a piece in the tray to pick it up (tap it again, or tap off the board, to put it back)\n"
+			+ "• ↺ ↻ to rotate · ⇄ to flip\n"
+			+ "• Tap the grid to lay it down (green = fits, red = won't)\n")
+		toss_line = "• Toss discards the held piece — but a wasted piece costs points + your combo\n\n"
+	else:
+		controls = ("• Click a piece in the tray to pick it up (click it again, or click off the board, to put it back)\n"
+			+ "• Mouse-wheel or X / C to rotate · F (or right-click the held piece) to flip\n"
+			+ "• Click the grid to lay it down (green = fits, red = won't)\n")
+		toss_line = "• Right-click a tray piece (or Toss) to discard one — but a wasted piece costs points + your combo\n\n"
 	var help : String = ("THE PATCHWORKS — plank the hull\n\n"
-		+ "• Click a piece in the tray to pick it up (click it again, or click off the board, to put it back)\n"
-		+ "• Mouse-wheel or X / C to rotate · F (or right-click the held piece) to flip\n"
-		+ "• Click the grid to lay it down (green = fits, red = won't)\n"
+		+ controls
 		+ "• Fill a whole ROW or COLUMN → it BLASTS clear; clear on back-to-back moves for a combo\n"
-		+ "• Right-click a tray piece (or Toss) to discard one — but a wasted piece costs points + your combo\n\n"
+		+ toss_line
 		+ "Play as long as you like — your best run sets your rank; hit ← Leave when you're done.")
 	if PlayerState.voyage_active:
 		help += ("\n\nMANNING THE PATCHWORKS on a pillage — every line you clear MENDS the hull (fewer holes "

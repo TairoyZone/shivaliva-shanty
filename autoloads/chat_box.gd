@@ -114,7 +114,8 @@ func _build_ui() -> void:
 	_update_scope_chip()
 
 	_input = LineEdit.new()
-	_input.placeholder_text = "Say something…   (Enter)"
+	# (Enter) is a keyboard hint — on touch you tap Send / tap outside to close, so drop it.
+	_input.placeholder_text = "Say something…" if TouchEnv.is_touch() else "Say something…   (Enter)"
 	_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_input.max_length = 200
 	_input.text_submitted.connect(_on_submit)

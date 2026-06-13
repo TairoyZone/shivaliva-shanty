@@ -123,22 +123,23 @@ func _build_ui() -> void:
 	_score_label.text = "0"
 	_level_label.text = "1"
 	_lines_label.text = "0"
-	# Controls hint, bottom-centre.
-	var hint : Label = Label.new()
-	hint.text = "←  →  move        ↑  rotate        ↓ / Space  soft drop"
-	hint.add_theme_font_size_override("font_size", 16)
-	hint.add_theme_color_override("font_color", Color(0.7, 0.76, 0.92, 0.9))
-	hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	hint.add_theme_constant_override("outline_size", 3)
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.anchor_left = 0.0
-	hint.anchor_right = 1.0
-	hint.anchor_top = 1.0
-	hint.anchor_bottom = 1.0
-	hint.offset_top = -44.0
-	hint.offset_bottom = -16.0
-	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ui.add_child(hint)
+	# Controls hint, bottom-centre — KEYBOARD only. On touch the on-screen buttons speak for themselves, so skip it.
+	if not TouchEnv.is_touch():
+		var hint : Label = Label.new()
+		hint.text = "←  →  move        ↑  rotate        ↓ / Space  soft drop"
+		hint.add_theme_font_size_override("font_size", 16)
+		hint.add_theme_color_override("font_color", Color(0.7, 0.76, 0.92, 0.9))
+		hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		hint.add_theme_constant_override("outline_size", 3)
+		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		hint.anchor_left = 0.0
+		hint.anchor_right = 1.0
+		hint.anchor_top = 1.0
+		hint.anchor_bottom = 1.0
+		hint.offset_top = -44.0
+		hint.offset_bottom = -16.0
+		hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ui.add_child(hint)
 
 
 func _add_stat(parent: VBoxContainer, title: String) -> Label:
@@ -228,7 +229,7 @@ func _show_results(final_score: int, is_new_best: bool) -> void:
 	_add_result_label(vbox, "Lines:  %d" % _board.lines_total(), 20, Color(0.85, 0.9, 1.0, 1.0))
 	if is_new_best:
 		_add_result_label(vbox, "A new best!", 17, Color(0.7, 1.0, 0.7, 1.0))
-	_add_result_label(vbox, "Click anywhere to head back", 15, Color(0.6, 0.66, 0.78, 1.0))
+	_add_result_label(vbox, dismiss_hint(), 15, Color(0.6, 0.66, 0.78, 1.0))
 
 
 func _add_result_label(parent: VBoxContainer, text: String, size: int, color: Color) -> void:

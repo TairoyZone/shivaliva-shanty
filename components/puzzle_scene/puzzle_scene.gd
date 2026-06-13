@@ -265,6 +265,13 @@ func set_help_text(text: String) -> void:
 	UserPanel.set_puzzle_help(text)
 
 
+## The "how to dismiss the results screen" line — touch says TAP, desktop says CLICK. Every puzzle's end panel
+## uses this so the wording matches the platform (Troy 2026-06-14, touch instructions).
+func dismiss_hint() -> String:
+
+	return "Tap anywhere to head back" if TouchEnv.is_touch() else "Click anywhere to head back"
+
+
 # Concrete puzzles call this when the game ends so the next click /
 # ESC sends the player back to the overworld.
 func _set_awaiting_dismiss(value: bool) -> void:

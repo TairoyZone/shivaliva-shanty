@@ -79,9 +79,14 @@ func _build_ui() -> void:
 	_stardust_bar.set_caption("ALOFT")
 	bar.add_child(_stardust_bar)
 
+	var swap_line : String
+	if TouchEnv.is_touch():
+		swap_line = "• Tap the seam between two side-by-side stones to swap them.\n"
+	else:
+		swap_line = ("• Move the cursor with the MOUSE or ARROW KEYS.\n"
+			+ "• Aim at the seam between two side-by-side stones and CLICK or press SPACE to swap them.\n")
 	var help : String = ("THE LOFT — keep the falling rock aloft.\n\n"
-		+ "• Move the cursor with the MOUSE or ARROW KEYS.\n"
-		+ "• Aim at the seam between two side-by-side stones and CLICK or press SPACE to swap them.\n"
+		+ swap_line
 		+ "• Line up 3+ of a hue in a row or column to ignite them.\n"
 		+ "• Clear MORE THAN ONE line in a SINGLE swap (a combo: Arrr! / Bingo! / Vegas!) for big LIFT.\n"
 		+ "• Clear stones to climb away from THE STARDUST rising below; dawdle on weak clears and it creeps up to swallow her.\n"
@@ -346,7 +351,7 @@ func _show_results(total_lift: int, mastery: Dictionary, sank: bool) -> void:
 	_add_label(vbox, "Lift banked:  %d" % total_lift, 26, Color(0.97, 0.86, 0.46, 1.0))
 	_add_label(vbox, "%s  ·  best  %d" % [String(mastery["tier_name"]), int(mastery["best"])],
 		18, Color(0.78, 0.84, 0.96, 1.0))
-	_add_label(vbox, "Click anywhere to head back", 15, Color(0.6, 0.66, 0.78, 1.0))
+	_add_label(vbox, dismiss_hint(), 15, Color(0.6, 0.66, 0.78, 1.0))
 
 
 func _add_label(parent: VBoxContainer, text: String, size: int, color: Color) -> void:

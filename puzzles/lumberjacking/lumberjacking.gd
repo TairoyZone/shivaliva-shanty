@@ -69,8 +69,13 @@ var _overflow_lost : int = 0
 func _ready() -> void:
 
 	super._ready()
+	var controls : String
+	if TouchEnv.is_touch():
+		controls = "• ◄ ► move the falling pair  ·  ↺ rotate ccw  ·  ↻ rotate cw  ·  ▼ drop faster (hold)\n"
+	else:
+		controls = "• ← → move the falling pair  ·  ↑ rotate ccw  ·  ↓ rotate cw  ·  SPACE drop faster (hold)\n"
 	set_help_text("Lumberjacking — work the felled wood\n\n"
-		+ "• ← → move the falling pair  ·  ↑ rotate ccw  ·  ↓ rotate cw  ·  SPACE drop faster (hold)\n"
+		+ controls
 		+ "• Match 3+ of the SAME wood (row, column, or bend) to SHATTER it — that's your score\n"
 		+ "• Pack a 2×2 or bigger square of one wood and it FUSES into planks — that's your wood haul\n"
 		+ "• Chain shatters back-to-back for combo score\n"
@@ -182,7 +187,7 @@ func _show_game_over_panel(wood_kept: int, overflow: int, final_score: int) -> v
 			16, Color(1.0, 0.6, 0.42, 1.0))
 	_add_go_label(vbox, "Score:  %d  (sets your skill rank)" % final_score,
 		18, Color(0.80, 0.85, 0.96, 1.0))
-	_add_go_label(vbox, "Click anywhere to head back to the Grove",
+	_add_go_label(vbox, dismiss_hint() + " to the Grove",
 		15, Color(0.78, 0.66, 0.42, 1.0))
 
 

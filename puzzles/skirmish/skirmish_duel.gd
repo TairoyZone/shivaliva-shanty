@@ -321,10 +321,17 @@ func _build_ui() -> void:
 	var opp_tint : Color = _opponent_profile.portrait_color if _opponent_profile != null else Color(0.85, 0.52, 0.50, 1.0)
 	_you_lines_label = _add_board_header(ui, _player_board, "YOU", Color(0.70, 0.92, 0.74, 1.0), Color(0.95, 0.78, 0.34, 1.0), _player_weapon)
 	_opp_lines_label = _add_board_header(ui, _opponent_board, _opponent_name, Color(0.95, 0.74, 0.74, 1.0), opp_tint, _opponent_weapon)
+	var controls : String
+	if TouchEnv.is_touch():
+		controls = ("• ◄  ► :  move the piece\n"
+			+ "• ↻ :  rotate\n"
+			+ "• ▼ :  soft drop (hold)\n\n")
+	else:
+		controls = ("• ←  → :  move the piece\n"
+			+ "• ↑ :  rotate\n"
+			+ "• ↓  /  SPACE :  soft drop\n\n")
 	set_help_text("SKIRMISH — bury your foe in garbage to top them out.\n\n"
-		+ "• ←  → :  move the piece\n"
-		+ "• ↑ :  rotate\n"
-		+ "• ↓  /  SPACE :  soft drop\n\n"
+		+ controls
 		+ "Clear lines to send GARBAGE to your opponent. Fill their board to the top to win.\n\n"
 		+ "Incoming attacks land as grey X-blocks that clog your stack — they can't be cleared until\n"
 		+ "they RIPEN into coloured tiles (after a couple of your drops).")
@@ -398,7 +405,7 @@ func _show_results(player_won: bool, is_new_best: bool) -> void:
 	_add_result_label(vbox, "Attack sent:  %d" % _lines_sent, 18, Color(0.85, 0.9, 1.0, 1.0))
 	if is_new_best:
 		_add_result_label(vbox, "A new best!", 17, Color(0.7, 1.0, 0.7, 1.0))
-	_add_result_label(vbox, "Click anywhere to head back", 15, Color(0.6, 0.66, 0.78, 1.0))
+	_add_result_label(vbox, dismiss_hint(), 15, Color(0.6, 0.66, 0.78, 1.0))
 
 
 func _add_result_label(parent: VBoxContainer, text: String, size: int, color: Color) -> void:

@@ -145,9 +145,15 @@ func _ready() -> void:
 
 	super._ready()
 	add_to_group("chat_scene")   # opt this puzzle into the chat bar (normally HUD-hidden) so you can banter at the table
+	var controls : String
+	if TouchEnv.is_touch():
+		controls = ("• Tap the action buttons (Fold / Check / Call / Bet / Raise / All-In)\n"
+			+ "• Drag the bet slider on raises  ·  pinch to zoom the table, drag to pan\n")
+	else:
+		controls = ("• Click action buttons (Fold / Check / Call / Bet / Raise / All-In)\n"
+			+ "• Slide the bet amount on raises\n")
 	set_help_text("Hold 'em Poker — Texas Hold'em\n\n"
-		+ "• Click action buttons (Fold / Check / Call / Bet / Raise / All-In)\n"
-		+ "• Slide the bet amount on raises\n"
+		+ controls
 		+ "• Best 5-card hand from your 2 hole cards + 5 community cards wins\n\n"
 		+ "• Your chips ARE gold (1:1) — buy in, then Cash Out your whole stack when you Leave\n"
 		+ "• Bust and you forfeit your buy-in. Free tables risk no gold (rapport only)")

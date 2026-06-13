@@ -26,11 +26,17 @@ const COLOR_COUNT : Color = Color(1.0, 0.95, 0.78, 1.0)
 
 ## The Tutorial tab's default text when you're NOT in a puzzle (the overworld controls). In a puzzle,
 ## PuzzleScene.set_help_text replaces it with THAT puzzle's how-to — only ever what's relevant to where you are.
+## DESKTOP wording; touch uses [constant TOUCH_OVERWORLD_HELP] via [method _overworld_help].
 const OVERWORLD_HELP : String = ("Around the islands\n\n"
 	+ "• WASD / arrow keys — move\n"
 	+ "• Click a person, door, or work-site (on it, while close) to interact\n"
 	+ "• E — open your pack\n"
 	+ "• Esc — pause")
+const TOUCH_OVERWORLD_HELP : String = ("Around the islands\n\n"
+	+ "• Use the stick (bottom-left) to move\n"
+	+ "• Tap a person, door, or work-site (on it, while close) to interact\n"
+	+ "• Pinch to zoom in, swipe with one finger to look around\n"
+	+ "• Your pack + menus are on the tab rail (right edge)")
 
 ## The left tab rail, top→down. Each: tab id · MenuGlyph kind · hover tip.
 const RAIL_TABS : Array = [
@@ -738,7 +744,7 @@ func _build_tutorial_page() -> Control:
 	# ONLY the current context's how-to — the puzzle you're in (PuzzleScene.set_help_text) or the overworld
 	# controls by default. Never a list of every puzzle.
 	_current_help_label = Label.new()
-	_current_help_label.text = OVERWORLD_HELP
+	_current_help_label.text = _overworld_help()
 	_current_help_label.add_theme_font_size_override("font_size", 15)
 	_current_help_label.add_theme_color_override("font_color", Color(0.93, 0.88, 0.74, 1.0))
 	_current_help_label.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -862,7 +868,13 @@ func set_puzzle_help(text: String) -> void:
 
 	_puzzle_help_text = text
 	if _current_help_label != null:
-		_current_help_label.text = text if not text.strip_edges().is_empty() else OVERWORLD_HELP
+		_current_help_label.text = text if not text.strip_edges().is_empty() else _overworld_help()
+
+
+# The default overworld help, worded for the platform (touch shows the stick / tap / pinch, not WASD / click / E).
+func _overworld_help() -> String:
+
+	return TOUCH_OVERWORLD_HELP if TouchEnv.is_touch() else OVERWORLD_HELP
 
 
 # Switch page: show it, restyle the rail, refresh.

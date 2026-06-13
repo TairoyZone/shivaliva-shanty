@@ -54,7 +54,8 @@ func set_tooltip_visible(value: bool) -> void:
 	if Engine.is_editor_hint():
 		return
 	if value:
-		_tooltip.text = "%s   [Click]" % marker_label
+		var verb : String = "[Tap]" if TouchEnv.is_touch() else "[Click]"
+		_tooltip.text = "%s   %s" % [marker_label, verb]
 	_tooltip.visible = value
 
 
