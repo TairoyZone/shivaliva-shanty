@@ -37,6 +37,8 @@ var _private_npc : Node = null          # the Npc node, for floating reply bubbl
 var _private_fallback : Array = []      # the NPC's canned lines — used if a request fails
 var _npc_signals_connected : bool = false
 var _last_scene : Node = null           # to end a private chat when the scene changes (the NPC node is freed)
+var _has_npc_cached : bool = false       # is there an addressable NPC in THIS scene — computed once per scene (the
+                                         # cast is static), not via a get_nodes_in_group query every frame (perf)
 
 
 func _ready() -> void:
@@ -687,21 +689,12 @@ func _process(_delta: float) -> void:
 	# Shows in the walkable overworld (mirrors the HUD) AND in any scene that opts in via the "chat_scene"
 	# group (e.g. the poker table — a PuzzleScene where the HUD is hidden but we still want table banter).
 	var sc : Node = get_tree().current_scene if get_tree() != null else null
-	# UNIVERSAL now: chat is available in EVERY gameplay scene — the overworld AND every puzzle/voyage — hidden
-	# by default; only the title has no chat (Troy 2026-06-10, the Minecraft/Stardew/Valorant model).
-	# On TOUCH the Chat button rides EVERY non-title scene (so it's always one tap away — and ready for co-op
-	# chat later, even where no NPC stands), Troy 2026-06-12. On desktop it stays NPC-gated (no dead bar).
-	var should : bool = chat_visible and sc != null and not _is_title(sc) and (_in_private or _has_addressable_npc() or TouchEnv.is_touch())
-	if should != visible:
-		visible = should
-		if not visible:
-			_close_bar()   # left for the title — tuck everything away
-	if _in_private and not visible:
-		_exit_private()
-	# End a private chat on ANY scene change — the NPC node (e.g. a poker seat) is freed by the swap, so
-	# the conversation can't continue (covers poker → overworld, where the bar stays available across the cut).
+	# Handle a scene change FIRST so the per-scene state (the addressable-NPC cache + the chat-button placement) is
+	# fresh before we decide visibility. End a private chat on ANY scene change — the NPC node (e.g. a poker seat)
+	# is freed by the swap, so the conversation can't continue (covers poker → overworld).
 	if sc != _last_scene:
 		_last_scene = sc
+		_has_npc_cached = _has_addressable_npc()   # the cast is STATIC per scene — query once here, not every frame
 		if _in_private:
 			_exit_private()
 		# Chat by scene: a touch action puzzle whose HUD we centred at the top -> TOP-right corner; an action
@@ -709,6 +702,18 @@ func _process(_delta: float) -> void:
 		var action_puzzle : bool = sc is PuzzleScene and sc.has_method("_has_touch_bar") and bool(sc.call("_has_touch_bar"))
 		var hud_swapped : bool = sc is PuzzleScene and sc.has_method("touch_hud_swapped") and bool(sc.call("touch_hud_swapped"))
 		_place_chat_button(action_puzzle, hud_swapped)
+	# UNIVERSAL now: chat is available in EVERY gameplay scene — the overworld AND every puzzle/voyage — hidden
+	# by default; only the title has no chat (Troy 2026-06-10, the Minecraft/Stardew/Valorant model).
+	# On TOUCH the Chat button rides EVERY non-title scene (so it's always one tap away — and ready for co-op
+	# chat later, even where no NPC stands), Troy 2026-06-12. On desktop it stays NPC-gated (no dead bar).
+	# Order the cheap, cached TouchEnv.is_touch() BEFORE the cached NPC check (both O(1) now).
+	var should : bool = chat_visible and sc != null and not _is_title(sc) and (_in_private or TouchEnv.is_touch() or _has_npc_cached)
+	if should != visible:
+		visible = should
+		if not visible:
+			_close_bar()   # left for the title — tuck everything away
+	if _in_private and not visible:
+		_exit_private()
 	# The fading idle LOG is the EventFeed (shows everywhere, lingers ~8s then fades — the Minecraft/Stardew
 	# corner). Hide it only while the bar's OPEN (the scrollable history shows the same lines then).
 	var feed_visible : bool = not _bar_open

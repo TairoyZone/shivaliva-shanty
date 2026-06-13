@@ -35,6 +35,10 @@ const BOUNCE_TWEEN_DURATION : float = 0.08
 const MERGE_FLASH_DURATION : float = 0.35
 const MERGE_FLASH_COLOR : Color = Color(1.7, 1.7, 1.1, 1.0)
 const MINIMAX_DEPTH : int = 3            # plies AI looks ahead (mine / opp / mine)
+## On WEB the search runs INLINE on the main thread (no thread support), so a deep search (up to depth 5) HITCHES
+## the frame on the AI's turn. Cap the web depth so the inline search stays within a frame budget — a touch weaker
+## but smooth (Troy 2026-06-13, the mobile jerkiness). Desktop keeps the full personality depth on its thread.
+const WEB_MAX_DEPTH : int = 3
 
 # Switch geometry + animation now live on the [Switch] class itself.
 # Board reads [const Switch.PAD_TOP_OFFSET_FROM_ROW_Y] when landing a
@@ -816,6 +820,8 @@ func _update_hover_col() -> void:
 
 	if Engine.is_editor_hint():
 		return
+	if TouchEnv.is_touch():
+		return   # no mouse hover on touch — you TAP to drop (and is_touch() is cached now, so this is ~free)
 	var new_hover : int = -1
 	if not game_over and not _round_advancing and current_player == HUMAN_PLAYER:
 		var local_pos : Vector2 = get_local_mouse_position()
@@ -908,8 +914,10 @@ func _begin_ai_search() -> void:
 	_ai_search_watchdog = 0.0
 	if OS.has_feature("web"):
 		# The web build ships WITHOUT thread support (a mobile browser may have no real threads), so run the
-		# search INLINE and report on a later idle frame via call_deferred — same contract as the thread path,
-		# just a brief one-turn hitch instead of a hard freeze. Desktop keeps the real background Thread below.
+		# search INLINE and report on a later idle frame via call_deferred — same contract as the thread path.
+		# CAP the depth here so that inline search stays within a frame budget (a deep search would visibly
+		# hitch the AI's turn on a phone). Desktop keeps the full personality depth on its background Thread.
+		_sim_depth = mini(_sim_depth, WEB_MAX_DEPTH)
 		call_deferred("_threaded_search_and_report")
 		return
 	_ai_thread = Thread.new()

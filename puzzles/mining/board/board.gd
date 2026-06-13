@@ -70,6 +70,10 @@ const MAX_CASCADE_DEPTH : int = 200
 const BACKING_COLOR : Color = Color(0.10, 0.09, 0.12, 1.0)
 const GRID_LINE_COLOR : Color = Color(0.0, 0.0, 0.0, 0.28)
 const FRAME_COLOR : Color = Color(0.52, 0.42, 0.28, 0.95)
+## Matches the mining scene's Background ColorRect (mining.tscn). The SPAWN COVER — which replaces the costly
+## clip_children — is painted this colour so tiles sliding in from above the board blend into the backdrop until
+## they enter the grid (Troy 2026-06-13, mobile perf).
+const SCENE_BG_COLOR : Color = Color(0.07, 0.07, 0.1, 1.0)
 
 ## A special tool appears when one move crumbles at least this much rock
 ## (a "combo" of clears); the more cleared, the higher the chance.
@@ -130,7 +134,9 @@ var _moves_since_spawn : int = 0
 
 func _ready() -> void:
 
-	clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
+	# Hide the off-board spawn rows with a static cover instead of clip_children (a heavy WebGL stencil over ~96
+	# tiles — the mobile jerkiness; see [SpawnCover]). Only the top overflows here: extraction pops up + fades in.
+	SpawnCover.add_above(self, Vector2(COLS * CELL, ROWS * CELL), SCENE_BG_COLOR)
 	_init_grid()
 	_update_cursor()
 	queue_redraw()

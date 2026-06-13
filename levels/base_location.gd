@@ -129,7 +129,10 @@ func _apply_sky() -> void:
 	if not _wants_sky():
 		return
 	add_child(SkyBackdrop.new())
-	add_child(DriftFog.make(SKY_FOG_TINT))
+	# DriftFog is a SECOND full-screen animated fragment shader on top of the sky — drop it on touch/web, where
+	# two full-viewport procedural passes tax a phone GPU (Troy 2026-06-13, the mobile perf pass). Desktop keeps it.
+	if not TouchEnv.is_touch():
+		add_child(DriftFog.make(SKY_FOG_TINT))
 
 
 func _wants_sky() -> bool:

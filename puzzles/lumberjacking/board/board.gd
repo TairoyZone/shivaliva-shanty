@@ -260,10 +260,10 @@ func _ready() -> void:
 
 	if Engine.is_editor_hint():
 		return
-	# Clip child pieces to the board's drawn area (the bin) so the spawn-
-	# buffer pieces ABOVE the top edge are hidden — they emerge INTO view
-	# as they fall in, instead of floating above the board frame.
-	clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
+	# Hide the spawn-buffer pieces ABOVE the top edge so they emerge INTO view as they fall in. A static cover
+	# (the scene bg colour) does this WITHOUT clip_children — its per-composite stencil is a heavy WebGL cost
+	# (Troy 2026-06-13, the mobile perf pass; see [SpawnCover]).
+	SpawnCover.add_above(self, Vector2(COLS * LogPiece.CELL_SIZE, ROWS * LogPiece.CELL_SIZE), Color(0.2, 0.14, 0.08, 1.0))
 	_init_grid()
 	# Seed the preview queue before the first spawn so the player always
 	# sees the upcoming pair (the first spawn consumes this and rolls the
@@ -1120,9 +1120,8 @@ func _draw() -> void:
 	var bin_rect : Rect2 = Rect2(Vector2.ZERO, bin_size)
 	# Bin background — dark interior so wood blocks pop.
 	draw_rect(bin_rect, BIN_BG_COLOR)
-	# Soft spawn-column tint, within the bin only. (Drawing nothing above
-	# y=0 keeps the clip mask = the bin, so spawn-buffer pieces above the
-	# top edge stay hidden until they fall in — see clip_children in _ready.)
+	# Soft spawn-column tint, within the bin only. (Drawing nothing above y=0; the spawn-buffer pieces above the
+	# top edge stay hidden behind the SpawnCover added in _ready until they fall in.)
 	var spawn_x : float = SPAWN_COL * LogPiece.CELL_SIZE
 	draw_rect(Rect2(spawn_x, 0.0, LogPiece.CELL_SIZE, bin_size.y), SPAWN_GUIDE_COLOR)
 	# Grid lines — subtle, just enough to read cell positions.

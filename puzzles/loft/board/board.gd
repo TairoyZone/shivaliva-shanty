@@ -158,7 +158,9 @@ var _rng : RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
 
-	clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
+	# Hide the off-board spawn rows with a static cover instead of clip_children (a heavy WebGL stencil; see
+	# [SpawnCover]). Loft has no bg ColorRect, so it sits on the project clear colour — match it so the cover blends.
+	SpawnCover.add_above(self, Vector2(COLS * CELL, ROWS * CELL), Color(0.07, 0.05, 0.17, 1.0))
 	_rng.randomize()
 	_init_grid()
 	@warning_ignore("integer_division")
