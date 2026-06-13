@@ -31,6 +31,7 @@ func _ready() -> void:
 	_relocate_touch_hud()   # action puzzle on touch: centre its top HUD so Leave/Chat take the top corners
 	_build_leave_button()
 	_build_touch_controls()
+	_build_pinch_zoom()
 
 
 func _exit_tree() -> void:
@@ -187,6 +188,15 @@ func _touch_spec() -> Array:
 	return []
 
 
+## Override -> true to enable two-finger PINCH-TO-ZOOM on this puzzle's table (the "view a lot at once" puzzles —
+## poker, gem drop — read small on a phone). It drops a [Camera2D] over the board (centred, zoom 1 = a no-op until
+## pinched) so the world-space board/cards zoom while the HUD (on CanvasLayers) stays put. Default false (the
+## action puzzles already fill the screen + use fixed touch controls). Board input must be camera-aware
+## (get_*_mouse_position), not raw event.position. See [[touch-input-foundation]] (Troy 2026-06-13).
+func _touch_pinch_zoom() -> bool:
+	return false
+
+
 ## Override -> a [PuzzleJoystick] MODE for THIS puzzle's movement, replacing the d-pad buttons with a thumb stick:
 ##   "both"       — 4-way cardinal stick (a grid cursor, e.g. Mining's 2x2).
 ##   "horizontal" — left/right only (Skirmish piece-shift).
@@ -227,6 +237,22 @@ func _build_touch_controls() -> void:
 		var bar : TouchControlBar = TouchControlBar.new()
 		bar.setup(spec)
 		layer.add_child(bar)
+
+
+# A puzzle that opts into _touch_pinch_zoom gets a Camera2D centred on the screen (zoom 1 = identical to no camera
+# until pinched) + the two-finger PinchZoom gesture (zoom + pan). The world-space board/table/cards zoom; the HUD
+# (CanvasLayers) is unaffected. Gated on touch; desktop never sees it (Troy 2026-06-13, "tables look small").
+func _build_pinch_zoom() -> void:
+
+	if not TouchEnv.is_touch() or not _touch_pinch_zoom():
+		return
+	var cam : Camera2D = Camera2D.new()
+	cam.position = get_viewport().get_visible_rect().size * 0.5   # screen centre → top-left stays at (0,0) at zoom 1
+	add_child(cam)
+	cam.make_current()
+	var pz : PinchZoom = PinchZoom.new()
+	pz.setup(cam, 1.0, 2.8, true)   # zoom + pan (a static table camera)
+	add_child(pz)
 
 
 ## Puzzle instructions feed the persistent USER PANEL's Tutorial tab — the Sunshine-widget rail is always

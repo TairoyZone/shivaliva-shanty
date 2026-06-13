@@ -67,6 +67,7 @@ func _ready() -> void:
 	for id in SessionState.players:
 		_spawn_player(int(id))
 	_build_touch_joystick()
+	_build_pinch_zoom()
 
 
 ## Spawn the player for [param id] + parent it under the iso Y-sort root (falls back to self for legacy
@@ -89,6 +90,21 @@ func _spawn_player(id: int) -> void:
 		# Record where the local player landed so a quit-now resume restores them here.
 		PlayerState.last_scene = scene_file_path
 		PlayerState.last_position = p.global_position
+
+
+# On touch, pinch with two fingers to zoom the overworld IN (it reads small on a phone). The camera RIDES the
+# player, so this is zoom-only (no pan) — one wiring point covers every walkable scene AND the ship deck (which
+# extends this). Gated on TouchEnv; desktop never sees it. See [[touch-input-foundation]].
+func _build_pinch_zoom() -> void:
+
+	if not TouchEnv.is_touch() or player == null:
+		return
+	var cam : Camera2D = player.get_node_or_null("Camera2D") as Camera2D
+	if cam == null:
+		return
+	var pz : PinchZoom = PinchZoom.new()
+	pz.setup(cam, 1.0, 2.6, false)
+	add_child(pz)
 
 
 # On a touch device, a virtual stick drives overworld movement (the world is action-based — Input.get_vector on

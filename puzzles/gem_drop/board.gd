@@ -809,7 +809,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if current_player != HUMAN_PLAYER:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_try_drop_at_viewport_pos(event.position)
+		_try_drop_at_pointer()
 
 
 func _update_hover_col() -> void:
@@ -835,9 +835,12 @@ func _update_hover_col() -> void:
 		queue_redraw()
 
 
-func _try_drop_at_viewport_pos(viewport_pos: Vector2) -> void:
+func _try_drop_at_pointer() -> void:
 
-	var local_pos : Vector2 = to_local(viewport_pos)
+	# to_local(GLOBAL mouse) maps the tap to a board column whether or not the touch pinch-zoom camera is active.
+	# (The old to_local(event.position) used the raw VIEWPORT pos — that only equals world space at the default,
+	# un-zoomed view, so it would mis-drop once a camera/zoom was in play.) Matches the hover logic above.
+	var local_pos : Vector2 = to_local(get_global_mouse_position())
 	if local_pos.y < 0.0 or local_pos.y > TOP_PADDING:
 		return
 	# Snap the click to the nearest entry column (only 8 valid drops, at cols

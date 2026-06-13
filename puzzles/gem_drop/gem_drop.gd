@@ -50,6 +50,12 @@ var _free_table : bool = false
 var _friendly : bool = false
 
 
+## Pinch to zoom the table on a phone — it reads small there. The board's drop input is camera-aware
+## (get_global_mouse_position), so taps still land on the right column when zoomed. See [[touch-input-foundation]].
+func _touch_pinch_zoom() -> bool:
+	return true
+
+
 func _ready() -> void:
 
 	super._ready()
