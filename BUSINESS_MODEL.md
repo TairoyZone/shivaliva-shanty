@@ -104,3 +104,14 @@ Independent of which pricing model you pick, **wire Anthropic prompt caching int
 ## 7. Public-copy guardrails (unchanged, still apply)
 
 Never the literal word "AI" in user-facing strings (say "crew conversations", "chat with the crew"). Never "Troy" in public copy (use "Trojan Bulldog"). No em-dashes, no "---" rules in public copy; emojis OK. Never gate gameplay behind any purchase. Gold stays earn-only, never real-money-purchasable. Fail chat gracefully if the proxy is down (clear message, never a crash).
+
+## 8. Comparables (verified web research, June 2026)
+
+The market evidence backs every major call above.
+
+- **A direct comparable proves the model: Suck Up!** — a shipped game whose whole loop is talking to LLM-powered NPCs. It is sold as a **one-time purchase, and that purchase price is what covers the per-interaction LLM API cost.** This is exactly the recommended structure (chat baked into a one-time buy), validated by a real product in the same niche. (Dev: Proxima.)
+- **The cautionary tale is real and severe: Replika.** It charged about **$69.99/year** for an emotional-chat feature (ERP), then **removed it in Feb 2023 with no refunds** → documented user grief and a major backlash; it had to partially restore the feature for legacy users. The lesson for us is sharp: a recurring charge on an emotional AI-chat feature, and especially altering/removing it later, is the worst-case community outcome. Keep chat baked in and stable.
+- **AI Dungeon** has repeatedly churned between "energy" and "credit" systems to cover AI cost; metered generation is the friction-heavy path. Avoid metering the hook.
+- **Wishlist → sale, refined (GameDiscoverCo 2024-25):** ~**0.15x** of wishlists convert to sales in launch week for games with 10k+ wishlists, **but for titles priced over $10 the median drops to ~0.10x** (e.g. 50k wishlists ≈ ~8.5k first-week sales at the 0.17x top end; far less at >$10). Variance is enormous (10x lower to 20x higher than median). The top performers are **social/co-op/word-of-mouth** titles with **viral, clippable moments** — which is precisely the strength of the crew-chat hook. So: the >$10 price is fine, but it makes wishlist VOLUME and a clippable demo matter more, reinforcing §4's growth-first sequencing.
+
+Sources: [GameDiscoverCo — state of Steam wishlist conversions 2024-25](https://newsletter.gamediscover.co/p/the-state-of-steam-wishlist-conversions) · [AI NPCs / Suck Up! cost model](https://wanderfolk.ai/ai-npcs-in-games/) · [Replika ERP removal + backlash (Wikipedia)](https://en.wikipedia.org/wiki/Replika) · [Replika $69.99 ERP charge then discontinued](https://www.michaelghurston.com/2023/02/replika-charged-users-69-99-for-erp-then-discontinued-it/) · [AI Dungeon energy/credits](https://en.wikipedia.org/wiki/AI_Dungeon)
