@@ -32,35 +32,58 @@ var _held : Array = []                    # actions we are currently holding, so
 
 func _ready() -> void:
 
-	mouse_filter = Control.MOUSE_FILTER_STOP   # capture touches in the stick zone; the rest reach the world
+	mouse_filter = Control.MOUSE_FILTER_IGNORE   # we route input ourselves in _input (own the finger globally)
 	var zone : float = RADIUS * 2.0 + 56.0
 	custom_minimum_size = Vector2(zone, zone)
 	size = Vector2(zone, zone)
 	set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_KEEP_SIZE, 24)
 
 
-func _gui_input(event: InputEvent) -> void:
+# The stick's screen rect — a press must START here to claim the finger; after that the finger is OWNED and
+# tracked ANYWHERE on screen (Mobile-Legends style), so dragging the thumb past the rim never drops it.
+func _zone() -> Rect2:
+	return Rect2(global_position, size)
+
+
+# Handled in _input (not _gui_input) so we OWN the claimed finger across the whole screen and CONSUME its events
+# before they reach the camera pan in _unhandled_input — that's what keeps move + swipe-pan from fighting each
+# other (Troy 2026-06-14, the "glitch when moving + panning" fix). event.position is screen-space here, so we
+# convert to the control's local space for _update.
+func _input(event: InputEvent) -> void:
 
 	if event is InputEventScreenTouch:
-		if event.pressed and _touch_index == -1:
-			_touch_index = event.index
-			_update(event.position)
-		elif not event.pressed and event.index == _touch_index:
+		if event.pressed:
+			if _touch_index == -1 and _zone().has_point(event.position):
+				_touch_index = event.index
+				_update(event.position - global_position)
+				_consume()
+		elif event.index == _touch_index:
 			_release()
-		accept_event()
+			_consume()
 	elif event is InputEventScreenDrag and event.index == _touch_index:
-		_update(event.position)
-		accept_event()
+		_update(event.position - global_position)
+		_consume()
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed and _touch_index == -1:
-			_touch_index = _MOUSE
-			_update(event.position)
-		elif not event.pressed and _touch_index == _MOUSE:
+		if event.pressed:
+			if _touch_index == -1 and _zone().has_point(event.position):
+				_touch_index = _MOUSE
+				_update(event.position - global_position)
+				_consume()
+		elif _touch_index == _MOUSE:
 			_release()
-		accept_event()
+			_consume()
 	elif event is InputEventMouseMotion and _touch_index == _MOUSE:
-		_update(event.position)
-		accept_event()
+		_update(event.position - global_position)
+		_consume()
+
+
+# Consume the event so the camera pan (PinchZoom, in _unhandled_input) never sees this finger. Viewport-null-safe
+# for headless tests.
+func _consume() -> void:
+
+	var vp : Viewport = get_viewport()
+	if vp != null:
+		vp.set_input_as_handled()
 
 
 func _update(pos: Vector2) -> void:

@@ -88,8 +88,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _touches.is_empty():
 				_panning = false
 	elif event is InputEventScreenDrag:
-		if _touches.has(event.index):
-			_touches[event.index] = event.position
+		# Only act on a finger whose PRESS we tracked. A finger the joystick (or other UI) owns was consumed before
+		# it reached us, so it's not in _touches — ignore its drags so it can't drive a stray pan/zoom (Troy
+		# 2026-06-14, move + swipe-pan no longer fight).
+		if not _touches.has(event.index):
+			return
+		_touches[event.index] = event.position
 		if _touches.size() >= 2:
 			_pinch()
 			get_viewport().set_input_as_handled()   # a 2-finger gesture is ours
