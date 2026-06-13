@@ -66,8 +66,8 @@ func _ready() -> void:
 	# Co-op seam: spawn each session player (a loop-of-one in single-player). See [[multiplayer-direction]].
 	for id in SessionState.players:
 		_spawn_player(int(id))
-	_build_touch_joystick()
-	_build_pinch_zoom()
+	var joystick : VirtualJoystick = _build_touch_joystick()
+	_build_overworld_camera(joystick)
 
 
 ## Spawn the player for [param id] + parent it under the iso Y-sort root (falls back to self for legacy
@@ -92,39 +92,38 @@ func _spawn_player(id: int) -> void:
 		PlayerState.last_position = p.global_position
 
 
-# On touch, the overworld camera FOLLOWS the player and keeps them DEAD CENTRE while moving (Troy 2026-06-14:
-# "when the player moves, the camera should sit still dead center with the player"). It's a child Camera2D, so it
-# rides the player by default. We allow ONLY 2-finger PINCH-ZOOM (the phone screen reads small) and turn OFF the
-# one-finger swipe-pan, so the movement stick's finger can NEVER pan the view — there is simply no one-finger pan in
-# the scene for it to trigger. recenter=true eases back to dead-centre on the player after a pinch. Gated on
-# TouchEnv; desktop never sees it. One wiring point covers every walkable scene AND the ship deck. See
-# [[touch-input-foundation]].
-func _build_pinch_zoom() -> void:
+# On touch, the overworld camera is driven by the OverworldCamera state-machine rig (Troy 2026-06-14): it FOLLOWS
+# the player dead-centre by default (the camera is a child Camera2D), a one-finger swipe OUTSIDE the joystick zone
+# PEEKS around (up to 50% of the screen, easing back on release) and works even while moving, and a 2-finger pinch
+# ZOOMS — but never while moving. The rig is fed the [param joystick] so it knows the move-finger's zone and can
+# never confuse it for a look-swipe. Gated on TouchEnv; desktop never sees it. One wiring point covers every
+# walkable scene AND the ship deck. See [[touch-input-foundation]].
+func _build_overworld_camera(joystick: VirtualJoystick) -> void:
 
 	if not TouchEnv.is_touch() or player == null:
 		return
 	var cam : Camera2D = player.get_node_or_null("Camera2D") as Camera2D
 	if cam == null:
 		return
-	var pz : PinchZoom = PinchZoom.new()
-	# allow_pan=false: NO one-finger swipe-pan in the overworld (it fought the move stick). Pinch-zoom only;
-	# recenter=true eases back to dead-centre on the player after a pinch.
-	pz.setup(cam, 1.0, 2.6, Vector2.ZERO, true, false)
-	add_child(pz)
+	var rig : OverworldCamera = OverworldCamera.new()
+	rig.setup(cam, joystick)
+	add_child(rig)
 
 
 # On a touch device, a virtual stick drives overworld movement (the world is action-based — Input.get_vector on
 # move_* — not tap-to-walk). Its own CanvasLayer (layer 5) so it floats over the world but under the HUD/panels.
 # Gated on TouchEnv, so the desktop build never sees it. See [[touch-input-foundation]].
-func _build_touch_joystick() -> void:
+func _build_touch_joystick() -> VirtualJoystick:
 
 	if not TouchEnv.is_touch():
-		return
+		return null
 	var layer : CanvasLayer = CanvasLayer.new()
 	layer.layer = 5
 	layer.name = "TouchJoystickLayer"
 	add_child(layer)
-	layer.add_child(VirtualJoystick.new())
+	var js : VirtualJoystick = VirtualJoystick.new()
+	layer.add_child(js)
+	return js
 
 
 ## Add the shared procedural Stardust SKY + drifting clouds behind an OUTDOOR location, so the islands +

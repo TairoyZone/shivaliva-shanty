@@ -52,6 +52,12 @@ func _zone() -> Rect2:
 	return Rect2(global_position, size)
 
 
+## Is a screen point inside the stick's claim zone? Used by OverworldCamera so a touch born here is treated as a
+## MOVE finger and never a look-swipe (ownership-by-where-it-starts). See [[touch-input-foundation]].
+func in_zone(global_pos: Vector2) -> bool:
+	return _zone().has_point(global_pos)
+
+
 # Handled in _input (not _gui_input) so we OWN the claimed finger across the whole screen and CONSUME its events
 # before they reach the camera pan in _unhandled_input — that's what keeps move + swipe-pan from fighting each
 # other (Troy 2026-06-14, the "glitch when moving + panning" fix). event.position is screen-space here, so we
