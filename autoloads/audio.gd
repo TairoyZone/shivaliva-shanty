@@ -11,7 +11,6 @@ extends Node
 var _sfx : Dictionary = {
 	"coin": preload("res://audio/sfx/coin.wav"),
 	"clack": preload("res://audio/sfx/clack.wav"),
-	"pop": preload("res://audio/sfx/pop.wav"),
 	"whoosh": preload("res://audio/sfx/whoosh.wav"),
 	"thunk": preload("res://audio/sfx/thunk.wav"),
 	"chime": preload("res://audio/sfx/chime.wav"),
@@ -20,18 +19,13 @@ var _sfx : Dictionary = {
 	"toss": preload("res://audio/sfx/toss.wav"),
 	# --- Borrowed library SFX — richer designed/recorded sounds alongside the procedural placeholders.
 	# --- Licenses + attribution in audio/CREDITS.md: GDQuest CC-BY 4.0 · Kenney + Junkala CC0 ·
-	# --- tcarisland CC-BY-SA 4.0 (voice) · unicaegames CC0 (type_key).
+	# --- tcarisland CC-BY-SA 4.0 (voice).
 	"voice": preload("res://audio/sfx/voice_talk.ogg"),
-	"voice2": preload("res://audio/sfx/voice_talk2.ogg"),
-	"type_key": preload("res://audio/sfx/type_key.wav"),
 	"pickup": preload("res://audio/sfx/pickup.wav"),
 	"powerup": preload("res://audio/sfx/powerup.wav"),
 	"hit": preload("res://audio/sfx/hit.wav"),
 	"bop": preload("res://audio/sfx/bop.wav"),
-	"hurt": preload("res://audio/sfx/hurt.wav"),
 	"ko": preload("res://audio/sfx/ko.wav"),
-	"pain": preload("res://audio/sfx/pain.wav"),
-	"laser": preload("res://audio/sfx/laser.wav"),
 	"explosion": preload("res://audio/sfx/explosion.ogg"),
 }
 

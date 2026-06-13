@@ -59,7 +59,7 @@ autoloads/        PlayerState — the data spine (singleton)
 interface/        HUD, Overlay (singletons) + all UI panels (inventory, profile, lobby, …)
 components/       reusable bases + parts: interactable, puzzle, npc, building, bed,
                   modal (the pop-up base — EVERY centered panel/window extends it), puzzle_scene,
-                  state_machine, parlor_table, trophies, npc/ (personality + registry + crew_skills),
+                  parlor_table, trophies, npc/ (personality + registry + crew_skills),
                   ships/ (ShipClasses — THE registry of the 3 ship classes: stats/prices/blurbs;
                   the shop, PlayerState, dock, deck + chat ALL read it — never hardcode a ship stat)
 levels/           walkable overworld scenes (extend BaseLocation): shore, tavern, forest, mine,
@@ -67,8 +67,7 @@ levels/           walkable overworld scenes (extend BaseLocation): shore, tavern
 buildings/        building props + their interiors' work-sites (forge, workshop, skydock, …)
 player/           the Player character (top-down move + InteractionZone)
 puzzles/          one folder per mini-game: skirmish, mining, gem_drop, poker, lumberjacking, loft
-voyages/          voyage.gd — ⚠️ DEAD/superseded; LIVE voyage = levels/ship_deck/ship_deck.gd
-tournaments/      tournament.gd
+tournaments/      tournament.gd  (LIVE voyage = levels/ship_deck/ship_deck.gd; the old voyages/ dir is gone)
 main.gd/.tscn     entry point / title → resume or new session
 ```
 
@@ -157,8 +156,6 @@ duel scene) · `gem_drop` · `poker` (cards + `test_*.gd` logic tests) · `lumbe
 - **Async-resolve + await-after-free**: when a piece is freed mid-cascade, capture any data you need
   (hue, score, row) as **primitives BEFORE** `queue_free()` + `await` — a freed node read after an
   await crashes. Guard leave-during-await with `is_instance_valid(self)` / `is_inside_tree()`.
-- **State machines** (`components/state_machine/`, `FsmState` + `StateMachine`): apply SELECTIVELY
-  (the voyage is the intended user). Don't retrofit onto simple scripts — keep it simple.
 - **Sizing**: overworld 1 tile = 32px ≈ 1m, player ~1 tile. Puzzle boards set their own `CELL`.
 - **Economy**: ONE earned currency = **gold** (no premium currency, no decay/upkeep). Earn-and-keep.
 
