@@ -123,13 +123,22 @@ var _occupant : Array[int] = []            # ring seat k holds board player _occ
 var _human_seated : bool = false
 var _seating : bool = true                 # true until Deal starts the first hand
 var _between_hands : bool = false          # a hand just ended — open chairs are invite-able again
-var _seat_layer : CanvasLayer              # holds the open-seat Sit Here / Invite + Deal buttons
+var _seat_layer : Node2D                   # holds the open-seat Sit Here / Invite + Deal buttons. A WORLD-space
+                                           # child of $Table (not a CanvasLayer) so it ZOOMS + stays aligned with
+                                           # the felt seats under the touch pinch-zoom (Troy 2026-06-13)
 var _pending_seat : int = -1               # the seat being bought into (held across the buy-in dialog)
 var _returning : bool = false              # leaving the table — pay out / record mastery ONCE
 
 
 func _leave_at_top_left() -> bool:
 	return true   # poker's chat bar owns the bottom-left, so the Leave button sits top-left here
+
+
+## Pinch to zoom the felt/cards on a phone — the table reads small there. The $Table subtree (felt-drawn chrome,
+## cards, pot, seated players AND the open-seat buttons) is world-space so it all zooms together; the betting
+## controls + banner sit on the UI CanvasLayer, so they stay put. See [[touch-input-foundation]] (Troy 2026-06-13).
+func _touch_pinch_zoom() -> bool:
+	return true
 
 
 func _ready() -> void:
@@ -187,9 +196,11 @@ func _draw_stadium(c: Vector2, sz: Vector2, color: Color) -> void:
 func _begin_seating() -> void:
 
 	_seating = true
-	_seat_layer = CanvasLayer.new()
-	_seat_layer.layer = 4
-	add_child(_seat_layer)
+	# A WORLD-space holder under $Table (the felt's parent) so the open-seat buttons zoom + stay aligned with the
+	# seats when the table is pinch-zoomed — the seated PokerSeat widgets already live under $Table the same way.
+	_seat_layer = Node2D.new()
+	_seat_layer.z_index = 10   # above the felt + seated widgets
+	$Table.add_child(_seat_layer)
 	_refresh_seating()
 
 
