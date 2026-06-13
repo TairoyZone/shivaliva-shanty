@@ -126,6 +126,23 @@ func _initialize() -> void:
 	TouchEnv._cached_touch = -1           # reset the forced gate
 	camM.free(); pzm.free()
 
+	# --- DEAD-STILL overworld camera: detaching via top_level means walking does NOT move the view (Troy 2026-06-14,
+	# "i want the camera to stay put, not following me at all"). Mirrors base_location._build_pinch_zoom's wiring. ---
+	var ply : Node2D = Node2D.new()
+	ply.position = Vector2(500.0, 500.0)
+	var ccam : Camera2D = Camera2D.new()
+	ply.add_child(ccam)                      # child of the player → by default it rides them
+	root.add_child(ply)
+	var framing : Vector2 = ccam.global_position
+	ccam.top_level = true                     # the fix: detach from the player's transform
+	ccam.global_position = framing
+	var before : Vector2 = ccam.global_position
+	ply.position = Vector2(900.0, 820.0)      # the player walks away
+	var s1 : bool = ccam.global_position.is_equal_approx(before)   # camera STAYED PUT (no longer follows)
+	print("dead-still cam: staysPutWhilePlayerMoves=%s" % s1)
+	ok = ok and s1
+	ply.free()
+
 	cam.free(); pz.free(); camO.free(); pzo.free(); camP.free(); pzp.free()
 	print("RESULT: ", "ALL PASS" if ok else "FAILURE")
 	quit(0 if ok else 1)

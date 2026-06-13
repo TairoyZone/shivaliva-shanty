@@ -93,9 +93,11 @@ func _spawn_player(id: int) -> void:
 
 
 # On touch, pinch to zoom the overworld IN + swipe one finger to pan/look around (it reads small on a phone). The
-# camera RIDES the player, so pan is a clamped look-around offset; the zoom level persists across scenes. One
-# wiring point covers every walkable scene AND the ship deck (which extends this). Gated on TouchEnv; desktop
-# never sees it. See [[touch-input-foundation]].
+# camera is a CHILD of the player, so by default it RIDES them; on touch we detach it (top_level) so it sits DEAD
+# STILL while you walk (Troy 2026-06-14: "i want the camera to stay put, not following me at all"). It freezes at
+# the entry framing (centred on the spawn); only a deliberate swipe-pan moves it, easing back on release. The zoom
+# persists across scenes. One wiring point covers every walkable scene AND the ship deck. Gated on TouchEnv;
+# DESKTOP keeps the normal child follow-cam. See [[touch-input-foundation]].
 func _build_pinch_zoom() -> void:
 
 	if not TouchEnv.is_touch() or player == null:
@@ -103,8 +105,14 @@ func _build_pinch_zoom() -> void:
 	var cam : Camera2D = player.get_node_or_null("Camera2D") as Camera2D
 	if cam == null:
 		return
+	# Detach the camera from the player so moving the stick never moves the view. top_level makes the camera ignore
+	# its parent's transform; we freeze it at the player's current (spawn) framing so the room is framed the same as
+	# before — it just no longer tracks the player.
+	var framing : Vector2 = cam.global_position
+	cam.top_level = true
+	cam.global_position = framing
 	var pz : PinchZoom = PinchZoom.new()
-	# Fixed look-around so you can swipe to peer about; recenter=true so the peek eases back to the player on release.
+	# Fixed look-around so you can swipe to peer about; recenter=true so a peek eases back to the framing on release.
 	pz.setup(cam, 1.0, 2.6, Vector2(240.0, 160.0), true)
 	add_child(pz)
 
