@@ -12,8 +12,8 @@ term is reskinned to a sky/Stardust equivalent ("the Stardust" = the abyss below
 ## Dev journey + velocity (the numbers)
 _Recompute these from git each report — first-commit date, `git rev-list --count HEAD`, `.gd`/`.tscn` line counts._
 - **Started: ~2026-05-24/25** (first locked design calls) → **~20 days** as of 2026-06-13.
-- **348 commits** (git baseline 2026-06-03).
-- **~36,000 lines of hand-built game** — **~32,767 GDScript** across **188 `.gd` files** + **~3,000 lines** across **88 scenes** (plus a 242-line key-safe chat proxy).
+- **358 commits** (git baseline 2026-06-03).
+- **~43,000 lines of hand-built game** — **~40,300 GDScript** across **194 `.gd` files** + **~3,000 lines** across **89 scenes** (plus a 242-line key-safe chat proxy).
 - **Scope:** a walkable iso overworld + a 9-NPC cast · **7 full mini-games** (each a Board+Scene engine w/ AI +
   animation + mastery) · the **voyage meta-system** (deck, set-sail routes, charts, duty reports, a LIVE
   background boarding melee, sinkable ships) · **AI-powered NPC chat** (LLM via a key-safe proxy — a novel hook,
@@ -103,6 +103,18 @@ The endgame loop, reskinned from YPP pillaging. You job onto a crew at the Skydo
 - Build proactively, flag only big design forks; commit freely; **never push without an explicit ask.**
 
 ## Session changelog (newest first — older per-session detail intentionally condensed)
+- **2026-06-13 (pm) — Mobile-feel polish: Tetris freeze fix, joysticks, soft-drop, character-creation names.**
+  🐛 **Fixed a full-match Tetris LOCKUP** (Skirmish): the player gravity loop re-entered `_step_down()` after a
+  lock set `_piece=-1`, and GDScript's `SHAPES[-1]` silently wraps to the L piece → a phantom re-lock stranded a
+  pause flag → piece hung mid-air. Found via a 5-agent hunt + adversarially verified; guarded (mirrors the AI
+  loop) with a headless regression test ([[step-loop-sentinel-guard]]). **Touch joysticks replace the d-pad:**
+  Mining gets a 4-way thumb stick; Skirmish a stick that shifts AND pull-down soft-drops (the ▼ button removed) —
+  plus a touch-only auto-expire of the post-spawn soft-drop lockout so hold-to-drop survives across pieces
+  (`PuzzleJoystick` + a `_touch_joystick` seam on `PuzzleScene`; the overworld `VirtualJoystick` refactored to a
+  shared `_actions_for`). **New Game now REQUIRES a name** + a dice-roll (`RandomName`, procedural `DieIcon`) for a
+  random *unused* one, validated against a single `_taken_names()` source (the cast now; server players fold in for
+  online/co-op uniqueness later). **`/skills`** dev cheat (max all mastery to Legend) for voyage playtesting. All
+  verified headless + by screenshot; **both itch builds re-exported** to `build/`.
 - **2026-06-12→13 — Mobile-web port + a touch-UI marathon + a SILENT NPC-chat outage fixed.** Built the phone/web
   build in phases (`TouchEnv` flag, 8-dir `VirtualJoystick`, data-driven `TouchControlBar` via per-puzzle
   `_touch_spec`, a custom `web/shell.html` loading screen, a keep-warm proxy pinger, DejaVu for web glyphs).
@@ -159,6 +171,15 @@ _This report is a living snapshot — regenerate it as the project moves. Deeper
 decisions live in the auto-memory (`…/memory/MEMORY.md`); the code map lives in `CLAUDE.md`._
 
 # TROY's TODO (next session) #
+--- 🏠 QUEUED FOR "WHEN HOME" (Troy 2026-06-13 pm — deferred, design discussed, NOT yet built) ---
+= 🔍 PINCH-TO-ZOOM the camera scenes (overworld + poker + gem-drop tables read SMALL on phones): standard
+  two-finger pinch. Cameras exist in overworld (`base_location`)/`ship_deck`/`poker`; **gem_drop has NO camera**
+  (fixed Node2D layout) → needs one added. Plan: a reusable zoom-only `PinchZoom` on each scene's `Camera2D`,
+  clamped; pan deferred. (Investigated this session; not started.)
+= 🔤 BIGGER chat FONTS + a bigger chat INPUT FIELD on touch (input is 15px now — `chat_box.gd`); bigger NPC
+  NAMETAGS (`npc.gd _setup_name_tag`). Gate on `TouchEnv.is_touch()` so desktop is untouched.
+= ⚡ GENERAL PERFORMANCE PASS — gem-drop + mining felt LAGGY/JERKY on mobile (maybe others). Profile + sweep
+  (per-frame allocations, `_draw`/`queue_redraw` churn, the web no-thread budget).
 --- MOBILE / WEB BUILD (new 06-12 — playtest on a phone!) ---
 = play the web build on a phone: do the touch controls work in EVERY puzzle? (skirmish move-L / rotate-drop-R,
   mining d-pad, lumberjacking, patchworks, the gem-drop/poker/loft taps)
