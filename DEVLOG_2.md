@@ -5,7 +5,7 @@ Since launch, the number one thing folks asked for was a Shivaliva Shanty that a
 ## 📱 Built for touch
 
 - 🕹️ **Thumb joysticks.** Mining and Skirmish dropped the fiddly arrow buttons for a proper thumb stick. In Skirmish you pull the stick down to soft drop, just like mobile Tetris.
-- 🔍 **Pinch to zoom.** The islands and the Gem Drop table read tiny on a small screen, so now you can pinch to zoom in and slide around to see what you are doing.
+- 🔍 **Pinch to zoom.** The islands and the card and gem tables read tiny on a small screen, so now you can pinch to zoom in and slide around to see what you are doing.
 - 🔠 **Bigger, readable text.** The chat box, the typing field, and every nametag scale up on touch, so you are not squinting at the crew.
 - ⚡ **Smoother play.** Mining and Gem Drop were stuttering on phones. I tracked down why and they run clean now.
 
