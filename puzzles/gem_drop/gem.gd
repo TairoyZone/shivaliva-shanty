@@ -36,7 +36,19 @@ const STACK_LABEL_COLOR : Color = Palette.WOOD_PIVOT
 
 # State managed by the Board.
 var next_switch_row : int = 0
-var resting : bool = false
+## A coin only needs to SPIN while it's falling. Resting coins accumulate over a round (up to the 16 scoring
+## slots), and a yard of continuously-animating AnimatedSprite2D was the gem-drop jitter on mobile — so freeze the
+## spin on rest, resume it if the coin is launched back into play (Troy 2026-06-13, the mobile perf pass).
+var resting : bool = false :
+	set(value):
+		if resting == value:
+			return
+		resting = value
+		if is_instance_valid(_sprite):
+			if value:
+				_sprite.stop()
+			else:
+				_sprite.play(&"spin")
 var owner_player : int = HUMAN :
 	set(value):
 		owner_player = value
@@ -50,9 +62,14 @@ var size : int = 1 :
 func _ready() -> void:
 
 	_apply_tint()
+	if _sprite == null:
+		return
+	if resting:
+		_sprite.stop()   # honour a resting state set before the sprite existed (no needless spin)
+		return
 	# Stagger frame so a row of freshly-spawned gems doesn't all spin in
 	# unison.
-	if _sprite and _sprite.sprite_frames:
+	if _sprite.sprite_frames:
 		var frame_count : int = _sprite.sprite_frames.get_frame_count(&"spin")
 		if frame_count > 0:
 			_sprite.frame = randi() % frame_count
