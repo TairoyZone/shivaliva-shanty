@@ -17,6 +17,9 @@ extends Node
 ## the board/world to handle.
 const PAN_THRESHOLD : float = 12.0
 
+## How fast a recentre-on-release camera eases back to its resting spot (higher = snappier; ~1/this seconds).
+const RECENTER_SPEED : float = 8.0
+
 ## The zoom level, SHARED across every scene's PinchZoom so a zoom set on one screen PERSISTS to the next
 ## (Troy 2026-06-13). Reset to 1.0 only by pinching fully out.
 static var shared_zoom : float = 1.0
@@ -25,6 +28,8 @@ var _camera : Camera2D
 var _min : float = 1.0
 var _max : float = 3.0
 var _extra_pan : Vector2 = Vector2.ZERO     # fixed look-around slack added to the zoom-based edge clamp
+var _recenter : bool = false                # follow-cam (overworld): ease the PAN back to base when fingers lift;
+                                            # a static table camera (puzzle) leaves it where the player stopped
 
 var _base_pos : Vector2 = Vector2.ZERO      # the camera's resting position (re-centred here on full zoom-out)
 var _touches : Dictionary = {}              # active finger index -> last screen position
@@ -34,12 +39,13 @@ var _pan_start : Vector2 = Vector2.ZERO     # where a one-finger touch began (to
 var _panning : bool = false                 # this one-finger gesture has passed PAN_THRESHOLD
 
 
-func setup(camera: Camera2D, min_z: float = 1.0, max_z: float = 3.0, extra_pan: Vector2 = Vector2.ZERO) -> void:
+func setup(camera: Camera2D, min_z: float = 1.0, max_z: float = 3.0, extra_pan: Vector2 = Vector2.ZERO, recenter: bool = false) -> void:
 
 	_camera = camera
 	_min = min_z
 	_max = max_z
 	_extra_pan = extra_pan
+	_recenter = recenter
 
 
 func _ready() -> void:
@@ -49,6 +55,20 @@ func _ready() -> void:
 		# Restore the persisted zoom (clamped to this scene's range); pan resets to the framed centre each scene.
 		var z : float = clampf(shared_zoom, _min, _max)
 		_camera.zoom = Vector2(z, z)
+
+
+func _process(delta: float) -> void:
+
+	# Follow-cam (overworld) ONLY: when no finger is panning/pinching, ease the PAN back to the resting spot, so a
+	# swipe is a temporary PEEK that returns to the player. The ZOOM level is left untouched (it persists). A static
+	# table camera (puzzle) has _recenter = false, so it STAYS exactly where the player let go.
+	if not _recenter or _camera == null or not _touches.is_empty():
+		return
+	if _camera.position.is_equal_approx(_base_pos):
+		return
+	_camera.position = _camera.position.lerp(_base_pos, clampf(RECENTER_SPEED * delta, 0.0, 1.0))
+	if _camera.position.distance_to(_base_pos) < 0.5:
+		_camera.position = _base_pos
 
 
 func _unhandled_input(event: InputEvent) -> void:

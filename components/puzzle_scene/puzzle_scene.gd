@@ -251,7 +251,9 @@ func _build_pinch_zoom() -> void:
 	add_child(cam)
 	cam.make_current()
 	var pz : PinchZoom = PinchZoom.new()
-	pz.setup(cam, 1.0, 2.8, Vector2.ZERO)   # zoom + pan to the board edges (no fixed look-around)
+	# Pan clamps to the board/canvas edges, and recenter=false so it STAYS where the player lets go (a static table,
+	# not a follow-cam). The zoom level still persists across scenes.
+	pz.setup(cam, 1.0, 2.8, Vector2.ZERO, false)
 	add_child(pz)
 
 

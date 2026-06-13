@@ -104,7 +104,8 @@ func _build_pinch_zoom() -> void:
 	if cam == null:
 		return
 	var pz : PinchZoom = PinchZoom.new()
-	pz.setup(cam, 1.0, 2.6, Vector2(240.0, 160.0))   # a fixed look-around so you can swipe to peer about
+	# Fixed look-around so you can swipe to peer about; recenter=true so the peek eases back to the player on release.
+	pz.setup(cam, 1.0, 2.6, Vector2(240.0, 160.0), true)
 	add_child(pz)
 
 
