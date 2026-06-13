@@ -4,6 +4,8 @@
 ##   /crew       — seed a CREW: the whole cast → Confidant rapport + 4 hired (Jericho/Sailing, Godfrey/Repair,
 ##                 Kerr/Combat, Mia), so the crew/duty-stations systems are testable without grinding rapport.
 ##   /gold [n]   — +n gold (default 1000), for fares / poker buy-ins.
+##   /skills     — max EVERY puzzle's mastery to Legend (the top tier), so the voyage/pillage is testable
+##                 without grinding. Pairs with /crew + /gold for a fully-kitted pillage run.
 ##   /holes [n]  — open n hull holes on the ACTIVE ship (the voyage ship mid-run, else your owned ship; default 3).
 ##   /mend       — fully mend the active ship (seal all holes).
 ##   /wreck      — wreck the active ship (max holes) — to feel the holed Loft / set up a sink.
@@ -28,6 +30,9 @@ func run_command(text: String) -> void:
 			var amt : int = arg if arg > 0 else 1000
 			PlayerState.add_coins(amt, "DEV: +%d gold" % amt)
 			_note("+%d gold" % amt)
+		"/skills":
+			PlayerState.dev_max_all_mastery()
+			_note("all puzzle skills maxed to Legend — reopen Profile to see it")
 		"/holes":
 			var n : int = arg if arg > 0 else 3
 			PlayerState.add_hole(n)
@@ -39,7 +44,7 @@ func run_command(text: String) -> void:
 			PlayerState.wreck_active_ship()
 			_note("WRECKED the active ship — max holes")
 		"/help", "/?", "/commands":
-			_note("/crew · /gold [n] · /holes [n] · /mend · /wreck")
+			_note("/crew · /gold [n] · /skills · /holes [n] · /mend · /wreck")
 		_:
 			_note("unknown command '%s' — try /help" % cmd)
 

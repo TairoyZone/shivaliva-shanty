@@ -2041,6 +2041,19 @@ func record_puzzle_result(puzzle_id: String, score: int) -> Dictionary:
 		"is_new_best": gain > 0.0, "ranked_up": ranked_up}
 
 
+## DEV: lift EVERY puzzle's mastery to the top tier (Legend) so the voyage/pillage loop is testable
+## without grinding each puzzle up the ladder. Sets accumulated points to the Legend threshold, saves,
+## and re-checks trophies. Reachable only via DevCheats `/skills` in a debug build. The Profile tab reads
+## tiers on open, so reopen it to see the change.
+func dev_max_all_mastery() -> void:
+
+	var legend_points : float = float(MASTERY_RANK_POINTS[MASTERY_RANK_POINTS.size() - 1])
+	for id in MASTERY_PUZZLES:
+		puzzle_mastery[id] = legend_points
+	_save()
+	check_new_trophies()
+
+
 ## Detect trophies that JUST became earned (vs trophies_seen) + announce each via
 ## [signal trophy_earned] (the HUD pops a [TrophyToast]). Idempotent — a trophy fires once.
 ## Called from the mutators that can unlock one (mastery, coins, the frontier flag). add_coins
