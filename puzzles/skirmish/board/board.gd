@@ -290,7 +290,12 @@ func _process(delta: float) -> void:
 	while _fall_t >= interval:
 		_fall_t -= interval
 		_step_down()
-		if _over:
+		# _step_down may have locked the piece (clear / reveal / top-out all set
+		# _piece = -1). STOP the instant that happens — re-entering with no active
+		# piece would index SHAPES[-1] (the L piece) and re-lock a phantom mid-clear,
+		# stranding the _clearing/_revealing flag and freezing the board. Mirrors the
+		# `not _ai_dropping` guard in _process_ai (Troy 2026-06-13, the mobile freeze).
+		if _over or _piece < 0:
 			return
 		steps += 1
 		if steps >= MAX_FALL_STEPS_PER_FRAME:
@@ -378,6 +383,8 @@ func set_soft_drop(on: bool) -> void:
 # One row of gravity. Locks if it can't fall further. Soft-drop earns points.
 func _step_down() -> void:
 
+	if _piece < 0:
+		return   # no active piece (mid-clear/reveal) — never index SHAPES[-1]
 	if not _collides(_piece, _rot, _px, _py + 1):
 		_py += 1
 		if _soft:
