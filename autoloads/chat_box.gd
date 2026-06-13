@@ -304,12 +304,15 @@ func _place_chat_button(action_puzzle: bool, swapped: bool) -> void:
 		_chat_btn.offset_top = 16.0
 		_chat_btn.offset_bottom = 16.0 + 64.0
 	elif action_puzzle:
+		# Un-swapped action puzzle -> Chat sits just RIGHT of centre and GROWS right, so it never meets the Leave
+		# button on the left of centre (24px clear gap at the centre line), Troy 2026-06-13.
 		_chat_btn.anchor_left = 0.5
 		_chat_btn.anchor_right = 0.5
+		_chat_btn.grow_horizontal = Control.GROW_DIRECTION_END
 		_chat_btn.anchor_top = 0.0
 		_chat_btn.anchor_bottom = 0.0
-		_chat_btn.offset_left = 8.0
-		_chat_btn.offset_right = 8.0 + 96.0
+		_chat_btn.offset_left = 12.0
+		_chat_btn.offset_right = 12.0 + 96.0
 		_chat_btn.offset_top = 16.0
 		_chat_btn.offset_bottom = 16.0 + 64.0
 	else:

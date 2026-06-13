@@ -78,6 +78,12 @@ func _touch_hud_node() -> Control:
 	return null
 
 
+## Override → true if the puzzle's HUD already sits at the TOP-CENTRE (e.g. Mining's "ORE MINER" bar) with its
+## corners free, so the Leave + Chat buttons just take the corners — no HUD relocation needed (Troy 2026-06-13).
+func _touch_hud_at_top_centre() -> bool:
+	return false
+
+
 ## True once this puzzle's top HUD has been relocated to the bottom (so Leave/Chat take the top corners). ChatBox
 ## reads this to place the Chat button to match.
 func touch_hud_swapped() -> bool:
@@ -90,6 +96,9 @@ func touch_hud_swapped() -> bool:
 func _relocate_touch_hud() -> void:
 
 	if not _has_touch_bar():
+		return
+	if _touch_hud_at_top_centre():
+		_hud_swapped = true   # HUD already at the top-centre (Mining) — just send Leave/Chat to the free corners
 		return
 	var hud : Control = _touch_hud_node()
 	if hud == null:
@@ -122,10 +131,14 @@ func _build_leave_button() -> void:
 		btn.offset_top = 16.0
 		btn.offset_bottom = 56.0
 	elif _has_touch_bar():
+		# Un-swapped action puzzle (HUD lives in the top CORNERS, e.g. Skirmish's YOU/foe headers) -> Leave sits
+		# just LEFT of centre and GROWS left, so its "← Leave" text can never push into the Chat button on the
+		# right of centre (Troy 2026-06-13, the Skirmish self-overlap). Its right edge is pinned at centre-12.
 		btn.anchor_left = 0.5
 		btn.anchor_right = 0.5
-		btn.offset_left = -128.0
-		btn.offset_right = -8.0
+		btn.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		btn.offset_left = -150.0
+		btn.offset_right = -12.0
 		btn.offset_top = 16.0
 		btn.offset_bottom = 56.0
 	else:
