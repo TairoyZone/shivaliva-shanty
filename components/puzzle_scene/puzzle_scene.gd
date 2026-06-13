@@ -187,28 +187,46 @@ func _touch_spec() -> Array:
 	return []
 
 
-# True when this puzzle shows an on-screen touch control bar — its buttons claim the bottom corners, so the Leave
-# button moves to the top-left and the UserPanel rail is hidden (Troy 2026-06-12).
+## Override -> a [PuzzleJoystick] MODE for THIS puzzle's movement, replacing the d-pad buttons with a thumb stick:
+##   "both"       — 4-way cardinal stick (a grid cursor, e.g. Mining's 2x2).
+##   "horizontal" — left/right only (Skirmish piece-shift).
+## "" (default) = no stick (the puzzle's movement, if any, stays in [method _touch_spec]). The stick drives the
+## same ui_* actions the board polls, so declaring it AND dropping the movement buttons from _touch_spec is all a
+## puzzle needs (Troy 2026-06-13). See [[touch-input-foundation]].
+func _touch_joystick() -> String:
+	return ""
+
+
+# True when this puzzle shows on-screen touch controls (a button bar AND/OR a movement joystick) — they claim the
+# bottom corners, so the Leave/Chat buttons take the top corners (Troy 2026-06-12).
 func _has_touch_bar() -> bool:
-	return TouchEnv.is_touch() and not _touch_spec().is_empty()
+	return TouchEnv.is_touch() and (not _touch_spec().is_empty() or _touch_joystick() != "")
 
 
-# Spawn the shared touch button bar from _touch_spec() on a touch device — one inherited seam, every action puzzle
-# just declares its buttons. On its own CanvasLayer below the Leave button (layer 20) so Leave stays tappable.
+# Spawn the shared touch controls on a touch device — an optional movement JOYSTICK (bottom-left, from
+# _touch_joystick()) plus the button BAR (rotate/drop, bottom-right, from _touch_spec()). One inherited seam; every
+# action puzzle just declares its stick + buttons. On their own CanvasLayer below the Leave button (layer 20) so
+# Leave stays tappable.
 func _build_touch_controls() -> void:
 
 	if not TouchEnv.is_touch():
 		return
+	var jmode : String = _touch_joystick()
 	var spec : Array = _touch_spec()
-	if spec.is_empty():
-		return
+	if jmode == "" and spec.is_empty():
+		return   # tap-only puzzle (Loft / Gem Drop / poker) — nothing to spawn
 	var layer : CanvasLayer = CanvasLayer.new()
 	layer.layer = 18
 	layer.name = "TouchControlsLayer"
 	add_child(layer)
-	var bar : TouchControlBar = TouchControlBar.new()
-	bar.setup(spec)
-	layer.add_child(bar)
+	if jmode != "":
+		var stick : PuzzleJoystick = PuzzleJoystick.new()
+		stick.set_mode(jmode)   # set BEFORE add_child so it's live the moment _ready runs
+		layer.add_child(stick)
+	if not spec.is_empty():
+		var bar : TouchControlBar = TouchControlBar.new()
+		bar.setup(spec)
+		layer.add_child(bar)
 
 
 ## Puzzle instructions feed the persistent USER PANEL's Tutorial tab — the Sunshine-widget rail is always

@@ -71,12 +71,20 @@ func _update(pos: Vector2) -> void:
 	if v.length() < RADIUS * DEADZONE_FRAC:
 		_set_actions([])
 		return
+	_set_actions(_actions_for(v))
+
+
+## The input actions to HOLD for a thumb offset `v` (past the deadzone). Overworld default: snap to 8 SCREEN
+## octants and press the move_* pair that yields that screen direction under the iso map. Subclasses (e.g.
+## [PuzzleJoystick]) override this to drive different actions — the touch/hold/cleanup plumbing is shared.
+func _actions_for(v: Vector2) -> Array:
+
 	# Angle measured from "up" (screen north), clockwise. y is down, so up = (0,-1).
 	var ang : float = atan2(v.x, -v.y)
 	if ang < 0.0:
 		ang += TAU
 	var oct : int = int(round(ang / (TAU / 8.0))) % 8
-	_set_actions(_OCTANT_ACTIONS[oct])
+	return _OCTANT_ACTIONS[oct]
 
 
 func _release() -> void:

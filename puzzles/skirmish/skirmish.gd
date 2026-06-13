@@ -17,11 +17,14 @@ func _touch_buttons_at_corners() -> bool:
 	return true
 
 
-# TOUCH controls (mobile web): move + soft-drop are held, rotate is a tap. See [[touch-input-foundation]].
+# TOUCH controls (mobile web): a left-right JOYSTICK (bottom-left) shifts the piece; rotate is a tap and soft-drop
+# is held (bottom-right). See [[touch-input-foundation]].
+func _touch_joystick() -> String:
+	return "horizontal"
+
+
 func _touch_spec() -> Array:
 	return [
-		{"label": "◄", "action": "ui_left", "hold": true, "side": "left"},
-		{"label": "►", "action": "ui_right", "hold": true, "side": "left"},
 		{"label": "↻", "action": "ui_up"},
 		{"label": "▼", "action": "ui_down", "hold": true},
 	]
