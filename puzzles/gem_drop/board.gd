@@ -806,14 +806,25 @@ func _advance_to_next_round() -> void:
 
 # ---------- Input ----------
 
+## Where a left-press began, so we can tell a clean TAP (drop) from a pan-SWIPE (the touch zoom/pan gesture). A
+## swipe that travels past this much never drops a coin (Troy 2026-06-13).
+const DROP_TAP_SLOP : float = 14.0
+var _drop_press_pos : Vector2 = Vector2.ZERO
+
+
 func _unhandled_input(event: InputEvent) -> void:
 
 	if game_over or _round_advancing:
 		return
 	if current_player != HUMAN_PLAYER:
 		return
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_try_drop_at_pointer()
+	# Drop on RELEASE, and only if the finger barely moved — so a one-finger pan-swipe (PinchZoom) doesn't also
+	# drop a coin. (Touch emulates these as mouse-button events.)
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_drop_press_pos = event.position
+		elif _drop_press_pos.distance_to(event.position) < DROP_TAP_SLOP:
+			_try_drop_at_pointer()
 
 
 func _update_hover_col() -> void:

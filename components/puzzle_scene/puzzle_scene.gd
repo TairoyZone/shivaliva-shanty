@@ -251,7 +251,7 @@ func _build_pinch_zoom() -> void:
 	add_child(cam)
 	cam.make_current()
 	var pz : PinchZoom = PinchZoom.new()
-	pz.setup(cam, 1.0, 2.8, true)   # zoom + pan (a static table camera)
+	pz.setup(cam, 1.0, 2.8, Vector2.ZERO)   # zoom + pan to the board edges (no fixed look-around)
 	add_child(pz)
 
 

@@ -92,9 +92,10 @@ func _spawn_player(id: int) -> void:
 		PlayerState.last_position = p.global_position
 
 
-# On touch, pinch with two fingers to zoom the overworld IN (it reads small on a phone). The camera RIDES the
-# player, so this is zoom-only (no pan) — one wiring point covers every walkable scene AND the ship deck (which
-# extends this). Gated on TouchEnv; desktop never sees it. See [[touch-input-foundation]].
+# On touch, pinch to zoom the overworld IN + swipe one finger to pan/look around (it reads small on a phone). The
+# camera RIDES the player, so pan is a clamped look-around offset; the zoom level persists across scenes. One
+# wiring point covers every walkable scene AND the ship deck (which extends this). Gated on TouchEnv; desktop
+# never sees it. See [[touch-input-foundation]].
 func _build_pinch_zoom() -> void:
 
 	if not TouchEnv.is_touch() or player == null:
@@ -103,7 +104,7 @@ func _build_pinch_zoom() -> void:
 	if cam == null:
 		return
 	var pz : PinchZoom = PinchZoom.new()
-	pz.setup(cam, 1.0, 2.6, false)
+	pz.setup(cam, 1.0, 2.6, Vector2(240.0, 160.0))   # a fixed look-around so you can swipe to peer about
 	add_child(pz)
 
 
