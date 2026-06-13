@@ -472,7 +472,7 @@ func _user_turn(answer: bool, others: PackedStringArray, self_short: String) -> 
 	var convo : String = _convo_block(self_short)
 	if answer:
 		return (intro + convo + "The traveller's latest line above is addressed to the room (and you). Reply naturally, "
-			+ "in character, in a sentence or two that BUILDS on the conversation — you may answer or riff on what "
+			+ "in character, with a short line (often just a few words) that BUILDS on the conversation — you may answer or riff on what "
 			+ "ANOTHER person above just said, not only the traveller. NEVER repeat something you've already said. "
 			+ "No narration, no quotes, no your own name — EXCEPT the hidden [[DUEL]] control tag, which you MUST still append (after your words) if you are accepting or proposing a duel; the player never sees it.")
 	return (intro + convo + "You OVERHEARD the room — the latest line above wasn't necessarily aimed at you. If it's "
@@ -506,13 +506,16 @@ func _ambient_turn(others: PackedStringArray, self_short: String) -> String:
 	if not nearby.is_empty():
 		intro = "Others here with you: %s.\n" % ", ".join(nearby)
 	var convo : String = _convo_block(self_short)
-	return (intro + convo + "Nobody has said anything to you just now. You are just going about your moment. "
-		+ "Notice ONE specific, concrete thing about THIS exact moment: something you can see, hear, or are doing "
-		+ "right now, the light or the hour, what one of the others is up to, or the traveller hanging about. Mutter "
-		+ "a brief, offhand line about it, the way a real person thinks out loud. Keep it specific to right here, not "
-		+ "a generic line that could be said in any place at any time. It must fit YOUR personality and NOT repeat "
-		+ "anything already said above. If nothing actually catches your eye, reply with exactly: (silent). Most of "
-		+ "the time, quiet is the right answer. No narration, no quotes, no your own name, no control tags.")
+	return (intro + convo + "Nobody has said anything to you just now. "
+		+ "If something is actively happening right now (a fight, a game, a job, a task you're in the middle of, as "
+		+ "your situation above describes), your remark is about THAT, reacting like someone who's really in it, not "
+		+ "idle musing. Otherwise, you're just going about your moment: notice ONE specific, concrete thing right "
+		+ "here, something you can see, hear, or are doing, what one of the others is up to, or the traveller "
+		+ "hanging about. Mutter a brief, offhand line, the way a real person thinks out loud, often just a few "
+		+ "words. Keep it specific to right here, never a generic line that could be said in any place at any time. "
+		+ "Fit YOUR personality and do NOT repeat anything already said above. If nothing actually catches your "
+		+ "eye, reply with exactly: (silent). Often, quiet is the right answer. No narration, no quotes, no your "
+		+ "own name, no control tags.")
 
 
 # Strip any stray hidden control tag ([[DUEL]] etc.) from an AMBIENT line so a spontaneous aside never leaks a
