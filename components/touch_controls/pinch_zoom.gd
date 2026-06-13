@@ -30,6 +30,9 @@ var _max : float = 3.0
 var _extra_pan : Vector2 = Vector2.ZERO     # fixed look-around slack added to the zoom-based edge clamp
 var _recenter : bool = false                # follow-cam (overworld): ease the PAN back to base when fingers lift;
                                             # a static table camera (puzzle) leaves it where the player stopped
+var _allow_pan : bool = true                # one-finger swipe-pan. The OVERWORLD turns this OFF so the movement
+                                            # stick's finger can never be mistaken for a pan (Troy 2026-06-14):
+                                            # with no one-finger pan in the scene there is nothing for it to leak into.
 
 var _base_pos : Vector2 = Vector2.ZERO      # the camera's resting position (re-centred here on full zoom-out)
 var _touches : Dictionary = {}              # active finger index -> last screen position
@@ -39,13 +42,14 @@ var _pan_start : Vector2 = Vector2.ZERO     # where a one-finger touch began (to
 var _panning : bool = false                 # this one-finger gesture has passed PAN_THRESHOLD
 
 
-func setup(camera: Camera2D, min_z: float = 1.0, max_z: float = 3.0, extra_pan: Vector2 = Vector2.ZERO, recenter: bool = false) -> void:
+func setup(camera: Camera2D, min_z: float = 1.0, max_z: float = 3.0, extra_pan: Vector2 = Vector2.ZERO, recenter: bool = false, allow_pan: bool = true) -> void:
 
 	_camera = camera
 	_min = min_z
 	_max = max_z
 	_extra_pan = extra_pan
 	_recenter = recenter
+	_allow_pan = allow_pan
 
 
 func _ready() -> void:
@@ -103,7 +107,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _touches.size() >= 2 and VirtualJoystick.active_index == -1:
 			_pinch()
 			get_viewport().set_input_as_handled()   # a 2-finger gesture is ours
-		else:
+		elif _allow_pan:
 			_one_finger_pan(event)
 
 

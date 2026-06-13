@@ -141,6 +141,34 @@ func _initialize() -> void:
 	ok = ok and s1 and s2
 	ply.free()
 
+	# --- OVERWORLD allow_pan=false: a one-finger drag must NOT pan, so the move stick can never move the camera
+	# (Troy 2026-06-14: "the camera should sit still dead center with the player"). Pinch-zoom still works. ---
+	TouchEnv._cached_touch = 1
+	VirtualJoystick.active_index = -1
+	var camN : Camera2D = Camera2D.new()
+	camN.zoom = Vector2.ONE
+	camN.position = Vector2(640.0, 360.0)
+	var pzn : PinchZoom = PinchZoom.new()
+	pzn.setup(camN, 1.0, 2.6, Vector2.ZERO, true, false)   # allow_pan = false (the overworld wiring)
+	root.add_child(camN)
+	root.add_child(pzn)
+	pzn._base_pos = camN.position
+	var dn : InputEventScreenDrag = InputEventScreenDrag.new()
+	dn.index = 0; dn.position = Vector2(400.0, 200.0); dn.relative = Vector2(140.0, 0.0)
+	pzn._touches = {0: Vector2(260.0, 200.0)}; pzn._panning = true
+	pzn._unhandled_input(dn)
+	var n1 : bool = camN.position.is_equal_approx(Vector2(640.0, 360.0))   # one-finger drag did NOT pan the camera
+	# But a 2-finger pinch STILL zooms (zoom isn't disabled, only pan).
+	pzn._touches = {0: Vector2(100.0, 0.0), 1: Vector2(200.0, 0.0)}; pzn._last_dist = -1.0
+	pzn._pinch()
+	pzn._touches = {0: Vector2(50.0, 0.0), 1: Vector2(250.0, 0.0)}
+	pzn._pinch()
+	var n2 : bool = camN.zoom.x > 1.05
+	print("overworld no-pan: oneFingerDoesNotPan=%s pinchStillZooms=%s" % [n1, n2])
+	ok = ok and n1 and n2
+	TouchEnv._cached_touch = -1
+	camN.free(); pzn.free()
+
 	cam.free(); pz.free(); camO.free(); pzo.free(); camP.free(); pzp.free()
 	print("RESULT: ", "ALL PASS" if ok else "FAILURE")
 	quit(0 if ok else 1)

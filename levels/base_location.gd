@@ -92,13 +92,13 @@ func _spawn_player(id: int) -> void:
 		PlayerState.last_position = p.global_position
 
 
-# On touch, pinch to zoom the overworld IN + swipe one finger to pan/look around (it reads small on a phone). The
-# camera FOLLOWS the player and keeps them CENTRED while moving (Troy 2026-06-14: "follow the player, the player
-# has to be centered always while moving") — it's a child Camera2D, so it rides the player by default. A swipe is a
-# temporary look-around offset that eases back to re-centre on release (recenter=true); the joystick's own finger
-# can no longer add a stray pan or a zoom (see VirtualJoystick.active_index + PinchZoom). Zoom persists across
-# scenes. One wiring point covers every walkable scene AND the ship deck. Gated on TouchEnv; desktop never sees it.
-# See [[touch-input-foundation]].
+# On touch, the overworld camera FOLLOWS the player and keeps them DEAD CENTRE while moving (Troy 2026-06-14:
+# "when the player moves, the camera should sit still dead center with the player"). It's a child Camera2D, so it
+# rides the player by default. We allow ONLY 2-finger PINCH-ZOOM (the phone screen reads small) and turn OFF the
+# one-finger swipe-pan, so the movement stick's finger can NEVER pan the view — there is simply no one-finger pan in
+# the scene for it to trigger. recenter=true eases back to dead-centre on the player after a pinch. Gated on
+# TouchEnv; desktop never sees it. One wiring point covers every walkable scene AND the ship deck. See
+# [[touch-input-foundation]].
 func _build_pinch_zoom() -> void:
 
 	if not TouchEnv.is_touch() or player == null:
@@ -107,8 +107,9 @@ func _build_pinch_zoom() -> void:
 	if cam == null:
 		return
 	var pz : PinchZoom = PinchZoom.new()
-	# recenter=true: a swipe-pan is a temporary peek; releasing eases the view back to centre on the player again.
-	pz.setup(cam, 1.0, 2.6, Vector2(240.0, 160.0), true)
+	# allow_pan=false: NO one-finger swipe-pan in the overworld (it fought the move stick). Pinch-zoom only;
+	# recenter=true eases back to dead-centre on the player after a pinch.
+	pz.setup(cam, 1.0, 2.6, Vector2.ZERO, true, false)
 	add_child(pz)
 
 
