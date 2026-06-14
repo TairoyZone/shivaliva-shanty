@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://b1pshotpretty01"]
+[gd_scene format=3 uid="uid://diuklqomxg8my"]
 
 [ext_resource type="Script" path="res://tools/shot_pretty.gd" id="1_pretty"]
 
