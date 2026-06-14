@@ -15,6 +15,10 @@ const MAX_LOG_LINES : int = 120
 const CHAT_COLOR : Color = Color(0.92, 0.95, 1.0, 1.0)         # your public speech
 const PRIVATE_YOU_COLOR : Color = Color(0.78, 0.90, 1.0, 1.0)  # your line while privately chatting an NPC
 const SYSTEM_LINE_COLOR : Color = Color(0.72, 0.75, 0.82, 1.0) # "— you begin / step away —" framing lines
+## Chat segregation (Troy 2026-06-14): ONE colour for every NPC's speech (was per-NPC portrait colours = a
+## rainbow), so the cast reads as one voice-class. The player's lines keep the cool blues above; the announcer
+## (system / table events) keeps the gold log default. Warm coral — distinct from both the cool player + gold.
+const NPC_CHAT_COLOR : Color = Color(0.99, 0.76, 0.64, 1.0)
 
 ## User setting (persisted) — whether the chat bar + log show at all.
 var chat_visible : bool = true
@@ -589,8 +593,7 @@ func _on_npc_replied(reply: String) -> void:
 
 	if not _in_private:
 		return
-	var col : Color = _private_persona.portrait_color.lightened(0.35) if _private_persona != null else CHAT_COLOR
-	PlayerState.log_event("%s: %s" % [_short_name(), reply], col)
+	PlayerState.log_event("%s: %s" % [_short_name(), reply], NPC_CHAT_COLOR)
 	if is_instance_valid(_private_npc):
 		SpeechBubble.say(_private_npc, reply)
 	_set_thinking(false)
@@ -602,7 +605,7 @@ func _on_npc_chat_failed(_reason: String) -> void:
 	if not _in_private:
 		return
 	var line : String = String(_private_fallback[randi() % _private_fallback.size()]) if not _private_fallback.is_empty() else "..."
-	PlayerState.log_event("%s: %s" % [_short_name(), line], CHAT_COLOR)
+	PlayerState.log_event("%s: %s" % [_short_name(), line], NPC_CHAT_COLOR)
 	if is_instance_valid(_private_npc):
 		SpeechBubble.say(_private_npc, line)
 	_set_thinking(false)

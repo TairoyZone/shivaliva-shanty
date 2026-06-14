@@ -598,7 +598,7 @@ func _say(node: Node, persona: NpcPersonality, text: String) -> void:
 	if not is_instance_valid(node) or not node.is_inside_tree():
 		return   # NPC gone (scene change / freed) — drop (await-after-free safety)
 	SpeechBubble.say(node, text)
-	PlayerState.log_event("%s: %s" % [_short(persona.npc_name), text], persona.portrait_color.lightened(0.35))
+	PlayerState.log_event("%s: %s" % [_short(persona.npc_name), text], ChatBox.NPC_CHAT_COLOR)   # one shared NPC colour
 	_cooldowns[persona.npc_name] = Time.get_ticks_msec()   # cool down only when they ACTUALLY spoke (not on silence)
 	_last_overheard_ms = Time.get_ticks_msec()             # any spoken line re-arms the AMBIENT_QUIET gate (no barging in right after)
 	_record(_short(persona.npc_name), text)                # their line joins the room memory

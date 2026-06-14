@@ -83,10 +83,6 @@ var _seats : Array[PokerSeat] = []
 ## chat context (see [method npc_chat_context]) so they react to what just happened. Cleared each new hand.
 var _chat_events : Array[String] = []
 const CHAT_EVENTS_MAX : int = 6
-## Table events ALSO go to the player's readable chat Log (the "Log" button), so you can scroll back through the
-## round's action if you missed it — YPP-style, reusing the existing event feed (Troy 2026-06-14). A calm slate
-## tint sets them apart from spoken chat + gold events.
-const TABLE_LOG_COLOR : Color = Color(0.72, 0.80, 0.94)
 ## True while the showdown sequence (cards revealed, toasts rising,
 ## winner halos showing) is on-screen and the player hasn't yet
 ## advanced. Used so the auto-advance timer AND the manual Next-Hand
@@ -965,7 +961,7 @@ func _push_chat_event(text: String) -> void:
 	_chat_events.append(text)
 	while _chat_events.size() > CHAT_EVENTS_MAX:
 		_chat_events.remove_at(0)
-	PlayerState.log_event(text, TABLE_LOG_COLOR)   # also surface it to the player's scrollable chat Log (YPP-style)
+	PlayerState.log_event(text)   # also surface to the player's scrollable chat Log — announcer/gold (YPP-style)
 
 
 # A poker action as a readable past-tense line for the chat context. Raise/all-in use post-action current_bet
