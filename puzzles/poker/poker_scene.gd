@@ -719,6 +719,11 @@ func _on_community_dealt(all_community: Array[Card]) -> void:
 		var tw : Tween = _community.set_cards(subset)
 		if tw == null:
 			continue  # nothing new at this stage — already on the felt
+		# This street genuinely revealed → log it to the player's Log (YPP-style: "Flop: ...", "Turn:", "River:").
+		match n:
+			3: _push_chat_event("Flop: " + _cards_str(all_community.slice(0, 3)), true)
+			4: _push_chat_event("Turn: " + _cards_str(all_community.slice(3, 4)), true)
+			5: _push_chat_event("River: " + _cards_str(all_community.slice(4, 5)), true)
 		await tw.finished
 		if not is_instance_valid(self):
 			return  # left the table mid-reveal — scene is freed
@@ -954,14 +959,18 @@ func _pressure_phrase(_asker: String) -> String:
 	return ("Just happened: " + " ".join(_chat_events)) if not _chat_events.is_empty() else ""
 
 
-func _push_chat_event(text: String) -> void:
+func _push_chat_event(text: String, announce: bool = false) -> void:
 
 	if text.is_empty():
 		return
 	_chat_events.append(text)
 	while _chat_events.size() > CHAT_EVENTS_MAX:
 		_chat_events.remove_at(0)
-	PlayerState.log_event(text)   # also surface to the player's scrollable chat Log — announcer/gold (YPP-style)
+	# YPP-CLEAN player Log: the seated NPCs hear EVERY action (above, for their banter), but the player's Log only
+	# gets the announced lines — street reveals, showdown hands, pot wins, busts — NOT every check/call/fold (which
+	# flooded it). announce=false (the default, used by per-action calls) keeps those NPC-only (Troy 2026-06-14).
+	if announce:
+		PlayerState.log_event(text)
 
 
 # A poker action as a readable past-tense line for the chat context. Raise/all-in use post-action current_bet
@@ -985,10 +994,13 @@ func _action_phrase(p: PokerPlayer, action: PokerBoard.Action, amount: int) -> S
 	return ""
 
 
-# The human reads as "the traveller" (the prompt addresses the NPC as "you"); NPCs go by name.
+# The human reads by their CHOSEN NAME (set at character creation) so the announcer log + NPC banter use it,
+# not "the traveller" (Troy 2026-06-14: "i already had a name"). Falls back to "the traveller" only if unnamed.
 func _who_name(p: PokerPlayer) -> String:
 
-	return "the traveller" if p.is_human else p.player_name
+	if p.is_human:
+		return PlayerState.player_name if not PlayerState.player_name.is_empty() else "the traveller"
+	return p.player_name
 
 
 func _player_named(nm: String) -> PokerPlayer:
@@ -1174,16 +1186,18 @@ func _on_hand_complete(awards: Array) -> void:
 			if seven.size() >= 5:
 				_seats[i].hand_label = HandEval.describe_showdown(HandEval.best_of(seven))
 
-	# Chat context: log the showdown result + any bust so the seated NPCs can react to it ("nice hand", "ouch").
-	# Hand descriptions are only added on a real showdown (public info); fold-out wins just say "won N".
+	# YPP-style result log (player Log + NPC banter context): at a real showdown, EACH non-folded player's hand,
+	# then the pot win(s), then any bust — announced so they reach the player's Log. A fold-out just shows the win.
+	# Per-action lines (checks/calls/folds) are NOT announced, so the Log stays clean. (Troy 2026-06-14.)
+	if did_showdown:
+		for p in _board.players:
+			if not p.folded and descriptions.has(p):
+				_push_chat_event("%s has %s." % [_who_name(p), String(descriptions[p])], true)
 	for w in order:
-		var ev : String = "%s won %d" % [_who_name(w), int(totals[w])]
-		if did_showdown and descriptions.has(w):
-			ev += " with %s" % String(descriptions[w])
-		_push_chat_event(ev + ".")
+		_push_chat_event("%s won %d from the pot." % [_who_name(w), int(totals[w])], true)
 	for bp in _board.players:
 		if bp.chips <= 0 and bp.total_bet_in_hand > 0 and not (bp in totals):
-			_push_chat_event("%s busted out of the game." % _who_name(bp))
+			_push_chat_event("%s busted out of the game." % _who_name(bp), true)
 
 	# Populate the bottom-right result panel — same footprint as the
 	# action panel during play — with the player's outcome and a Next

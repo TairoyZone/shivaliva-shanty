@@ -222,6 +222,11 @@ func _style_chat_input(le: LineEdit) -> void:
 		le.custom_minimum_size = Vector2(0.0, 40.0)   # a taller, tappable field for the bigger touch font
 	le.add_theme_color_override("font_color", Color(0.96, 0.93, 0.85, 1.0))
 	le.add_theme_color_override("font_placeholder_color", Color(0.78, 0.72, 0.60, 0.6))
+	# A clear blinking insertion caret so you can see exactly where you're editing + fix typos (Troy 2026-06-14,
+	# standard chat-field behaviour). The default caret can vanish against the dark walnut trough, so colour it warm.
+	le.add_theme_color_override("caret_color", Color(1.0, 0.92, 0.66, 1.0))
+	le.caret_blink = true
+	le.caret_blink_interval = 0.5
 	var normal : StyleBoxFlat = StyleBoxFlat.new()
 	normal.bg_color = Color(0.10, 0.07, 0.04, 0.55)
 	normal.set_corner_radius_all(7)
