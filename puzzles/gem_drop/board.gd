@@ -47,13 +47,14 @@ const WEB_MAX_DEPTH : int = 3
 # --- Colors --------------------------------------------------------------
 # All colors flow from [Palette]. Parlor-table feel: warm aged-oak interior,
 # dark walnut plank shadows, brass-inlaid outer rim.
-const COLOR_BOARD_BG : Color = Palette.WOOD_PLANK
-const COLOR_BOARD_GRAIN : Color = Palette.WOOD_PLANK_DARK  # diagonal plank shadow lines
-const COLOR_FRAME_OUTER : Color = Palette.BRASS_FRAME      # ornate brass rim
-const COLOR_FRAME_MID : Color = Palette.WOOD_FRAME_DARK    # dark walnut band
-const COLOR_FRAME_INLAY : Color = Palette.BRASS_INLAY      # bright inner inlay
-const COLOR_FRAME : Color = Palette.WOOD_FRAME_DARK        # legacy: column dividers, slot outlines
-const COLOR_ENTRY_SLOT : Color = Palette.WOOD_BEAM_DARK
+# STARDUST WELL look (Troy 2026-06-14): a luminous shaft into THE STARDUST. Cool SKY interior + brass mechanism.
+const COLOR_BOARD_BG : Color = Palette.SKY_BOARD          # the well's shaft (cool navy), was aged oak
+const COLOR_BOARD_GRAIN : Color = Palette.SKY_CHUTE       # drifting Stardust current wisps
+const COLOR_FRAME_OUTER : Color = Palette.BRASS_FRAME     # brass rim (kept — the premium metal read)
+const COLOR_FRAME_MID : Color = Palette.SKY_VOID          # dark gap band, was walnut
+const COLOR_FRAME_INLAY : Color = Palette.BRASS_INLAY     # bright inner inlay
+const COLOR_FRAME : Color = Palette.SKY_VOID              # legacy: column dividers, slot outlines
+const COLOR_ENTRY_SLOT : Color = Palette.SKY_SLOT         # chute throats into the well
 const COLOR_SWITCH_BEAM : Color = Palette.WOOD_BEAM
 const COLOR_SWITCH_PAD : Color = Palette.BRASS_PAD
 const COLOR_SWITCH_PIVOT : Color = Palette.WOOD_PIVOT
@@ -1260,69 +1261,139 @@ func _deep_copy_switches(source: Array) -> Array:
 
 func _draw() -> void:
 
+	# STARDUST WELL: stars in the night around the board, then the lit shaft, brass frame, mechanism, and the
+	# glowing abyss the coins fall into. (Switches are child nodes — they draw ON TOP of this board chrome.)
+	_draw_starfield()
 	var poly : PackedVector2Array = _frame_polygon()
-	# Board interior (warm aged-oak parlor table).
+	# The well's shaft interior (cool navy), with a top-down light gradient (bright mouth -> dark depths).
 	draw_colored_polygon(poly, COLOR_BOARD_BG)
-	_draw_plank_grain()
-	# Layered ornate frame: thick brass rim outside, dark walnut band over
-	# it, thin brass inlay on the inner edge. Three coincident polylines
-	# of decreasing width fake the look of an inlaid border.
+	_draw_shaft_gradient()
+	_draw_current_wisps()
+	# Layered ornate frame: thick brass rim outside, dark gap band, thin brass inlay on the inner edge.
 	var outline : PackedVector2Array = poly.duplicate()
 	outline.append(poly[0])
 	draw_polyline(outline, COLOR_FRAME_OUTER, 10.0)
 	draw_polyline(outline, COLOR_FRAME_MID, 6.0)
 	draw_polyline(outline, COLOR_FRAME_INLAY, 1.5)
+	_draw_corner_rosettes(poly)
 	_draw_entry_slots()
 	_draw_column_dividers()
 	# Switches draw themselves now ([Switch] is a Node2D added as a
 	# child — its own _draw renders the beam/pad/pivot in local coords).
 	_draw_scoring_slots()
+	_draw_abyss_lip()
 	_draw_hover_indicator()
+
+
+# The funnel walls' left/right x at a given y: the trapezoid mouth (entry band) splays to full width by
+# funnel_end_y. One source of truth for the shaft gradient + the current wisps.
+func _wall_x(y: float) -> Vector2:
+
+	var fy : float = funnel_end_y()
+	var bw : float = board_width()
+	if y >= fy:
+		return Vector2(0.0, bw)
+	var t : float = clampf(y / fy, 0.0, 1.0)
+	var entry_left_x : float = ENTRY_POSITIONS[0] * COLUMN_SPACING
+	var entry_right_x : float = (ENTRY_POSITIONS[-1] + 1) * COLUMN_SPACING
+	return Vector2(lerpf(entry_left_x, 0.0, t), lerpf(entry_right_x, bw, t))
+
+
+# A fixed field of stars in the night around the board (the well hangs in the sky). SEEDED once so it never
+# shimmers; drawn in board-local space covering the whole screen (the board sits inset within it).
+func _draw_starfield() -> void:
+
+	var rng : RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 20260614
+	var tl : Vector2 = -position - Vector2(40.0, 40.0)
+	var br : Vector2 = -position + Vector2(1320.0, 760.0)
+	for _i in 64:
+		var p : Vector2 = Vector2(rng.randf_range(tl.x, br.x), rng.randf_range(tl.y, br.y))
+		draw_circle(p, rng.randf_range(1.0, 2.0), Color(Palette.GOLD_GLOW.r, Palette.GOLD_GLOW.g, Palette.GOLD_GLOW.b, rng.randf_range(0.10, 0.35)))
+	for _i in 8:
+		var p : Vector2 = Vector2(rng.randf_range(tl.x, br.x), rng.randf_range(tl.y, br.y))
+		draw_circle(p, 3.0, Color(Palette.GOLD_GLOW.r, Palette.GOLD_GLOW.g, Palette.GOLD_GLOW.b, 0.5))
+
+
+# Top-down light down the shaft: bright at the mouth, fading to dark in the depths. Bands clipped to the funnel.
+func _draw_shaft_gradient() -> void:
+
+	var bh : float = board_height()
+	var bands : int = 6
+	for i in bands:
+		var y0 : float = bh * float(i) / float(bands)
+		var y1 : float = bh * float(i + 1) / float(bands)
+		var wx0 : Vector2 = _wall_x(y0)
+		var wx1 : Vector2 = _wall_x(y1)
+		var c : Color = Palette.SKY_SLOT.lerp(Palette.SKY_DEEP, float(i) / float(bands - 1))
+		c.a = 0.55
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(wx0.x, y0), Vector2(wx0.y, y0), Vector2(wx1.y, y1), Vector2(wx1.x, y1)]), c)
+
+
+# A glowing Stardust abyss just below the scoring berths — coins read as falling THROUGH into the depths.
+func _draw_abyss_lip() -> void:
+
+	var bw : float = board_width()
+	var y0 : float = board_height() - 6.0
+	var y1 : float = y0 + 22.0
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(0.0, y0), Vector2(bw, y0), Vector2(bw, y1), Vector2(0.0, y1)]),
+		Color(Palette.SKY_VOID.r, Palette.SKY_VOID.g, Palette.SKY_VOID.b, 0.9))
+	for i in 4:
+		var x : float = bw * (float(i) + 0.5) / 4.0
+		draw_circle(Vector2(x, y0 + 11.0), 2.0, Color(Palette.GEM_SAPPHIRE.r, Palette.GEM_SAPPHIRE.g, Palette.GEM_SAPPHIRE.b, 0.35))
+
+
+# Brass rosettes at the board's outer corners — handcrafted-instrument read (orrery-bolt feel).
+func _draw_corner_rosettes(poly: PackedVector2Array) -> void:
+
+	for i in [0, 1, 3, 4]:
+		if i < poly.size():
+			draw_circle(poly[i], 5.0, Palette.BRASS_PAD)
+			draw_circle(poly[i] + Vector2(-1.5, -1.5), 2.0, Palette.BRASS_BRIGHT)
 
 
 # Faint dark horizontal lines at the midpoint between every pair of switch
 # rows — reads as wood-plank shadow grain on the aged-oak interior without
 # clashing with the column dividers or switch beams.
-func _draw_plank_grain() -> void:
+func _draw_current_wisps() -> void:
 
-	var fy : float = funnel_end_y()
-	var bw : float = board_width()
-	var entry_left_x : float = ENTRY_POSITIONS[0] * COLUMN_SPACING
-	var entry_right_x : float = (ENTRY_POSITIONS[-1] + 1) * COLUMN_SPACING
-	var grain_color : Color = Color(COLOR_BOARD_GRAIN.r, COLOR_BOARD_GRAIN.g, COLOR_BOARD_GRAIN.b, 0.55)
+	# Faint horizontal Stardust-current wisps between switch rows — broken into dashes so they read as drifting
+	# mist, not ruled wood grain. Clipped to the funnel walls via _wall_x.
+	var wisp : Color = Color(Palette.SKY_CHUTE.r, Palette.SKY_CHUTE.g, Palette.SKY_CHUTE.b, 0.12)
 	for row in SWITCH_ROWS:
 		var y : float = switch_row_to_y(row) + ROW_SPACING * 0.5
-		# Clip to the trapezoidal walls so the grain doesn't poke past the funnel.
-		var left_x : float
-		var right_x : float
-		if y >= fy:
-			left_x = 0.0
-			right_x = bw
-		else:
-			var t : float = clampf(y / fy, 0.0, 1.0)
-			left_x = lerpf(entry_left_x, 0.0, t)
-			right_x = lerpf(entry_right_x, bw, t)
-		draw_line(Vector2(left_x, y), Vector2(right_x, y), grain_color, 1.0)
+		var wx : Vector2 = _wall_x(y)
+		var span : float = wx.y - wx.x
+		draw_line(Vector2(wx.x, y), Vector2(wx.x + span * 0.30, y), wisp, 2.0)
+		draw_line(Vector2(wx.y - span * 0.30, y), Vector2(wx.y, y), wisp, 2.0)
 
 
 func _draw_entry_slots() -> void:
 
-	# 8 narrow coin-chutes at the entry columns, each with a brass-trimmed
-	# dark-wood slot + arrow below.
+	# One brass LINTEL across the whole entry band — the chutes hang from a single header, so it reads as ONE
+	# centre-only intake mouth (not 8 detached slots).
+	var entry_left_x : float = ENTRY_POSITIONS[0] * COLUMN_SPACING
+	var entry_right_x : float = (ENTRY_POSITIONS[-1] + 1) * COLUMN_SPACING
+	var lintel : Rect2 = Rect2(Vector2(entry_left_x, 2.0), Vector2(entry_right_x - entry_left_x, 6.0))
+	draw_rect(lintel, COLOR_FRAME_OUTER, true)
+	draw_line(lintel.position, Vector2(lintel.end.x, lintel.position.y), Palette.BRASS_BRIGHT, 1.0)
+	# 8 brass-rimmed chute throats into the well, each with a brass drop-chevron.
 	for col in ENTRY_POSITIONS:
 		var x : float = column_to_x(col)
-		var slot_rect : Rect2 = Rect2(Vector2(x - 14.0, 6.0), Vector2(28.0, 34.0))
+		var slot_rect : Rect2 = Rect2(Vector2(x - 14.0, 9.0), Vector2(28.0, 31.0))
 		draw_rect(slot_rect, COLOR_ENTRY_SLOT, true)
+		draw_line(slot_rect.position, Vector2(slot_rect.position.x, slot_rect.end.y), Palette.SKY_VOID, 1.0)  # inner shadow (left)
+		draw_line(slot_rect.position, Vector2(slot_rect.end.x, slot_rect.position.y), Palette.SKY_VOID, 1.0)  # inner shadow (top)
 		draw_rect(slot_rect, COLOR_FRAME_OUTER, false, 2.0)
 		var tri : PackedVector2Array = PackedVector2Array([
 			Vector2(x - 11.0, 42.0),
 			Vector2(x + 11.0, 42.0),
 			Vector2(x, 54.0),
 		])
-		draw_colored_polygon(tri, COLOR_ENTRY_SLOT.darkened(0.3))
-		var tri_outline : PackedVector2Array = tri.duplicate()
-		tri_outline.append(tri[0])
-		draw_polyline(tri_outline, COLOR_FRAME_OUTER, 1.0)
+		draw_colored_polygon(tri, Palette.BRASS_PAD)
+		draw_line(tri[0], tri[1], Palette.BRASS_BRIGHT, 1.0)   # lit top edge of the chevron
 
 
 # Switch drawing lives on [Switch._draw] now — each Switch is a Node2D
@@ -1343,7 +1414,10 @@ func _draw_column_dividers() -> void:
 	var entry_left_x : float = ENTRY_POSITIONS[0] * COLUMN_SPACING
 	var entry_right_x : float = (ENTRY_POSITIONS[-1] + 1) * COLUMN_SPACING
 	var line_end_y : float = bh - BOTTOM_PADDING + 4.0
-	var line_color : Color = COLOR_FRAME.darkened(0.6)
+	# Carved CHANNEL grooves: a dark cut + a 1px lit lip just to its right, so the 16 lanes read as routed
+	# channels the paddles pin into (vs the old 1px hairlines that read as nothing).
+	var groove : Color = Palette.SKY_VOID
+	var lip : Color = Color(Palette.SKY_CHUTE.r, Palette.SKY_CHUTE.g, Palette.SKY_CHUTE.b, 0.5)
 	for col in range(1, SCORING_SLOTS):
 		var x : float = col * COLUMN_SPACING
 		var y_start : float
@@ -1353,7 +1427,8 @@ func _draw_column_dividers() -> void:
 			y_start = fy * (1.0 - x / entry_left_x)
 		else:
 			y_start = fy * (x - entry_right_x) / (bw - entry_right_x)
-		draw_line(Vector2(x, y_start), Vector2(x, line_end_y), line_color, 1.0)
+		draw_line(Vector2(x, y_start), Vector2(x, line_end_y), groove, 2.0)
+		draw_line(Vector2(x + 1.0, y_start), Vector2(x + 1.0, line_end_y), lip, 1.0)
 
 
 # Pair colors now live on [Hole] itself (see [const Hole.PAIR_COLORS]).
@@ -1365,13 +1440,25 @@ func _draw_scoring_slots() -> void:
 
 	var y_top : float = TOP_PADDING + SWITCH_ROWS * ROW_SPACING + 4.0
 	var slot_h : float = BOTTOM_PADDING - 8.0
+	# Soft halos behind the high-risk EDGE berths (drawn first so they bleed outward under the fills).
+	for col in SCORING_SLOTS:
+		if scoring_values[col] >= 25:
+			var hc : Color = _slot_color(scoring_values[col])
+			hc.a = 0.18
+			draw_circle(Vector2(column_to_x(col), y_top + slot_h * 0.5), COLUMN_SPACING * 0.55, hc)
+	# Recessed gem-lit berths: cool navy/sapphire in the safe centre, blazing ruby at the high-risk edges.
 	for col in SCORING_SLOTS:
 		var x : float = column_to_x(col)
 		var rect : Rect2 = Rect2(Vector2(x - COLUMN_SPACING * 0.5 + 1.0, y_top), Vector2(COLUMN_SPACING - 2.0, slot_h))
-		var bg : Color = _slot_color(scoring_values[col])
-		draw_rect(rect, bg, true)
-		draw_line(rect.position, Vector2(rect.end.x, rect.position.y), COLOR_FRAME, 2.0)
-		draw_rect(rect, COLOR_FRAME.darkened(0.2), false, 1.0)
+		draw_rect(rect, _slot_color(scoring_values[col]), true)
+		draw_rect(rect, Palette.SKY_VOID, false, 1.0)                                            # recessed inner border
+		draw_line(rect.position, Vector2(rect.end.x, rect.position.y), COLOR_FRAME_OUTER, 2.0)   # brass top lintel
+	# Parabola garland: a faint brass curve whose height per column tracks the value, so the 64..1..64
+	# "edges high, centre low" risk shape is literally drawn across the berths.
+	var arc : PackedVector2Array = PackedVector2Array()
+	for col in SCORING_SLOTS:
+		arc.append(Vector2(column_to_x(col), y_top - (float(scoring_values[col]) / 64.0) * 26.0))
+	draw_polyline(arc, Color(Palette.BRASS_INLAY.r, Palette.BRASS_INLAY.g, Palette.BRASS_INLAY.b, 0.35), 1.5)
 
 
 # Translucent column highlight that follows the player's mouse during
@@ -1405,8 +1492,11 @@ func _draw_hover_indicator() -> void:
 # value). Reference scale is round 4's max so round 1 reads as "all low."
 func _slot_color(value: int) -> Color:
 
+	# Cool -> hot gem ramp: dim navy -> sapphire (safe centre) -> ruby (high-risk edges).
 	var t : float = clampf(float(value) / SCORE_COLOR_MAX_REF, 0.0, 1.0)
-	return COLOR_SCORE_LOW.lerp(COLOR_SCORE_HIGH, t)
+	if t < 0.5:
+		return Palette.SKY_SLOT.lerp(Palette.GEM_SAPPHIRE, t * 2.0)
+	return Palette.GEM_SAPPHIRE.lerp(Palette.GEM_RUBY, (t - 0.5) * 2.0)
 
 
 func _refresh_score_labels() -> void:

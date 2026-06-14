@@ -30,7 +30,7 @@ extends Node2D
 
 # --- Geometry constants (was on GemDropBoard) ----------------------------
 const SWITCH_RISE : float = 9.0
-const SWITCH_BEAM_THICKNESS : float = 7.0
+const SWITCH_BEAM_THICKNESS : float = 8.0
 const SWITCH_PAD_GAP : float = 1.0
 const SWITCH_PAD_HEIGHT : float = 5.0
 ## Y offset (from pivot) at which the pad's TOP surface sits when the
@@ -88,9 +88,9 @@ const PAD_RIGHT : int = 1
 			queue_redraw()
 
 @export_category("Colors")
-@export var color_beam : Color = Palette.WOOD_BEAM
+@export var color_beam : Color = Palette.BRASS_FRAME   # brass mechanism on the dark Stardust field = max contrast
 @export var color_pad : Color = Palette.BRASS_PAD
-@export var color_pivot : Color = Palette.WOOD_PIVOT
+@export var color_pivot : Color = Palette.BRASS_FRAME
 
 
 # --- Runtime state -------------------------------------------------------
@@ -161,21 +161,29 @@ func _draw() -> void:
 		pad_end - perp * ht,
 	])
 	draw_colored_polygon(beam_poly, color_beam)
-	var beam_outline : PackedVector2Array = beam_poly.duplicate()
-	beam_outline.append(beam_poly[0])
-	draw_polyline(beam_outline, color_beam.darkened(0.4), 1.0)
-	# Pad: drawn axis-aligned (always face-up) regardless of beam
-	# angle, sitting just above the pad-end. Gems land on this flat
-	# top surface; visually flipping the pad's orientation with the
-	# beam would be confusing — we keep it level.
-	var pad_top : float = pad_end.y - SWITCH_BEAM_THICKNESS - SWITCH_PAD_GAP
-	var pad_rect : Rect2 = Rect2(
-		Vector2(pad_end.x - PAD_HALF_WIDTH, pad_top),
-		Vector2(PAD_HALF_WIDTH * 2.0, SWITCH_PAD_HEIGHT))
-	draw_rect(pad_rect, color_pad, true)
-	draw_rect(pad_rect, color_pad.darkened(0.4), false, 1.0)
-	# Pivot dot at the origin.
-	draw_circle(Vector2.ZERO, 4.0, color_pivot)
+	# Bevel the beam for volume: a bright top edge + a dark bottom edge (one consistent up-left key light), instead
+	# of a flat outline — the same highlight/shadow-pair language as the poker pass.
+	draw_line(pad_end + perp * ht, lever_end + perp * ht, Palette.BRASS_BRIGHT, 1.0)
+	draw_line(pad_end - perp * ht, lever_end - perp * ht, Palette.SKY_VOID, 1.0)
+	# Pad: a brass cup drawn PARALLEL to the beam (tilts WITH it), so adjacent paddles in a brick row read as one
+	# clean repeating see-saw rhythm instead of flat bars at random-looking angles (Troy 2026-06-14). The landing
+	# plane (PAD_TOP_OFFSET_FROM_ROW_Y) is unchanged — only the visible plate is re-oriented.
+	var up : Vector2 = perp if perp.y < 0.0 else -perp   # the perpendicular pointing toward the resting coin
+	var pad_center : Vector2 = pad_end + up * (ht + SWITCH_PAD_GAP + SWITCH_PAD_HEIGHT * 0.5)
+	var pad_quad : PackedVector2Array = PackedVector2Array([
+		pad_center + dir * PAD_HALF_WIDTH + up * (SWITCH_PAD_HEIGHT * 0.5),
+		pad_center - dir * PAD_HALF_WIDTH + up * (SWITCH_PAD_HEIGHT * 0.5),
+		pad_center - dir * PAD_HALF_WIDTH - up * (SWITCH_PAD_HEIGHT * 0.5),
+		pad_center + dir * PAD_HALF_WIDTH - up * (SWITCH_PAD_HEIGHT * 0.5),
+	])
+	draw_colored_polygon(pad_quad, color_pad)
+	draw_line(pad_quad[0], pad_quad[1], Palette.BRASS_BRIGHT, 1.0)   # lit top rim of the cup
+	draw_line(pad_quad[2], pad_quad[3], Palette.SKY_VOID, 1.0)       # shadowed under-edge
+	# Pivot BOLT at the origin — a real anchor the eye can read row-to-row (was a tiny 4px dot).
+	draw_circle(Vector2.ZERO, 6.0, Palette.BRASS_FRAME)
+	draw_circle(Vector2.ZERO, 3.0, Palette.BRASS_PAD)
+	draw_arc(Vector2.ZERO, 6.0, 0.0, TAU, 16, Palette.SKY_VOID, 1.0)
+	draw_circle(Vector2(-1.5, -1.5), 1.0, Palette.GOLD_GLOW)
 
 
 # --- Convenience methods used by the board ------------------------------
