@@ -36,10 +36,10 @@ const CELL_PAD : float = 2.5
 
 ## Base face color per material; the lit/shadow tones are derived from it.
 const KIND_FACE : Dictionary = {
-	RockKind.STONE: Color(0.56, 0.58, 0.62, 1.0),
+	RockKind.STONE: Color(0.64, 0.63, 0.60, 1.0),    # warm light grey
 	RockKind.SOIL: Color(0.43, 0.31, 0.21, 1.0),
 	RockKind.SAND: Color(0.82, 0.72, 0.47, 1.0),
-	RockKind.GRAVEL: Color(0.44, 0.52, 0.62, 1.0),
+	RockKind.GRAVEL: Color(0.36, 0.46, 0.62, 1.0),   # darker cool blue (clearly apart from stone)
 	RockKind.CLAY: Color(0.72, 0.42, 0.33, 1.0),
 }
 
