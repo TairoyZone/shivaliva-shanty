@@ -37,6 +37,8 @@ var _joystick : VirtualJoystick           # to test the joystick zone (ownership
 var _looks : Dictionary = {}              # finger index -> {pos, start, panning} for LOOK-origin fingers ONLY
 var _offset : Vector2 = Vector2.ZERO      # the live peek offset = the camera's local position
 var _pinch_dist : float = -1.0            # finger separation last frame while zooming (-1 = not pinching)
+var _pinch_locked : bool = false          # true once a pinch-zoom has happened: blocks ZOOM -> PAN (the leftover
+                                          # finger snapping into a jerky peek) until ALL fingers lift (Troy 2026-06-14)
 
 
 func setup(camera: Camera2D, joystick: VirtualJoystick) -> void:
@@ -69,12 +71,17 @@ func _unhandled_input(event: InputEvent) -> void:
 			_looks.erase(event.index)
 			if _looks.size() < 2:
 				_pinch_dist = -1.0   # pinch ended
+			if _looks.is_empty():
+				_pinch_locked = false   # all fingers up — a fresh single touch may peek again
 	elif event is InputEventScreenDrag and _looks.has(event.index):
 		var moving : bool = VirtualJoystick.active_index != -1
 		if _looks.size() >= 2 and not moving:
 			_looks[event.index]["pos"] = event.position
 			_do_pinch()
+			_pinch_locked = true   # a zoom happened: don't let the leftover finger flow ZOOM -> PAN (jerky jump)
 			get_viewport().set_input_as_handled()
+		elif _pinch_locked:
+			return   # mid/post-pinch: the remaining finger is inert until ALL fingers lift (no jerky zoom->pan)
 		else:
 			# PEEK — one finger, OR a finger while moving (which never zooms). The offset is the look finger's TOTAL
 			# travel since it touched down (ABSOLUTE: start -> now), NOT a sum of per-event `relative` deltas — so

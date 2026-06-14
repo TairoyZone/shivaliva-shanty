@@ -115,6 +115,29 @@ func _initialize() -> void:
 	rig._unhandled_input(_release(6, Vector2(700, 300)))
 	VirtualJoystick.active_index = -1
 
+	# --- ZOOM must NOT flow into PAN (Troy 2026-06-14): after a pinch, the leftover finger is inert (it used to
+	# snap into a jerky peek) until ALL fingers lift; then a fresh single touch peeks normally again. ---
+	cam.zoom = Vector2.ONE; cam.position = Vector2.ZERO
+	rig._offset = Vector2.ZERO; rig._looks.clear(); rig._pinch_locked = false; rig._pinch_dist = -1.0
+	VirtualJoystick.active_index = -1
+	rig._unhandled_input(_press(8, Vector2(400.0, 400.0)))
+	rig._unhandled_input(_press(9, Vector2(600.0, 400.0)))
+	rig._unhandled_input(_drag(9, Vector2(700.0, 400.0), Vector2(100.0, 0.0)))   # pinch baseline
+	rig._unhandled_input(_drag(9, Vector2(800.0, 400.0), Vector2(100.0, 0.0)))   # pinch -> zoom + lock
+	rig._unhandled_input(_release(8, Vector2(400.0, 400.0)))                       # lift ONE finger, one remains
+	rig._unhandled_input(_drag(9, Vector2(200.0, 400.0), Vector2(-600.0, 0.0)))    # leftover finger drags hard
+	rig._process(0.016)
+	var no_zoom_to_pan : bool = cam.position.is_equal_approx(Vector2.ZERO)          # leftover finger did NOT pan
+	rig._unhandled_input(_release(9, Vector2(200.0, 400.0)))                        # lift ALL -> unlock
+	var unlocked : bool = not rig._pinch_locked
+	rig._unhandled_input(_press(10, Vector2(500.0, 300.0)))
+	rig._unhandled_input(_drag(10, Vector2(600.0, 300.0), Vector2(100.0, 0.0)))     # a fresh single touch
+	rig._process(0.016)
+	var fresh_peek_ok : bool = not cam.position.is_equal_approx(Vector2.ZERO)        # peeks normally again
+	print("zoom-not-to-pan: lockedLeftover=%s unlocksAfterRelease=%s freshPeekWorks=%s" % [no_zoom_to_pan, unlocked, fresh_peek_ok])
+	ok = ok and no_zoom_to_pan and unlocked and fresh_peek_ok
+	rig._unhandled_input(_release(10, Vector2(600.0, 300.0)))
+
 	# --- THE STICK'S FINGER MUST NOT BLEED INTO THE PEEK (Troy 2026-06-14): a finger the joystick owns
 	# (active_index) is excluded from the look set, so dragging the move thumb can never move the camera offset. ---
 	cam.position = Vector2.ZERO
