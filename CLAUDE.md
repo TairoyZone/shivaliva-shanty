@@ -39,7 +39,10 @@ Compatibility, 1280×720. No build step — run `main.tscn`, or any `puzzles/*/<
   the LIVE scene/activity — what they're doing, where, and its real-time state — and speaks to it. Mechanism: a
   scene implements `npc_chat_context(npc_name) -> String`; `NpcBrain.compose_system` folds it into the prompt
   (poker does this). MUST be hidden-info-safe — only ever expose the asker's OWN secret state (their hole cards),
-  never a rival's. Make every chat-reachable scene situation-aware. See `…/memory/npc_situational_awareness.md`.
+  never a rival's. Make every chat-reachable scene situation-aware. AND they must never get **delusional**: a
+  global `NpcBrain.GROUND_TRUTH_RULES` (in every prompt) forbids denying a settled result or inventing
+  rules/scores; each versus game also feeds its rules via `VersusPuzzleScene._rules_brief()` and a "match/duel is
+  OVER, X won" frame once it ends (gem_drop/skirmish_duel). See `…/memory/npc_situational_awareness.md`.
 - For **risky logic / new systems**, prefer design → build → adversarial review before handoff. Be
   deliberate about multi-agent *workflows* — they're powerful but slow/expensive; reserve them for
   genuinely risky or open-ended work, just build for routine edits.
