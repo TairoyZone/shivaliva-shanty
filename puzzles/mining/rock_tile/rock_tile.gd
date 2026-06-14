@@ -82,36 +82,50 @@ func _draw() -> void:
 	var shadow_color : Color = palette["shadow"]
 	var crack_color : Color = palette["crack"]
 	var facet_color : Color = palette["facet"]
-	# Inner rect leaves the grout pad on every side.
+	# Inner cell with grout pad.
 	var inner : Rect2 = Rect2(
 		CELL_PAD, CELL_PAD,
 		CELL_SIZE - 2.0 * CELL_PAD,
 		CELL_SIZE - 2.0 * CELL_PAD)
-	# Shadow base — a touch taller/offset down so the tile reads with a
-	# little depth (a chunk of rock, not a flat sticker).
-	var shadow_rect : Rect2 = inner
-	shadow_rect.position.y += 2.0
-	draw_rect(shadow_rect, shadow_color)
-	# Face on top.
-	draw_rect(inner, face_color)
-	# Top-left facet highlight — a lit corner triangle so the rock catches
-	# the light from the upper-left, like a faceted gem face.
-	var facet : PackedVector2Array = PackedVector2Array([
-		inner.position,
-		Vector2(inner.position.x + inner.size.x * 0.55, inner.position.y),
-		Vector2(inner.position.x, inner.position.y + inner.size.y * 0.55),
+	# Carved socket recess so each gem reads as set INTO the rock face.
+	draw_rect(inner, crack_color.darkened(0.35))
+	# Octagon (cut-gem silhouette), inset a touch inside the socket.
+	var g : Rect2 = inner.grow(-2.0)
+	var c : float = minf(g.size.x, g.size.y) * 0.24
+	var oct : PackedVector2Array = PackedVector2Array([
+		Vector2(g.position.x + c, g.position.y),
+		Vector2(g.end.x - c, g.position.y),
+		Vector2(g.end.x, g.position.y + c),
+		Vector2(g.end.x, g.end.y - c),
+		Vector2(g.end.x - c, g.end.y),
+		Vector2(g.position.x + c, g.end.y),
+		Vector2(g.position.x, g.end.y - c),
+		Vector2(g.position.x, g.position.y + c),
 	])
-	draw_colored_polygon(facet, facet_color)
-	# A couple of crack lines so the face isn't a flat block — diagonal
-	# fissures in the darkest kind tone.
-	draw_line(
-		Vector2(inner.position.x + inner.size.x * 0.30, inner.position.y + inner.size.y * 0.18),
-		Vector2(inner.position.x + inner.size.x * 0.66, inner.end.y - inner.size.y * 0.12),
-		crack_color, 1.6)
-	draw_line(
-		Vector2(inner.end.x - inner.size.x * 0.22, inner.position.y + inner.size.y * 0.40),
-		Vector2(inner.end.x - inner.size.x * 0.06, inner.position.y + inner.size.y * 0.70),
-		crack_color, 1.3)
-	# Crisp dark outline so adjacent same-kind tiles still read as
-	# separate cells (matters when a 3-run is about to crumble).
-	draw_rect(inner, shadow_color.darkened(0.25), false, 1.5)
+	var centre : Vector2 = g.position + g.size * 0.5
+	# Drop shadow under the gem (depth in the socket).
+	var drop : PackedVector2Array = PackedVector2Array()
+	for p in oct:
+		drop.append(p + Vector2(0.0, 2.0))
+	draw_colored_polygon(drop, Color(0.0, 0.0, 0.0, 0.45))
+	# Radial CUT: 8 facets meeting at the centre, shaded by one up-left key
+	# light so the gem reads as a faceted dome (bright top-left -> dark
+	# bottom-right). The hue stays the kind's, only light->dark varies.
+	var light_dir : Vector2 = Vector2(-0.45, -0.89)
+	for i in 8:
+		var a : Vector2 = oct[i]
+		var b : Vector2 = oct[(i + 1) % 8]
+		var n : Vector2 = ((a + b) * 0.5 - centre).normalized()
+		var lit : float = clampf(n.dot(light_dir) * 0.5 + 0.5, 0.0, 1.0)
+		draw_colored_polygon(PackedVector2Array([a, b, centre]),
+			shadow_color.lerp(facet_color, lit * lit))   # squared falloff = crisper facets
+	# Centre table pip + a specular spark up-left.
+	draw_circle(centre, g.size.x * 0.10, face_color.lightened(0.18))
+	draw_circle(centre + light_dir * g.size.x * 0.26, g.size.x * 0.07, facet_color.lightened(0.30))
+	# Beveled outline: a crisp dark rim (keeps adjacent same-kind gems
+	# readable) with a brighter lit edge along the top-left.
+	var rim : PackedVector2Array = oct.duplicate()
+	rim.append(oct[0])
+	draw_polyline(rim, crack_color, 1.4)
+	draw_line(oct[7], oct[0], facet_color.lightened(0.25), 1.4)
+	draw_line(oct[0], oct[1], facet_color.lightened(0.10), 1.2)

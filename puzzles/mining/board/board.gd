@@ -154,12 +154,26 @@ func _draw() -> void:
 
 	var w : float = COLS * CELL
 	var h : float = ROWS * CELL
-	draw_rect(Rect2(0.0, 0.0, w, h), BACKING_COLOR)
+	var rect : Rect2 = Rect2(0.0, 0.0, w, h)
+	# Rock-face backing.
+	draw_rect(rect, BACKING_COLOR)
+	# Carved cell grooves: a dark cut + a 1px lit lip just right/below, so the
+	# grid reads as routed sockets the gems are set into (vs flat hairlines).
+	var groove : Color = Color(0.0, 0.0, 0.0, 0.42)
+	var lip : Color = Color(1.0, 1.0, 1.0, 0.045)
 	for c in range(1, COLS):
-		draw_line(Vector2(c * CELL, 0.0), Vector2(c * CELL, h), GRID_LINE_COLOR, 1.0)
+		var x : float = c * CELL
+		draw_line(Vector2(x, 0.0), Vector2(x, h), groove, 1.5)
+		draw_line(Vector2(x + 1.0, 0.0), Vector2(x + 1.0, h), lip, 1.0)
 	for r in range(1, ROWS):
-		draw_line(Vector2(0.0, r * CELL), Vector2(w, r * CELL), GRID_LINE_COLOR, 1.0)
-	draw_rect(Rect2(0.0, 0.0, w, h), FRAME_COLOR, false, 3.0)
+		var y : float = r * CELL
+		draw_line(Vector2(0.0, y), Vector2(w, y), groove, 1.5)
+		draw_line(Vector2(0.0, y + 1.0), Vector2(w, y + 1.0), lip, 1.0)
+	# Beveled brass frame (outer dark, brass band, bright inner inlay) — the
+	# same premium-metal language as Gem Drop / the forge.
+	draw_rect(rect, Palette.SKY_VOID, false, 7.0)
+	draw_rect(rect.grow(-3.5), Palette.BRASS_FRAME, false, 4.0)
+	draw_rect(rect.grow(-6.5), Palette.BRASS_INLAY, false, 1.5)
 
 
 # --- Input -----------------------------------------------------------
