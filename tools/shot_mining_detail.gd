@@ -39,7 +39,7 @@ func _go() -> void:
 		oc.chunk_size = i
 		oc.position = Vector2(xs[i], 420.0)
 
-	_label("GEM TILES", Vector2(60, 600))
+	_label("TERRAIN TILES  (stone / soil / sand / gravel / clay)", Vector2(60, 600))
 	var t_scene : PackedScene = load("res://puzzles/mining/rock_tile/rock_tile.tscn")
 	for i in 5:
 		var t : Node2D = t_scene.instantiate()
