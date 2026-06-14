@@ -78,113 +78,92 @@ func _draw() -> void:
 			_draw_gem_pocket(box)
 
 
-# A single rounded metal lump — common ore.
+# A single faceted gold nugget — the common 1x1 ore.
 func _draw_nugget(box: Rect2) -> void:
 
-	var base : Color = Color(0.74, 0.56, 0.26, 1.0)
-	var hi : Color = Color(0.95, 0.82, 0.46, 1.0)
-	var lo : Color = Color(0.42, 0.30, 0.12, 1.0)
-	# Rounded lump (octagon-ish polygon centred in the cell).
-	var cx : float = box.position.x + box.size.x * 0.5
-	var cy : float = box.position.y + box.size.y * 0.5
-	var rx : float = box.size.x * 0.42
-	var ry : float = box.size.y * 0.42
-	var lump : PackedVector2Array = PackedVector2Array([
-		Vector2(cx - rx * 0.5, cy - ry),
-		Vector2(cx + rx * 0.5, cy - ry),
-		Vector2(cx + rx, cy - ry * 0.3),
-		Vector2(cx + rx, cy + ry * 0.4),
-		Vector2(cx + rx * 0.5, cy + ry),
-		Vector2(cx - rx * 0.5, cy + ry),
-		Vector2(cx - rx, cy + ry * 0.4),
-		Vector2(cx - rx, cy - ry * 0.3),
-	])
-	draw_colored_polygon(lump, base)
-	draw_polyline(lump + PackedVector2Array([lump[0]]), lo, 1.6)
-	# Glint.
-	draw_circle(Vector2(cx - rx * 0.3, cy - ry * 0.35), box.size.x * 0.12, hi)
+	_draw_facet_gem(box.position + box.size * 0.5, box.size.x * 0.42, Color(0.93, 0.74, 0.28))
 
 
-# A timber crate framing raw ore crystals — medium value.
+# A chunk of dark rock veined with ore, two cut gems embedded — the 2x2 vein.
 func _draw_vein(box: Rect2) -> void:
 
-	_draw_crate_frame(box, Color(0.34, 0.22, 0.12, 1.0), Color(0.62, 0.44, 0.22, 1.0))
-	# Ore crystals poking out the top — copper-green + a couple glints.
-	var inner : Rect2 = box.grow(-box.size.x * 0.16)
-	var crystal : Color = Color(0.32, 0.70, 0.48, 1.0)
-	var crystal2 : Color = Color(0.40, 0.58, 0.82, 1.0)
-	draw_rect(inner, Color(0.18, 0.13, 0.08, 1.0))
-	_draw_shard(Vector2(inner.position.x + inner.size.x * 0.30, inner.position.y + inner.size.y * 0.45), inner.size.x * 0.18, crystal)
-	_draw_shard(Vector2(inner.position.x + inner.size.x * 0.66, inner.position.y + inner.size.y * 0.55), inner.size.x * 0.16, crystal2)
-	_draw_shard(Vector2(inner.position.x + inner.size.x * 0.50, inner.position.y + inner.size.y * 0.30), inner.size.x * 0.14, crystal)
+	_draw_rock_body(box)
+	# Bright ore veins threading the matrix.
+	var gold : Color = Color(0.92, 0.74, 0.34, 0.85)
+	draw_line(box.position + box.size * Vector2(0.12, 0.70), box.position + box.size * Vector2(0.52, 0.30), gold, 2.0)
+	draw_line(box.position + box.size * Vector2(0.50, 0.78), box.position + box.size * Vector2(0.82, 0.46), gold, 1.6)
+	# Two cut gems poking out of the rock.
+	_draw_facet_gem(box.position + box.size * Vector2(0.34, 0.44), box.size.x * 0.20, Color(0.30, 0.74, 0.48))
+	_draw_facet_gem(box.position + box.size * Vector2(0.66, 0.60), box.size.x * 0.17, Color(0.40, 0.58, 0.86))
 
 
-# An ornate gold-trimmed chest spilling gems — the premium chunk.
+# Cracked rock spilling a cluster of cut gems with a warm glow — the rare 2x3 pocket.
 func _draw_gem_pocket(box: Rect2) -> void:
 
-	_draw_crate_frame(box, Color(0.26, 0.16, 0.08, 1.0), Color(0.86, 0.70, 0.30, 1.0))
-	# Lid seam.
-	var lid_y : float = box.position.y + box.size.y * 0.34
-	draw_line(Vector2(box.position.x, lid_y), Vector2(box.end.x, lid_y), Color(0.86, 0.70, 0.30, 1.0), 3.0)
-	# Lock.
-	var lock : Rect2 = Rect2(box.position.x + box.size.x * 0.5 - 7.0, lid_y - 7.0, 14.0, 16.0)
-	draw_rect(lock, Color(0.95, 0.82, 0.40, 1.0))
-	# Gems spilling from the top.
+	_draw_rock_body(box)
+	var centre : Vector2 = box.position + box.size * 0.5
+	# Warm treasure glow behind the cluster.
+	draw_circle(centre, box.size.x * 0.55, Color(1.0, 0.85, 0.42, 0.12))
+	draw_circle(centre, box.size.x * 0.38, Color(1.0, 0.88, 0.50, 0.10))
 	var gem_colors : Array = [
-		Color(0.86, 0.29, 0.31, 1.0),
-		Color(0.30, 0.52, 0.88, 1.0),
-		Color(0.28, 0.72, 0.46, 1.0),
-		Color(0.96, 0.81, 0.26, 1.0),
-		Color(0.74, 0.42, 0.86, 1.0),
+		Color(0.88, 0.30, 0.32), Color(0.40, 0.58, 0.86), Color(0.30, 0.74, 0.48),
+		Color(0.96, 0.81, 0.30), Color(0.74, 0.44, 0.88),
 	]
-	var gy : float = box.position.y + box.size.y * 0.16
-	var spread : float = box.size.x * 0.7
+	var pts : Array = [
+		Vector2(0.36, 0.32), Vector2(0.64, 0.28), Vector2(0.50, 0.50),
+		Vector2(0.34, 0.68), Vector2(0.66, 0.66),
+	]
+	var h : float = box.size.x * 0.18
 	for i in 5:
-		var t : float = i / 4.0
-		var gx : float = box.position.x + box.size.x * 0.15 + spread * t
-		_draw_gem(Vector2(gx, gy + (8.0 if i % 2 == 0 else 0.0)), box.size.x * 0.11, gem_colors[i])
+		_draw_facet_gem(box.position + box.size * pts[i], h * (1.0 if i < 3 else 0.85), gem_colors[i])
 
 
-# Shared beveled container frame (wood fill + metal trim border + studs).
-func _draw_crate_frame(box: Rect2, wood: Color, trim: Color) -> void:
+# Shared dark rock matrix the ore sits in — a mottled block with a top-lit face.
+func _draw_rock_body(box: Rect2) -> void:
 
-	# Shadow.
 	var shadow : Rect2 = box
-	shadow.position.y += 2.5
-	draw_rect(shadow, wood.darkened(0.4))
-	# Body.
-	draw_rect(box, wood)
-	# Plank lines (vertical).
-	var planks : int = maxi(2, int(box.size.x / CELL) + 1)
-	for i in range(1, planks):
-		var x : float = box.position.x + box.size.x * (float(i) / planks)
-		draw_line(Vector2(x, box.position.y), Vector2(x, box.end.y), wood.darkened(0.3), 1.4)
-	# Metal trim border.
-	draw_rect(box, trim, false, 3.0)
-	# Corner studs.
-	var s : float = 3.0
-	for corner in [box.position, Vector2(box.end.x, box.position.y), Vector2(box.position.x, box.end.y), box.end]:
-		draw_circle(corner, s, trim.lightened(0.2))
+	shadow.position.y += 3.0
+	draw_rect(shadow, Color(0.0, 0.0, 0.0, 0.40))
+	draw_rect(box, Color(0.25, 0.23, 0.28, 1.0))
+	# Top-lit upper band for volume.
+	draw_rect(Rect2(box.position, Vector2(box.size.x, box.size.y * 0.42)), Color(0.33, 0.31, 0.37, 1.0))
+	# A few darker flecks so the rock isn't a flat block.
+	draw_circle(box.position + box.size * Vector2(0.22, 0.30), 2.0, Color(0.16, 0.15, 0.19, 1.0))
+	draw_circle(box.position + box.size * Vector2(0.78, 0.24), 1.6, Color(0.16, 0.15, 0.19, 1.0))
+	draw_circle(box.position + box.size * Vector2(0.60, 0.82), 2.2, Color(0.16, 0.15, 0.19, 1.0))
+	draw_rect(box, Color(0.11, 0.10, 0.13, 1.0), false, 2.0)
 
 
-func _draw_shard(centre: Vector2, size: float, color: Color) -> void:
+# A single cut gem (octagon, radial facets) — the same gemstone language as the
+# board tiles, so the ore reads as the polished version of what you're mining.
+func _draw_facet_gem(centre: Vector2, half: float, color: Color) -> void:
 
-	var shard : PackedVector2Array = PackedVector2Array([
-		centre + Vector2(0, -size),
-		centre + Vector2(size * 0.7, size * 0.5),
-		centre + Vector2(-size * 0.7, size * 0.5),
+	var dark : Color = color.darkened(0.45)
+	var lite : Color = color.lightened(0.50)
+	var ch : float = half * 0.42
+	var oct : PackedVector2Array = PackedVector2Array([
+		centre + Vector2(-half + ch, -half),
+		centre + Vector2(half - ch, -half),
+		centre + Vector2(half, -half + ch),
+		centre + Vector2(half, half - ch),
+		centre + Vector2(half - ch, half),
+		centre + Vector2(-half + ch, half),
+		centre + Vector2(-half, half - ch),
+		centre + Vector2(-half, -half + ch),
 	])
-	draw_colored_polygon(shard, color)
-	draw_line(centre + Vector2(0, -size), centre + Vector2(0, size * 0.5), color.lightened(0.4), 1.2)
-
-
-func _draw_gem(centre: Vector2, size: float, color: Color) -> void:
-
-	var gem : PackedVector2Array = PackedVector2Array([
-		centre + Vector2(0, -size),
-		centre + Vector2(size, 0),
-		centre + Vector2(0, size),
-		centre + Vector2(-size, 0),
-	])
-	draw_colored_polygon(gem, color)
-	draw_line(centre + Vector2(0, -size), centre + Vector2(-size, 0), color.lightened(0.5), 1.2)
+	var drop : PackedVector2Array = PackedVector2Array()
+	for p in oct:
+		drop.append(p + Vector2(0.0, 2.0))
+	draw_colored_polygon(drop, Color(0.0, 0.0, 0.0, 0.40))
+	var light_dir : Vector2 = Vector2(-0.45, -0.89)
+	for i in 8:
+		var a : Vector2 = oct[i]
+		var b : Vector2 = oct[(i + 1) % 8]
+		var n : Vector2 = ((a + b) * 0.5 - centre).normalized()
+		var lit : float = clampf(n.dot(light_dir) * 0.5 + 0.5, 0.0, 1.0)
+		draw_colored_polygon(PackedVector2Array([a, b, centre]), dark.lerp(lite, lit * lit))
+	draw_circle(centre, half * 0.16, color.lightened(0.20))
+	draw_circle(centre + light_dir * half * 0.40, half * 0.12, lite)
+	var rim : PackedVector2Array = oct.duplicate()
+	rim.append(oct[0])
+	draw_polyline(rim, color.darkened(0.55), 1.4)

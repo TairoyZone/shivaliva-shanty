@@ -58,6 +58,17 @@ const KIND_STYLE : Dictionary = {
 		charges = value
 		queue_redraw()
 
+## Set true by the board while the cursor frames this tool — pops its NAME
+## label so the player knows what it does (Troy 2026-06-15). Bumps z so the
+## label + token draw above neighbouring tiles.
+var framed : bool = false :
+	set(value):
+		if framed == value:
+			return
+		framed = value
+		z_index = 4 if value else 0
+		queue_redraw()
+
 
 func label() -> String:
 	return KIND_STYLE[special_kind]["label"]
@@ -69,10 +80,13 @@ func _draw() -> void:
 	var accent : Color = style["accent"]
 	var centre : Vector2 = Vector2(CELL, CELL) * 0.5
 	var radius : float = (CELL - 2.0 * PAD) * 0.5
-	# Steel plate (dark) with an accent ring — a distinct tool token.
-	draw_circle(centre, radius, Color(0.16, 0.17, 0.20, 1.0))
-	draw_arc(centre, radius - 1.0, 0.0, TAU, 28, accent, 3.0)
-	draw_arc(centre, radius * 0.92, 0.0, TAU, 24, Color(0.30, 0.32, 0.38, 1.0), 1.5)
+	# Accent-COLOURED token so each tool reads as its own colour at a glance,
+	# with a soft glow, a dark inset for the white icon to pop against, and a
+	# bright rim — far more legible than the old near-identical steel discs.
+	draw_circle(centre, radius + 1.5, Color(accent.r, accent.g, accent.b, 0.22))
+	draw_circle(centre, radius, accent.darkened(0.30))
+	draw_circle(centre, radius * 0.80, Color(0.10, 0.11, 0.14, 1.0))
+	draw_arc(centre, radius - 1.0, 0.0, TAU, 28, accent.lightened(0.30), 2.5)
 	match special_kind:
 		SpecialKind.PICKAXE:
 			_draw_pickaxe(centre, radius)
@@ -84,6 +98,25 @@ func _draw() -> void:
 			_draw_tremor(centre, radius)
 		SpecialKind.SEEPAGE:
 			_draw_seepage(centre, radius, accent)
+	if framed:
+		_draw_name_label(centre, accent)
+
+
+# A floating name pill above the token (shown while the cursor frames it) so
+# the player can read which tool it is and learn what it does.
+func _draw_name_label(centre: Vector2, accent: Color) -> void:
+
+	var font : Font = ThemeDB.fallback_font
+	if font == null:
+		return
+	var txt : String = label().to_upper()
+	var fs : int = 13
+	var tw : float = font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var pill : Rect2 = Rect2(centre.x - tw * 0.5 - 7.0, -23.0, tw + 14.0, 19.0)
+	draw_rect(pill, Color(0.05, 0.06, 0.09, 0.96), true)
+	draw_rect(pill, accent, false, 1.5)
+	draw_string(font, Vector2(centre.x - tw * 0.5, pill.position.y + 14.0), txt,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1.0, 0.97, 0.86, 1.0))
 
 
 # A pick: a curved double head with a handle dropping to the lower-right.

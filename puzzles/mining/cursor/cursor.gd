@@ -46,3 +46,18 @@ func _draw() -> void:
 	draw_line(Vector2(0.0, span), Vector2(0.0, span - tick), accent, FRAME_WIDTH)
 	draw_line(Vector2(span, span), Vector2(span - tick, span), accent, FRAME_WIDTH)
 	draw_line(Vector2(span, span), Vector2(span, span - tick), accent, FRAME_WIDTH)
+
+
+## "You can't rotate here" feedback — a quick red flash + a horizontal shake.
+## Called by the board when a rotation is refused (the 2x2 holds a chunk, a
+## hole, or an empty cell) so the spot reads as BLOCKED, not broken.
+func play_deny() -> void:
+
+	var start_x : float = position.x
+	modulate = Color(1.9, 0.5, 0.45, 1.0)
+	var fade : Tween = create_tween()
+	fade.tween_property(self, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.32)
+	var shake : Tween = create_tween()
+	shake.tween_property(self, "position:x", start_x - 5.0, 0.05)
+	shake.tween_property(self, "position:x", start_x + 5.0, 0.05)
+	shake.tween_property(self, "position:x", start_x, 0.05)

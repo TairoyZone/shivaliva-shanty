@@ -111,6 +111,9 @@ var cursor_col : int = 0
 ## this cell and a click activates the tool instead of rotating. (-1,-1)
 ## means no special under the cursor (normal 2x2 rotation mode).
 var _active_special_cell : Vector2i = Vector2i(-1, -1)
+## The special whose NAME label is currently shown (framed by the cursor), so
+## it can be cleared when the cursor moves off it.
+var _framed_special : SpecialPiece = null
 
 ## True while a rotation + its cascade is animating — board-mutating
 ## input is locked out until it settles.
@@ -258,10 +261,19 @@ func _update_cursor() -> void:
 	# it (the player will activate it instead of rotating). Otherwise the
 	# normal 2x2 selector.
 	var sp_cell : Vector2i = _special_in_cursor()
+	# Clear the name label on the previously-framed special.
+	if is_instance_valid(_framed_special):
+		_framed_special.framed = false
+		_framed_special = null
 	if sp_cell.x >= 0:
 		_active_special_cell = sp_cell
 		_cursor.span_cells = 1
 		_cursor.position = _cell_pos(sp_cell.x, sp_cell.y)
+		# Pop the special's NAME label so the player knows what it does.
+		var sp : Variant = grid[sp_cell.x][sp_cell.y]
+		if sp is SpecialPiece:
+			sp.framed = true
+			_framed_special = sp
 	else:
 		_active_special_cell = Vector2i(-1, -1)
 		_cursor.span_cells = 2
@@ -304,6 +316,10 @@ func _perform_action(clockwise: bool) -> void:
 	var sw : Variant = grid[r + 1][c]
 	if not (nw is MiningRockTile and ne is MiningRockTile \
 			and se is MiningRockTile and sw is MiningRockTile):
+		# Blocked: the 2x2 holds a chunk, a hole, or an empty cell. Give clear
+		# feedback so the spot reads as blocked, not broken (Troy 2026-06-15).
+		if is_instance_valid(_cursor):
+			_cursor.play_deny()
 		return
 	if clockwise:
 		# each tile moves one corner clockwise: NW->NE->SE->SW->NW
