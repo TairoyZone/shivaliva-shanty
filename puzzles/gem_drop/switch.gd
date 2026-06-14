@@ -33,6 +33,10 @@ const SWITCH_RISE : float = 9.0
 const SWITCH_BEAM_THICKNESS : float = 8.0
 const SWITCH_PAD_GAP : float = 1.0
 const SWITCH_PAD_HEIGHT : float = 5.0
+## How far the cradle's lips rise above its centre dip — turns the flat plate
+## into a concave cup the round coin nestles into (Troy 2026-06-14). Purely
+## visual; the landing plane (the dip) stays at the old pad-top level.
+const SWITCH_PAD_CUP_DEPTH : float = 5.0
 ## Y offset (from pivot) at which the pad's TOP surface sits when the
 ## beam is fully tilted to that side. The pad's top is the contact
 ## plane — a gem's bottom should land exactly on this line.
@@ -165,20 +169,28 @@ func _draw() -> void:
 	# of a flat outline — the same highlight/shadow-pair language as the poker pass.
 	draw_line(pad_end + perp * ht, lever_end + perp * ht, Palette.BRASS_BRIGHT, 1.0)
 	draw_line(pad_end - perp * ht, lever_end - perp * ht, Palette.SKY_VOID, 1.0)
-	# Pad: a brass cup drawn PARALLEL to the beam (tilts WITH it), so adjacent paddles in a brick row read as one
-	# clean repeating see-saw rhythm instead of flat bars at random-looking angles (Troy 2026-06-14). The landing
-	# plane (PAD_TOP_OFFSET_FROM_ROW_Y) is unchanged — only the visible plate is re-oriented.
+	# Pad: a CUPPED cradle (concave top) drawn PARALLEL to the beam, so the round coin nestles INTO the holder
+	# instead of balancing on a flat bar (Troy 2026-06-14). The cradle's lowest point (its centre dip) stays at the
+	# old pad-top plane, so the board's landing math (PAD_TOP_OFFSET_FROM_ROW_Y) is unchanged — only the visible
+	# plate curves up at the lips. Adjacent paddles still read as one clean repeating see-saw rhythm.
 	var up : Vector2 = perp if perp.y < 0.0 else -perp   # the perpendicular pointing toward the resting coin
 	var pad_center : Vector2 = pad_end + up * (ht + SWITCH_PAD_GAP + SWITCH_PAD_HEIGHT * 0.5)
-	var pad_quad : PackedVector2Array = PackedVector2Array([
-		pad_center + dir * PAD_HALF_WIDTH + up * (SWITCH_PAD_HEIGHT * 0.5),
-		pad_center - dir * PAD_HALF_WIDTH + up * (SWITCH_PAD_HEIGHT * 0.5),
-		pad_center - dir * PAD_HALF_WIDTH - up * (SWITCH_PAD_HEIGHT * 0.5),
-		pad_center + dir * PAD_HALF_WIDTH - up * (SWITCH_PAD_HEIGHT * 0.5),
-	])
-	draw_colored_polygon(pad_quad, color_pad)
-	draw_line(pad_quad[0], pad_quad[1], Palette.BRASS_BRIGHT, 1.0)   # lit top rim of the cup
-	draw_line(pad_quad[2], pad_quad[3], Palette.SKY_VOID, 1.0)       # shadowed under-edge
+	var half_h : float = SWITCH_PAD_HEIGHT * 0.5
+	var samples : int = 6
+	var top_edge : PackedVector2Array = PackedVector2Array()
+	var bottom_edge : PackedVector2Array = PackedVector2Array()
+	for i in samples + 1:
+		var s : float = lerpf(-PAD_HALF_WIDTH, PAD_HALF_WIDTH, float(i) / float(samples))
+		var rise : float = SWITCH_PAD_CUP_DEPTH * pow(s / PAD_HALF_WIDTH, 2.0)   # 0 at the centre dip, deepest at the lips
+		top_edge.append(pad_center + dir * s + up * (half_h + rise))
+		bottom_edge.append(pad_center + dir * s - up * half_h)
+	# Fill the cradle as a strip of CONVEX quads — one big concave polygon trips the
+	# renderer (draw_colored_polygon assumes convex), so build it segment by segment.
+	for i in samples:
+		draw_colored_polygon(PackedVector2Array([
+			top_edge[i], top_edge[i + 1], bottom_edge[i + 1], bottom_edge[i]]), color_pad)
+	draw_polyline(top_edge, Palette.BRASS_BRIGHT, 1.5)                                       # lit cradle rim
+	draw_line(bottom_edge[0], bottom_edge[bottom_edge.size() - 1], Palette.SKY_VOID, 1.0)    # shadowed under-edge
 	# Pivot BOLT at the origin — a real anchor the eye can read row-to-row (was a tiny 4px dot).
 	draw_circle(Vector2.ZERO, 6.0, Palette.BRASS_FRAME)
 	draw_circle(Vector2.ZERO, 3.0, Palette.BRASS_PAD)

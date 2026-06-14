@@ -211,6 +211,13 @@ const PERCEPTION_BIAS_MAX : float = 8.0
 # AI turn / mouse off-board). Updates every frame in _process and drives
 # the translucent column highlight in _draw_hover_indicator.
 var _hover_col : int = -1
+## True while a touch/click is held — lets the drop PREVIEW show on touch
+## (press-aim a chute, release to drop) the same way mouse-hover shows it on
+## desktop. Ignored on desktop, where mouse hover drives the preview directly.
+var _pressing : bool = false
+## The half-transparent, spinning PREVIEW coin shown sitting in the hovered
+## chute. Lazily created, reused, hidden when not aiming. NOT a real game coin.
+var _ghost_coin : Gem = null
 
 
 # ---------- Lifecycle ----------
@@ -824,33 +831,70 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			_drop_press_pos = event.position
-		elif _drop_press_pos.distance_to(event.position) < DROP_TAP_SLOP:
-			_try_drop_at_pointer()
+			_pressing = true            # touch: start press-aiming the drop preview
+		else:
+			_pressing = false
+			if _drop_press_pos.distance_to(event.position) < DROP_TAP_SLOP:
+				_try_drop_at_pointer()
 
 
 func _update_hover_col() -> void:
 
 	if Engine.is_editor_hint():
 		return
-	if TouchEnv.is_touch():
-		return   # no mouse hover on touch — you TAP to drop (and is_touch() is cached now, so this is ~free)
 	var new_hover : int = -1
 	if not game_over and not _round_advancing and current_player == HUMAN_PLAYER:
-		var local_pos : Vector2 = get_local_mouse_position()
-		# Active while the mouse is anywhere over the board's vertical
-		# span — players often aim by looking at the scoring slots, not
-		# the entry chutes, so the guide should follow even down-low.
-		if local_pos.y >= -16.0 and local_pos.y <= board_height():
-			var best_dist : float = COLUMN_SPACING * 0.9
-			for col in ENTRY_POSITIONS:
-				var col_x : float = column_to_x(col)
-				var dist : float = abs(local_pos.x - col_x)
-				if dist < best_dist:
-					best_dist = dist
-					new_hover = col
+		# Desktop: follow the mouse. Touch: follow the finger ONLY while pressed
+		# (press-aim a chute, release to drop), so the preview shows on mobile too.
+		var aiming : bool = true
+		var local_pos : Vector2
+		if TouchEnv.is_touch():
+			aiming = _pressing
+			local_pos = to_local(get_global_mouse_position())
+		else:
+			local_pos = get_local_mouse_position()
+		# Preview ONLY while hovering an UPPER ENTRY SLOT — over the intake band
+		# at the very top and near one of the 8 chutes (Troy 2026-06-14: it must
+		# not light up when the pointer is just anywhere over the board).
+		if aiming and local_pos.y >= -16.0 and local_pos.y <= TOP_PADDING:
+			new_hover = _nearest_entry_col(local_pos.x)
 	if new_hover != _hover_col:
 		_hover_col = new_hover
 		queue_redraw()
+	_update_ghost_coin()
+
+
+# Nearest droppable entry column to a local x, or -1 if the pointer is too far
+# from any of the 8 centre chutes.
+func _nearest_entry_col(local_x: float) -> int:
+
+	var best : int = -1
+	var best_dist : float = COLUMN_SPACING * 0.9
+	for col in ENTRY_POSITIONS:
+		var dist : float = abs(local_x - column_to_x(col))
+		if dist < best_dist:
+			best_dist = dist
+			best = col
+	return best
+
+
+# The half-transparent, spinning PREVIEW coin that sits in the hovered chute —
+# "this is the coin you're about to drop, here." Reuses the real Gem art at low
+# opacity; it spins itself (a non-resting Gem). Hidden whenever not aiming.
+func _update_ghost_coin() -> void:
+
+	if _hover_col < 0:
+		if is_instance_valid(_ghost_coin):
+			_ghost_coin.visible = false
+		return
+	if not is_instance_valid(_ghost_coin):
+		_ghost_coin = GEM_SCENE.instantiate()
+		_ghost_coin.owner_player = HUMAN_PLAYER
+		_ghost_coin.modulate = Color(1.0, 1.0, 1.0, 0.5)
+		_ghost_coin.z_index = 5
+		add_child(_ghost_coin)
+	_ghost_coin.visible = true
+	_ghost_coin.position = Vector2(column_to_x(_hover_col), 24.0)
 
 
 func _try_drop_at_pointer() -> void:
@@ -1472,20 +1516,27 @@ func _draw_hover_indicator() -> void:
 	var x : float = column_to_x(_hover_col)
 	var w : float = COLUMN_SPACING
 	var h : float = board_height()
-	# Faint vertical column trail spanning the full board height.
-	draw_rect(Rect2(x - w * 0.5, 0.0, w, h), Color(1.0, 0.96, 0.78, 0.07))
-	# Brighter highlight on the entry chute itself.
+	# The DROP PATH: a warm vertical glow down the hovered lane, brightest at the
+	# chute mouth and fading into the depths — reads as "the coin enters HERE and
+	# travels down this lane." Per-vertex alpha gives the top-to-bottom falloff.
+	var top_c : Color = Color(1.0, 0.96, 0.65, 0.18)
+	var bot_c : Color = Color(1.0, 0.96, 0.65, 0.03)
+	draw_polygon(
+		PackedVector2Array([
+			Vector2(x - w * 0.5, 0.0), Vector2(x + w * 0.5, 0.0),
+			Vector2(x + w * 0.5, h), Vector2(x - w * 0.5, h)]),
+		PackedColorArray([top_c, top_c, bot_c, bot_c]))
+	# Brighter fill + glowing outline on the entry chute itself.
 	var slot_rect : Rect2 = Rect2(Vector2(x - 14.0, 6.0), Vector2(28.0, 34.0))
-	draw_rect(slot_rect, Color(1.0, 0.96, 0.65, 0.30))
-	# Outline glow on the chute.
-	draw_rect(slot_rect, Color(1.0, 0.96, 0.65, 0.85), false, 2.0)
-	# Brightened drop arrow below the chute.
+	draw_rect(slot_rect, Color(1.0, 0.96, 0.65, 0.32))
+	draw_rect(slot_rect, Color(1.0, 0.96, 0.65, 0.9), false, 2.0)
+	# Brightened drop chevron below the chute.
 	var tri : PackedVector2Array = PackedVector2Array([
 		Vector2(x - 11.0, 42.0),
 		Vector2(x + 11.0, 42.0),
 		Vector2(x, 54.0),
 	])
-	draw_colored_polygon(tri, Color(1.0, 0.96, 0.65, 0.7))
+	draw_colored_polygon(tri, Color(1.0, 0.96, 0.65, 0.8))
 
 
 # Slot background grades from dim blue (low value) to warm red-brown (high

@@ -21,7 +21,23 @@ func _go() -> void:
 	var scene : Node = load("res://puzzles/gem_drop/gem_drop.tscn").instantiate()
 	get_tree().root.add_child(scene)
 	get_tree().current_scene = scene
-	await get_tree().create_timer(1.3).timeout
+	await get_tree().create_timer(0.5).timeout
+	# Drop a few coins so some settle cradled in the cupped pads, then warp the
+	# mouse over an upper chute (col 7) to trigger the drop preview.
+	var found : Array = scene.find_children("*", "GemDropBoard", true, false)
+	var board : Node = found.front() if not found.is_empty() else null
+	if board != null:
+		for col in [5, 6, 8, 9]:
+			board._spawn_coin_in_column(col, 0)
+		await get_tree().create_timer(1.8).timeout
+		# Force the hover preview on (warp_mouse won't register on an unfocused
+		# window): freeze the board's _process so it can't reset _hover_col, then
+		# drive the preview for col 7 directly.
+		board.set_process(false)
+		board._hover_col = 7
+		board._update_ghost_coin()
+		board.queue_redraw()
+		await get_tree().create_timer(0.5).timeout
 	_save_shot("gemdrop_scene.png")
 	scene.queue_free()
 	await get_tree().process_frame
