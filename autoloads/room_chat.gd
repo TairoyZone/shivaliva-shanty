@@ -101,7 +101,10 @@ func hear(line: String) -> void:
 	if NpcBrain.is_duel_proposal(lc):
 		_last_proposal_ms = Time.get_ticks_msec()   # arm the duel-accept fallback window (see _on_slot_done)
 	var mentioned : Dictionary = _mentioned_set(lc, present)
-	var room_address : bool = _is_room_address(lc)
+	# In a focused 1-on-1 versus game (gem drop / a skirmish duel), the lone opponent is your direct conversation
+	# partner — they must reliably answer when you speak, never silently drop it (Troy 2026-06-14: "it failed to
+	# reply until i poked it again"). Treat any line as addressed to them. Multi-seat tables keep normal selection.
+	var room_address : bool = _is_room_address(lc) or (present.size() == 1 and _in_versus_scene())
 	# Substance + debounce gates — bypassed by a name-mention OR a clear room-address (those always engage).
 	if mentioned.is_empty() and not room_address:
 		if text.length() < MIN_CHARS:
@@ -661,6 +664,14 @@ func _player_node() -> Node:
 
 	var tree : SceneTree = get_tree()
 	return tree.get_first_node_in_group("player") if tree != null else null
+
+
+# True in a versus mini-game (a scene that feeds live game state via npc_chat_context) — used to make a lone
+# opponent always answer the player (no silent drop in a focused 1-on-1). See [[npc-situational-awareness]].
+func _in_versus_scene() -> bool:
+
+	var tree : SceneTree = get_tree()
+	return tree != null and tree.current_scene != null and tree.current_scene.has_method("npc_chat_context")
 
 
 func _short(npc_name: String) -> String:

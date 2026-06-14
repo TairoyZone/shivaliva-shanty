@@ -67,6 +67,7 @@ var _opponent_weapon : String = "brawl"
 var _lines_sent : int = 0
 var _opp_lines_sent : int = 0
 var _duel_over : bool = false
+var _player_won_duel : bool = false   # who won, for the chatting foe's GROUND TRUTH once _duel_over (Troy 2026-06-14)
 
 var _das_dir : int = 0
 var _das_timer : float = 0.0
@@ -289,6 +290,7 @@ func _end_duel(player_won: bool) -> void:
 	if _duel_over:
 		return
 	_duel_over = true
+	_player_won_duel = player_won   # GROUND TRUTH for a chatting foe: the bout is settled, this is who won
 	# Report the outcome so a Voyage boarding fight can read win/loss on return.
 	PlayerState.last_skirmish_won = player_won
 	# Battle MEMORY: log the head-to-head against this cast member (skipped for a nameless sparring partner) so
@@ -467,9 +469,24 @@ func _versus_ready() -> bool:
 	return _opponent_board != null and _player_board != null
 
 
+func _rules_brief() -> String:
+	return ("THE RULES OF SKIRMISH (so your trash talk is accurate): a head-to-head block-stacking duel, two boards "
+		+ "side by side. Falling pieces stack on your board; clear full lines to send GARBAGE rows onto the other "
+		+ "board. Incoming garbage lands as grey blocks that clog the stack until they ripen into clearable tiles. "
+		+ "If a board tops out (fills to the ceiling), that player LOSES. It's a single bout, no rounds — first to "
+		+ "top the other out wins.")
+
+
 func _public_frame() -> String:
 
 	var lines : PackedStringArray = PackedStringArray()
+	# GAME OVER: state the result first + plainly, so the foe never denies it or acts like the bout's still on.
+	if _duel_over:
+		if _player_won_duel:
+			lines.append("THE DUEL IS OVER. The traveller topped you out — you LOST this bout. This is final: don't claim you're still fighting or deny it. Be sore, gracious, or hungry for a rematch, but the result stands.")
+		else:
+			lines.append("THE DUEL IS OVER. YOU topped the traveller out — you WON this bout. This is final: own the win however fits you.")
+		return "\n".join(lines)
 	lines.append("SKIRMISH — you're in a one-on-one block-stacking DUEL with the traveller right now: clear lines to dump garbage on the other board; whoever tops out first loses. React like a fighter mid-bout (a little trash talk fits).")
 	lines.append("You've dumped %d garbage row%s on the traveller; they've dumped %d on you." % [
 		_opp_lines_sent, "" if _opp_lines_sent == 1 else "s", _lines_sent])

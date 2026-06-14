@@ -41,6 +41,13 @@ var _opponent : NpcPersonality
 ## play-cost charge on a victorious exit.
 var _human_won_match : bool = false
 
+## Match-over state for the chatting opponent's GROUND TRUTH (Troy 2026-06-14: Kerr denied a loss because the
+## prompt still framed the match as live). Set in [method _on_game_complete]; read by [method _public_frame].
+var _match_over : bool = false
+var _match_winner : int = -1          # the winning seat (GemDropBoard.HUMAN_PLAYER or the AI seat); -1 = unsettled
+var _final_human_rounds : int = 0
+var _final_ai_rounds : int = 0
+
 ## Set from the lobby on entry — a FREE table plays for rapport only, no
 ## gold won or lost. Read in [method _on_game_complete] +
 ## [method _return_to_launching_scene] to suppress every gold change.
@@ -137,21 +144,40 @@ func _versus_ready() -> bool:
 	return _board != null
 
 
+func _rules_brief() -> String:
+
+	return ("THE RULES OF GEM DROP (so your banter is accurate): a turn-based duel on a shared OPEN board, you take "
+		+ "turns dropping a gem into a top slot. A gem rests on an empty pad, bounces off an occupied one, and flips "
+		+ "a switch when it crosses the lever side; odd flips knock a resting gem loose, and bumped gems can merge "
+		+ "with falling ones into multi-coins worth extra points. First to the round's target score wins THE ROUND. "
+		+ "The MATCH is BEST OF 4 ROUNDS (first to 3 round-wins; 2-2 forces a sudden-death Holes tiebreaker). So a "
+		+ "lead of a round or two is NOT the whole match, and once someone has clinched 3 the match is genuinely over.")
+
+
 func _public_frame() -> String:
 
 	var human : int = GemDropBoard.HUMAN_PLAYER
 	var you : int = 1 - human   # the opponent asking = the AI seat
 	var lines : PackedStringArray = PackedStringArray()
+	# GAME OVER: state it first + plainly, so the opponent never denies the result or acts like it's still going.
+	if _match_over:
+		if _match_winner == human:
+			lines.append("THE MATCH IS OVER. The traveller WON it, %d rounds to %d — you LOST. This is final: don't claim it's still going or deny their win. Be sore, gracious, or whatever fits you, but the result stands." % [_final_human_rounds, _final_ai_rounds])
+		else:
+			lines.append("THE MATCH IS OVER. YOU WON it, %d rounds to %d — the traveller lost. This is final: own the win however fits you, don't pretend there's more to play." % [_final_ai_rounds, _final_human_rounds])
+		return "\n".join(lines)
 	lines.append("GEM DROP — you're mid-match against the traveller right now, a turn-based duel on an OPEN board (you both see everything). React like a player at the game.")
 	lines.append("Round %d, best of 4 — first to %d points takes the round." % [_board.round_number, _board.round_target])
 	lines.append("This round: you %d, the traveller %d." % [_board.player_scores[you], _board.player_scores[human]])
-	lines.append("Rounds won so far: you %d, the traveller %d." % [_board.rounds_won[you], _board.rounds_won[human]])
+	lines.append("Rounds won so far: you %d, the traveller %d (first to 3 wins the match)." % [_board.rounds_won[you], _board.rounds_won[human]])
 	lines.append("It's YOUR turn to drop a gem." if _board.current_player == you else "It's the traveller's turn — you're waiting on them.")
 	return "\n".join(lines)
 
 
 func _lead_phrase(_asker: String) -> String:
 
+	if _match_over:
+		return ""   # the match-over frame already says who won; no live lead to call
 	var human : int = GemDropBoard.HUMAN_PLAYER
 	var you : int = 1 - human
 	var yt : int = _board.total_scores[you]
@@ -221,6 +247,11 @@ func _on_turn_changed(player: int) -> void:
 
 func _on_game_complete(winner: int, human_rounds: int, ai_rounds: int) -> void:
 
+	# Settle the GROUND TRUTH so a chatting opponent KNOWS the match ended + who won (never denies it).
+	_match_over = true
+	_match_winner = winner
+	_final_human_rounds = human_rounds
+	_final_ai_rounds = ai_rounds
 	_you_turn_label.visible = false
 	_ai_turn_label.visible = false
 	# Rapport — playing a full match builds a little rapport with the opponent; winning earns a bit more.

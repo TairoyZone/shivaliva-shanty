@@ -866,6 +866,16 @@ func _versus_ready() -> bool:
 	return _board != null and not _board.players.is_empty()
 
 
+func _rules_brief() -> String:
+	return ("THE RULES OF POKER HERE (so your table talk is accurate): standard Texas Hold'em. Each player gets 2 "
+		+ "private hole cards; five shared community cards come out in stages (flop, then turn, then river), with a "
+		+ "betting round between each — check, call, raise, or fold. The best five-card hand at showdown wins the "
+		+ "pot, and if everyone else folds the last player standing takes it. Ranking high to low: straight flush, "
+		+ "four of a kind, full house, flush, straight, three of a kind, two pair, one pair, high card. This is an "
+		+ "ongoing cash game of separate hands, NOT a best-of-N match — there's no overall winner until someone "
+		+ "busts or leaves, so talk about THIS hand and the chip stacks, never about 'winning the game'.")
+
+
 # The shared, PUBLIC frame — intro, the revealed board (clamped to what's on-screen), pot, all stacks.
 func _public_frame() -> String:
 

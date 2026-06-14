@@ -97,6 +97,20 @@ const HUMAN_RULES : String = (
 	+ "answering only the part you care about. React to THIS moment the way a real person would, not the way a "
 	+ "chatbot tries to be useful.")
 
+# GROUND TRUTH — the foundational anti-delusion rule (Troy 2026-06-14): an NPC must stay grounded in what is
+# ACTUALLY happening and never get delusional (e.g. denying a game you just lost, or inventing rules/scores). The
+# live facts about the scene, the place, and any game in play are fed in AFTER this in compose_system; this clause
+# tells the NPC to TRUST and OBEY them. Shared by EVERY chat path (private, ambient, table) so it holds everywhere
+# — overworld, taverns, interiors, and every versus mini-game. See [[npc-situational-awareness]].
+const GROUND_TRUTH_RULES : String = (
+	"GROUND TRUTH (this overrides any assumption you'd otherwise make — never contradict it): everything described "
+	+ "below about where you are, what is going on around you, and any game or activity in play is TRUE and is "
+	+ "happening RIGHT NOW. Speak and react in line with it. If you're told a game or round is OVER, or who WON or "
+	+ "LOST, that is settled fact — accept it plainly and NEVER claim it's still going or deny the result. Don't "
+	+ "invent rules, scores, prices, events, or things that aren't in what you were told. If you genuinely don't "
+	+ "know something, say you're not sure or point them to whoever would know, instead of making it up. Stay "
+	+ "grounded in what is really going on.")
+
 signal npc_replied(text: String)     # a reply came back (also appended to history)
 signal chat_failed(reason: String)   # the request failed — caller should fall back to canned lines
 signal thinking_started               # a request went out — show a "…" / typing state
@@ -340,7 +354,7 @@ func _system_prompt() -> String:
 ## tokens — a passing remark shouldn't risk leaking a secret). The part you tweak via the .tres chat fields.
 func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 
-	var parts : PackedStringArray = PackedStringArray([WORLD_RULES, VOICE_RULES, HUMAN_RULES])
+	var parts : PackedStringArray = PackedStringArray([WORLD_RULES, VOICE_RULES, HUMAN_RULES, GROUND_TRUTH_RULES])
 	var who : String = "You are %s." % persona.npc_name
 	if not persona.chat_appearance.is_empty():
 		who += " " + persona.chat_appearance

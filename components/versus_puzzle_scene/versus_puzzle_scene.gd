@@ -24,10 +24,18 @@ func npc_chat_context(asker: String) -> String:
 	if not _versus_ready():
 		return ""
 	var parts : PackedStringArray = PackedStringArray()
-	for part in [_public_frame(), _lead_phrase(asker), _own_secret_view(asker), _pressure_phrase(asker), _active_mood_note(asker)]:
+	for part in [_rules_brief(), _public_frame(), _lead_phrase(asker), _own_secret_view(asker), _pressure_phrase(asker), _active_mood_note(asker)]:
 		if not String(part).is_empty():
 			parts.append(String(part))
 	return "\n".join(parts)
+
+
+## A short, plain-words brief of THIS game's RULES + match structure, so the opponent's banter is actually
+## ACCURATE about how the game works and when it's over (Troy 2026-06-14: NPCs commented but didn't really know
+## the rules / that a match was best-of-N / that the game had ended). Mutually-known, no secret — like
+## _public_frame. Override per game; "" to omit. Kept brief — it rides in EVERY chat turn.
+func _rules_brief() -> String:
+	return ""
 
 
 ## True once this game's board(s) are live enough to describe. Override to gate (e.g. `_board != null`).
