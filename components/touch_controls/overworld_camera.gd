@@ -58,9 +58,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventScreenTouch:
 		if event.pressed:
-			# A finger born in the joystick zone is a MOVE finger, not ours — ignore it (the joystick usually
-			# consumes it first; this is the belt-and-suspenders for a 2nd finger dropped in the zone).
-			if _joystick != null and _joystick.in_zone(event.position):
+			# A finger the move stick OWNS, or one born in its zone, is a MOVE finger and never a look — exclude it
+			# so the stick touch can't bleed into the peek (Troy 2026-06-14, the mirror of the stick-side fix: the
+			# stick ignores other touches, and the camera ignores the stick's touch).
+			if event.index == VirtualJoystick.active_index or (_joystick != null and _joystick.in_zone(event.position)):
 				return
 			_looks[event.index] = {"pos": event.position, "start": event.position, "panning": false}
 			# Do NOT consume the press — a tap may be a world interaction; only a real drag-peek (below) consumes.
@@ -75,14 +76,18 @@ func _unhandled_input(event: InputEvent) -> void:
 			_do_pinch()
 			get_viewport().set_input_as_handled()
 		else:
-			# PEEK — one finger, OR a finger while moving (which never zooms). Drag the view like the swipe-pan that
-			# felt good (the world tracks the finger); cross the tap threshold first so a tap still reaches the world.
+			# PEEK — one finger, OR a finger while moving (which never zooms). The offset is the look finger's TOTAL
+			# travel since it touched down (ABSOLUTE: start -> now), NOT a sum of per-event `relative` deltas — so
+			# noise on those deltas while the OTHER thumb (the move stick) is dragging can't make the peek jitter or
+			# seesaw (Troy 2026-06-14). map-drag: the world tracks the finger. Cross the tap threshold first so a tap
+			# still reaches world interaction.
 			var info : Dictionary = _looks[event.index]
 			info["pos"] = event.position
-			if not bool(info["panning"]) and Vector2(info["start"]).distance_to(event.position) < PAN_THRESHOLD:
+			var travel : Vector2 = event.position - Vector2(info["start"])
+			if not bool(info["panning"]) and travel.length() < PAN_THRESHOLD:
 				return   # still a tap — let it through to interaction
 			info["panning"] = true
-			_offset -= event.relative / _cam.zoom.x
+			_offset = -travel / _cam.zoom.x
 			_clamp_offset()
 			get_viewport().set_input_as_handled()
 

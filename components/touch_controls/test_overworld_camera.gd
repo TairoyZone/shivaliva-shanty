@@ -115,6 +115,21 @@ func _initialize() -> void:
 	rig._unhandled_input(_release(6, Vector2(700, 300)))
 	VirtualJoystick.active_index = -1
 
+	# --- THE STICK'S FINGER MUST NOT BLEED INTO THE PEEK (Troy 2026-06-14): a finger the joystick owns
+	# (active_index) is excluded from the look set, so dragging the move thumb can never move the camera offset. ---
+	cam.position = Vector2.ZERO
+	rig._offset = Vector2.ZERO
+	rig._looks.clear()
+	VirtualJoystick.active_index = 3                       # the stick owns finger 3
+	rig._unhandled_input(_press(3, Vector2(120.0, 600.0)))   # the stick's own finger presses
+	var excl_press : bool = not rig._looks.has(3)            # excluded from the look set
+	rig._unhandled_input(_drag(3, Vector2(420.0, 600.0), Vector2(300.0, 0.0)))   # the move thumb drags hard
+	rig._process(0.016)
+	var excl_drag : bool = cam.position.is_equal_approx(Vector2.ZERO)   # the camera/peek did NOT move
+	print("stick-finger excluded from peek: press=%s drag=%s" % [excl_press, excl_drag])
+	ok = ok and excl_press and excl_drag
+	VirtualJoystick.active_index = -1
+
 	# --- OWNERSHIP by where the touch STARTS: a press in the joystick zone is ignored (a move finger), one
 	# outside it is a look finger the rig tracks. ---
 	var js : VirtualJoystick = VirtualJoystick.new()
