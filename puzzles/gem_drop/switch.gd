@@ -169,23 +169,22 @@ func _draw() -> void:
 	# of a flat outline — the same highlight/shadow-pair language as the poker pass.
 	draw_line(pad_end + perp * ht, lever_end + perp * ht, Palette.BRASS_BRIGHT, 1.0)
 	draw_line(pad_end - perp * ht, lever_end - perp * ht, Palette.SKY_VOID, 1.0)
-	# Pad: a CUPPED cradle (concave top) drawn PARALLEL to the beam, so the round coin nestles INTO the holder
-	# instead of balancing on a flat bar (Troy 2026-06-14). The cradle's lowest point (its centre dip) stays at the
-	# old pad-top plane, so the board's landing math (PAD_TOP_OFFSET_FROM_ROW_Y) is unchanged — only the visible
-	# plate curves up at the lips. Adjacent paddles still read as one clean repeating see-saw rhythm.
-	var up : Vector2 = perp if perp.y < 0.0 else -perp   # the perpendicular pointing toward the resting coin
-	var pad_center : Vector2 = pad_end + up * (ht + SWITCH_PAD_GAP + SWITCH_PAD_HEIGHT * 0.5)
-	var half_h : float = SWITCH_PAD_HEIGHT * 0.5
+	# Pad: a LEVEL (horizontal) cupped cradle mounted at the beam's pad end, so the round coin always rests flat and
+	# perfectly CENTRED in it no matter how the see-saw is tilted (Troy 2026-06-14 — the parallel-to-beam cup made
+	# the upright coin look awkward at the ~27 deg rest angle). C is the cup's centre dip, and it equals EXACTLY
+	# where the board rests the coin's bottom-centre (the pad end lifted by SWITCH_RISE back up to the row line).
+	# A short stem keeps the cup mounted to the beam through the swing.
+	var C : Vector2 = Vector2(pad_end.x, pad_end.y - SWITCH_RISE)
+	draw_line(pad_end, C, color_beam, SWITCH_BEAM_THICKNESS * 0.8)
 	var samples : int = 6
 	var top_edge : PackedVector2Array = PackedVector2Array()
 	var bottom_edge : PackedVector2Array = PackedVector2Array()
 	for i in samples + 1:
 		var s : float = lerpf(-PAD_HALF_WIDTH, PAD_HALF_WIDTH, float(i) / float(samples))
-		var rise : float = SWITCH_PAD_CUP_DEPTH * pow(s / PAD_HALF_WIDTH, 2.0)   # 0 at the centre dip, deepest at the lips
-		top_edge.append(pad_center + dir * s + up * (half_h + rise))
-		bottom_edge.append(pad_center + dir * s - up * half_h)
-	# Fill the cradle as a strip of CONVEX quads — one big concave polygon trips the
-	# renderer (draw_colored_polygon assumes convex), so build it segment by segment.
+		var rise : float = SWITCH_PAD_CUP_DEPTH * pow(s / PAD_HALF_WIDTH, 2.0)   # lips rise above the centre dip
+		top_edge.append(C + Vector2(s, -rise))                            # level: dip at centre, lips curve up
+		bottom_edge.append(C + Vector2(s, -rise + SWITCH_PAD_HEIGHT))     # plate underside
+	# Fill as a strip of CONVEX quads (one concave polygon trips draw_colored_polygon's convex-only path).
 	for i in samples:
 		draw_colored_polygon(PackedVector2Array([
 			top_edge[i], top_edge[i + 1], bottom_edge[i + 1], bottom_edge[i]]), color_pad)
