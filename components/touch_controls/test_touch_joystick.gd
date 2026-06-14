@@ -119,6 +119,42 @@ func _initialize() -> void:
 	pcam.free(); pz2.free()
 	TouchEnv._cached_touch = -1
 
+	# --- EMULATED-MOUSE HIJACK GUARD (Troy 2026-06-14): on a touchscreen the stick must IGNORE mouse events, so a
+	# 2nd finger (a camera peek) routed through emulate_mouse_from_touch can't seize the stick and seesaw movement.
+	VirtualJoystick.mouse_for_test = 0   # simulate a real phone (no mouse), independent of the headless host
+	var hj : VirtualJoystick = VirtualJoystick.new()
+	root.add_child(hj)
+	hj.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	hj.position = Vector2(0.0, 500.0)
+	hj.size = Vector2(212.0, 212.0)
+	# An emulated MOUSE press lands in-zone FIRST (the ordering that used to hijack the stick) — must be IGNORED.
+	var em : InputEventMouseButton = InputEventMouseButton.new()
+	em.button_index = MOUSE_BUTTON_LEFT; em.pressed = true; em.position = Vector2(100.0, 560.0)
+	hj._input(em)
+	var no_mouse_claim : bool = hj._touch_index == -1            # the mouse did NOT claim the stick
+	# The REAL touch finger then claims + drives the stick.
+	var ht : InputEventScreenTouch = InputEventScreenTouch.new()
+	ht.index = 0; ht.pressed = true; ht.position = Vector2(100.0, 560.0)
+	hj._input(ht)
+	var htd : InputEventScreenDrag = InputEventScreenDrag.new()
+	htd.index = 0; htd.position = Vector2(150.0, 560.0)
+	hj._input(htd)
+	var real_claim : bool = hj._touch_index == 0
+	var knob_after_move : Vector2 = hj._knob
+	# A 2nd finger now peeks — routed as an emulated MOUSE MOTION (the hijack vector) AND its own touch drag. Neither
+	# may move the stick.
+	var emm : InputEventMouseMotion = InputEventMouseMotion.new()
+	emm.position = Vector2(900.0, 120.0)
+	hj._input(emm)
+	var f1d : InputEventScreenDrag = InputEventScreenDrag.new()
+	f1d.index = 1; f1d.position = Vector2(900.0, 120.0)
+	hj._input(f1d)
+	var immune : bool = hj._knob.is_equal_approx(knob_after_move) and hj._touch_index == 0
+	print("emulated-mouse hijack guard: ignoresMouseClaim=%s realTouchDrives=%s immuneToPeek=%s" % [no_mouse_claim, real_claim, immune])
+	ok = ok and no_mouse_claim and real_claim and immune
+	hj.free()
+	VirtualJoystick.mouse_for_test = -1
+
 	stick.free()
 	vj.free()
 	print("RESULT: ", "ALL PASS" if ok else "FAILURE")

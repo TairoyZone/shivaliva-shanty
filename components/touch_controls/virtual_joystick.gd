@@ -36,6 +36,12 @@ var _held : Array = []                    # actions we are currently holding, so
 ## time in a scene, so a static is safe. (Troy 2026-06-14: "i dont want it to zoom in that state combination.")
 static var active_index : int = -1
 
+## Should the stick obey MOUSE events? Desktop force-touch testing drives it with the mouse, but a REAL touchscreen
+## must IGNORE the mouse: emulate_mouse_from_touch (Godot default ON) turns every finger into mouse events, so a
+## 2nd finger (a camera peek) would otherwise HIJACK a mouse-tracking stick and seesaw the movement (Troy
+## 2026-06-14). -1 = auto (by touchscreen presence), 0 = force OFF (headless tests simulating a phone), 1 = force ON.
+static var mouse_for_test : int = -1
+
 
 func _ready() -> void:
 
@@ -58,6 +64,14 @@ func in_zone(global_pos: Vector2) -> bool:
 	return _zone().has_point(global_pos)
 
 
+# Mouse events drive the stick ONLY on a real desktop (no touchscreen) for force-touch testing — NEVER on a phone,
+# where emulate_mouse_from_touch would let a 2nd finger seize the stick through the mouse. See [member mouse_for_test].
+func _use_mouse() -> bool:
+	if mouse_for_test >= 0:
+		return mouse_for_test == 1
+	return not DisplayServer.is_touchscreen_available()
+
+
 # Handled in _input (not _gui_input) so we OWN the claimed finger across the whole screen and CONSUME its events
 # before they reach the camera pan in _unhandled_input — that's what keeps move + swipe-pan from fighting each
 # other (Troy 2026-06-14, the "glitch when moving + panning" fix). event.position is screen-space here, so we
@@ -77,7 +91,7 @@ func _input(event: InputEvent) -> void:
 	elif event is InputEventScreenDrag and event.index == _touch_index:
 		_update(event.position - global_position)
 		_consume()
-	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+	elif _use_mouse() and event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			if _touch_index == -1 and _zone().has_point(event.position):
 				_touch_index = _MOUSE
@@ -87,7 +101,7 @@ func _input(event: InputEvent) -> void:
 		elif _touch_index == _MOUSE:
 			_release()
 			_consume()
-	elif event is InputEventMouseMotion and _touch_index == _MOUSE:
+	elif _use_mouse() and event is InputEventMouseMotion and _touch_index == _MOUSE:
 		_update(event.position - global_position)
 		_consume()
 
