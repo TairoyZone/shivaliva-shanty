@@ -29,8 +29,8 @@ const DECK_POSITION : Vector2 = Vector2(640.0, 360.0)
 ## The oval table's centre + the seat ring (an ellipse on the rim). Every seat is placed symmetrically
 ## around this — seat 0 (you) at bottom-centre, the rest spaced evenly all the way around. See _seat_position.
 const TABLE_CENTER : Vector2 = Vector2(640.0, 336.0)
-const SEAT_RX : float = 488.0
-const SEAT_RY : float = 226.0
+const SEAT_RX : float = 520.0
+const SEAT_RY : float = 242.0
 ## Delay between consecutive hole cards during the deal.
 const HOLE_DEAL_STAGGER : float = 0.07
 ## How long one hole card takes to slide from deck to its seat.
@@ -79,6 +79,7 @@ const HUMAN_SEAT_COLOR : Color = Color(0.95, 0.78, 0.34, 1.0)
 @onready var _result_btn : Button = %ResultButton
 
 var _seats : Array[PokerSeat] = []
+var _weave_tex : ImageTexture = null   # procedural felt-weave overlay, built once in _ready (see _make_weave_texture)
 ## Rolling buffer of recent table EVENTS (raises, folds, all-ins, wins, busts) fed into the seated NPCs' live
 ## chat context (see [method npc_chat_context]) so they react to what just happened. Cleared each new hand.
 var _chat_events : Array[String] = []
@@ -145,6 +146,9 @@ func _ready() -> void:
 
 	super._ready()
 	add_to_group("chat_scene")   # opt this puzzle into the chat bar (normally HUD-hidden) so you can banter at the table
+	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED   # let the felt-weave texture TILE across the table in _draw
+	_weave_tex = _make_weave_texture()
+	queue_redraw()                                       # redraw the felt now that the weave texture exists
 	var controls : String
 	if TouchEnv.is_touch():
 		controls = ("• Tap the action buttons (Fold / Check / Call / Bet / Raise / All-In)\n"
@@ -196,6 +200,15 @@ func _draw() -> void:
 		var sz : Vector2 = felt_edge_sz.lerp(felt_core_sz, t)
 		var col : Color = felt_rim.lerp(felt_lit, smoothstep(0.0, 1.0, t))
 		_draw_stadium(TABLE_CENTER, sz, col)
+	# A subtle WOVEN-FABRIC texture over the felt: a tiling over-under weave, drawn only INSIDE the felt stadium
+	# (the polygon clips it, so it never touches the brass rim), layered on the spotlight so the green reads as real
+	# baize, not a flat fill (Troy 2026-06-14). One textured draw call; the texture is built once in _ready.
+	if _weave_tex != null:
+		var weave_poly : PackedVector2Array = _stadium_polygon(TABLE_CENTER, Vector2(958.0, 424.0), 18)
+		var uvs : PackedVector2Array = PackedVector2Array()
+		for p in weave_poly:
+			uvs.append(p / float(_weave_tex.get_width()))   # ~1:1 world-to-texel, so the weave stays fine
+		draw_colored_polygon(weave_poly, Color(1.0, 1.0, 1.0, 1.0), uvs, _weave_tex)
 
 
 # Draw a filled STADIUM (racetrack) — a central rectangle capped by a semicircle at each end — centred
@@ -208,6 +221,44 @@ func _draw_stadium(c: Vector2, sz: Vector2, color: Color) -> void:
 		draw_rect(Rect2(c.x - mid, c.y - r, mid * 2.0, r * 2.0), color, true)
 	draw_circle(Vector2(c.x - mid, c.y), r, color)
 	draw_circle(Vector2(c.x + mid, c.y), r, color)
+
+
+# Build a small TILING over-under weave texture for the felt baize: mostly transparent, with faint light/dark
+# threads that interlace (warp over weft, then weft over warp). Subtle (low alpha) so it reads as fabric, not noise.
+func _make_weave_texture() -> ImageTexture:
+
+	var s : int = 16
+	var thread : int = 4
+	var amp : float = 0.09   # max thread highlight/shadow alpha
+	var img : Image = Image.create(s, s, false, Image.FORMAT_RGBA8)
+	for y in s:
+		for x in s:
+			var wx : int = (x / thread) % 2
+			var wy : int = (y / thread) % 2
+			var warp_over : bool = ((wx + wy) % 2) == 0
+			var across : float = (float(x % thread) if warp_over else float(y % thread)) / float(thread)
+			var sh : float = 1.0 - absf(across - 0.5) * 2.0   # 1 at a thread's centre, 0 at its edges → rounded
+			var v : float = lerpf(-amp, amp, sh)              # dark edges, light centre
+			img.set_pixel(x, y, Color(1, 1, 1, v) if v >= 0.0 else Color(0, 0, 0, -v))
+	return ImageTexture.create_from_image(img)
+
+
+# The felt STADIUM as a closed polygon (two semicircle caps + the implied straight edges), so the weave fills
+# exactly that shape and never bleeds onto the brass rim.
+func _stadium_polygon(c: Vector2, sz: Vector2, arc_segs: int) -> PackedVector2Array:
+
+	var r : float = sz.y * 0.5
+	var mid : float = maxf(sz.x * 0.5 - r, 0.0)
+	var pts : PackedVector2Array = PackedVector2Array()
+	var rc : Vector2 = Vector2(c.x + mid, c.y)
+	for i in arc_segs + 1:
+		var a : float = -PI * 0.5 + PI * (float(i) / float(arc_segs))   # right cap: top → bottom
+		pts.append(rc + Vector2(cos(a), sin(a)) * r)
+	var lc : Vector2 = Vector2(c.x - mid, c.y)
+	for i in arc_segs + 1:
+		var a : float = PI * 0.5 + PI * (float(i) / float(arc_segs))    # left cap: bottom → top
+		pts.append(lc + Vector2(cos(a), sin(a)) * r)
+	return pts
 
 
 # --- Setup: open seating (pick a chair → invite folk → deal) -----------
