@@ -179,10 +179,23 @@ func _ready() -> void:
 # around its rim (see _seat_position). Drawn here so we don't need a separate felt node.
 func _draw() -> void:
 
-	_draw_stadium(TABLE_CENTER, Vector2(1016.0, 482.0), Color(0.30, 0.20, 0.10, 1.0))   # walnut rail
-	_draw_stadium(TABLE_CENTER, Vector2(1000.0, 466.0), Color(0.78, 0.58, 0.24, 1.0))   # brass inlay
-	_draw_stadium(TABLE_CENTER, Vector2(972.0, 438.0), Color(0.14, 0.36, 0.22, 1.0))    # green felt
-	_draw_stadium(TABLE_CENTER, Vector2(872.0, 350.0), Color(0.12, 0.31, 0.19, 1.0))    # inner shade
+	_draw_stadium(TABLE_CENTER, Vector2(1016.0, 482.0), Color(0.28, 0.18, 0.09, 1.0))   # walnut rail
+	_draw_stadium(TABLE_CENTER, Vector2(1004.0, 470.0), Color(0.20, 0.13, 0.06, 1.0))   # rail inner shadow (depth)
+	_draw_stadium(TABLE_CENTER, Vector2(1000.0, 466.0), Color(0.80, 0.60, 0.26, 1.0))   # brass inlay
+	_draw_stadium(TABLE_CENTER, Vector2(986.0, 452.0), Color(0.55, 0.40, 0.16, 1.0))    # brass under-bevel
+	# GREEN FELT with a soft radial SPOTLIGHT — concentric stadia from a darker rim to a lit centre, drawn
+	# large→small so the bright centre lands on top. Reads as a real felt under a hanging lamp, not a flat fill
+	# (Troy 2026-06-14, "make it real nice, textured, not AI-slop"). Green is the classic card-table colour.
+	var felt_rim : Color = Color(0.085, 0.24, 0.15, 1.0)   # shaded edge
+	var felt_lit : Color = Color(0.185, 0.46, 0.29, 1.0)   # spotlit centre
+	var felt_edge_sz : Vector2 = Vector2(972.0, 438.0)
+	var felt_core_sz : Vector2 = Vector2(330.0, 150.0)
+	var steps : int = 22
+	for i in steps:
+		var t : float = float(i) / float(steps - 1)
+		var sz : Vector2 = felt_edge_sz.lerp(felt_core_sz, t)
+		var col : Color = felt_rim.lerp(felt_lit, smoothstep(0.0, 1.0, t))
+		_draw_stadium(TABLE_CENTER, sz, col)
 
 
 # Draw a filled STADIUM (racetrack) — a central rectangle capped by a semicircle at each end — centred

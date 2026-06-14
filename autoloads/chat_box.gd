@@ -19,6 +19,10 @@ const SYSTEM_LINE_COLOR : Color = Color(0.72, 0.75, 0.82, 1.0) # "— you begin 
 ## rainbow), so the cast reads as one voice-class. The player's lines keep the cool blues above; the announcer
 ## (system / table events) keeps the gold log default. Warm coral — distinct from both the cool player + gold.
 const NPC_CHAT_COLOR : Color = Color(0.99, 0.76, 0.64, 1.0)
+## Suit inks for the Log's parchment: hearts/diamonds RED, spades/clubs near-BLACK. Now that the Log panel is
+## light, black actually reads (it couldn't on the old dark walnut) — real playing-card colours (Troy 2026-06-14).
+const SUIT_RED_HEX : String = "c4181b"
+const SUIT_BLACK_HEX : String = "18181d"
 
 ## User setting (persisted) — whether the chat bar + log show at all.
 var chat_visible : bool = true
@@ -95,7 +99,7 @@ func _build_ui() -> void:
 	bar.offset_right = 634.0     # 620 wide — matches the log panel
 	bar.offset_top = -58.0       # 48 tall — enough for the controls (was cramped at 38)
 	bar.offset_bottom = -10.0
-	bar.add_theme_stylebox_override("panel", _panel_style(Color(0.16, 0.11, 0.06, 0.90)))   # warm walnut (was cool navy)
+	bar.add_theme_stylebox_override("panel", _panel_style(Color(0.90, 0.84, 0.69, 0.95)))   # warm parchment (light: colored suits read)
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE   # the empty bar background must not eat world clicks
 	add_child(bar)
 	_bar = bar
@@ -150,7 +154,7 @@ func _build_ui() -> void:
 	_log_panel.offset_right = 634.0           # match the bar's width
 	_log_panel.offset_top = -62.0 - 260.0     # 260 tall, sitting just above the bar
 	_log_panel.offset_bottom = -62.0
-	_log_panel.add_theme_stylebox_override("panel", _panel_style(Color(0.13, 0.09, 0.05, 0.93)))   # warm walnut
+	_log_panel.add_theme_stylebox_override("panel", _panel_style(Color(0.92, 0.86, 0.72, 0.97)))   # warm parchment
 	_log_panel.visible = false
 	add_child(_log_panel)
 	_log_scroll = ScrollContainer.new()
@@ -220,15 +224,15 @@ func _style_chat_input(le: LineEdit) -> void:
 	le.add_theme_font_size_override("font_size", _chat_font(15, 23))
 	if TouchEnv.is_touch():
 		le.custom_minimum_size = Vector2(0.0, 40.0)   # a taller, tappable field for the bigger touch font
-	le.add_theme_color_override("font_color", Color(0.96, 0.93, 0.85, 1.0))
-	le.add_theme_color_override("font_placeholder_color", Color(0.78, 0.72, 0.60, 0.6))
+	le.add_theme_color_override("font_color", Color(0.20, 0.13, 0.06, 1.0))           # dark ink on parchment
+	le.add_theme_color_override("font_placeholder_color", Color(0.42, 0.35, 0.24, 0.7))
 	# A clear blinking insertion caret so you can see exactly where you're editing + fix typos (Troy 2026-06-14,
-	# standard chat-field behaviour). The default caret can vanish against the dark walnut trough, so colour it warm.
-	le.add_theme_color_override("caret_color", Color(1.0, 0.92, 0.66, 1.0))
+	# standard chat-field behaviour). Dark warm caret to read on the light parchment field.
+	le.add_theme_color_override("caret_color", Color(0.32, 0.20, 0.08, 1.0))
 	le.caret_blink = true
 	le.caret_blink_interval = 0.5
 	var normal : StyleBoxFlat = StyleBoxFlat.new()
-	normal.bg_color = Color(0.10, 0.07, 0.04, 0.55)
+	normal.bg_color = Color(0.83, 0.74, 0.57, 0.6)   # a slightly-inset lighter trough on the parchment bar
 	normal.set_corner_radius_all(7)
 	normal.set_border_width_all(1)
 	normal.border_color = _brass(0.3)
@@ -664,20 +668,50 @@ func _append_log(text: String, color: Color) -> void:
 
 	if _log_box == null:
 		return
-	var l : Label = Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", _chat_font(14, 19))
-	l.add_theme_color_override("font_color", color)
-	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	l.add_theme_constant_override("outline_size", 3)
+	# RichTextLabel (not a plain Label) so suit glyphs get real card colours within the line (Troy 2026-06-14).
+	# The line's ink is a DARK, hue-preserving version of the event colour — readable on the parchment Log, while
+	# the over-game EventFeed keeps the original light colour (the two are decoupled).
+	var l : RichTextLabel = RichTextLabel.new()
+	l.bbcode_enabled = true
+	l.fit_content = true
+	l.scroll_active = false
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.add_theme_font_size_override("normal_font_size", _chat_font(14, 19))
+	l.text = _log_bbcode(text, _parchment_ink(color))
 	_log_box.add_child(l)
 	while _log_box.get_child_count() > MAX_LOG_LINES:
 		var oldest : Node = _log_box.get_child(0)
 		_log_box.remove_child(oldest)
 		oldest.queue_free()
 	_autoscroll()
+
+
+# Hand-tuned dark inks per speaker bucket — readable AND clearly distinct on the parchment Log. (Deriving from the
+# near-white player colour came out muddy, so map the known buckets to explicit inks; anything else = announcer.)
+func _parchment_ink(c: Color) -> Color:
+
+	if _ink_near(c, CHAT_COLOR) or _ink_near(c, PRIVATE_YOU_COLOR):
+		return Color(0.13, 0.31, 0.66)   # YOU — deep blue (cool, clearly "you")
+	if _ink_near(c, NPC_CHAT_COLOR):
+		return Color(0.63, 0.26, 0.08)   # NPCs — warm sienna (the cast)
+	if _ink_near(c, SYSTEM_LINE_COLOR):
+		return Color(0.45, 0.41, 0.33)   # framing lines — muted brown-grey
+	return Color(0.42, 0.33, 0.13)       # announcer / system events — dark olive-bronze
+
+
+func _ink_near(a: Color, b: Color) -> bool:
+	return absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b) < 0.10
+
+
+# Wrap a Log line in BBCode: the whole line in its ink, with suit glyphs overridden to real card colours
+# (hearts/diamonds red, spades/clubs near-black). Literal "[" is escaped so stray brackets can't break parsing.
+func _log_bbcode(text: String, ink: Color) -> String:
+
+	var t : String = text.replace("[", "[lb]")
+	t = t.replace("♥", "[color=#%s]♥[/color]" % SUIT_RED_HEX).replace("♦", "[color=#%s]♦[/color]" % SUIT_RED_HEX)
+	t = t.replace("♠", "[color=#%s]♠[/color]" % SUIT_BLACK_HEX).replace("♣", "[color=#%s]♣[/color]" % SUIT_BLACK_HEX)
+	return "[color=#%s]%s[/color]" % [ink.to_html(false), t]
 
 
 func _autoscroll() -> void:
