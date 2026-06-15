@@ -37,6 +37,15 @@ const SWITCH_PAD_HEIGHT : float = 5.0
 ## into a concave cup the round coin nestles into (Troy 2026-06-14). Purely
 ## visual; the landing plane (the dip) stays at the old pad-top level.
 const SWITCH_PAD_CUP_DEPTH : float = 5.0
+
+## Forged-STEEL mechanism palette (Troy 2026-06-15 — rebuilt to an intricate
+## see-saw: riveted arm + cradle cup + bronze counterweight + screw-bolt pivot).
+## Steel reads cool against the gold coins, so coin-on-paddle never blends.
+const STEEL : Color = Color(0.58, 0.62, 0.70, 1.0)
+const STEEL_HI : Color = Color(0.90, 0.93, 0.99, 1.0)
+const STEEL_EDGE : Color = Color(0.14, 0.16, 0.22, 1.0)
+const KNOB : Color = Color(0.76, 0.56, 0.30, 1.0)        # warm bronze counterweight ball
+const KNOB_HI : Color = Color(0.97, 0.84, 0.52, 1.0)
 ## Y offset (from pivot) at which the pad's TOP surface sits when the
 ## beam is fully tilted to that side. The pad's top is the contact
 ## plane — a gem's bottom should land exactly on this line.
@@ -92,9 +101,9 @@ const PAD_RIGHT : int = 1
 			queue_redraw()
 
 @export_category("Colors")
-@export var color_beam : Color = Palette.BRASS_FRAME   # brass mechanism on the dark Stardust field = max contrast
-@export var color_pad : Color = Palette.BRASS_PAD
-@export var color_pivot : Color = Palette.BRASS_FRAME
+@export var color_beam : Color = Color(0.58, 0.62, 0.70, 1.0)   # steel arm
+@export var color_pad : Color = Color(0.72, 0.76, 0.83, 1.0)    # brighter steel cradle cup
+@export var color_pivot : Color = Color(0.66, 0.70, 0.77, 1.0)  # steel pivot boss
 
 
 # --- Runtime state -------------------------------------------------------
@@ -164,16 +173,27 @@ func _draw() -> void:
 		lever_end - perp * ht,
 		pad_end - perp * ht,
 	])
+	# --- The steel lever ARM, beveled with a centre sheen + flanking rivets ---
 	draw_colored_polygon(beam_poly, color_beam)
-	# Bevel the beam for volume: a bright top edge + a dark bottom edge (one consistent up-left key light), instead
-	# of a flat outline — the same highlight/shadow-pair language as the poker pass.
-	draw_line(pad_end + perp * ht, lever_end + perp * ht, Palette.BRASS_BRIGHT, 1.0)
-	draw_line(pad_end - perp * ht, lever_end - perp * ht, Palette.SKY_VOID, 1.0)
-	# Pad: a LEVEL (horizontal) cupped cradle mounted at the beam's pad end, so the round coin always rests flat and
-	# perfectly CENTRED in it no matter how the see-saw is tilted (Troy 2026-06-14 — the parallel-to-beam cup made
-	# the upright coin look awkward at the ~27 deg rest angle). C is the cup's centre dip, and it equals EXACTLY
-	# where the board rests the coin's bottom-centre (the pad end lifted by SWITCH_RISE back up to the row line).
-	# A short stem keeps the cup mounted to the beam through the swing.
+	draw_line(pad_end + perp * ht, lever_end + perp * ht, STEEL_HI, 1.2)    # lit top edge
+	draw_line(pad_end - perp * ht, lever_end - perp * ht, STEEL_EDGE, 1.2)  # shadowed bottom edge
+	draw_line(pad_end, lever_end, STEEL_HI, 1.0)                            # rounded-metal sheen down the arm
+	_draw_rivet(dir * (half_w * 0.55))
+	_draw_rivet(-dir * (half_w * 0.55))
+
+	# --- Bronze COUNTERWEIGHT knob on the lever end (a ball on a short neck) ---
+	var neck : Vector2 = lever_end - dir * 3.0
+	var knob : Vector2 = lever_end - dir * 7.0
+	draw_line(neck, knob, color_beam, SWITCH_BEAM_THICKNESS * 0.7)
+	draw_circle(knob, 7.0, STEEL_EDGE)                          # dark rim
+	draw_circle(knob, 6.0, KNOB)                                # bronze ball
+	draw_arc(knob, 5.0, PI * 0.9, PI * 1.65, 12, KNOB_HI, 1.4)  # lit crescent
+	draw_circle(knob + Vector2(-1.6, -1.8), 1.4, KNOB_HI)       # specular
+
+	# --- LEVEL steel cradle CUP mounted at the pad end (coin rests centred) ---
+	# C is the cup's centre dip, exactly where the board rests the coin's bottom-
+	# centre (pad end lifted by SWITCH_RISE to the row line); a stem keeps it
+	# mounted to the arm through the whole swing.
 	var C : Vector2 = Vector2(pad_end.x, pad_end.y - SWITCH_RISE)
 	draw_line(pad_end, C, color_beam, SWITCH_BEAM_THICKNESS * 0.8)
 	var samples : int = 6
@@ -182,19 +202,43 @@ func _draw() -> void:
 	for i in samples + 1:
 		var s : float = lerpf(-PAD_HALF_WIDTH, PAD_HALF_WIDTH, float(i) / float(samples))
 		var rise : float = SWITCH_PAD_CUP_DEPTH * pow(s / PAD_HALF_WIDTH, 2.0)   # lips rise above the centre dip
-		top_edge.append(C + Vector2(s, -rise))                            # level: dip at centre, lips curve up
-		bottom_edge.append(C + Vector2(s, -rise + SWITCH_PAD_HEIGHT))     # plate underside
-	# Fill as a strip of CONVEX quads (one concave polygon trips draw_colored_polygon's convex-only path).
+		top_edge.append(C + Vector2(s, -rise))
+		bottom_edge.append(C + Vector2(s, -rise + SWITCH_PAD_HEIGHT))
 	for i in samples:
 		draw_colored_polygon(PackedVector2Array([
 			top_edge[i], top_edge[i + 1], bottom_edge[i + 1], bottom_edge[i]]), color_pad)
-	draw_polyline(top_edge, Palette.BRASS_BRIGHT, 1.5)                                       # lit cradle rim
-	draw_line(bottom_edge[0], bottom_edge[bottom_edge.size() - 1], Palette.SKY_VOID, 1.0)    # shadowed under-edge
-	# Pivot BOLT at the origin — a real anchor the eye can read row-to-row (was a tiny 4px dot).
-	draw_circle(Vector2.ZERO, 6.0, Palette.BRASS_FRAME)
-	draw_circle(Vector2.ZERO, 3.0, Palette.BRASS_PAD)
-	draw_arc(Vector2.ZERO, 6.0, 0.0, TAU, 16, Palette.SKY_VOID, 1.0)
-	draw_circle(Vector2(-1.5, -1.5), 1.0, Palette.GOLD_GLOW)
+	draw_polyline(top_edge, STEEL_HI, 1.6)                                          # lit cradle rim
+	draw_line(bottom_edge[0], bottom_edge[bottom_edge.size() - 1], STEEL_EDGE, 1.2) # shadowed under-edge
+	draw_circle(top_edge[0], 2.2, STEEL_HI)                                         # upturned lip horns
+	draw_circle(top_edge[top_edge.size() - 1], 2.2, STEEL_HI)
+
+	# --- Two screw-bolt PIVOTS, both real axes of rotation (Troy 2026-06-15):
+	# the CUP-HOLDER pivot at the arm tip (the cradle gimbals on it to stay
+	# level as the arm tilts) and the CENTRE fulcrum (the whole arm see-saws
+	# around it). The cup pivot draws first so the fulcrum reads as the anchor.
+	_draw_bolt(pad_end, 5.0)
+	_draw_bolt(Vector2.ZERO, 7.0)
+
+
+# A small forged rivet (dark seat + domed steel head + specular) on the arm.
+func _draw_rivet(p: Vector2) -> void:
+
+	draw_circle(p, 2.4, STEEL_EDGE)
+	draw_circle(p, 1.7, STEEL_HI.lerp(STEEL, 0.35))
+	draw_circle(p + Vector2(-0.5, -0.6), 0.7, STEEL_HI)
+
+
+# A screw-bolt PIVOT (steel boss + dark ring + domed inner + cross-slot +
+# specular). Used for BOTH rotation axes — the centre fulcrum and the cup pivot.
+func _draw_bolt(p: Vector2, r: float) -> void:
+
+	draw_circle(p, r, color_pivot)
+	draw_arc(p, r, 0.0, TAU, 20, STEEL_EDGE, 1.4)
+	draw_circle(p, r * 0.57, STEEL_HI.lerp(color_pivot, 0.45))
+	var s : float = r * 0.43
+	draw_line(p + Vector2(-s, 0.0), p + Vector2(s, 0.0), STEEL_EDGE, 1.2)
+	draw_line(p + Vector2(0.0, -s), p + Vector2(0.0, s), STEEL_EDGE, 1.2)
+	draw_circle(p + Vector2(-r * 0.3, -r * 0.32), maxf(0.9, r * 0.18), STEEL_HI)
 
 
 # --- Convenience methods used by the board ------------------------------
