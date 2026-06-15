@@ -41,30 +41,33 @@ const GRAIN_STRIPE_COUNT : int = 3
 const GRAIN_STRIPE_WIDTH : float = 1.4
 
 
-## Per-kind face + shadow + grain colors. Saturated and high-contrast
-## like YPP SwF's red/yellow/green/blue — readability at speed beats
-## "naturalistic wood tones." We span the hue wheel (yellow/red/green/
-## blue) but kept warm and wood-stained so the lumber theme reads.
+## Per-kind face + shadow + grain colors. BELIEVABLE WOOD tones, not rainbow
+## candy (Troy 2026-06-15, the same call as the Mining terrain pass): four
+## distinct stains that still read apart at speed but clearly look like wood.
+##   SUNPINE   — pale honey pine
+##   CORALWOOD — warm red cedar
+##   MOSSWOOD  — moss-aged olive wood
+##   STORMWOOD — weathered grey-blue driftwood
 const KIND_COLORS : Dictionary = {
 	WoodKind.SUNPINE: {
-		"face": Color(0.98, 0.82, 0.28, 1.0),
-		"shadow": Color(0.75, 0.55, 0.10, 1.0),
-		"grain": Color(0.48, 0.32, 0.06, 1.0),
+		"face": Color(0.84, 0.68, 0.42, 1.0),
+		"shadow": Color(0.60, 0.46, 0.24, 1.0),
+		"grain": Color(0.46, 0.33, 0.16, 1.0),
 	},
 	WoodKind.CORALWOOD: {
-		"face": Color(0.88, 0.32, 0.22, 1.0),
-		"shadow": Color(0.62, 0.18, 0.10, 1.0),
-		"grain": Color(0.38, 0.08, 0.04, 1.0),
+		"face": Color(0.71, 0.40, 0.29, 1.0),
+		"shadow": Color(0.48, 0.24, 0.17, 1.0),
+		"grain": Color(0.34, 0.16, 0.11, 1.0),
 	},
 	WoodKind.MOSSWOOD: {
-		"face": Color(0.48, 0.78, 0.36, 1.0),
-		"shadow": Color(0.26, 0.52, 0.18, 1.0),
-		"grain": Color(0.12, 0.32, 0.08, 1.0),
+		"face": Color(0.53, 0.57, 0.35, 1.0),
+		"shadow": Color(0.34, 0.39, 0.21, 1.0),
+		"grain": Color(0.23, 0.27, 0.13, 1.0),
 	},
 	WoodKind.STORMWOOD: {
-		"face": Color(0.34, 0.62, 0.86, 1.0),
-		"shadow": Color(0.16, 0.36, 0.62, 1.0),
-		"grain": Color(0.04, 0.18, 0.38, 1.0),
+		"face": Color(0.47, 0.53, 0.59, 1.0),
+		"shadow": Color(0.29, 0.35, 0.41, 1.0),
+		"grain": Color(0.18, 0.23, 0.29, 1.0),
 	},
 }
 
@@ -91,21 +94,35 @@ func _draw() -> void:
 		CELL_PAD, CELL_PAD,
 		CELL_SIZE - 2.0 * CELL_PAD,
 		CELL_SIZE - 2.0 * CELL_PAD)
-	# Shadow base (drawn slightly larger and offset to give a touch of
-	# depth — keeps the cell from looking flat).
-	var shadow_rect : Rect2 = inner.grow(0.0)
+	# Drop shadow for a touch of depth.
+	var shadow_rect : Rect2 = inner
 	shadow_rect.position.y += 1.5
 	draw_rect(shadow_rect, shadow_color)
-	# Face on top.
+	# Plank face.
 	draw_rect(inner, face_color)
-	# Grain stripes — horizontal lines across the face, evenly spaced.
-	for i in range(GRAIN_STRIPE_COUNT):
-		var t : float = (i + 1.0) / float(GRAIN_STRIPE_COUNT + 1)
-		var y : float = inner.position.y + inner.size.y * t
-		draw_line(
-			Vector2(inner.position.x + 2.0, y),
-			Vector2(inner.end.x - 2.0, y),
-			grain_color, GRAIN_STRIPE_WIDTH)
+	# Beveled edges (lit top/left, shadowed bottom/right) — a carved wood block.
+	var c_tl : Vector2 = inner.position
+	var c_tr : Vector2 = Vector2(inner.end.x, inner.position.y)
+	var c_bl : Vector2 = Vector2(inner.position.x, inner.end.y)
+	var c_br : Vector2 = inner.end
+	draw_line(c_tl, c_tr, face_color.lightened(0.22), 1.6)
+	draw_line(c_tl, c_bl, face_color.lightened(0.13), 1.4)
+	draw_line(c_bl, c_br, shadow_color.darkened(0.10), 1.6)
+	draw_line(c_tr, c_br, shadow_color.darkened(0.04), 1.4)
+	# Wood GRAIN — a few slightly wavy lines across the face (boards stacked flat).
+	for k in GRAIN_STRIPE_COUNT:
+		var gy : float = inner.position.y + inner.size.y * (0.28 + float(k) * 0.22)
+		var pts : PackedVector2Array = PackedVector2Array()
+		for j in 5:
+			var tx : float = float(j) / 4.0
+			var wob : float = sin(float(k) * 2.1 + tx * 5.0) * 1.4
+			pts.append(Vector2(inner.position.x + 2.0 + (inner.size.x - 4.0) * tx, gy + wob))
+		draw_polyline(pts, grain_color, GRAIN_STRIPE_WIDTH)
+	# A faint lighter fleck near the top for figure.
+	draw_line(
+		Vector2(inner.position.x + inner.size.x * 0.20, inner.position.y + inner.size.y * 0.15),
+		Vector2(inner.position.x + inner.size.x * 0.70, inner.position.y + inner.size.y * 0.15),
+		face_color.lightened(0.10), 1.0)
 	# Breaker variant — stamp a big dark AXE silhouette across the face
 	# so the player can read "this is a breaker" at a single glance,
 	# even at the bottom of a busy stack. The axe is a chunky

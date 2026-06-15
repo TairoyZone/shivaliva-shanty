@@ -143,11 +143,11 @@ const PAIR_B_RIGHT : int = 3
 # medium-brown workshop-floor backdrop to pop, not a near-black void.
 # Roughly matches the YPP SwF bin which is a soft warm brown.
 
-const BIN_BG_COLOR : Color = Color(0.32, 0.21, 0.12, 1.0)
+const BIN_BG_COLOR : Color = Color(0.16, 0.11, 0.07, 1.0)        # deep walnut so wood pieces pop (was a mid brown)
 const BIN_BORDER_COLOR : Color = Color(0.68, 0.46, 0.22, 1.0)
-const BIN_GRID_COLOR : Color = Color(0.50, 0.34, 0.18, 0.35)
+const BIN_GRID_COLOR : Color = Color(0.50, 0.34, 0.18, 0.22)
 const BIN_BORDER_WIDTH : float = 3.0
-const SPAWN_GUIDE_COLOR : Color = Color(0.98, 0.82, 0.42, 0.16)
+const SPAWN_GUIDE_COLOR : Color = Color(0.98, 0.82, 0.42, 0.14)
 
 
 ## Emitted whenever the running SCORE changes. Score is the combo/chain
@@ -1118,19 +1118,24 @@ func _draw() -> void:
 
 	var bin_size : Vector2 = Vector2(COLS * LogPiece.CELL_SIZE, ROWS * LogPiece.CELL_SIZE)
 	var bin_rect : Rect2 = Rect2(Vector2.ZERO, bin_size)
-	# Bin background — dark interior so wood blocks pop.
+	# Bin background — deep walnut back wall so the wood blocks pop.
 	draw_rect(bin_rect, BIN_BG_COLOR)
+	# The back wall is PLANKED: carved vertical seams (a dark cut + a faint lit
+	# lip) so the empty bin reads as a timber mill wall, not flat brown.
+	var seam : Color = Color(0.0, 0.0, 0.0, 0.28)
+	var seam_lip : Color = Color(0.55, 0.40, 0.22, 0.10)
+	for c in range(1, COLS):
+		var sx : float = c * LogPiece.CELL_SIZE
+		draw_line(Vector2(sx, 0.0), Vector2(sx, bin_size.y), seam, 1.5)
+		draw_line(Vector2(sx + 1.0, 0.0), Vector2(sx + 1.0, bin_size.y), seam_lip, 1.0)
 	# Soft spawn-column tint, within the bin only. (Drawing nothing above y=0; the spawn-buffer pieces above the
 	# top edge stay hidden behind the SpawnCover added in _ready until they fall in.)
 	var spawn_x : float = SPAWN_COL * LogPiece.CELL_SIZE
 	draw_rect(Rect2(spawn_x, 0.0, LogPiece.CELL_SIZE, bin_size.y), SPAWN_GUIDE_COLOR)
-	# Grid lines — subtle, just enough to read cell positions.
+	# Faint horizontal grid — just enough to read cell rows.
 	for r in range(1, ROWS):
 		var y : float = r * LogPiece.CELL_SIZE
 		draw_line(Vector2(0.0, y), Vector2(bin_size.x, y), BIN_GRID_COLOR, 1.0)
-	for c in range(1, COLS):
-		var x : float = c * LogPiece.CELL_SIZE
-		draw_line(Vector2(x, 0.0), Vector2(x, bin_size.y), BIN_GRID_COLOR, 1.0)
 	# Fusion overlays — draw BEHIND the LogPieces (parents draw first,
 	# children after, so this lands underneath). Renders as a faint
 	# inner glow + thick golden outline framing the fused group, so
@@ -1143,5 +1148,8 @@ func _draw() -> void:
 		var rect : Rect2 = Rect2(px, py, pw, ph)
 		draw_rect(rect, FUSION_INNER_GLOW_COLOR)
 		draw_rect(rect, FUSION_OUTLINE_COLOR, false, FUSION_OUTLINE_WIDTH)
-	# Outer border (drawn last so it sits on top of grid lines).
-	draw_rect(bin_rect, BIN_BORDER_COLOR, false, BIN_BORDER_WIDTH)
+	# Beveled TIMBER frame (drawn last, on top): a dark outer edge, a warm wood
+	# band, and a lit inner lip — a hewn-beam border around the mill bin.
+	draw_rect(bin_rect, Color(0.09, 0.06, 0.03, 1.0), false, 6.0)
+	draw_rect(bin_rect.grow(-3.0), BIN_BORDER_COLOR, false, 4.0)
+	draw_rect(bin_rect.grow(-5.5), Color(0.86, 0.64, 0.34, 1.0), false, 1.5)
