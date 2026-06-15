@@ -102,7 +102,7 @@ const PAD_RIGHT : int = 1
 
 @export_category("Colors")
 @export var color_beam : Color = Color(0.58, 0.62, 0.70, 1.0)   # steel arm
-@export var color_pad : Color = Color(0.72, 0.76, 0.83, 1.0)    # brighter steel cradle cup
+@export var color_pad : Color = Color(0.80, 0.59, 0.31, 1.0)    # bronze cradle cup (Troy 2026-06-15)
 @export var color_pivot : Color = Color(0.66, 0.70, 0.77, 1.0)  # steel pivot boss
 
 
@@ -207,9 +207,9 @@ func _draw() -> void:
 	for i in samples:
 		draw_colored_polygon(PackedVector2Array([
 			top_edge[i], top_edge[i + 1], bottom_edge[i + 1], bottom_edge[i]]), color_pad)
-	draw_polyline(top_edge, STEEL_HI, 1.6)                                          # lit cradle rim
-	draw_circle(top_edge[0], 2.2, STEEL_HI)                                         # upturned lip horns
-	draw_circle(top_edge[top_edge.size() - 1], 2.2, STEEL_HI)
+	draw_polyline(top_edge, KNOB_HI, 1.6)                                           # lit bronze cradle rim
+	draw_circle(top_edge[0], 2.2, KNOB_HI)                                          # upturned lip horns
+	draw_circle(top_edge[top_edge.size() - 1], 2.2, KNOB_HI)
 
 	# --- Two screw-bolt PIVOTS, both real axes of rotation (Troy 2026-06-15):
 	# the CUP-HOLDER pivot at the arm tip (the cradle gimbals on it to stay
