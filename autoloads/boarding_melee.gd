@@ -485,6 +485,11 @@ func player_rotate() -> void:
 		_player.board.rotate_cw()
 
 
+func player_hold() -> void:
+	if _player_present and player_alive():
+		_player.board.hold()
+
+
 func player_soft_drop(on: bool) -> void:
 	if _player_present and _player != null and _player.alive and is_instance_valid(_player.board):
 		_player.board.set_soft_drop(on)

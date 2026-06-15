@@ -22,11 +22,18 @@ func _touch_spec() -> Array:
 	return [
 		{"label": "◄", "action": "ui_left", "hold": true, "side": "left"},
 		{"label": "►", "action": "ui_right", "hold": true, "side": "left"},
+		{"label": "⇄", "callable": _on_hold_pressed},   # HOLD / swap the falling piece
 		{"label": "↻", "action": "ui_up"},
 		{"label": "▼", "action": "ui_down", "hold": true},
-		{"label": "◄T", "key": KEY_A},
-		{"label": "T►", "key": KEY_D},
 	]
+
+
+# HOLD / swap the player's falling piece (Tab key or the ⇄ button). Target-switching
+# on touch is by TAPPING a foe board (so the old ◄T / T► buttons were dropped).
+func _on_hold_pressed() -> void:
+
+	if BoardingMelee.player_alive() and not BoardingMelee.is_resolved():
+		BoardingMelee.player_hold()
 
 
 const PORTRAIT_SCENE : PackedScene = preload("res://components/portrait/portrait.tscn")
@@ -84,6 +91,8 @@ func _ready() -> void:
 		BoardingMelee.start()
 	_combatants = BoardingMelee.combatants()
 	_player = BoardingMelee.player_combatant()
+	if _player != null and is_instance_valid(_player.board):
+		_player.board.set_show_hold(true)   # the player's HOLD panel (the AI crews never swap)
 	for c in _combatants:
 		if is_instance_valid(c.board):
 			c.board.visible = true
@@ -303,6 +312,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			BoardingMelee.player_rotate()
 			get_viewport().set_input_as_handled()
 			return
+		# TAB (or Shift) = HOLD / swap the falling piece (same as the duel).
+		if event is InputEventKey and event.pressed and not (event as InputEventKey).echo \
+				and (event as InputEventKey).keycode in [KEY_TAB, KEY_SHIFT]:
+			BoardingMelee.player_hold()
+			get_viewport().set_input_as_handled()
+			return
 	# [A]/[D] cycle your target up/down the foe roster (auto-scrolling it into view).
 	if not BoardingMelee.is_resolved() and event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_A:
@@ -482,12 +497,12 @@ func _build_ui() -> void:
 	var defend_line : String
 	var scroll_line : String
 	if TouchEnv.is_touch():
-		controls = "• ◄  ► :  move    ↻ :  rotate    ▼ :  soft drop\n"
-		target_line = "• TAP a foe, or the ◄T / T► buttons, to switch your target.\n"
+		controls = "• ◄  ► :  move    ↻ :  rotate    ▼ :  soft drop    ⇄ :  HOLD / swap\n"
+		target_line = "• TAP a foe to switch your target.\n"
 		defend_line = "• TAP a MATE to DEFEND them (green ring) — your clears un-bury THEIR board instead.\n"
-		scroll_line = "• Big crews scroll — tap the ▲ ▼ by a column (◄T / T► auto-scrolls your target in).\n"
+		scroll_line = "• Big crews scroll — tap the ▲ ▼ by a column (tapping a foe auto-scrolls it in).\n"
 	else:
-		controls = "• ←  → :  move    ↑ :  rotate    ↓ / SPACE :  soft drop\n"
+		controls = "• ←  → :  move    ↑ :  rotate    ↓ / SPACE :  soft drop    TAB :  HOLD / swap\n"
 		target_line = "• CLICK a foe, or press [A] / [D], to switch your target.\n"
 		defend_line = "• CLICK a MATE to DEFEND them (green ring) — your clears un-bury THEIR board instead.\n"
 		scroll_line = "• Big crews scroll — use the ▲ ▼ by a column ([A]/[D] auto-scrolls your target in).\n"
