@@ -50,6 +50,7 @@ const COLOR_STARDUST_GLOW : Color = Color(0.62, 0.42, 0.95, 1.0)   # the drift w
 var _active_index : int = -1
 var _active_cells : Array = []
 var _hover_cell : Vector2i = Vector2i.ZERO
+var _over_trash : bool = false   # the held piece is hovering the trash can (its lid opens)
 var _flash_rows : Array = []
 var _flash_cols : Array = []
 var _flash_t : float = 0.0
@@ -74,12 +75,12 @@ func _ready() -> void:
 		controls = ("• Tap a piece in the tray to pick it up (tap it again, or tap off the board, to put it back)\n"
 			+ "• ↺ ↻ to rotate · ⇄ to flip\n"
 			+ "• Tap the grid to lay it down (green = fits, red = won't)\n")
-		toss_line = "• Toss discards the held piece — but a wasted piece costs points + your combo\n\n"
+		toss_line = "• Drop a held piece on the TRASH CAN (or Toss) to discard it — but a wasted piece costs points + your combo\n\n"
 	else:
 		controls = ("• Click a piece in the tray to pick it up (click it again, or click off the board, to put it back)\n"
 			+ "• Mouse-wheel or X / C to rotate · F (or right-click the held piece) to flip\n"
 			+ "• Click the grid to lay it down (green = fits, red = won't)\n")
-		toss_line = "• Right-click a tray piece (or Toss) to discard one — but a wasted piece costs points + your combo\n\n"
+		toss_line = "• Drop a held piece on the TRASH CAN (its lid opens) — or right-click a tray piece — to discard it; a wasted piece costs points + your combo\n\n"
 	var help : String = ("THE PATCHWORKS — plank the hull\n\n"
 		+ controls
 		+ "• Fill a whole ROW or COLUMN → it BLASTS clear; clear on back-to-back moves for a combo\n"
@@ -149,34 +150,8 @@ func _build_hud() -> void:
 		_hull_bar.bad_frac = 0.75
 		bar.add_child(_hull_bar)
 		_refresh_ship_meters()
-	# Toss button — cool styled (matches the deck/station chrome; was a bare default-grey button).
-	var toss : Button = Button.new()
-	toss.text = "Toss piece"
-	toss.position = Vector2(980.0, 556.0)
-	toss.custom_minimum_size = Vector2(150.0, 44.0)
-	toss.focus_mode = Control.FOCUS_NONE
-	toss.add_theme_font_size_override("font_size", 18)
-	toss.add_theme_color_override("font_color", Color(0.86, 0.92, 1.0, 1.0))
-	toss.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	toss.add_theme_constant_override("outline_size", 3)
-	for state in ["normal", "hover", "pressed"]:
-		var ts : StyleBoxFlat = StyleBoxFlat.new()
-		var tbg : Color = Color(0.12, 0.17, 0.27, 0.94)
-		if state == "hover":
-			tbg = tbg.lightened(0.10)
-		elif state == "pressed":
-			tbg = tbg.darkened(0.12)
-		ts.bg_color = tbg
-		ts.border_color = Palette.SKY_FRAME
-		ts.set_border_width_all(2)
-		ts.set_corner_radius_all(8)
-		ts.content_margin_left = 12
-		ts.content_margin_right = 12
-		ts.content_margin_top = 6
-		ts.content_margin_bottom = 6
-		toss.add_theme_stylebox_override(state, ts)
-	toss.pressed.connect(_on_toss)
-	layer.add_child(toss)
+	# (No "Toss piece" button — tossing is now the drawn TRASH CAN drop-target: drag a
+	# held piece over it and its lid opens; drop to discard. See _draw_trash. Troy 2026-06-16.)
 
 
 func _make_label(parent: Node, text: String, pos: Vector2, size: int, color: Color, align: HorizontalAlignment, width: float) -> Label:
@@ -267,6 +242,77 @@ func _draw_breach(r: Rect2, gx: int, gy: int) -> void:
 	draw_rect(r, COLOR_HULL_EDGE, false, 1.5)
 
 
+func _trash_rect() -> Rect2:
+
+	return Rect2(982.0, 552.0, 108.0, 104.0)
+
+
+# The TOSS trash-can drop-target: lid CLOSED normally, lid OPEN (lifted off, a green
+# invite) while a held piece hovers it — drop to discard (Troy 2026-06-16).
+func _draw_trash(rect: Rect2, open: bool) -> void:
+
+	var METAL : Color = Color(0.42, 0.44, 0.50)
+	var METAL_DK : Color = Color(0.24, 0.25, 0.30)
+	var METAL_LT : Color = Color(0.60, 0.62, 0.68)
+	var cx : float = rect.position.x + rect.size.x * 0.5
+	var top_w : float = rect.size.x * 0.74
+	var bot_w : float = rect.size.x * 0.58
+	var body_top : float = rect.position.y + rect.size.y * 0.30
+	var body_bot : float = rect.end.y - 4.0
+	# Tapered bin body + a shaded right half.
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(cx - top_w * 0.5, body_top), Vector2(cx + top_w * 0.5, body_top),
+		Vector2(cx + bot_w * 0.5, body_bot), Vector2(cx - bot_w * 0.5, body_bot)]), METAL)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(cx, body_top), Vector2(cx + top_w * 0.5, body_top),
+		Vector2(cx + bot_w * 0.5, body_bot), Vector2(cx, body_bot)]), METAL.darkened(0.12))
+	for i in 5:   # vertical ribs
+		var t : float = float(i) / 4.0
+		draw_line(Vector2(lerpf(cx - top_w * 0.42, cx + top_w * 0.42, t), body_top + 4.0),
+			Vector2(lerpf(cx - bot_w * 0.42, cx + bot_w * 0.42, t), body_bot - 3.0), Color(0.0, 0.0, 0.0, 0.18), 1.0)
+	for by in [0.34, 0.74]:   # two iron bands
+		var yy : float = lerpf(body_top, body_bot, by)
+		var hw : float = lerpf(top_w, bot_w, by) * 0.5
+		draw_line(Vector2(cx - hw, yy), Vector2(cx + hw, yy), METAL_DK, 2.5)
+		draw_line(Vector2(cx - hw, yy - 1.5), Vector2(cx + hw, yy - 1.5), METAL_LT, 1.0)
+	var rim_c : Vector2 = Vector2(cx, body_top)
+	var rim_rx : float = top_w * 0.5
+	var rim_ry : float = top_w * 0.16
+	if open:
+		# Dark interior + a green "drop here" invite, lid lifted off to the side.
+		draw_colored_polygon(_ellipse_pts(rim_c, rim_rx, rim_ry), Color(0.06, 0.07, 0.09))
+		draw_polyline(_ellipse_loop(rim_c, rim_rx, rim_ry), Color(0.55, 0.95, 0.55, 0.9), 2.0)
+		var lc : Vector2 = Vector2(cx - top_w * 0.32, body_top - rect.size.y * 0.36)
+		draw_colored_polygon(_ellipse_pts(lc, top_w * 0.42, top_w * 0.13), METAL_LT)
+		draw_polyline(_ellipse_loop(lc, top_w * 0.42, top_w * 0.13), METAL_DK, 1.5)
+		draw_line(lc, lc + Vector2(0.0, -6.0), METAL_DK, 2.0)
+		draw_circle(lc + Vector2(0.0, -7.0), 3.0, METAL)
+	else:
+		# Closed: a domed lid + knob.
+		draw_colored_polygon(_ellipse_pts(rim_c, rim_rx, rim_ry), METAL.darkened(0.08))
+		var lid_c : Vector2 = rim_c + Vector2(0.0, -4.0)
+		draw_colored_polygon(_ellipse_pts(lid_c, rim_rx * 1.02, rim_ry), METAL_LT)
+		draw_polyline(_ellipse_loop(lid_c, rim_rx * 1.02, rim_ry), METAL_DK, 1.5)
+		draw_line(Vector2(cx, lid_c.y - rim_ry), Vector2(cx, lid_c.y - rim_ry - 6.0), METAL_DK, 2.5)
+		draw_circle(Vector2(cx, lid_c.y - rim_ry - 7.0), 3.5, METAL)
+
+
+func _ellipse_pts(c: Vector2, rx: float, ry: float) -> PackedVector2Array:
+
+	var p : PackedVector2Array = PackedVector2Array()
+	for i in 22:
+		var a : float = float(i) / 22.0 * TAU
+		p.append(c + Vector2(cos(a) * rx, sin(a) * ry))
+	return p
+
+
+func _ellipse_loop(c: Vector2, rx: float, ry: float) -> PackedVector2Array:
+
+	var p : PackedVector2Array = _ellipse_pts(c, rx, ry)
+	p.append(p[0])
+	return p
+
+
 func _draw() -> void:
 
 	# Reinforced TIMBER hull frame (beveled band + corner bolts), around the grid.
@@ -314,6 +360,7 @@ func _draw() -> void:
 			for by in GRID_H:
 				_draw_blast_cell(x, by)
 	_draw_tray()
+	_draw_trash(_trash_rect(), _over_trash and _active_index >= 0)
 
 
 func _draw_tray() -> void:
@@ -384,6 +431,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _update_hover(mouse: Vector2) -> void:
 
+	# The trash can opens its lid while a held piece hovers over it.
+	var over : bool = _trash_rect().has_point(mouse)
+	if over != _over_trash:
+		_over_trash = over
+		queue_redraw()
 	if _active_index < 0:
 		return
 	# Centre the held piece's bounding box on the cursor (so the cursor sits in the MIDDLE of the
@@ -412,6 +464,10 @@ func _on_left_click(mouse: Vector2) -> void:
 			queue_redraw()
 			return
 	if _active_index < 0:
+		return
+	# Dropped on the TRASH CAN → toss the held piece.
+	if _trash_rect().has_point(mouse):
+		_on_toss()
 		return
 	if _board_frame_rect().has_point(mouse):
 		# On the board → lay it down (an illegal spot just keeps it held so you can reposition).
