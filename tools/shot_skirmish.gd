@@ -49,6 +49,8 @@ func _go() -> void:
 	board._grid[11][1] = SkirmishBoard.GARBAGE_CELL
 	board._garbage_age[11][1] = SkirmishBoard.DECAY_MOVES + 2
 	board._show_preview = true
+	board.set_show_hold(true)
+	board._hold = 5   # a J piece stashed in HOLD
 	board.queue_redraw()
 
 	await get_tree().create_timer(0.5).timeout

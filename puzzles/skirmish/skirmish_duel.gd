@@ -21,9 +21,17 @@ func _touch_spec() -> Array:
 	return [
 		{"label": "◄", "action": "ui_left", "hold": true, "side": "left"},
 		{"label": "►", "action": "ui_right", "hold": true, "side": "left"},
+		{"label": "⇄", "callable": _on_hold_pressed},   # HOLD / swap the falling piece
 		{"label": "↻", "action": "ui_up"},
 		{"label": "▼", "action": "ui_down", "hold": true},
 	]
+
+
+# HOLD / swap the player's falling piece (Tab key or the ⇄ button).
+func _on_hold_pressed() -> void:
+
+	if not _duel_over and _player_board != null and not _player_board.is_over():
+		_player_board.hold()
 
 
 const PORTRAIT_SCENE : PackedScene = preload("res://components/portrait/portrait.tscn")
@@ -91,6 +99,7 @@ func _ready() -> void:
 		chat.setup(_opponent_profile)
 		chat.position = Vector2(960.0, 70.0)   # up top, between the two boards
 	_layout_boards()
+	_player_board.set_show_hold(true)   # the HOLD panel is the player's alone (the AI never swaps)
 	_opponent_board.set_ai_controlled(true, _opponent_skill)
 	_player_board.lines_cleared.connect(_on_player_cleared)
 	_opponent_board.lines_cleared.connect(_on_opponent_cleared)
@@ -185,6 +194,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _duel_over and _player_board != null and not _player_board.is_over():
 		if event.is_action_pressed("ui_up"):
 			_player_board.rotate_cw()
+			get_viewport().set_input_as_handled()
+			return
+		# TAB (or Shift) = HOLD / swap the falling piece.
+		if event is InputEventKey and event.pressed and not (event as InputEventKey).echo \
+				and (event as InputEventKey).keycode in [KEY_TAB, KEY_SHIFT]:
+			_player_board.hold()
 			get_viewport().set_input_as_handled()
 			return
 	# Defer to PuzzleScene for click-to-dismiss after the duel ends.
@@ -327,11 +342,13 @@ func _build_ui() -> void:
 	if TouchEnv.is_touch():
 		controls = ("• ◄  ► :  move the piece\n"
 			+ "• ↻ :  rotate\n"
-			+ "• ▼ :  soft drop (hold)\n\n")
+			+ "• ▼ :  soft drop (hold)\n"
+			+ "• ⇄ :  HOLD / swap the piece\n\n")
 	else:
 		controls = ("• ←  → :  move the piece\n"
 			+ "• ↑ :  rotate\n"
-			+ "• ↓  /  SPACE :  soft drop\n\n")
+			+ "• ↓  /  SPACE :  soft drop\n"
+			+ "• TAB :  HOLD / swap the piece\n\n")
 	set_help_text("SKIRMISH — bury your foe in garbage to top them out.\n\n"
 		+ controls
 		+ "Clear lines to send GARBAGE to your opponent. Fill their board to the top to win.\n\n"

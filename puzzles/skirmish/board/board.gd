@@ -144,6 +144,8 @@ signal game_over(score: int)
 ## A fresh piece just became active (top of the field). The duel scene uses
 ## this to wake the AI for an AI-controlled board.
 signal piece_spawned()
+## The held (swap) piece changed — a HUD can refresh its HOLD panel.
+signal hold_changed(piece: int)
 
 
 # --- State -------------------------------------------------------------
@@ -159,6 +161,10 @@ var _px : int = 0
 var _py : int = 0
 var _next : int = -1
 var _bag : Array[int] = []
+## HOLD (player-only swap/stash). -1 = empty. You may HOLD once per drop — it
+## re-enables when a piece LOCKS — so you can't stall by swapping forever.
+var _hold : int = -1
+var _hold_used : bool = false
 
 var _score : int = 0
 var _lines : int = 0
@@ -214,6 +220,9 @@ var _highlight : Color = Color(0, 0, 0, 0)
 ## Roster thumbnails hide the next-piece box (via [method set_show_preview]) so they're
 ## clean + narrow; the player's full board keeps it.
 var _show_preview : bool = true
+## The HOLD panel is player-only (the AI never holds); the duel turns it on for
+## the player board via [method set_show_hold].
+var _show_hold : bool = false
 ## True while an AI piece is mid-fall (after ai_place commits). The piece SITS
 ## at the top during the bot's think-time, then falls when this flips true.
 var _ai_dropping : bool = false
@@ -378,6 +387,41 @@ func rotate_cw() -> void:
 			return
 
 
+## HOLD / swap (player-only): stash the falling piece for later, or swap the held
+## one back in mid-air. Usable ONCE per drop (re-enabled when a piece LOCKS), so
+## you can't stall by swapping forever. Bound to Tab / the switch button.
+func hold() -> void:
+
+	if _over or _piece < 0 or _topping_out or _clearing or _revealing:
+		return
+	if _hold_used:
+		return
+	_hold_used = true
+	var current : int = _piece
+	if _hold < 0:
+		# Empty hold: stash the current piece, pull the queued NEXT as the live one.
+		_hold = current
+		_spawn()
+	else:
+		# Swap: the held piece becomes live (reset to the top), the current is stashed.
+		var incoming : int = _hold
+		_hold = current
+		_piece = incoming
+		_rot = 0
+		_py = 0
+		_soft_lockout = true
+		_soft_lockout_t = SOFT_LOCKOUT_TOUCH_GRACE
+		_px = _find_spawn_x()
+		if _px == NO_SPAWN:
+			# The swapped-in piece fits nowhere — same buried/jam handling as _spawn.
+			_doomed_piece = _piece
+			_piece = -1
+			_topping_out = true
+			_topout_t = TOPOUT_TIME
+		queue_redraw()
+	hold_changed.emit(_hold)
+
+
 func set_soft_drop(on: bool) -> void:
 
 	# Releasing the key clears the post-lock lockout — soft drop re-arms for the next
@@ -464,6 +508,7 @@ func _lock() -> void:
 		if r >= 0 and r < TOTAL_ROWS and c >= 0 and c < COLS:
 			_grid[r][c] = _piece
 	_piece = -1   # locked — no active piece until resolution finishes + spawns the next
+	_hold_used = false   # a placed piece re-enables HOLD for the next drop
 	_ai_dropping = false  # the AI piece has landed; stop the fall-loop re-entering during
 						  # the deferred reveal/flash (re-armed by ai_place after the next spawn)
 	# A move passed: ripen the blockage garbage one tick (some may decay into usable
@@ -702,6 +747,17 @@ func set_highlight(color: Color) -> void:
 func set_show_preview(on: bool) -> void:
 	_show_preview = on
 	queue_redraw()
+
+
+## Show/hide the HOLD panel (the duel turns it on for the PLAYER board only).
+func set_show_hold(on: bool) -> void:
+	_show_hold = on
+	queue_redraw()
+
+
+## The current held piece (-1 if empty), for a HUD that mirrors it.
+func held_piece() -> int:
+	return _hold
 
 
 ## DEFEND relief (a crewmate shielded this board): remove up to [param h] filled cells
@@ -1048,28 +1104,56 @@ func _draw() -> void:
 		draw_rect(Rect2(-4, -4, w + 8, h + 8), _highlight, false, 4.0)
 	if _show_preview:
 		_draw_next_preview(w)
+	if _show_hold:
+		_draw_hold_panel(w)
 
 
-# A small "next piece" box to the right of the field.
+## Height reserved above each side panel (NEXT / HOLD) for its text label.
+const PANEL_LABEL_H : float = 22.0
+
+
+# A small labelled "next piece" box to the right of the field.
 func _draw_next_preview(field_w: float) -> void:
 
 	var s : float = CELL * 0.82          # preview cell size
 	var pad : float = 12.0               # uniform inner padding
 	# The frame snugly fits the tetromino ENVELOPE — widest piece (I = 4 cells)
-	# by tallest (2 cells at spawn) — so every piece shares ONE tidy box with no
-	# wasted space, and each is CENTRED inside it (below).
+	# by tallest (2 cells at spawn) — so every piece shares ONE tidy box.
 	var box_w : float = 4.0 * s + pad * 2.0
 	var box_h : float = 2.0 * s + pad * 2.0
 	var bx : float = field_w + 22.0
-	var by : float = 0.0
+	var by : float = PANEL_LABEL_H
+	_draw_panel_label(bx, 0.0, "NEXT")
 	draw_rect(Rect2(bx, by, box_w, box_h), COLOR_EMPTY, true)
 	draw_rect(Rect2(bx, by, box_w, box_h), COLOR_FRAME, false, 2.0)
-	if _next < 0:
-		return
-	# Centre THIS piece by its own bounding box (pieces spawn at different offsets,
-	# so a fixed anchor looks lopsided) — measure min/max cell, then offset so the
-	# bbox is centred in the frame both ways.
-	var cells : Array = SHAPES[_next][0]
+	if _next >= 0:
+		_draw_preview_piece(_next, bx, by, box_w, box_h, s, false)
+
+
+# The HOLD / swap panel, stacked directly UNDER the NEXT box (player-only). Dimmed
+# while HOLD is spent for this drop, so the player reads when it's available again.
+func _draw_hold_panel(field_w: float) -> void:
+
+	var s : float = CELL * 0.82
+	var pad : float = 12.0
+	var box_w : float = 4.0 * s + pad * 2.0
+	var box_h : float = 2.0 * s + pad * 2.0
+	var bx : float = field_w + 22.0
+	var top : float = PANEL_LABEL_H + box_h + 18.0   # below the NEXT box + a gap
+	var by : float = top + PANEL_LABEL_H
+	_draw_panel_label(bx, top, "HOLD")
+	draw_rect(Rect2(bx, by, box_w, box_h), COLOR_EMPTY, true)
+	draw_rect(Rect2(bx, by, box_w, box_h),
+		COLOR_FRAME if not _hold_used else COLOR_FRAME.darkened(0.45), false, 2.0)
+	if _hold >= 0:
+		_draw_preview_piece(_hold, bx, by, box_w, box_h, s, _hold_used)
+
+
+# Centre a piece inside a preview box by its own bounding box (pieces spawn at
+# different offsets, so a fixed anchor looks lopsided). `dim` greys a spent HOLD.
+func _draw_preview_piece(piece: int, bx: float, by: float, box_w: float, box_h: float, s: float, dim: bool) -> void:
+
+	var cells : Array = SHAPES[piece][0]
 	var min_c : int = 9
 	var max_c : int = -9
 	var min_r : int = 9
@@ -1081,10 +1165,21 @@ func _draw_next_preview(field_w: float) -> void:
 		max_r = maxi(max_r, int(cell[1]))
 	var ox : float = bx + (box_w - float(max_c - min_c + 1) * s) * 0.5 - float(min_c) * s
 	var oy : float = by + (box_h - float(max_r - min_r + 1) * s) * 0.5 - float(min_r) * s
+	var col : Color = COLORS[piece]
+	if dim:
+		col = col.darkened(0.45).lerp(Color(0.3, 0.3, 0.34), 0.4)
 	for cell in cells:
 		var x : float = ox + int(cell[0]) * s
 		var y : float = oy + int(cell[1]) * s
-		_draw_block(Rect2(x + 1, y + 1, s - 2, s - 2), COLORS[_next])
+		_draw_block(Rect2(x + 1, y + 1, s - 2, s - 2), col)
+
+
+# A small panel caption (NEXT / HOLD) drawn above its box with the engine font.
+func _draw_panel_label(x: float, y: float, text: String) -> void:
+
+	var font : Font = ThemeDB.fallback_font
+	draw_string(font, Vector2(x + 2.0, y + 15.0), text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1.0, 15, COLOR_FRAME)
 
 
 func _draw_cell(col: int, vis_row: int, color: Color) -> void:
