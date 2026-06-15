@@ -57,14 +57,14 @@ func _draw() -> void:
 	# Matte material block with a soft beveled edge (lit top/left, shadowed
 	# bottom/right) — no mid-tile seams, no facets.
 	draw_rect(inner, face)
-	var tl : Vector2 = inner.position
-	var tr : Vector2 = Vector2(inner.end.x, inner.position.y)
-	var bl : Vector2 = Vector2(inner.position.x, inner.end.y)
-	var br : Vector2 = inner.end
-	draw_line(tl, tr, face.lightened(0.20), 1.5)
-	draw_line(tl, bl, face.lightened(0.12), 1.5)
-	draw_line(bl, br, face.darkened(0.28), 1.5)
-	draw_line(tr, br, face.darkened(0.18), 1.5)
+	var c_tl : Vector2 = inner.position
+	var c_tr : Vector2 = Vector2(inner.end.x, inner.position.y)
+	var c_bl : Vector2 = Vector2(inner.position.x, inner.end.y)
+	var c_br : Vector2 = inner.end
+	draw_line(c_tl, c_tr, face.lightened(0.20), 1.5)
+	draw_line(c_tl, c_bl, face.lightened(0.12), 1.5)
+	draw_line(c_bl, c_br, face.darkened(0.28), 1.5)
+	draw_line(c_tr, c_br, face.darkened(0.18), 1.5)
 	match rock_kind:
 		RockKind.STONE:
 			_tex_stone(inner, face)
