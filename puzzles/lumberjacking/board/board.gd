@@ -1184,16 +1184,8 @@ func _draw_overlay(ci: CanvasItem) -> void:
 
 	var bin_size : Vector2 = Vector2(COLS * LogPiece.CELL_SIZE, ROWS * LogPiece.CELL_SIZE)
 	var bin_rect : Rect2 = Rect2(Vector2.ZERO, bin_size)
-	# The tiles themselves merge a 2x2+ group into one continuous plank surface
-	# (via their fused_edges mask). Here we just trace a thin warm outline around
-	# each fused group so it reads as "ready to harvest" — NO opaque fill over the
-	# tiles (that was painting over other cells; Troy 2026-06-15).
-	for group in _fusion_groups:
-		var gx : float = group["col"] * LogPiece.CELL_SIZE
-		var gy : float = group["row"] * LogPiece.CELL_SIZE
-		var gw : float = group["w"] * LogPiece.CELL_SIZE
-		var gh : float = group["h"] * LogPiece.CELL_SIZE
-		ci.draw_rect(Rect2(gx + 1.5, gy + 1.5, gw - 3.0, gh - 3.0), FUSION_OUTLINE_COLOR, false, 2.5)
+	# A 2x2+ same-kind group merges into one continuous plank surface via the
+	# tiles' own fused_edges mask — no outline, no overlay (Troy 2026-06-15).
 	# Beveled TIMBER frame on top (dark outer edge / warm band / lit inner lip).
 	ci.draw_rect(bin_rect, Color(0.09, 0.06, 0.03, 1.0), false, 6.0)
 	ci.draw_rect(bin_rect.grow(-3.0), BIN_BORDER_COLOR, false, 4.0)
