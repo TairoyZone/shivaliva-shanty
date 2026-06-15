@@ -1,78 +1,62 @@
-## A single board cell in the Lumberjacking puzzle — one of 4 wood
-## kinds, either SOLID (lands and stays) or BREAKER (shatters connected
-## same-kind solids on contact). Mirrors the YPP SwordFighting piece
-## model precisely, just reskinned for wood.
+## A single board cell in the Lumberjacking puzzle — one of 4 PLANK kinds,
+## either SOLID (lands and stays) or BREAKER (shatters connected same-kind
+## solids on contact). Mirrors the YPP SwordFighting piece model, reskinned
+## for wood.
 ##
-## The board owns position + state. This scene only knows how to draw
-## itself given its kind + variant. Per the scene-per-component
-## principle, this is a standalone .tscn so art can swap in later
-## without touching the board logic.
+## Minecraft-style PLANKS (Troy 2026-06-15): oak / birch / spruce / jungle.
+## Each is a clean, self-contained plank face (a board grid + offset joints),
+## NOTHING bleeds past the cell edge. When same-kind planks fuse into a 2x2+
+## block, the board renders that group as a single LOG (see board.gd
+## _draw_fused_block). All 4 are mechanically identical; the kind is purely a
+## sorting/matching identity.
 ##
-## See [[lumberjacking-spec]] for the full mechanical spec.
+## The board owns position + state. Standalone .tscn per the scene-per-
+## component principle. See [[lumberjacking-spec]].
 @tool
 class_name LogPiece
 extends Node2D
 
 
-## Four wood kinds — fantasy-lore names (the floating-island universe
-## grows otherworldly woods, not Earth species). All 4 are mechanically
-## identical, YPP-SwF-style — color is purely a sorting/matching
-## identifier.
-##   SUNPINE   — touched by the sun pillar; bright golden yellow
-##   CORALWOOD — warm crimson, grows around the warm pillars
-##   MOSSWOOD  — vibrant green, from the verdant islands
-##   STORMWOOD — steel blue, weathered by the storm winds
-enum WoodKind { SUNPINE, CORALWOOD, MOSSWOOD, STORMWOOD }
+## Four plank kinds (Minecraft palette): readable apart at speed AND believable
+## as wood. OAK warm tan · BIRCH pale cream · SPRUCE dark brown · JUNGLE reddish.
+enum WoodKind { OAK, BIRCH, SPRUCE, JUNGLE }
 
-## SOLID = lands and remains. BREAKER = shatters on adjacent same-kind
-## contact (axe-bitten cutout look).
+## SOLID = lands and remains. BREAKER = shatters on adjacent same-kind contact.
 enum Variant { SOLID, BREAKER }
 
 
-## Cell size in pixels — also the board's grid step. 36px reads chunky
-## like SwF without crowding a 6-wide board on a 1080p screen.
+## Cell size in pixels — the board's grid step.
 const CELL_SIZE : float = 36.0
-## Inner padding so adjacent same-kind solids visibly TOUCH at their
-## edges (the fusion read works because the inner rects share edges).
+## Inner padding so adjacent same-kind solids visibly TOUCH at their edges.
 const CELL_PAD : float = 2.0
-## Grain stripes drawn across the face — gives the cell a "log section"
-## read at any size.
-const GRAIN_STRIPE_COUNT : int = 3
-const GRAIN_STRIPE_WIDTH : float = 1.4
 
 
-## Per-kind face + shadow + grain colors. BELIEVABLE WOOD tones, not rainbow
-## candy (Troy 2026-06-15, the same call as the Mining terrain pass): four
-## distinct stains that still read apart at speed but clearly look like wood.
-##   SUNPINE   — pale honey pine
-##   CORALWOOD — warm red cedar
-##   MOSSWOOD  — moss-aged olive wood
-##   STORMWOOD — weathered grey-blue driftwood
+## Per-kind face + shadow + grain (seam) colors — the four Minecraft plank tones.
 const KIND_COLORS : Dictionary = {
-	WoodKind.SUNPINE: {
-		"face": Color(0.84, 0.68, 0.42, 1.0),
-		"shadow": Color(0.60, 0.46, 0.24, 1.0),
-		"grain": Color(0.46, 0.33, 0.16, 1.0),
+	WoodKind.OAK: {
+		"face": Color(0.72, 0.57, 0.34, 1.0),
+		"shadow": Color(0.50, 0.39, 0.22, 1.0),
+		"grain": Color(0.40, 0.30, 0.16, 1.0),
 	},
-	WoodKind.CORALWOOD: {
-		"face": Color(0.71, 0.40, 0.29, 1.0),
-		"shadow": Color(0.48, 0.24, 0.17, 1.0),
-		"grain": Color(0.34, 0.16, 0.11, 1.0),
+	WoodKind.BIRCH: {
+		"face": Color(0.85, 0.78, 0.57, 1.0),
+		"shadow": Color(0.64, 0.58, 0.40, 1.0),
+		"grain": Color(0.50, 0.44, 0.29, 1.0),
 	},
-	WoodKind.MOSSWOOD: {
-		"face": Color(0.53, 0.57, 0.35, 1.0),
-		"shadow": Color(0.34, 0.39, 0.21, 1.0),
-		"grain": Color(0.23, 0.27, 0.13, 1.0),
+	WoodKind.SPRUCE: {
+		"face": Color(0.42, 0.30, 0.18, 1.0),
+		"shadow": Color(0.27, 0.19, 0.11, 1.0),
+		"grain": Color(0.17, 0.11, 0.06, 1.0),
 	},
-	WoodKind.STORMWOOD: {
-		"face": Color(0.47, 0.53, 0.59, 1.0),
-		"shadow": Color(0.29, 0.35, 0.41, 1.0),
-		"grain": Color(0.18, 0.23, 0.29, 1.0),
+	WoodKind.JUNGLE: {
+		"face": Color(0.69, 0.45, 0.31, 1.0),
+		"shadow": Color(0.47, 0.28, 0.18, 1.0),
+		"grain": Color(0.34, 0.19, 0.12, 1.0),
 	},
 }
 
 
-@export var wood_kind : WoodKind = WoodKind.SUNPINE :
+@export var wood_kind : WoodKind = WoodKind.OAK :
 	set(value):
 		wood_kind = value
 		queue_redraw()
@@ -82,8 +66,8 @@ const KIND_COLORS : Dictionary = {
 		queue_redraw()
 
 
-## A stable per-piece seed so the grain figure is varied but never shimmers
-## (re-seeding off the changing fall position would). Set once on _ready.
+## Stable per-piece seed so the joint offsets / birch flecks are varied but
+## never shimmer (re-seeding off the changing fall position would). Set on _ready.
 var _seed : int = 0
 
 
@@ -95,112 +79,69 @@ func _ready() -> void:
 func _draw() -> void:
 
 	var palette : Dictionary = KIND_COLORS[wood_kind]
-	var face_color : Color = palette["face"]
-	var shadow_color : Color = palette["shadow"]
-	var grain_color : Color = palette["grain"]
-	# The cell extends from origin (top-left) to (CELL_SIZE, CELL_SIZE).
-	# Inner rect leaves a thin pad so neighbors abut cleanly.
-	var inner : Rect2 = Rect2(
-		CELL_PAD, CELL_PAD,
-		CELL_SIZE - 2.0 * CELL_PAD,
-		CELL_SIZE - 2.0 * CELL_PAD)
-	# Drop shadow for a touch of depth.
-	var shadow_rect : Rect2 = inner
-	shadow_rect.position.y += 1.5
-	draw_rect(shadow_rect, shadow_color)
-	# Rounded (cylindrical) face: light top -> dark bottom bands for volume.
-	var bands : int = 4
-	for b in bands:
-		var bt : float = float(b) / float(bands - 1)
-		var bc : Color = face_color.lightened(0.10).lerp(face_color.darkened(0.10), bt)
-		draw_rect(Rect2(inner.position.x, inner.position.y + inner.size.y * float(b) / float(bands),
-			inner.size.x, inner.size.y / float(bands) + 1.0), bc)
-	# End-grain rings + a per-kind grain SIGNATURE (a sawn-log read + a second
-	# identity channel: SUNPINE knot, CORALWOOD big rings, MOSSWOOD flecks,
-	# STORMWOOD checks).
-	_draw_grain_signature(inner, grain_color)
-	# Two-step beveled chamfer (lit top/left, shadowed bottom/right).
+	var face : Color = palette["face"]
+	var shadow : Color = palette["shadow"]
+	var grain : Color = palette["grain"]
+	var inner : Rect2 = Rect2(CELL_PAD, CELL_PAD, CELL_SIZE - 2.0 * CELL_PAD, CELL_SIZE - 2.0 * CELL_PAD)
+	var rng : RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = _seed
+	# Drop shadow.
+	var sh : Rect2 = inner
+	sh.position.y += 1.5
+	draw_rect(sh, shadow)
+	# Plank face + a gentle top-lit / bottom-shaded wash (volume, all contained).
+	draw_rect(inner, face)
+	draw_rect(Rect2(inner.position, Vector2(inner.size.x, inner.size.y * 0.34)), face.lightened(0.07))
+	draw_rect(Rect2(Vector2(inner.position.x, inner.end.y - inner.size.y * 0.30), Vector2(inner.size.x, inner.size.y * 0.30)), face.darkened(0.07))
+	# Horizontal plank boards with OFFSET vertical joints — the Minecraft grid.
+	var boards : int = 3
+	var bh : float = inner.size.y / float(boards)
+	var seam : Color = Color(grain.r, grain.g, grain.b, 0.9)
+	for b in boards:
+		var by : float = inner.position.y + float(b) * bh
+		if b > 0:
+			draw_line(Vector2(inner.position.x, by), Vector2(inner.end.x, by), seam, 1.4)
+			draw_line(Vector2(inner.position.x, by + 1.0), Vector2(inner.end.x, by + 1.0), face.lightened(0.12), 1.0)
+		var jx : float = inner.position.x + inner.size.x * (0.62 if b % 2 == 0 else 0.34)
+		draw_line(Vector2(jx, by + 2.0), Vector2(jx, by + bh - 2.0), seam, 1.2)
+		draw_line(Vector2(jx + 1.0, by + 2.0), Vector2(jx + 1.0, by + bh - 2.0), face.lightened(0.10), 0.8)
+		var gy : float = by + bh * 0.5
+		draw_line(Vector2(inner.position.x + 3.0, gy), Vector2(inner.position.x + inner.size.x * 0.55, gy),
+			Color(grain.r, grain.g, grain.b, 0.32), 1.0)
+	# Beveled edge (lit top/left, shadowed bottom/right) — contained.
 	var c_tl : Vector2 = inner.position
 	var c_tr : Vector2 = Vector2(inner.end.x, inner.position.y)
 	var c_bl : Vector2 = Vector2(inner.position.x, inner.end.y)
 	var c_br : Vector2 = inner.end
-	draw_line(c_tl, c_tr, face_color.lightened(0.28), 1.5)
-	draw_line(c_tl, c_bl, face_color.lightened(0.20), 1.5)
-	draw_line(c_bl, c_br, shadow_color.darkened(0.12), 1.6)
-	draw_line(c_tr, c_br, shadow_color.darkened(0.06), 1.4)
-	draw_line(c_tl + Vector2(1.5, 1.5), c_tr + Vector2(-1.5, 1.5), face_color.lightened(0.14), 1.0)
-	# Corner specular (upper-left key, matches the backdrops' dawn / lantern light).
-	draw_circle(inner.position + Vector2(3.0, 3.0), 2.0, Color(1.0, 1.0, 1.0, 0.26))
-	# Breaker variant — stamp a big dark AXE silhouette across the face
-	# so the player can read "this is a breaker" at a single glance,
-	# even at the bottom of a busy stack. The axe is a chunky
-	# wedge-headed shape with a vertical handle, drawn in near-black so
-	# it punches through any wood-kind color.
+	draw_line(c_tl, c_tr, face.lightened(0.26), 1.5)
+	draw_line(c_tl, c_bl, face.lightened(0.18), 1.4)
+	draw_line(c_bl, c_br, shadow.darkened(0.10), 1.6)
+	draw_line(c_tr, c_br, shadow.darkened(0.04), 1.4)
+	draw_circle(inner.position + Vector2(3.0, 3.0), 2.0, Color(1.0, 1.0, 1.0, 0.24))
+	# Birch's dark flecks (its signature), tiny + contained.
+	if wood_kind == WoodKind.BIRCH:
+		for _i in 2:
+			var fp : Vector2 = inner.position + inner.size * Vector2(rng.randf_range(0.20, 0.80), rng.randf_range(0.20, 0.80))
+			draw_line(fp, fp + Vector2(rng.randf_range(2.0, 4.0), 0.0), Color(0.20, 0.16, 0.10, 0.7), 1.4)
+	# Breaker variant — the axe stamp.
 	if variant == Variant.BREAKER:
 		_draw_axe_stamp()
 
 
-# End-grain growth rings from an off-center pith + a per-kind accent, so each
-# plank reads as a sawn log section and each wood has its own figure.
-func _draw_grain_signature(inner: Rect2, grain: Color) -> void:
-
-	var rng : RandomNumberGenerator = RandomNumberGenerator.new()
-	rng.seed = _seed
-	var g : Color = Color(grain.r, grain.g, grain.b, 0.5)
-	var left : bool = (rng.randi() % 2 == 0)
-	var pith : Vector2 = inner.position + Vector2(inner.size.x * (0.22 if left else 0.78), inner.size.y * 0.80)
-	var base_ang : float = (inner.get_center() - pith).angle()
-	var step : float = inner.size.x * 0.26
-	if wood_kind == WoodKind.CORALWOOD:
-		step = inner.size.x * 0.33   # cedar = big loose rings (its fingerprint)
-	elif wood_kind == WoodKind.SUNPINE:
-		step = inner.size.x * 0.20   # pine = tight straight-ish grain
-	for i in range(1, 4):
-		draw_arc(pith, step * float(i), base_ang - 1.3, base_ang + 1.3, 14, g, 1.2)
-	draw_circle(pith, 1.4, grain)
-	match wood_kind:
-		WoodKind.SUNPINE:
-			var kp : Vector2 = inner.position + inner.size * Vector2(0.64, 0.30)   # a small knot
-			draw_circle(kp, 2.6, grain)
-			draw_arc(kp, 3.6, 0.0, TAU, 10, g, 1.0)
-		WoodKind.MOSSWOOD:
-			for _i in 4:
-				var fp : Vector2 = inner.position + inner.size * Vector2(rng.randf_range(0.20, 0.80), rng.randf_range(0.25, 0.78))
-				draw_circle(fp, 1.4, grain.darkened(0.10))
-		WoodKind.STORMWOOD:
-			var dg : Color = grain.darkened(0.10)   # dry checks/cracks
-			draw_line(inner.position + inner.size * Vector2(0.32, 0.42), inner.position + inner.size * Vector2(0.32, 0.72), dg, 1.0)
-			draw_line(inner.position + inner.size * Vector2(0.62, 0.28), inner.position + inner.size * Vector2(0.62, 0.56), dg, 1.0)
-
-
-# Big dark axe silhouette: triangular wedge-head at the TOP-LEFT (the
-# blade), a thin handle running diagonally toward the bottom-right.
-# Drawn in dark grain tone — reads on any wood-kind face color.
+# Big dark axe silhouette: triangular wedge-head at the TOP-LEFT (the blade),
+# a thin handle to the bottom-right. Reads "breaker" on any plank color.
 func _draw_axe_stamp() -> void:
 
 	var stamp_color : Color = Color(0.06, 0.04, 0.02, 1.0)
 	var stamp_highlight : Color = Color(0.92, 0.82, 0.55, 0.85)
-	# Axe head — a wide pentagon (wedge blade). Drawn in the upper-left
-	# corner of the cell, pointing diagonally.
 	var head : PackedVector2Array = PackedVector2Array([
-		Vector2(CELL_SIZE * 0.10, CELL_SIZE * 0.20),  # top-back of blade
-		Vector2(CELL_SIZE * 0.62, CELL_SIZE * 0.16),  # top-front of blade
-		Vector2(CELL_SIZE * 0.78, CELL_SIZE * 0.36),  # cutting edge tip
-		Vector2(CELL_SIZE * 0.46, CELL_SIZE * 0.48),  # bottom-front of blade
-		Vector2(CELL_SIZE * 0.18, CELL_SIZE * 0.42),  # bottom-back of blade
+		Vector2(CELL_SIZE * 0.10, CELL_SIZE * 0.20),
+		Vector2(CELL_SIZE * 0.62, CELL_SIZE * 0.16),
+		Vector2(CELL_SIZE * 0.78, CELL_SIZE * 0.36),
+		Vector2(CELL_SIZE * 0.46, CELL_SIZE * 0.48),
+		Vector2(CELL_SIZE * 0.18, CELL_SIZE * 0.42),
 	])
 	draw_colored_polygon(head, stamp_color)
-	# Highlight stripe along the cutting edge for "bladed metal" read.
-	draw_line(
-		Vector2(CELL_SIZE * 0.60, CELL_SIZE * 0.20),
-		Vector2(CELL_SIZE * 0.76, CELL_SIZE * 0.34),
-		stamp_highlight, 1.4)
-	# Handle — a thick line running from under the axe head to the
-	# bottom-right corner of the cell.
-	draw_line(
-		Vector2(CELL_SIZE * 0.36, CELL_SIZE * 0.48),
-		Vector2(CELL_SIZE * 0.88, CELL_SIZE * 0.92),
-		stamp_color, CELL_SIZE * 0.10)
-	# Subtle outline on the axe head so it stays crisp even when the
-	# underlying face is a similarly dark wood kind.
+	draw_line(Vector2(CELL_SIZE * 0.60, CELL_SIZE * 0.20), Vector2(CELL_SIZE * 0.76, CELL_SIZE * 0.34), stamp_highlight, 1.4)
+	draw_line(Vector2(CELL_SIZE * 0.36, CELL_SIZE * 0.48), Vector2(CELL_SIZE * 0.88, CELL_SIZE * 0.92), stamp_color, CELL_SIZE * 0.10)
 	draw_polyline(head, Color(1, 1, 1, 0.25), 1.2)

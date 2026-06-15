@@ -22,7 +22,7 @@ func _go() -> void:
 	add_child(bg)
 
 	var lp : PackedScene = load("res://puzzles/lumberjacking/log_piece/log_piece.tscn")
-	_label("WOOD KINDS  (sunpine / coralwood / mosswood / stormwood)", Vector2(60, 110))
+	_label("PLANK KINDS  (oak / birch / spruce / jungle)", Vector2(60, 110))
 	for i in 4:
 		var p : Node2D = lp.instantiate()
 		add_child(p)
