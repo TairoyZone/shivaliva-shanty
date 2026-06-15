@@ -51,11 +51,12 @@ func _draw() -> void:
 	if is_ballast:
 		_draw_ballast()
 		return
-	var col : Color = HUES[hue % HUES.size()]
+	var idx : int = hue % HUES.size()
+	var col : Color = HUES[idx]
 	var r : float = SIZE * 0.5 - 4.0
 	# Each hue is a DISTINCT matte SHAPE (Troy 2026-06-15, YPP-style) — the shape
 	# doubles the colour cue (strong colour-blind read) AND gives the board character.
-	match hue % HUES.size():
+	match idx:
 		0:
 			_draw_circle_stone(col, r)               # Saffron — orb
 		1:
@@ -66,6 +67,7 @@ func _draw() -> void:
 			_draw_poly_stone(col, _octagon_pts(r))   # Moss — rounded square
 		_:
 			_draw_poly_stone(col, _diamond_pts(r))   # Dusk — diamond
+	_draw_pattern(idx, r, col)   # a flowing stardust pattern inside (NOT a plain block)
 	if selected:
 		var s : float = SIZE * 0.5 - 1.0
 		draw_rect(Rect2(-s, -s, s * 2.0, s * 2.0), Color(1.0, 1.0, 1.0, 0.95), false, 3.0)
@@ -86,6 +88,55 @@ func _draw_poly_stone(col: Color, pts: PackedVector2Array) -> void:
 	draw_colored_polygon(pts, col)
 	draw_colored_polygon(_scale_pts(pts, 0.56, Vector2(0.0, -2.0)), col.lightened(0.10))
 	draw_polyline(_closed(pts), col.darkened(0.42), 2.0)
+
+
+# A distinct FLOWING stardust pattern per hue (so the stones read as living breath-
+# stones, not plain colour blocks — Troy 2026-06-15): radiant rays / waves / flame
+# curls / a spiral / a sparkle. Drawn in a brighter tint of the hue, inside the shape.
+func _draw_pattern(idx: int, r: float, col: Color) -> void:
+
+	var lt : Color = col.lightened(0.4)
+	lt.a = 0.88
+	match idx:
+		0:  # Saffron orb — a radiant sunburst
+			for i in 8:
+				var a : float = float(i) / 8.0 * TAU
+				var d : Vector2 = Vector2(cos(a), sin(a))
+				draw_line(d * r * 0.26, d * r * 0.52, lt, 1.6)
+			draw_circle(Vector2.ZERO, r * 0.16, lt)
+		1:  # Sky hexagon — flowing waves
+			for w in 2:
+				var wy : float = (float(w) - 0.5) * r * 0.52
+				var wave : PackedVector2Array = PackedVector2Array()
+				for i in 11:
+					var x : float = lerpf(-r * 0.6, r * 0.6, float(i) / 10.0)
+					wave.append(Vector2(x, wy + sin(float(i) * 0.8 + float(w) * 1.6) * r * 0.13))
+				draw_polyline(wave, lt, 2.0)
+		2:  # Ember triangle — upward flame curls
+			for f in 2:
+				var fx : float = (float(f) - 0.5) * r * 0.42
+				var lick : PackedVector2Array = PackedVector2Array()
+				for i in 7:
+					var t : float = float(i) / 6.0
+					lick.append(Vector2(fx + sin(t * PI * 0.9) * r * 0.17 * (1.0 if f == 0 else -1.0), r * 0.5 - t * r * 0.86))
+				draw_polyline(lick, lt, 2.0)
+		3:  # Moss rounded-square — a growing spiral
+			var sp : PackedVector2Array = PackedVector2Array()
+			for i in 24:
+				var t : float = float(i) / 23.0
+				var ang : float = t * TAU * 1.5
+				sp.append(Vector2(cos(ang), sin(ang)) * t * r * 0.6)
+			draw_polyline(sp, lt, 2.0)
+		_:  # Dusk diamond — a stardust sparkle
+			for a in [0.0, PI * 0.5]:
+				var d : Vector2 = Vector2(cos(a), sin(a))
+				draw_line(d * -r * 0.5, d * r * 0.5, lt, 2.0)
+			for a in [PI * 0.25, PI * 0.75]:
+				var d : Vector2 = Vector2(cos(a), sin(a))
+				draw_line(d * -r * 0.3, d * r * 0.3, lt, 1.4)
+			draw_circle(Vector2.ZERO, r * 0.13, lt)
+			draw_circle(Vector2(r * 0.32, -r * 0.28), 1.4, lt)
+			draw_circle(Vector2(-r * 0.3, r * 0.3), 1.2, lt)
 
 
 func _hex_pts(r: float) -> PackedVector2Array:
