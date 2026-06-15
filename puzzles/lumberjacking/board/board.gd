@@ -925,6 +925,12 @@ func _animate_settle() -> void:
 func _detect_fusions() -> void:
 
 	_fusion_groups = []
+	# Clear last frame's fused edges; the new groups re-set them below.
+	for r in ROWS:
+		for c in COLS:
+			var pc : Node = grid[r][c]
+			if pc is LogPiece:
+				(pc as LogPiece).fused_edges = 0
 	var marked : Dictionary = {}
 	for row in range(ROWS - 1):
 		for col in range(COLS - 1):
@@ -957,6 +963,27 @@ func _detect_fusions() -> void:
 				for dx in range(w):
 					for dy in range(h):
 						marked[Vector2i(row + dy, col + dx)] = true
+	# Tell each member which edges abut a same-group cell, so the tiles MERGE
+	# into one continuous plank surface (the YPP "solidify" read) — no overlay.
+	for group in _fusion_groups:
+		var gr : int = group["row"]
+		var gc : int = group["col"]
+		var gw : int = group["w"]
+		var gh : int = group["h"]
+		for dy in gh:
+			for dx in gw:
+				var member : Node = grid[gr + dy][gc + dx]
+				if member is LogPiece:
+					var mask : int = 0
+					if dy > 0:
+						mask |= LogPiece._EDGE_N
+					if dx < gw - 1:
+						mask |= LogPiece._EDGE_E
+					if dy < gh - 1:
+						mask |= LogPiece._EDGE_S
+					if dx > 0:
+						mask |= LogPiece._EDGE_W
+					(member as LogPiece).fused_edges = mask
 
 
 # Returns the wood kind at (row, col) if that cell holds a SOLID
@@ -1157,64 +1184,17 @@ func _draw_overlay(ci: CanvasItem) -> void:
 
 	var bin_size : Vector2 = Vector2(COLS * LogPiece.CELL_SIZE, ROWS * LogPiece.CELL_SIZE)
 	var bin_rect : Rect2 = Rect2(Vector2.ZERO, bin_size)
-	# YPP-style: a 2x2+ same-kind group SOLIDIFIES into one block.
+	# The tiles themselves merge a 2x2+ group into one continuous plank surface
+	# (via their fused_edges mask). Here we just trace a thin warm outline around
+	# each fused group so it reads as "ready to harvest" — NO opaque fill over the
+	# tiles (that was painting over other cells; Troy 2026-06-15).
 	for group in _fusion_groups:
-		_draw_fused_block(ci, group)
+		var gx : float = group["col"] * LogPiece.CELL_SIZE
+		var gy : float = group["row"] * LogPiece.CELL_SIZE
+		var gw : float = group["w"] * LogPiece.CELL_SIZE
+		var gh : float = group["h"] * LogPiece.CELL_SIZE
+		ci.draw_rect(Rect2(gx + 1.5, gy + 1.5, gw - 3.0, gh - 3.0), FUSION_OUTLINE_COLOR, false, 2.5)
 	# Beveled TIMBER frame on top (dark outer edge / warm band / lit inner lip).
 	ci.draw_rect(bin_rect, Color(0.09, 0.06, 0.03, 1.0), false, 6.0)
 	ci.draw_rect(bin_rect.grow(-3.0), BIN_BORDER_COLOR, false, 4.0)
 	ci.draw_rect(bin_rect.grow(-5.5), Color(0.86, 0.64, 0.34, 1.0), false, 1.5)
-
-
-# A fused group becomes a LOG (Troy 2026-06-15: planks combine into a log, like
-# Minecraft): a rounded bark cylinder along the group's long axis, bark grain
-# striations, and end-grain rings at the two cut ends. The transform from
-# plank-tiles to one log IS the "you fused it" feedback.
-func _draw_fused_block(ci: CanvasItem, group: Dictionary) -> void:
-
-	var cell : float = LogPiece.CELL_SIZE
-	var pad : float = 2.0
-	var px : float = group["col"] * cell + pad
-	var py : float = group["row"] * cell + pad
-	var pw : float = group["w"] * cell - 2.0 * pad
-	var ph : float = group["h"] * cell - 2.0 * pad
-	var rect : Rect2 = Rect2(px, py, pw, ph)
-	var palette : Dictionary = LogPiece.KIND_COLORS[group.get("kind", 0)]
-	var face : Color = palette["face"]
-	var shadow : Color = palette["shadow"]
-	var grain : Color = palette["grain"]
-	var cx : float = px + pw * 0.5
-	var cy : float = py + ph * 0.5
-	# Drop shadow + the sawn-LOG end-grain face (looking at the cut end).
-	ci.draw_rect(Rect2(px, py + 2.0, pw, ph), shadow.darkened(0.10))
-	ci.draw_rect(rect, face)
-	# A radial dome wash (lit centre -> darker rim) so the end reads rounded.
-	var dome : int = 4
-	for d in range(dome, 0, -1):
-		var f : float = float(d) / float(dome)
-		ci.draw_colored_polygon(_ellipse_pts(cx, cy, (pw * 0.5) * f, (ph * 0.5) * f, 26),
-			face.lerp(shadow, (1.0 - f) * 0.45))
-	# ONE unified set of concentric growth rings, centred (no mismatched halves).
-	var rings : int = maxi(3, int(minf(pw, ph) / 8.0))
-	for r in range(1, rings + 1):
-		var rf : float = float(r) / float(rings)
-		var rc : Color = Color(grain.r, grain.g, grain.b, 0.55 if r % 2 == 1 else 0.30)
-		ci.draw_polyline(_ellipse_pts(cx, cy, (pw * 0.5 - 2.0) * rf, (ph * 0.5 - 2.0) * rf, 30), rc, 1.3)
-	# Pith + a few medullary rays radiating out.
-	ci.draw_circle(Vector2(cx, cy), 2.0, grain)
-	for a in [0.5, 2.4, 3.9, 5.3]:
-		ci.draw_line(Vector2(cx, cy), Vector2(cx + cos(a) * (pw * 0.46), cy + sin(a) * (ph * 0.46)),
-			Color(grain.r, grain.g, grain.b, 0.32), 1.0)
-	# Bark rim + a lit top edge so the log reads crisp.
-	ci.draw_rect(rect, shadow.darkened(0.20), false, 2.5)
-	ci.draw_line(rect.position, Vector2(rect.end.x, rect.position.y), face.lightened(0.18), 1.5)
-
-
-# Closed ellipse outline points (rings are elliptical so they fill non-square groups).
-func _ellipse_pts(cx: float, cy: float, rx: float, ry: float, segs: int) -> PackedVector2Array:
-
-	var pts : PackedVector2Array = PackedVector2Array()
-	for s in segs + 1:
-		var a : float = TAU * float(s) / float(segs)
-		pts.append(Vector2(cx + cos(a) * rx, cy + sin(a) * ry))
-	return pts

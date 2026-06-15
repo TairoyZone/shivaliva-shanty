@@ -66,6 +66,21 @@ const KIND_COLORS : Dictionary = {
 		queue_redraw()
 
 
+## Bitmask of edges shared with a same-group fused neighbour. On a shared edge
+## the tile extends to the cell boundary and SKIPS its bevel/seam, so a fused
+## group reads as ONE continuous merged plank surface (the YPP "solidify" look),
+## with no opaque overlay painted over other tiles (Troy 2026-06-15).
+const _EDGE_N : int = 1
+const _EDGE_E : int = 2
+const _EDGE_S : int = 4
+const _EDGE_W : int = 8
+var fused_edges : int = 0 :
+	set(value):
+		if fused_edges == value:
+			return
+		fused_edges = value
+		queue_redraw()
+
 ## Stable per-piece seed so the joint offsets / birch flecks are varied but
 ## never shimmer (re-seeding off the changing fall position would). Set on _ready.
 var _seed : int = 0
@@ -82,13 +97,20 @@ func _draw() -> void:
 	var face : Color = palette["face"]
 	var shadow : Color = palette["shadow"]
 	var grain : Color = palette["grain"]
-	var inner : Rect2 = Rect2(CELL_PAD, CELL_PAD, CELL_SIZE - 2.0 * CELL_PAD, CELL_SIZE - 2.0 * CELL_PAD)
+	# Extend to the cell boundary on edges shared with a same-group neighbour, so
+	# fused planks MERGE into one continuous surface with no internal seam.
+	var x0 : float = 0.0 if (fused_edges & _EDGE_W) else CELL_PAD
+	var y0 : float = 0.0 if (fused_edges & _EDGE_N) else CELL_PAD
+	var x1 : float = CELL_SIZE if (fused_edges & _EDGE_E) else CELL_SIZE - CELL_PAD
+	var y1 : float = CELL_SIZE if (fused_edges & _EDGE_S) else CELL_SIZE - CELL_PAD
+	var inner : Rect2 = Rect2(x0, y0, x1 - x0, y1 - y0)
 	var rng : RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = _seed
-	# Drop shadow.
-	var sh : Rect2 = inner
-	sh.position.y += 1.5
-	draw_rect(sh, shadow)
+	# Drop shadow (skip on a fused south edge so no internal seam-shadow shows).
+	if not (fused_edges & _EDGE_S):
+		var sh : Rect2 = inner
+		sh.position.y += 1.5
+		draw_rect(sh, shadow)
 	# Plank face + a gentle top-lit / bottom-shaded wash (volume, all contained).
 	draw_rect(inner, face)
 	draw_rect(Rect2(inner.position, Vector2(inner.size.x, inner.size.y * 0.34)), face.lightened(0.07))
@@ -108,16 +130,22 @@ func _draw() -> void:
 		var gy : float = by + bh * 0.5
 		draw_line(Vector2(inner.position.x + 3.0, gy), Vector2(inner.position.x + inner.size.x * 0.55, gy),
 			Color(grain.r, grain.g, grain.b, 0.32), 1.0)
-	# Beveled edge (lit top/left, shadowed bottom/right) — contained.
+	# Beveled edge — only on OUTER (non-fused) edges, so internal seams vanish and
+	# the fused group reads as one merged plank surface.
 	var c_tl : Vector2 = inner.position
 	var c_tr : Vector2 = Vector2(inner.end.x, inner.position.y)
 	var c_bl : Vector2 = Vector2(inner.position.x, inner.end.y)
 	var c_br : Vector2 = inner.end
-	draw_line(c_tl, c_tr, face.lightened(0.26), 1.5)
-	draw_line(c_tl, c_bl, face.lightened(0.18), 1.4)
-	draw_line(c_bl, c_br, shadow.darkened(0.10), 1.6)
-	draw_line(c_tr, c_br, shadow.darkened(0.04), 1.4)
-	draw_circle(inner.position + Vector2(3.0, 3.0), 2.0, Color(1.0, 1.0, 1.0, 0.24))
+	if not (fused_edges & _EDGE_N):
+		draw_line(c_tl, c_tr, face.lightened(0.26), 1.5)
+	if not (fused_edges & _EDGE_W):
+		draw_line(c_tl, c_bl, face.lightened(0.18), 1.4)
+	if not (fused_edges & _EDGE_S):
+		draw_line(c_bl, c_br, shadow.darkened(0.10), 1.6)
+	if not (fused_edges & _EDGE_E):
+		draw_line(c_tr, c_br, shadow.darkened(0.04), 1.4)
+	if not (fused_edges & _EDGE_N) and not (fused_edges & _EDGE_W):
+		draw_circle(inner.position + Vector2(3.0, 3.0), 2.0, Color(1.0, 1.0, 1.0, 0.24))
 	# Birch's dark flecks (its signature), tiny + contained.
 	if wood_kind == WoodKind.BIRCH:
 		for _i in 2:
