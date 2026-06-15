@@ -30,10 +30,10 @@ const DECK_POSITION : Vector2 = Vector2(640.0, 360.0)
 ## around this — seat 0 (you) at bottom-centre, the rest spaced evenly all the way around. See _seat_position.
 const TABLE_CENTER : Vector2 = Vector2(640.0, 336.0)
 const SEAT_RX : float = 520.0
-## Pulled IN from 242 so the bottom seat's hole cards (centred 102px below the panel,
-## ~93px tall) stay fully on-screen — symmetric, so every seat moves in equally
-## (Troy 2026-06-16).
-const SEAT_RY : float = 205.0
+## Pulled IN a little from 242 so the bottom seat's hole cards (centred 102px below the
+## panel, ~93px tall) stay on-screen WITHOUT the top/side seats' cards crowding the
+## community in the middle — symmetric, every seat moves in equally (Troy 2026-06-16).
+const SEAT_RY : float = 224.0
 ## Delay between consecutive hole cards during the deal.
 const HOLE_DEAL_STAGGER : float = 0.07
 ## How long one hole card takes to slide from deck to its seat.
@@ -128,8 +128,8 @@ var _human_seated : bool = false
 var _seating : bool = true                 # true until Deal starts the first hand
 var _between_hands : bool = false          # a hand just ended — open chairs are invite-able again
 var _seat_layer : Node2D                   # holds the open-seat Sit Here / Invite + Deal buttons. A WORLD-space
-                                           # child of $Table (not a CanvasLayer) so it ZOOMS + stays aligned with
-                                           # the felt seats under the touch pinch-zoom (Troy 2026-06-13)
+										   # child of $Table (not a CanvasLayer) so it ZOOMS + stays aligned with
+										   # the felt seats under the touch pinch-zoom (Troy 2026-06-13)
 var _pending_seat : int = -1               # the seat being bought into (held across the buy-in dialog)
 var _returning : bool = false              # leaving the table — pay out / record mastery ONCE
 

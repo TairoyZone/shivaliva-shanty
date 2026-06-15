@@ -15,6 +15,11 @@ static func say(npc: Node2D, text: String, y: float = -118.0) -> SpeechBubble:
 
 	if npc == null or text.is_empty():
 		return null
+	# A node can override the default float height (e.g. the poker SEAT's origin is its
+	# panel CENTRE, not an NPC's feet, so its bubble sits just above the panel).
+	var custom : Variant = npc.get("bubble_y")
+	if custom != null:
+		y = float(custom)
 	var b : SpeechBubble = SpeechBubble.new()
 	b._text = text
 	b.position = Vector2(0.0, y)

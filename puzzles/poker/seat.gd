@@ -23,6 +23,9 @@ const CARD_SCENE : PackedScene = preload("res://puzzles/poker/card_sprite.tscn")
 const PANEL_W : float = 220.0
 const PANEL_H : float = 108.0
 const PORTRAIT_RADIUS : float = 24.0
+## Chat-bubble float height — just above this panel's TOP edge (+ a small margin), NOT
+## the overworld default of -118 (which assumes an NPC's feet). Read by SpeechBubble.say.
+var bubble_y : float = -PANEL_H * 0.5 - 8.0
 const HOLE_CARD_Y : float = 102.0           # distance below panel center (room for the bigger cards)
 const HOLE_CARD_SPACING : float = 40.0      # half-distance between the two card centers
 const DEALER_BADGE_RADIUS : float = 11.0
