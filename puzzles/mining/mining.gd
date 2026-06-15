@@ -21,10 +21,10 @@ func _touch_buttons_at_corners() -> bool:
 # TOUCH controls (mobile web): a d-pad moves the 2x2 cursor (held); the rotate buttons crumble (C/X keys). See [[touch-input-foundation]].
 func _touch_spec() -> Array:
 	return [
-		{"label": "◄", "action": "ui_left", "hold": true, "side": "left"},
-		{"label": "►", "action": "ui_right", "hold": true, "side": "left"},
-		{"label": "▲", "action": "ui_up", "hold": true, "side": "left"},
-		{"label": "▼", "action": "ui_down", "hold": true, "side": "left"},
+		{"label": "▲", "action": "ui_up", "hold": true, "side": "left", "dpad": "up"},
+		{"label": "◄", "action": "ui_left", "hold": true, "side": "left", "dpad": "left"},
+		{"label": "►", "action": "ui_right", "hold": true, "side": "left", "dpad": "right"},
+		{"label": "▼", "action": "ui_down", "hold": true, "side": "left", "dpad": "down"},
 		{"label": "↺", "key": KEY_X},
 		{"label": "↻", "key": KEY_C},
 	]

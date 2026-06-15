@@ -27,12 +27,26 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE   # only the buttons catch taps; everything else passes to the board
 	_left = _new_row()
 	_right = _new_row()
+	# Entries tagged "dpad" (a direction) are pulled OUT of the flat row and
+	# clustered into a PSP-style cross per side; everything else stays a row.
+	var dpad : Dictionary = {"left": [], "right": []}
 	for entry in _spec:
+		var side : String = String(entry.get("side", "right"))
+		if entry.has("dpad"):
+			(dpad[side] as Array).append(entry)
+			continue
 		var btn : Button = _make_button(entry)
-		if String(entry.get("side", "right")) == "left":
+		if side == "left":
 			_left.add_child(btn)
 		else:
 			_right.add_child(btn)
+	for side in ["left", "right"]:
+		if not (dpad[side] as Array).is_empty():
+			var cross : Control = _make_dpad(dpad[side])
+			if side == "left":
+				_left.add_child(cross)
+			else:
+				_right.add_child(cross)
 	add_child(_left)
 	add_child(_right)
 	# A Control .new()'d under a CanvasLayer is NOT auto-laid-out to the viewport (see InventoryPanel._fit_viewport)
@@ -87,6 +101,51 @@ func _make_button(entry: Dictionary) -> Button:
 	else:
 		btn.pressed.connect(_tap.bind(what))
 	return btn
+
+
+# A PSP-style D-PAD: the directional buttons clustered into a plus (up top, down
+# bottom, left/right on the sides) around a styled centre hub, so they read as ONE
+# control instead of a flat row (Troy 2026-06-15). Each entry carries
+# "dpad": "up"|"down"|"left"|"right". Buttons keep their normal action/hold wiring.
+func _make_dpad(entries: Array) -> Control:
+
+	var grid : GridContainer = GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 3)
+	grid.add_theme_constant_override("v_separation", 3)
+	var by_pos : Dictionary = {}
+	for e in entries:
+		by_pos[String(e["dpad"])] = _make_button(e)
+	# 3x3 cross: corners empty, a hub in the middle so the plus reads as connected.
+	for cell in ["", "up", "", "left", "hub", "right", "", "down", ""]:
+		if cell == "hub":
+			grid.add_child(_dpad_filler(true))
+		elif by_pos.has(cell):
+			grid.add_child(by_pos[cell])
+		else:
+			grid.add_child(_dpad_filler(false))
+	return grid
+
+
+# A non-interactive d-pad cell. `hub` = the styled centre that bridges the arms;
+# otherwise an invisible spacer that holds a corner open.
+func _dpad_filler(hub: bool) -> Control:
+
+	if not hub:
+		var c : Control = Control.new()
+		c.custom_minimum_size = Vector2(BTN_SIZE, BTN_SIZE)
+		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		return c
+	var p : Panel = Panel.new()
+	p.custom_minimum_size = Vector2(BTN_SIZE, BTN_SIZE)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var s : StyleBoxFlat = StyleBoxFlat.new()
+	s.bg_color = Color(0.18, 0.11, 0.06, 0.92)
+	s.set_border_width_all(2)
+	s.border_color = Color(0.78, 0.58, 0.24, 1.0)
+	s.set_corner_radius_all(6)
+	p.add_theme_stylebox_override("panel", s)
+	return p
 
 
 func _press(btn: Button, what: Dictionary) -> void:
