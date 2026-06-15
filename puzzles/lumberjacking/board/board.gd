@@ -155,8 +155,8 @@ const SPAWN_GUIDE_COLOR : Color = Color(0.98, 0.82, 0.42, 0.14)
 ## bank. (Decoupled 2026-05-31: combos are for skill, not currency.)
 signal score_changed(new_total: int)
 ## Emitted whenever the running WOOD haul changes. Wood is earned ONLY by
-## clearing fused blocks (2x2+), 1 wood per 2x2 sub-tile, with NO chain
-## multiplier — this is the currency banked to the backpack.
+## clearing fused blocks (2x2+), 1 wood per 2 fused cells (rounded up), with NO
+## chain multiplier — this is the currency banked to the backpack.
 signal wood_changed(new_total: int)
 ## Emitted once when the bin tops out and the session ends. Carries the
 ## final score (for mastery) and the final wood haul (for the backpack).
@@ -747,10 +747,12 @@ func _fused_wood_for_component(comp: Array) -> int:
 			fused[below] = true
 			fused[right] = true
 			fused[diag] = true
-	# Intentional integer floor: 1 wood per complete 2x2 sub-tile of fused
-	# area (a 2x3's 6 fused cells → 1, a 2x4's 8 → 2, …).
+	# 1 wood per 2 fused cells, rounded UP — a 2x2 (4 cells) pays 2, a 2x3 (6) → 3,
+	# a 3x3 (9) → 5, a 3x4 (12) → 6 — so every chop is a real harvest and bigger
+	# fusions clearly pay more (Troy 2026-06-15: the old 1-per-complete-2x2 FLOOR,
+	# e.g. a 2x3 paying just 1, was far too stingy). Tune in playtest.
 	@warning_ignore("integer_division")
-	return fused.size() / 4
+	return (fused.size() + 1) / 2
 
 
 ## Scan the grid, find every same-kind 4-adj connected component, and
