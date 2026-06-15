@@ -45,6 +45,7 @@ func _go() -> void:
 	for i in 3:
 		var k : Node2D = kn.instantiate()
 		add_child(k)
+		k.reveal_config = {"kind": 3, "variant": 0}   # decays into a JUNGLE plank
 		k.state = i
 		k.position = Vector2(210.0 + i * 150.0, 570.0)
 		k.scale = Vector2(3.0, 3.0)

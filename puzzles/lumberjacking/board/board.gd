@@ -265,7 +265,9 @@ func _ready() -> void:
 	# Hide the spawn-buffer pieces ABOVE the top edge so they emerge INTO view as they fall in. A static cover
 	# (the scene bg colour) does this WITHOUT clip_children — its per-composite stencil is a heavy WebGL cost
 	# (Troy 2026-06-13, the mobile perf pass; see [SpawnCover]).
-	SpawnCover.add_above(self, Vector2(COLS * LogPiece.CELL_SIZE, ROWS * LogPiece.CELL_SIZE), Color(0.30, 0.24, 0.18, 1.0))
+	# Forest-shadow tone (NOT brown) so the cover blends into the canopy above
+	# the board instead of reading as a tree-trunk slab (Troy 2026-06-15).
+	SpawnCover.add_above(self, Vector2(COLS * LogPiece.CELL_SIZE, ROWS * LogPiece.CELL_SIZE), Color(0.11, 0.17, 0.16, 1.0))
 	_init_grid()
 	# Seed the preview queue before the first spawn so the player always
 	# sees the upcoming pair (the first spawn consumes this and rolls the
@@ -1058,6 +1060,9 @@ func _drop_knot() -> void:
 	if target_row == -1:
 		return
 	var knot : Knot = KnotScene.instantiate() as Knot
+	# Pick the plank this knot will become UP FRONT so its decay can telegraph
+	# the colour (it fades transparent to reveal this before resolving).
+	knot.reveal_config = _make_random_piece_config()
 	add_child(knot)
 	grid[target_row][col] = knot
 	knot.resolved.connect(_on_knot_resolved.bind(knot))
@@ -1090,7 +1095,9 @@ func _on_knot_resolved(knot: Knot) -> void:
 	for row in range(ROWS):
 		for col in range(COLS):
 			if grid[row][col] == knot:
-				var piece : LogPiece = _make_piece_from_config(_make_random_piece_config())
+				# Resolve into the SAME kind the decay already revealed.
+				var cfg : Dictionary = knot.reveal_config if not knot.reveal_config.is_empty() else _make_random_piece_config()
+				var piece : LogPiece = _make_piece_from_config(cfg)
 				add_child(piece)
 				piece.position = _cell_world(Vector2i(row, col))
 				grid[row][col] = piece
