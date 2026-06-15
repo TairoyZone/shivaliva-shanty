@@ -16,7 +16,7 @@ const W : float = 1280.0
 const H : float = 720.0
 
 
-@export_enum("forest", "quarry", "sky_battle", "stardust_drift", "ship_hold", "hull_repair") var mode : String = "forest" :
+@export_enum("forest", "quarry", "sky_battle", "stardust_drift", "ship_hold", "hull_repair", "tavern") var mode : String = "forest" :
 	set(value):
 		mode = value
 		queue_redraw()
@@ -40,6 +40,9 @@ func _draw() -> void:
 	elif mode == "hull_repair":
 		rng.seed = 20260620
 		_draw_hull_repair(rng)
+	elif mode == "tavern":
+		rng.seed = 20260621
+		_draw_tavern(rng)
 	else:
 		rng.seed = 20260615
 		_draw_forest(rng)
@@ -775,6 +778,123 @@ func _draw_mallet(pos: Vector2) -> void:
 	draw_rect(Rect2(pos.x - 17.0, pos.y - 34.0, 34.0, 22.0), WOOD.darkened(0.12))  # head
 	draw_rect(Rect2(pos.x - 17.0, pos.y - 34.0, 34.0, 22.0), WOOD.darkened(0.42), false, 1.5)
 	draw_rect(Rect2(pos.x - 17.0, pos.y - 34.0, 34.0, 7.0), WOOD.lightened(0.12))   # lit top band
+
+
+# =========================================================== TAVERN ===========
+# The POKER backdrop: a cosy sky-tavern parlour the card table sits in — a warm
+# planked back wall with a hearth + lanterns, a receding PLANK FLOOR, and stools +
+# barrels as dressing in the gutters (the felt oval covers the centre, so the
+# tavern reads around its rim). (Troy 2026-06-16.)
+
+func _draw_tavern(rng: RandomNumberGenerator) -> void:
+
+	var WALL : Color = Color(0.21, 0.14, 0.08)
+	var WALL_DK : Color = Color(0.12, 0.08, 0.05)
+	var WALL_LT : Color = Color(0.37, 0.25, 0.14)
+	var FLOOR : Color = Color(0.32, 0.21, 0.12)
+	var FLOOR_LT : Color = Color(0.45, 0.31, 0.17)
+	var horizon : float = 152.0
+	var vanish : Vector2 = Vector2(640.0, horizon)
+
+	# 1. PLANK FLOOR — receding boards (seams converge to a vanishing point) + rows.
+	draw_rect(Rect2(0.0, 0.0, W, H), FLOOR)
+	for i in 17:
+		var fx : float = lerpf(-220.0, W + 220.0, float(i) / 16.0)
+		draw_line(Vector2(fx, H), vanish, Color(0.0, 0.0, 0.0, 0.22), 1.5)
+		draw_line(Vector2(fx + 3.0, H), vanish, Color(FLOOR_LT.r, FLOOR_LT.g, FLOOR_LT.b, 0.10), 1.0)
+	for i in 7:
+		var t : float = float(i) / 6.0
+		var yy : float = lerpf(H, horizon + 18.0, t * t)
+		draw_line(Vector2(0.0, yy), Vector2(W, yy), Color(0.0, 0.0, 0.0, 0.15), 1.5)
+
+	# 2. Back WALL (top band, planked) + a baseboard beam at the floor line.
+	draw_rect(Rect2(0.0, 0.0, W, horizon), WALL)
+	for i in 4:
+		var wy : float = float(i) * (horizon / 4.0)
+		draw_line(Vector2(0.0, wy), Vector2(W, wy), Color(0.0, 0.0, 0.0, 0.30), 1.5)
+		draw_line(Vector2(0.0, wy + 1.5), Vector2(W, wy + 1.5), Color(WALL_LT.r, WALL_LT.g, WALL_LT.b, 0.16), 1.0)
+	var studx : float = 86.0
+	while studx < W:
+		draw_line(Vector2(studx, 0.0), Vector2(studx, horizon), Color(0.0, 0.0, 0.0, 0.16), 1.0)
+		studx += 132.0
+	draw_rect(Rect2(0.0, horizon - 7.0, W, 7.0), WALL_DK)
+	draw_line(Vector2(0.0, horizon - 7.0), Vector2(W, horizon - 7.0), Color(WALL_LT.r, WALL_LT.g, WALL_LT.b, 0.30), 1.5)
+
+	# 3. A HEARTH on the back wall + flanking lanterns.
+	_draw_hearth(Vector2(640.0, 8.0))
+	_draw_lantern(Vector2(150.0, 66.0))
+	_draw_lantern(Vector2(1130.0, 66.0))
+
+	# 4. STOOLS + BARRELS dressing the gutters (clear of the felt + seat ring).
+	_draw_stool(Vector2(70.0, 432.0))
+	_draw_stool(Vector2(1210.0, 432.0))
+	_draw_stool(Vector2(70.0, 612.0))
+	_draw_stool(Vector2(1210.0, 612.0))
+	_draw_barrel(Vector2(152.0, 668.0))
+	_draw_barrel(Vector2(1128.0, 668.0))
+
+	# 5. Warm vignette + a few dust motes drifting in the lamp light.
+	_draw_vignette(Color(0.03, 0.02, 0.01), 0.5, 150.0)
+	for _i in 14:
+		var pm : Vector2 = Vector2(rng.randf_range(0.0, W), rng.randf_range(120.0, 600.0))
+		draw_circle(pm, rng.randf_range(1.0, 1.8), Color(0.85, 0.72, 0.50, rng.randf_range(0.2, 0.45)))
+
+
+# A stone HEARTH with a live fire + a wooden mantel — the tavern's warm heart.
+# `top` is the top-centre of the surround.
+func _draw_hearth(top: Vector2) -> void:
+
+	var STONE : Color = Color(0.33, 0.31, 0.29)
+	var STONE_DK : Color = Color(0.18, 0.17, 0.16)
+	var FIRE : Color = Color(1.0, 0.6, 0.22)
+	var w : float = 156.0
+	var h : float = 96.0
+	var x0 : float = top.x - w * 0.5
+	for i in 6:   # warm glow pool
+		draw_circle(Vector2(top.x, top.y + h * 0.8), 168.0 - float(i) * 24.0, Color(FIRE.r, FIRE.g, FIRE.b, 0.05))
+	draw_rect(Rect2(x0, top.y, w, h), STONE)
+	draw_rect(Rect2(x0, top.y, w, h), STONE_DK, false, 3.0)
+	for by in [0.34, 0.66]:   # mortar courses
+		draw_line(Vector2(x0, top.y + h * by), Vector2(x0 + w, top.y + h * by), STONE_DK, 1.5)
+	var op : Rect2 = Rect2(x0 + 24.0, top.y + 20.0, w - 48.0, h - 20.0)
+	draw_rect(op, Color(0.05, 0.03, 0.02))
+	var fb : Vector2 = Vector2(top.x, op.end.y - 6.0)
+	for i in 5:   # fire bed glow
+		draw_circle(fb, 30.0 - float(i) * 5.0, Color(FIRE.r, FIRE.g, FIRE.b, 0.38))
+	for f in 3:   # flames
+		var fx : float = top.x + (float(f) - 1.0) * 17.0
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(fx - 8.0, op.end.y - 4.0), Vector2(fx, op.end.y - 34.0), Vector2(fx + 8.0, op.end.y - 4.0)]),
+			Color(1.0, 0.76, 0.32, 0.9))
+	draw_line(Vector2(op.position.x + 6.0, op.end.y - 5.0), Vector2(op.end.x - 6.0, op.end.y - 5.0), Color(0.22, 0.13, 0.07), 5.0)  # log
+	draw_rect(Rect2(x0 - 12.0, top.y - 9.0, w + 24.0, 13.0), Color(0.31, 0.21, 0.11))   # mantel beam
+	draw_line(Vector2(x0 - 12.0, top.y - 9.0), Vector2(x0 + w + 12.0, top.y - 9.0), Color(0.50, 0.34, 0.18), 1.5)
+
+
+# A wooden bar STOOL: a round seat on three splayed legs with a rung.
+func _draw_stool(c: Vector2) -> void:
+
+	var WOOD : Color = Color(0.36, 0.24, 0.13)
+	var WOOD_DK : Color = Color(0.20, 0.13, 0.07)
+	var WOOD_LT : Color = Color(0.50, 0.34, 0.18)
+	draw_line(c + Vector2(-15.0, 4.0), c + Vector2(-22.0, 48.0), WOOD_DK, 4.0)
+	draw_line(c + Vector2(15.0, 4.0), c + Vector2(22.0, 48.0), WOOD_DK, 4.0)
+	draw_line(c + Vector2(0.0, 6.0), c + Vector2(0.0, 52.0), WOOD_DK, 4.0)
+	draw_line(c + Vector2(-18.0, 30.0), c + Vector2(18.0, 30.0), WOOD, 3.0)   # rung
+	draw_colored_polygon(_ellipse_pts_bd(c, 25.0, 9.0), WOOD)
+	draw_colored_polygon(_ellipse_pts_bd(c + Vector2(0.0, -2.0), 25.0, 8.0), WOOD_LT)
+	var loop : PackedVector2Array = _ellipse_pts_bd(c, 25.0, 9.0)
+	loop.append(loop[0])
+	draw_polyline(loop, WOOD_DK, 1.5)
+
+
+func _ellipse_pts_bd(c: Vector2, rx: float, ry: float) -> PackedVector2Array:
+
+	var p : PackedVector2Array = PackedVector2Array()
+	for i in 20:
+		var a : float = float(i) / 20.0 * TAU
+		p.append(c + Vector2(cos(a) * rx, sin(a) * ry))
+	return p
 
 
 # ============================================================ SHARED ==========
