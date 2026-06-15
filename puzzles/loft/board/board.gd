@@ -195,7 +195,9 @@ func _draw() -> void:
 		draw_line(Vector2(c * CELL, 0.0), Vector2(c * CELL, h), GRID_LINE_COLOR, 1.0)
 	for r in range(1, ROWS):
 		draw_line(Vector2(0.0, r * CELL), Vector2(w, r * CELL), GRID_LINE_COLOR, 1.0)
-	draw_rect(Rect2(0.0, 0.0, w, h), FRAME_COLOR, false, 3.0)
+	# Frame drawn OUTSIDE the tiles (grown out by half its width so its inner edge
+	# is flush with the play boundary) — it borders the stones, never over them.
+	draw_rect(Rect2(0.0, 0.0, w, h).grow(1.5), FRAME_COLOR, false, 3.0)
 
 
 # Painted by the z-lifted [LoftOverlay] so the Stardust + cursor sit ABOVE the stones.

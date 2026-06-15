@@ -1167,7 +1167,9 @@ func _draw_overlay(ci: CanvasItem) -> void:
 	var bin_rect : Rect2 = Rect2(Vector2.ZERO, bin_size)
 	# A 2x2+ same-kind group merges into one continuous plank surface via the
 	# tiles' own fused_edges mask — no outline, no overlay (Troy 2026-06-15).
-	# Beveled TIMBER frame on top (dark outer edge / warm band / lit inner lip).
-	ci.draw_rect(bin_rect, Color(0.09, 0.06, 0.03, 1.0), false, 6.0)
-	ci.draw_rect(bin_rect.grow(-3.0), BIN_BORDER_COLOR, false, 4.0)
-	ci.draw_rect(bin_rect.grow(-5.5), Color(0.86, 0.64, 0.34, 1.0), false, 1.5)
+	# Beveled TIMBER frame drawn ENTIRELY OUTSIDE the tile area (each band grown
+	# out by half its width so its inner edge is flush with the tile boundary) —
+	# the frame BORDERS the tiles, it never paints over them (Troy 2026-06-15).
+	ci.draw_rect(bin_rect.grow(0.75), Color(0.86, 0.64, 0.34, 1.0), false, 1.5)   # lit inner lip
+	ci.draw_rect(bin_rect.grow(3.5), BIN_BORDER_COLOR, false, 4.0)                # warm band
+	ci.draw_rect(bin_rect.grow(8.5), Color(0.09, 0.06, 0.03, 1.0), false, 6.0)    # dark outer edge

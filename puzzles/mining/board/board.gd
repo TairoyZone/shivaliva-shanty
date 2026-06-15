@@ -188,10 +188,13 @@ func _draw() -> void:
 # Painted on the high-z overlay so the brass frame sits above the tile nodes.
 func _draw_overlay(ci: CanvasItem) -> void:
 
+	# Brass frame drawn ENTIRELY OUTSIDE the tile area (each band grown out by half
+	# its width so its inner edge is flush with the tile boundary) — it BORDERS the
+	# tiles, never paints over the edge gems (Troy 2026-06-15).
 	var rect : Rect2 = Rect2(0.0, 0.0, COLS * CELL, ROWS * CELL)
-	ci.draw_rect(rect, Palette.SKY_VOID, false, 7.0)
-	ci.draw_rect(rect.grow(-3.5), Palette.BRASS_FRAME, false, 4.0)
-	ci.draw_rect(rect.grow(-6.5), Palette.BRASS_INLAY, false, 1.5)
+	ci.draw_rect(rect.grow(0.75), Palette.BRASS_INLAY, false, 1.5)   # lit inlay
+	ci.draw_rect(rect.grow(3.5), Palette.BRASS_FRAME, false, 4.0)    # brass band
+	ci.draw_rect(rect.grow(9.0), Palette.SKY_VOID, false, 7.0)       # dark outer edge
 
 
 # --- Input -----------------------------------------------------------
