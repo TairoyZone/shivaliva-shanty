@@ -1,6 +1,6 @@
 # Shivaliva Shanty — Project Report
 
-_Last updated: 2026-06-15_
+_Last updated: 2026-06-16_
 
 ## What it is
 A single-player-first, retro-charming **puzzle-skill adventure** among floating sky-islands — a
@@ -11,9 +11,9 @@ term is reskinned to a sky/Stardust equivalent ("the Stardust" = the abyss below
 
 ## Dev journey + velocity (the numbers)
 _Recompute these from git each report — first-commit date, `git rev-list --count HEAD`, `.gd`/`.tscn` line counts._
-- **Started: ~2026-05-24/25** (first locked design calls) → **~22 days** as of 2026-06-15.
-- **400 commits** (git baseline 2026-06-03; ~12 active git days).
-- **~38,000 lines of hand-built game** — **~34,600 GDScript** across **199 `.gd` files** + **~3,080 lines** across **93 scenes** (plus a ~242-line key-safe chat proxy). Recomputed fresh from git; the slightly lower count vs a prior over-estimate is real, the Marie Kondo declutter pass trimmed dead code.
+- **Started: ~2026-05-24/25** (first locked design calls) → **~23 days** as of 2026-06-16.
+- **434 commits** (git baseline 2026-06-03; ~13 active git days).
+- **~48,000 lines of hand-built game** — **~44,000 GDScript** across **209 `.gd` files** (incl. ~19 dev/screenshot tool scripts in `tools/`) + **~3,735 lines** across **101 scenes** (plus a ~242-line key-safe chat proxy). Full-working-tree count from git (a prior figure under-counted by reading tracked files only).
 - **Scope:** a walkable iso overworld + a 9-NPC cast · **7 full mini-games** (each a Board+Scene engine w/ AI +
   animation + mastery) · the **voyage meta-system** (deck, set-sail routes, charts, duty reports, a LIVE
   background boarding melee, sinkable ships) · **AI-powered NPC chat** (LLM via a key-safe proxy — a novel hook,
@@ -103,6 +103,22 @@ The endgame loop, reskinned from YPP pillaging. You job onto a crew at the Skydo
 - Build proactively, flag only big design forks; commit freely; **never push without an explicit ask.**
 
 ## Session changelog (newest first — older per-session detail intentionally condensed)
+- **2026-06-15→16 — VISUAL-POLISH PASS COMPLETE (all 7 puzzles) + a HOLD mechanic + two feel fixes.** 🎨 Finished
+  the per-puzzle glow-up across the board (Troy signed off each): **Lumberjacking** — Minecraft-style oak/birch/
+  spruce/jungle PLANKS that merge into one continuous surface on a 2×2+ fuse (fixed a real merge bug), bare
+  COLOURED breaker axes, a forest backdrop, an on-concept knot that fades to REVEAL its eventual plank colour, and
+  a transparent bin so the forest shows through. **Mining** — a PSP-style D-PAD cluster for the cursor controls.
+  **Skirmish** — glossy gem blocks, riveted-iron garbage, a lit arena WELL, and a sky-pirate BOARDING-BATTLE
+  backdrop (two grappled airships, crews clashing under a dusk sky) showing faintly through translucent boards.
+  **Loft** — redone twice on Troy's notes: NOT shiny jewels → matte tiles with a DISTINCT SHAPE per hue, each
+  carrying a flowing stardust PATTERN, and the board now sits INSIDE the ship's HOLD (planked walls, hull ribs,
+  barrels, a lantern, a stardust porthole). **Patchworks** — nailed-plank patches vs glowing stardust BREACHES, a
+  hull-repair backdrop. 🆕 Added a Tetris **HOLD / swap** piece (Tab or the ⇄ button) with a HOLD panel — wired
+  into BOTH the duel and the team-fight boarding (which also dropped the redundant ◄T/T► target buttons; tap-to-
+  target stays). 🗑️ Patchworks' "Toss" button became a drawn TRASH-CAN drop-target (lid opens on hover, drop to
+  discard). A generalised `ScenicBackdrop` now carries 5 procedural scenes (forest / quarry / sky-battle /
+  ship-hold / hull-repair). All screenshot-verified; **both itch builds re-exported** to `build/`. ⚠️ The boarding
+  HOLD-panel placement + the trash-can touch feel want a real-device eyeball; the swap LOGIC wants a live playtest.
 - **2026-06-14→15 — First public LAUNCH + the per-puzzle visual-polish pass begins (Gem Drop + Mining).** 🚀 Went
   PUBLIC: posted a 2:33 clip (poker + live NPC banter, 2x speed, landscape mobile) across YouTube / X
   (@OtipepTroyo) / TikTok / Reddit / itch and got the first positive STRANGER feedback (r/ypp: "this game looks
@@ -171,10 +187,12 @@ The endgame loop, reskinned from YPP pillaging. You job onto a crew at the Skydo
   trophies / save-load / onboarding. **Locked 2026-06-05:** 7 puzzles is the final count; polish, not content.
 
 ## What's next
-- **🎨 THE PER-PUZZLE VISUAL-POLISH PASS (active — one at a time, Troy signs off on each):** Gem Drop ✅ +
-  Mining ✅ done; **Loft, Lumberjacking, Patchworks, Skirmish** still owe the same glow-up. Hold the visual-
-  HIERARCHY rule Troy taught: humble/matte for common pieces, shiny only for the valuable/rare. Verify every
-  pass by screenshot before claiming anything — and let TROY call it done ([[dont-claim-done]]).
+- **🎨 THE PER-PUZZLE VISUAL-POLISH PASS — ✅ COMPLETE (all 7 glowed up).** Each puzzle now has a procedural
+  `ScenicBackdrop` + a piece/material reskin, screenshot-verified, Troy-signed-off. Held the visual-HIERARCHY rule
+  (humble/matte for common pieces, shiny only for the rare) + the YPP reference where it mattered (Loft inside the
+  ship; patterned shape-tiles). Remaining is REACTIVE only — tune anything that reads wrong on real play (e.g.
+  Patchworks' all-breach start can look intense; Loft/Skirmish backdrop brightness; the new HOLD-panel placement in
+  the boarding; the trash-can touch feel). The new HOLD/swap LOGIC also wants a live playtest.
 - **📱 THE FRIEND / DEVICE PLAYTEST is the immediate signal** (the whole point now): the touch controls in
   EVERY puzzle, the overworld mobile HUD alignment, Save & Quit, chat on a phone, the proxy staying warm.
 - **💬 Talk-influence feel:** does a taunt VISIBLY move an NPC? Tune `composure` if bait-ability reads wrong.
