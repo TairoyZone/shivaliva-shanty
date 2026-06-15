@@ -265,9 +265,10 @@ func _ready() -> void:
 	# Hide the spawn-buffer pieces ABOVE the top edge so they emerge INTO view as they fall in. A static cover
 	# (the scene bg colour) does this WITHOUT clip_children — its per-composite stencil is a heavy WebGL cost
 	# (Troy 2026-06-13, the mobile perf pass; see [SpawnCover]).
-	# Forest-shadow tone (NOT brown) so the cover blends into the canopy above
-	# the board instead of reading as a tree-trunk slab (Troy 2026-06-15).
-	SpawnCover.add_above(self, Vector2(COLS * LogPiece.CELL_SIZE, ROWS * LogPiece.CELL_SIZE), Color(0.11, 0.17, 0.16, 1.0))
+	# No SpawnCover: the bin is transparent so the forest shows through "in full
+	# glory" (Troy 2026-06-15); an opaque cover above the board would re-introduce
+	# the very slab he wants gone. The spawn-buffer pair simply descends in from
+	# just above the frame (a brief, natural "dropping into the bin" read).
 	_init_grid()
 	# Seed the preview queue before the first spawn so the player always
 	# sees the upcoming pair (the first spawn consumes this and rolls the
@@ -1144,29 +1145,18 @@ func _end_session() -> void:
 func _draw() -> void:
 
 	var bin_size : Vector2 = Vector2(COLS * LogPiece.CELL_SIZE, ROWS * LogPiece.CELL_SIZE)
-	var bin_rect : Rect2 = Rect2(Vector2.ZERO, bin_size)
-	# Bin background — deep walnut back wall so the wood blocks pop.
-	draw_rect(bin_rect, BIN_BG_COLOR)
-	# The back wall is PLANKED: carved vertical seams (a dark cut + a faint lit
-	# lip) so the empty bin reads as a timber mill wall, not flat brown.
-	var seam : Color = Color(0.0, 0.0, 0.0, 0.28)
-	var seam_lip : Color = Color(0.55, 0.40, 0.22, 0.10)
-	for c in range(1, COLS):
-		var sx : float = c * LogPiece.CELL_SIZE
-		draw_line(Vector2(sx, 0.0), Vector2(sx, bin_size.y), seam, 1.5)
-		draw_line(Vector2(sx + 1.0, 0.0), Vector2(sx + 1.0, bin_size.y), seam_lip, 1.0)
-	# Soft spawn-column tint, within the bin only. (Drawing nothing above y=0; the spawn-buffer pieces above the
-	# top edge stay hidden behind the SpawnCover added in _ready until they fall in.)
+	# The bin interior is TRANSPARENT — the forest backdrop shows through the empty
+	# cells "in full glory" (Troy 2026-06-15). NO back-wall fill; only a faint grid
+	# + the spawn-column tint (both translucent) sit over the forest, and the timber
+	# frame is painted on top by [_overlay].
 	var spawn_x : float = SPAWN_COL * LogPiece.CELL_SIZE
 	draw_rect(Rect2(spawn_x, 0.0, LogPiece.CELL_SIZE, bin_size.y), SPAWN_GUIDE_COLOR)
-	# Faint horizontal grid — just enough to read cell rows.
+	for c in range(1, COLS):
+		var sx : float = c * LogPiece.CELL_SIZE
+		draw_line(Vector2(sx, 0.0), Vector2(sx, bin_size.y), BIN_GRID_COLOR, 1.0)
 	for r in range(1, ROWS):
 		var y : float = r * LogPiece.CELL_SIZE
 		draw_line(Vector2(0.0, y), Vector2(bin_size.x, y), BIN_GRID_COLOR, 1.0)
-	# The fused-block tiles + the timber frame are painted by [_overlay] (a
-	# high-z DrawOverlay child) so they sit ON TOP of the piece nodes: pieces
-	# were bleeding over the frame, and a fused group must read as ONE solid
-	# tile, not 4 cells under an outline (Troy 2026-06-15, per the YPP wiki).
 
 
 # Painted on the high-z overlay so it sits above the piece nodes (the board's
