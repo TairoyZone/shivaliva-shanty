@@ -143,7 +143,7 @@ const PAIR_B_RIGHT : int = 3
 # medium-brown workshop-floor backdrop to pop, not a near-black void.
 # Roughly matches the YPP SwF bin which is a soft warm brown.
 
-const BIN_BG_COLOR : Color = Color(0.24, 0.23, 0.24, 1.0)        # lighter neutral slate so the SATURATED warm planks pop (Troy 2026-06-15)
+const BIN_BG_COLOR : Color = Color(0.42, 0.34, 0.25, 1.0)        # a significantly LIGHTER warm-wood back wall (not grey) so the saturated planks pop (Troy 2026-06-15)
 const BIN_BORDER_COLOR : Color = Color(0.68, 0.46, 0.22, 1.0)
 const BIN_GRID_COLOR : Color = Color(0.50, 0.34, 0.18, 0.22)
 const BIN_BORDER_WIDTH : float = 3.0
@@ -265,7 +265,7 @@ func _ready() -> void:
 	# Hide the spawn-buffer pieces ABOVE the top edge so they emerge INTO view as they fall in. A static cover
 	# (the scene bg colour) does this WITHOUT clip_children — its per-composite stencil is a heavy WebGL cost
 	# (Troy 2026-06-13, the mobile perf pass; see [SpawnCover]).
-	SpawnCover.add_above(self, Vector2(COLS * LogPiece.CELL_SIZE, ROWS * LogPiece.CELL_SIZE), Color(0.13, 0.10, 0.07, 1.0))
+	SpawnCover.add_above(self, Vector2(COLS * LogPiece.CELL_SIZE, ROWS * LogPiece.CELL_SIZE), Color(0.30, 0.24, 0.18, 1.0))
 	_init_grid()
 	# Seed the preview queue before the first spawn so the player always
 	# sees the upcoming pair (the first spawn consumes this and rolls the
