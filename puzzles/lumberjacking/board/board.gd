@@ -1146,11 +1146,9 @@ func _draw() -> void:
 
 	var bin_size : Vector2 = Vector2(COLS * LogPiece.CELL_SIZE, ROWS * LogPiece.CELL_SIZE)
 	# The bin interior is TRANSPARENT — the forest backdrop shows through the empty
-	# cells "in full glory" (Troy 2026-06-15). NO back-wall fill; only a faint grid
-	# + the spawn-column tint (both translucent) sit over the forest, and the timber
-	# frame is painted on top by [_overlay].
-	var spawn_x : float = SPAWN_COL * LogPiece.CELL_SIZE
-	draw_rect(Rect2(spawn_x, 0.0, LogPiece.CELL_SIZE, bin_size.y), SPAWN_GUIDE_COLOR)
+	# cells "in full glory" (Troy 2026-06-15). NO back-wall fill and NO spawn-column
+	# tint (it read as a stupid highlight band over the forest); only a faint grid
+	# sits over the forest, and the timber frame is painted on top by [_overlay].
 	for c in range(1, COLS):
 		var sx : float = c * LogPiece.CELL_SIZE
 		draw_line(Vector2(sx, 0.0), Vector2(sx, bin_size.y), BIN_GRID_COLOR, 1.0)
