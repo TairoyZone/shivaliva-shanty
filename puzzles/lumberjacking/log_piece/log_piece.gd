@@ -82,6 +82,16 @@ const KIND_COLORS : Dictionary = {
 		queue_redraw()
 
 
+## A stable per-piece seed so the grain figure is varied but never shimmers
+## (re-seeding off the changing fall position would). Set once on _ready.
+var _seed : int = 0
+
+
+func _ready() -> void:
+
+	_seed = randi()
+
+
 func _draw() -> void:
 
 	var palette : Dictionary = KIND_COLORS[wood_kind]
@@ -98,31 +108,29 @@ func _draw() -> void:
 	var shadow_rect : Rect2 = inner
 	shadow_rect.position.y += 1.5
 	draw_rect(shadow_rect, shadow_color)
-	# Plank face.
-	draw_rect(inner, face_color)
-	# Beveled edges (lit top/left, shadowed bottom/right) — a carved wood block.
+	# Rounded (cylindrical) face: light top -> dark bottom bands for volume.
+	var bands : int = 4
+	for b in bands:
+		var bt : float = float(b) / float(bands - 1)
+		var bc : Color = face_color.lightened(0.10).lerp(face_color.darkened(0.10), bt)
+		draw_rect(Rect2(inner.position.x, inner.position.y + inner.size.y * float(b) / float(bands),
+			inner.size.x, inner.size.y / float(bands) + 1.0), bc)
+	# End-grain rings + a per-kind grain SIGNATURE (a sawn-log read + a second
+	# identity channel: SUNPINE knot, CORALWOOD big rings, MOSSWOOD flecks,
+	# STORMWOOD checks).
+	_draw_grain_signature(inner, grain_color)
+	# Two-step beveled chamfer (lit top/left, shadowed bottom/right).
 	var c_tl : Vector2 = inner.position
 	var c_tr : Vector2 = Vector2(inner.end.x, inner.position.y)
 	var c_bl : Vector2 = Vector2(inner.position.x, inner.end.y)
 	var c_br : Vector2 = inner.end
-	draw_line(c_tl, c_tr, face_color.lightened(0.22), 1.6)
-	draw_line(c_tl, c_bl, face_color.lightened(0.13), 1.4)
-	draw_line(c_bl, c_br, shadow_color.darkened(0.10), 1.6)
-	draw_line(c_tr, c_br, shadow_color.darkened(0.04), 1.4)
-	# Wood GRAIN — a few slightly wavy lines across the face (boards stacked flat).
-	for k in GRAIN_STRIPE_COUNT:
-		var gy : float = inner.position.y + inner.size.y * (0.28 + float(k) * 0.22)
-		var pts : PackedVector2Array = PackedVector2Array()
-		for j in 5:
-			var tx : float = float(j) / 4.0
-			var wob : float = sin(float(k) * 2.1 + tx * 5.0) * 1.4
-			pts.append(Vector2(inner.position.x + 2.0 + (inner.size.x - 4.0) * tx, gy + wob))
-		draw_polyline(pts, grain_color, GRAIN_STRIPE_WIDTH)
-	# A faint lighter fleck near the top for figure.
-	draw_line(
-		Vector2(inner.position.x + inner.size.x * 0.20, inner.position.y + inner.size.y * 0.15),
-		Vector2(inner.position.x + inner.size.x * 0.70, inner.position.y + inner.size.y * 0.15),
-		face_color.lightened(0.10), 1.0)
+	draw_line(c_tl, c_tr, face_color.lightened(0.28), 1.5)
+	draw_line(c_tl, c_bl, face_color.lightened(0.20), 1.5)
+	draw_line(c_bl, c_br, shadow_color.darkened(0.12), 1.6)
+	draw_line(c_tr, c_br, shadow_color.darkened(0.06), 1.4)
+	draw_line(c_tl + Vector2(1.5, 1.5), c_tr + Vector2(-1.5, 1.5), face_color.lightened(0.14), 1.0)
+	# Corner specular (upper-left key, matches the backdrops' dawn / lantern light).
+	draw_circle(inner.position + Vector2(3.0, 3.0), 2.0, Color(1.0, 1.0, 1.0, 0.26))
 	# Breaker variant — stamp a big dark AXE silhouette across the face
 	# so the player can read "this is a breaker" at a single glance,
 	# even at the bottom of a busy stack. The axe is a chunky
@@ -130,6 +138,39 @@ func _draw() -> void:
 	# it punches through any wood-kind color.
 	if variant == Variant.BREAKER:
 		_draw_axe_stamp()
+
+
+# End-grain growth rings from an off-center pith + a per-kind accent, so each
+# plank reads as a sawn log section and each wood has its own figure.
+func _draw_grain_signature(inner: Rect2, grain: Color) -> void:
+
+	var rng : RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = _seed
+	var g : Color = Color(grain.r, grain.g, grain.b, 0.5)
+	var left : bool = (rng.randi() % 2 == 0)
+	var pith : Vector2 = inner.position + Vector2(inner.size.x * (0.22 if left else 0.78), inner.size.y * 0.80)
+	var base_ang : float = (inner.get_center() - pith).angle()
+	var step : float = inner.size.x * 0.26
+	if wood_kind == WoodKind.CORALWOOD:
+		step = inner.size.x * 0.33   # cedar = big loose rings (its fingerprint)
+	elif wood_kind == WoodKind.SUNPINE:
+		step = inner.size.x * 0.20   # pine = tight straight-ish grain
+	for i in range(1, 4):
+		draw_arc(pith, step * float(i), base_ang - 1.3, base_ang + 1.3, 14, g, 1.2)
+	draw_circle(pith, 1.4, grain)
+	match wood_kind:
+		WoodKind.SUNPINE:
+			var kp : Vector2 = inner.position + inner.size * Vector2(0.64, 0.30)   # a small knot
+			draw_circle(kp, 2.6, grain)
+			draw_arc(kp, 3.6, 0.0, TAU, 10, g, 1.0)
+		WoodKind.MOSSWOOD:
+			for _i in 4:
+				var fp : Vector2 = inner.position + inner.size * Vector2(rng.randf_range(0.20, 0.80), rng.randf_range(0.25, 0.78))
+				draw_circle(fp, 1.4, grain.darkened(0.10))
+		WoodKind.STORMWOOD:
+			var dg : Color = grain.darkened(0.10)   # dry checks/cracks
+			draw_line(inner.position + inner.size * Vector2(0.32, 0.42), inner.position + inner.size * Vector2(0.32, 0.72), dg, 1.0)
+			draw_line(inner.position + inner.size * Vector2(0.62, 0.28), inner.position + inner.size * Vector2(0.62, 0.56), dg, 1.0)
 
 
 # Big dark axe silhouette: triangular wedge-head at the TOP-LEFT (the
