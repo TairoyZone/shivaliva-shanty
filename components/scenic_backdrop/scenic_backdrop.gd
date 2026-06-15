@@ -114,7 +114,7 @@ func _jagged_silhouette(col: Color, base_y: float, f1: float, a1: float, f2: flo
 	draw_colored_polygon(pts, col)
 
 
-func _draw_canopy(rng: RandomNumberGenerator, deep: Color, tuft: Color, edge: Color) -> void:
+func _draw_canopy(rng: RandomNumberGenerator, deep: Color, tuft: Color, _edge: Color) -> void:
 
 	var pts : PackedVector2Array = PackedVector2Array([Vector2(0.0, 0.0)])
 	var x : float = 0.0
@@ -291,7 +291,7 @@ func _draw_quarry(rng: RandomNumberGenerator) -> void:
 		draw_circle(p, rng.randf_range(1.4, 2.0), Color(DUST.r, DUST.g, DUST.b, clampf(a, 0.0, 0.6)))
 
 
-func _draw_prop(rng: RandomNumberGenerator, cx: float, face: Color, dark: Color, lit: Color, inner_dir: float) -> void:
+func _draw_prop(_rng: RandomNumberGenerator, cx: float, face: Color, dark: Color, lit: Color, inner_dir: float) -> void:
 
 	var hw : float = 18.0
 	draw_colored_polygon(PackedVector2Array([
