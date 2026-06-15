@@ -10,9 +10,9 @@ script = ExtResource("1_loft")
 [node name="Backdrop" type="CanvasLayer" parent="."]
 layer = -10
 
-[node name="StardustDrift" type="Node2D" parent="Backdrop"]
+[node name="ShipHold" type="Node2D" parent="Backdrop"]
 script = ExtResource("3_bg")
-mode = "stardust_drift"
+mode = "ship_hold"
 
 [node name="Board" type="Node2D" parent="."]
 script = ExtResource("2_board")

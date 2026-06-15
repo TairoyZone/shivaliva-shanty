@@ -16,7 +16,7 @@ const W : float = 1280.0
 const H : float = 720.0
 
 
-@export_enum("forest", "quarry", "sky_battle", "stardust_drift") var mode : String = "forest" :
+@export_enum("forest", "quarry", "sky_battle", "stardust_drift", "ship_hold") var mode : String = "forest" :
 	set(value):
 		mode = value
 		queue_redraw()
@@ -34,6 +34,9 @@ func _draw() -> void:
 	elif mode == "stardust_drift":
 		rng.seed = 20260618
 		_draw_stardust_drift(rng)
+	elif mode == "ship_hold":
+		rng.seed = 20260619
+		_draw_ship_hold(rng)
 	else:
 		rng.seed = 20260615
 		_draw_forest(rng)
@@ -534,6 +537,160 @@ func _draw_stardust_drift(rng: RandomNumberGenerator) -> void:
 	for _i in 18:
 		var pm : Vector2 = Vector2(rng.randf_range(0.0, W), rng.randf_range(120.0, 600.0))
 		draw_circle(pm, rng.randf_range(1.0, 2.0), Color(0.85, 0.80, 0.98, rng.randf_range(0.3, 0.6)))
+
+
+# ======================================================== SHIP HOLD ===========
+# The LOFT backdrop ([[loft-spec]] / YPP Bilging): the board sits INSIDE the rock-
+# ship's HOLD — warm planked walls + curved hull ribs, deck beams overhead, barrels
+# + crates of cargo, a hanging lantern, and a porthole onto the stardust outside.
+# The board (the bilge well) lives centre-screen; the hold dressing fills the gutters.
+
+func _draw_ship_hold(rng: RandomNumberGenerator) -> void:
+
+	var WALL : Color = Color(0.22, 0.15, 0.08)
+	var WALL_DK : Color = Color(0.13, 0.08, 0.04)
+	var WALL_LT : Color = Color(0.40, 0.27, 0.14)
+	var BEAM : Color = Color(0.27, 0.18, 0.09)
+	var LAMP : Color = Color(1.0, 0.84, 0.46)
+
+	# 1. Planked back wall + a warm lantern-lit pool over the centre.
+	draw_rect(Rect2(0.0, 0.0, W, H), WALL)
+	var y : float = 40.0
+	while y < H:
+		draw_line(Vector2(0.0, y), Vector2(W, y), Color(0.0, 0.0, 0.0, 0.30), 1.5)
+		draw_line(Vector2(0.0, y + 1.5), Vector2(W, y + 1.5), Color(WALL_LT.r, WALL_LT.g, WALL_LT.b, 0.18), 1.0)
+		y += 46.0
+	for i in 7:
+		draw_circle(Vector2(640.0, 250.0), 460.0 - float(i) * 56.0, Color(LAMP.r, LAMP.g, LAMP.b, 0.045))
+
+	# 2. Heavy DECK BEAMS overhead (the underside of the deck above the hold).
+	draw_rect(Rect2(0.0, 0.0, W, 56.0), BEAM)
+	draw_line(Vector2(0.0, 56.0), Vector2(W, 56.0), Color(0.0, 0.0, 0.0, 0.4), 2.0)
+	draw_line(Vector2(0.0, 57.5), Vector2(W, 57.5), Color(WALL_LT.r, WALL_LT.g, WALL_LT.b, 0.3), 1.0)
+	var bx : float = 90.0
+	while bx < W:
+		draw_rect(Rect2(bx - 9.0, 0.0, 18.0, 84.0), BEAM.darkened(0.12))
+		draw_line(Vector2(bx - 9.0, 0.0), Vector2(bx - 9.0, 84.0), Color(0.0, 0.0, 0.0, 0.3), 1.0)
+		bx += 175.0
+
+	# 3. Curved HULL RIBS flanking the hold (the ship's frames bowing out).
+	_draw_hold_rib(132.0, -1.0)
+	_draw_hold_rib(W - 132.0, 1.0)
+
+	# 4. FLOOR planks at the bottom of the hold.
+	draw_rect(Rect2(0.0, H - 84.0, W, 84.0), WALL_DK)
+	draw_line(Vector2(0.0, H - 84.0), Vector2(W, H - 84.0), Color(WALL_LT.r, WALL_LT.g, WALL_LT.b, 0.3), 2.0)
+	for fx in range(0, int(W), 70):
+		draw_line(Vector2(float(fx), H - 84.0), Vector2(float(fx), H), Color(0.0, 0.0, 0.0, 0.28), 1.0)
+
+	# 5. Cargo — barrels + crates stacked in the gutters, on the floor.
+	_draw_crate(Vector2(78.0, H - 150.0), 92.0)
+	_draw_barrel(Vector2(172.0, H - 122.0))
+	_draw_barrel(Vector2(232.0, H - 116.0))
+	_draw_barrel(Vector2(1050.0, H - 120.0))
+	_draw_crate(Vector2(1170.0, H - 148.0), 86.0)
+
+	# 6. A hanging LANTERN casting the hold's warm light.
+	_draw_lantern(Vector2(316.0, 150.0))
+
+	# 7. A PORTHOLE onto the stardust outside (the threat the hull holds back).
+	_draw_porthole(rng, Vector2(966.0, 230.0), 52.0)
+
+	# 8. Vignette + a few drifting dust motes.
+	_draw_vignette(Color(0.02, 0.015, 0.01), 0.55, 140.0)
+	for _i in 16:
+		var p : Vector2 = Vector2(rng.randf_range(0.0, W), rng.randf_range(80.0, 600.0))
+		draw_circle(p, rng.randf_range(1.0, 1.8), Color(0.85, 0.75, 0.55, rng.randf_range(0.25, 0.5)))
+
+
+# A bowed timber HULL RIB (a ship's frame), floor-to-ceiling, bowing `dir` toward the
+# screen edge in its middle. Thick dark wood + a lit inner edge + iron cross-braces.
+func _draw_hold_rib(cx: float, dir: float) -> void:
+
+	var RIB : Color = Color(0.18, 0.11, 0.06)
+	var RIB_LT : Color = Color(0.38, 0.25, 0.13)
+	var spine : PackedVector2Array = PackedVector2Array()
+	var lit : PackedVector2Array = PackedVector2Array()
+	for s in 11:
+		var t : float = float(s) / 10.0
+		var bow : float = sin(t * PI) * 34.0 * dir
+		spine.append(Vector2(cx + bow, t * H))
+		lit.append(Vector2(cx + bow - dir * 13.0, t * H))
+	draw_polyline(spine, RIB, 30.0)
+	draw_polyline(lit, RIB_LT, 3.0)
+	for by in [120.0, 320.0, 520.0]:
+		var t : float = by / H
+		var rx : float = cx + sin(t * PI) * 34.0 * dir
+		draw_rect(Rect2(rx - 18.0, by - 4.0, 36.0, 8.0), Color(0.26, 0.26, 0.30))
+		draw_circle(Vector2(rx - 11.0, by), 2.2, Color(0.5, 0.5, 0.55))
+		draw_circle(Vector2(rx + 11.0, by), 2.2, Color(0.5, 0.5, 0.55))
+
+
+# A wooden BARREL: staves + iron hoops, a lit crown.
+func _draw_barrel(c: Vector2) -> void:
+
+	var BODY : Color = Color(0.40, 0.27, 0.14)
+	var HOOP : Color = Color(0.28, 0.28, 0.32)
+	var w : float = 46.0
+	var h : float = 66.0
+	var r : Rect2 = Rect2(c.x - w * 0.5, c.y - h * 0.5, w, h)
+	draw_rect(r, BODY)
+	draw_rect(Rect2(r.position, Vector2(w, h * 0.30)), BODY.lightened(0.12))
+	draw_rect(Rect2(Vector2(r.position.x, r.end.y - h * 0.26), Vector2(w, h * 0.26)), BODY.darkened(0.18))
+	for sx in [0.3, 0.5, 0.7]:
+		draw_line(Vector2(r.position.x + w * sx, r.position.y + 2.0), Vector2(r.position.x + w * sx, r.end.y - 2.0),
+			Color(0.0, 0.0, 0.0, 0.22), 1.0)
+	for hy in [0.16, 0.5, 0.84]:
+		var yy : float = r.position.y + h * hy
+		draw_rect(Rect2(r.position.x - 1.0, yy - 3.0, w + 2.0, 6.0), HOOP)
+		draw_line(Vector2(r.position.x - 1.0, yy - 2.0), Vector2(r.end.x + 1.0, yy - 2.0), HOOP.lightened(0.3), 1.0)
+
+
+# A wooden CRATE: planked box with an X-brace + a corner-bracket frame.
+func _draw_crate(c: Vector2, sz: float) -> void:
+
+	var BODY : Color = Color(0.42, 0.29, 0.15)
+	var r : Rect2 = Rect2(c.x - sz * 0.5, c.y - sz * 0.5, sz, sz)
+	draw_rect(r, BODY)
+	draw_rect(Rect2(r.position, Vector2(sz, sz * 0.5)), BODY.lightened(0.08))
+	draw_rect(r, BODY.darkened(0.45), false, 3.0)
+	draw_rect(r.grow(-7.0), BODY.darkened(0.32), false, 2.0)
+	draw_line(r.position, r.end, BODY.lightened(0.14), 2.5)
+	draw_line(Vector2(r.end.x, r.position.y), Vector2(r.position.x, r.end.y), BODY.lightened(0.14), 2.5)
+
+
+# A hanging LANTERN: chain, a warm glow, a brass cage + glass.
+func _draw_lantern(pos: Vector2) -> void:
+
+	var GLOW : Color = Color(1.0, 0.82, 0.42)
+	var BRASS : Color = Color(0.30, 0.20, 0.10)
+	draw_line(Vector2(pos.x, 0.0), Vector2(pos.x, pos.y - 14.0), Color(0.16, 0.12, 0.07), 2.0)
+	for i in 7:
+		draw_circle(pos, 110.0 - float(i) * 14.0, Color(GLOW.r, GLOW.g, GLOW.b, 0.05))
+	draw_colored_polygon(PackedVector2Array([
+		pos + Vector2(-11.0, -12.0), pos + Vector2(11.0, -12.0), pos + Vector2(14.0, 8.0),
+		pos + Vector2(0.0, 18.0), pos + Vector2(-14.0, 8.0)]), BRASS)
+	draw_circle(pos, 8.0, Color(1.0, 0.90, 0.58))
+	draw_circle(pos, 4.0, Color(1.0, 0.97, 0.8))
+
+
+# A PORTHOLE onto the stardust outside: a glowing void disc in a bolted brass ring.
+func _draw_porthole(rng: RandomNumberGenerator, c: Vector2, r: float) -> void:
+
+	var DUST : Color = Color(0.45, 0.30, 0.74)
+	var BRASS : Color = Color(0.66, 0.50, 0.24)
+	draw_circle(c, r, Color(0.10, 0.07, 0.18))
+	draw_circle(c, r * 0.92, DUST.darkened(0.2))
+	draw_circle(c, r * 0.55, DUST)
+	for _i in 7:
+		var a : float = rng.randf_range(0.0, TAU)
+		var d : float = rng.randf_range(0.0, r * 0.82)
+		draw_circle(c + Vector2(cos(a), sin(a)) * d, rng.randf_range(0.6, 1.6), Color(0.92, 0.88, 1.0, 0.8))
+	draw_arc(c, r, 0.0, TAU, 40, BRASS, 5.0)
+	draw_arc(c, r - 2.0, 0.0, TAU, 40, BRASS.lightened(0.25), 1.5)
+	for i in 8:
+		var ang : float = float(i) / 8.0 * TAU
+		draw_circle(c + Vector2(cos(ang), sin(ang)) * r, 2.2, BRASS.darkened(0.3))
 
 
 # ============================================================ SHARED ==========

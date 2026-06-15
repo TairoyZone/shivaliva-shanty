@@ -52,46 +52,74 @@ func _draw() -> void:
 		_draw_ballast()
 		return
 	var col : Color = HUES[hue % HUES.size()]
-	var half : float = SIZE * 0.5 - 3.0
-	_draw_gem(col, half)
-	_draw_glyph(col.darkened(0.55))   # the colour-blind-safe glyph, etched in the table
+	var r : float = SIZE * 0.5 - 4.0
+	# Each hue is a DISTINCT matte SHAPE (Troy 2026-06-15, YPP-style) — the shape
+	# doubles the colour cue (strong colour-blind read) AND gives the board character.
+	match hue % HUES.size():
+		0:
+			_draw_circle_stone(col, r)               # Saffron — orb
+		1:
+			_draw_poly_stone(col, _hex_pts(r))       # Sky — hexagon
+		2:
+			_draw_poly_stone(col, _tri_pts(r))       # Ember — triangle
+		3:
+			_draw_poly_stone(col, _octagon_pts(r))   # Moss — rounded square
+		_:
+			_draw_poly_stone(col, _diamond_pts(r))   # Dusk — diamond
 	if selected:
 		var s : float = SIZE * 0.5 - 1.0
 		draw_rect(Rect2(-s, -s, s * 2.0, s * 2.0), Color(1.0, 1.0, 1.0, 0.95), false, 3.0)
 
 
-# A faceted, LUMINOUS cut-gem (the breath-stone "sings alight"): four crown facets
-# (top brightest, bottom darkest) around a glowing TABLE, with cut-edge sparkle, a
-# specular shine, and a beveled rim. Reads as a glowing jewel, not a flat tile.
-func _draw_gem(col: Color, half: float) -> void:
+# A round breath-stone: matte fill, a soft top-lit core, a crisp rim. NOT glossy.
+func _draw_circle_stone(col: Color, r: float) -> void:
 
-	var b_tl : Vector2 = Vector2(-half, -half)
-	var b_tr : Vector2 = Vector2(half, -half)
-	var b_br : Vector2 = Vector2(half, half)
-	var b_bl : Vector2 = Vector2(-half, half)
-	var t : float = half * 0.5
-	var t_tl : Vector2 = Vector2(-t, -t)
-	var t_tr : Vector2 = Vector2(t, -t)
-	var t_br : Vector2 = Vector2(t, t)
-	var t_bl : Vector2 = Vector2(-t, t)
-	draw_rect(Rect2(-half, -half, half * 2.0, half * 2.0), col.darkened(0.10))   # pavilion base
-	draw_colored_polygon(PackedVector2Array([b_tl, b_tr, t_tr, t_tl]), col.lightened(0.36))  # top facet
-	draw_colored_polygon(PackedVector2Array([b_bl, b_tl, t_tl, t_bl]), col.lightened(0.12))  # left facet
-	draw_colored_polygon(PackedVector2Array([b_tr, b_br, t_br, t_tr]), col.darkened(0.14))   # right facet
-	draw_colored_polygon(PackedVector2Array([b_br, b_bl, t_bl, t_br]), col.darkened(0.30))   # bottom facet
-	draw_rect(Rect2(t_tl, Vector2(t * 2.0, t * 2.0)), col.lightened(0.22))                   # the table
-	var glow : Color = col.lightened(0.5)
-	draw_circle(Vector2.ZERO, t * 0.80, Color(glow.r, glow.g, glow.b, 0.42))                 # inner core glow
-	var edge : Color = Color(glow.r, glow.g, glow.b, 0.7)
-	draw_line(t_tl, b_tl, edge, 1.0)   # cut-edge sparkle (table corners -> body corners)
-	draw_line(t_tr, b_tr, edge, 1.0)
-	draw_line(t_br, b_br, edge, 1.0)
-	draw_line(t_bl, b_bl, edge, 1.0)
-	draw_circle(Vector2(-t * 0.42, -t * 0.5), t * 0.30, Color(1, 1, 1, 0.6))                 # specular shine
-	draw_line(b_tl, b_tr, col.lightened(0.45), 1.5)   # beveled rim
-	draw_line(b_tl, b_bl, col.lightened(0.30), 1.5)
-	draw_line(b_bl, b_br, col.darkened(0.45), 1.5)
-	draw_line(b_tr, b_br, col.darkened(0.38), 1.5)
+	draw_circle(Vector2.ZERO, r, col)
+	draw_circle(Vector2(0.0, -2.0), r * 0.58, col.lightened(0.10))   # soft top-light
+	draw_arc(Vector2.ZERO, r - 1.0, 0.0, TAU, 32, col.darkened(0.42), 2.0)
+
+
+# Any polygon breath-stone (hex / triangle / rounded-square / diamond): matte fill,
+# a soft top-lit inner copy, a crisp dark rim. NOT glossy.
+func _draw_poly_stone(col: Color, pts: PackedVector2Array) -> void:
+
+	draw_colored_polygon(pts, col)
+	draw_colored_polygon(_scale_pts(pts, 0.56, Vector2(0.0, -2.0)), col.lightened(0.10))
+	draw_polyline(_closed(pts), col.darkened(0.42), 2.0)
+
+
+func _hex_pts(r: float) -> PackedVector2Array:
+	var p : PackedVector2Array = PackedVector2Array()
+	for i in 6:
+		var a : float = -PI / 2.0 + float(i) * PI / 3.0
+		p.append(Vector2(cos(a), sin(a)) * r)
+	return p
+
+
+func _tri_pts(r: float) -> PackedVector2Array:
+	return PackedVector2Array([Vector2(0.0, -r), Vector2(r * 0.87, r * 0.62), Vector2(-r * 0.87, r * 0.62)])
+
+
+func _diamond_pts(r: float) -> PackedVector2Array:
+	return PackedVector2Array([Vector2(0.0, -r), Vector2(r, 0.0), Vector2(0.0, r), Vector2(-r, 0.0)])
+
+
+func _octagon_pts(r: float) -> PackedVector2Array:
+	var c : float = r * 0.45
+	return PackedVector2Array([
+		Vector2(-c, -r), Vector2(c, -r), Vector2(r, -c), Vector2(r, c),
+		Vector2(c, r), Vector2(-c, r), Vector2(-r, c), Vector2(-r, -c)])
+
+
+func _scale_pts(pts: PackedVector2Array, f: float, off: Vector2) -> PackedVector2Array:
+	var o : PackedVector2Array = PackedVector2Array()
+	for p in pts:
+		o.append(p * f + off)
+	return o
+
+
+func _closed(pts: PackedVector2Array) -> PackedVector2Array:
+	return pts + PackedVector2Array([pts[0]])
 
 
 # The BALLAST — a heavy IRON dross-stone (clearly NOT a bright gem): a matte banded
