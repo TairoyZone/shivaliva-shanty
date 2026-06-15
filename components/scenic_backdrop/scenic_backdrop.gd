@@ -16,7 +16,7 @@ const W : float = 1280.0
 const H : float = 720.0
 
 
-@export_enum("forest", "quarry", "sky_battle", "stardust_drift", "ship_hold") var mode : String = "forest" :
+@export_enum("forest", "quarry", "sky_battle", "stardust_drift", "ship_hold", "hull_repair") var mode : String = "forest" :
 	set(value):
 		mode = value
 		queue_redraw()
@@ -37,6 +37,9 @@ func _draw() -> void:
 	elif mode == "ship_hold":
 		rng.seed = 20260619
 		_draw_ship_hold(rng)
+	elif mode == "hull_repair":
+		rng.seed = 20260620
+		_draw_hull_repair(rng)
 	else:
 		rng.seed = 20260615
 		_draw_forest(rng)
@@ -691,6 +694,87 @@ func _draw_porthole(rng: RandomNumberGenerator, c: Vector2, r: float) -> void:
 	for i in 8:
 		var ang : float = float(i) / 8.0 * TAU
 		draw_circle(c + Vector2(cos(ang), sin(ang)) * r, 2.2, BRASS.darkened(0.3))
+
+
+# ====================================================== HULL REPAIR ===========
+# The PATCHWORKS backdrop ([[patchworks-spec]]): you're sealing the ship's hull
+# against the STARDUST VOID outside (what the breaches open onto). The grid is the
+# damaged hull section; warm timber ribs + work-lanterns + hanging tools frame it,
+# against the cool glowing void — the contrast IS the stakes (warm ship vs cold drift).
+
+func _draw_hull_repair(rng: RandomNumberGenerator) -> void:
+
+	var VOID_TOP : Color = Color(0.10, 0.07, 0.18)
+	var VOID_MID : Color = Color(0.19, 0.12, 0.32)
+	var GLOW : Color = Color(0.52, 0.34, 0.82)
+	var STAR : Color = Color(0.90, 0.86, 1.0)
+	var BEAM : Color = Color(0.26, 0.17, 0.09)
+
+	# 1. The stardust VOID outside the hull (cool, glowing) — what the breaches open to.
+	for i in 16:
+		var t : float = float(i) / 15.0
+		draw_rect(Rect2(0.0, H * float(i) / 16.0, W, H / 16.0 + 1.0), VOID_TOP.lerp(VOID_MID, t))
+	for _i in 70:
+		var p : Vector2 = Vector2(rng.randf_range(0.0, W), rng.randf_range(0.0, H * 0.75))
+		draw_circle(p, rng.randf_range(0.5, 1.5), Color(STAR.r, STAR.g, STAR.b, rng.randf_range(0.25, 0.8)))
+	for i in 8:
+		draw_circle(Vector2(640.0, H + 40.0), 520.0 - float(i) * 54.0, Color(GLOW.r, GLOW.g, GLOW.b, 0.05))
+	for _w in 6:
+		var wx : float = rng.randf_range(0.0, W)
+		draw_line(Vector2(wx, H * 0.7), Vector2(wx + rng.randf_range(-12.0, 12.0), H * 0.7 - rng.randf_range(60.0, 160.0)),
+			Color(GLOW.r, GLOW.g, GLOW.b, 0.08), rng.randf_range(6.0, 14.0))
+
+	# 2. Heavy DECK BEAM overhead + drop-beams (the ship structure above the work).
+	draw_rect(Rect2(0.0, 0.0, W, 54.0), BEAM)
+	draw_line(Vector2(0.0, 54.0), Vector2(W, 54.0), Color(0.0, 0.0, 0.0, 0.4), 2.0)
+	var bx : float = 120.0
+	while bx < W:
+		draw_rect(Rect2(bx - 8.0, 0.0, 16.0, 78.0), BEAM.darkened(0.12))
+		bx += 200.0
+
+	# 3. Flanking HULL RIBS (warm timber against the void) — reusing the hold rib.
+	_draw_hold_rib(108.0, -1.0)
+	_draw_hold_rib(W - 108.0, 1.0)
+
+	# 4. Work-LANTERNS lighting the repair.
+	_draw_lantern(Vector2(268.0, 150.0))
+	_draw_lantern(Vector2(W - 268.0, 150.0))
+
+	# 5. Hanging TOOLS — a saw on the left rib, a mallet on the right.
+	_draw_saw(Vector2(176.0, 256.0))
+	_draw_mallet(Vector2(W - 176.0, 256.0))
+
+	# 6. Sawdust motes + vignette.
+	_draw_vignette(Color(0.03, 0.02, 0.06), 0.55, 140.0)
+	for _i in 16:
+		var pm : Vector2 = Vector2(rng.randf_range(0.0, W), rng.randf_range(80.0, 620.0))
+		draw_circle(pm, rng.randf_range(1.0, 1.8), Color(0.82, 0.72, 0.52, rng.randf_range(0.25, 0.5)))
+
+
+# A hand-SAW hanging from a hook: a wood handle + a toothed steel blade.
+func _draw_saw(pos: Vector2) -> void:
+
+	var STEEL : Color = Color(0.46, 0.48, 0.53)
+	var WOOD : Color = Color(0.40, 0.26, 0.13)
+	draw_line(Vector2(pos.x, pos.y - 40.0), Vector2(pos.x, 54.0), Color(0.16, 0.11, 0.06), 1.5)
+	draw_rect(Rect2(pos.x - 11.0, pos.y - 44.0, 24.0, 13.0), WOOD)
+	draw_rect(Rect2(pos.x - 11.0, pos.y - 44.0, 24.0, 13.0), WOOD.darkened(0.4), false, 1.5)
+	draw_colored_polygon(PackedVector2Array([
+		pos + Vector2(-7.0, -34.0), pos + Vector2(9.0, -34.0), pos + Vector2(19.0, 66.0), pos + Vector2(7.0, 66.0)]), STEEL)
+	for i in 9:   # teeth down the cutting edge
+		var ty : float = pos.y - 28.0 + float(i) * 10.0
+		draw_line(Vector2(pos.x + 9.0 + float(i) * 0.6, ty), Vector2(pos.x + 13.0 + float(i) * 0.6, ty + 3.0), STEEL.darkened(0.3), 1.0)
+
+
+# A wooden MALLET hanging from a hook: a block head on a handle.
+func _draw_mallet(pos: Vector2) -> void:
+
+	var WOOD : Color = Color(0.42, 0.28, 0.14)
+	draw_line(Vector2(pos.x, pos.y - 30.0), Vector2(pos.x, 54.0), Color(0.16, 0.11, 0.06), 1.5)
+	draw_rect(Rect2(pos.x - 3.0, pos.y - 26.0, 6.0, 78.0), WOOD)               # handle
+	draw_rect(Rect2(pos.x - 17.0, pos.y - 34.0, 34.0, 22.0), WOOD.darkened(0.12))  # head
+	draw_rect(Rect2(pos.x - 17.0, pos.y - 34.0, 34.0, 22.0), WOOD.darkened(0.42), false, 1.5)
+	draw_rect(Rect2(pos.x - 17.0, pos.y - 34.0, 34.0, 7.0), WOOD.lightened(0.12))   # lit top band
 
 
 # ============================================================ SHARED ==========

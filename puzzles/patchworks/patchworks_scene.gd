@@ -43,6 +43,7 @@ const COLOR_GHOST_BAD : Color = Color(0.95, 0.45, 0.40, 0.5)
 const COLOR_FLASH : Color = Color(1.0, 0.95, 0.62, 1.0)
 const COLOR_TRAY_SLOT : Color = Color(0.20, 0.14, 0.08, 0.94)
 const COLOR_PIECE : Color = Color(0.80, 0.62, 0.37, 1.0)
+const COLOR_STARDUST_GLOW : Color = Color(0.62, 0.42, 0.95, 1.0)   # the drift welling through a breach
 
 @onready var _board : PatchworksBoard = $Board
 
@@ -230,22 +231,61 @@ func _draw_blast_cell(x: int, y: int) -> void:
 	draw_rect(Rect2(centre - half, half * 2.0), col, true)
 
 
+# A nailed wood-plank PATCH (the repair): beveled timber + grain + a corner nail, so a
+# patched region reads as a patchwork of individual planks (the game's name).
+func _draw_patch(r: Rect2, base: Color) -> void:
+
+	draw_rect(r, base)
+	draw_rect(Rect2(r.position, Vector2(r.size.x, r.size.y * 0.40)), base.lightened(0.12))
+	draw_rect(Rect2(Vector2(r.position.x, r.end.y - r.size.y * 0.28), Vector2(r.size.x, r.size.y * 0.28)), base.darkened(0.14))
+	draw_line(Vector2(r.position.x, r.position.y + r.size.y * 0.52), Vector2(r.end.x, r.position.y + r.size.y * 0.52),
+		Color(COLOR_PATCH_EDGE.r, COLOR_PATCH_EDGE.g, COLOR_PATCH_EDGE.b, 0.5), 1.0)
+	draw_line(r.position, Vector2(r.end.x, r.position.y), base.lightened(0.32), 1.5)
+	draw_line(r.position, Vector2(r.position.x, r.end.y), base.lightened(0.20), 1.4)
+	draw_line(Vector2(r.position.x, r.end.y), r.end, base.darkened(0.42), 1.6)
+	draw_line(Vector2(r.end.x, r.position.y), r.end, base.darkened(0.30), 1.4)
+	var nail : Vector2 = r.position + r.size * Vector2(0.22, 0.24)
+	var nr : float = maxf(1.3, r.size.x * 0.055)
+	draw_circle(nail, nr, base.darkened(0.5))
+	draw_circle(nail - Vector2(nr * 0.4, nr * 0.4), nr * 0.4, base.lightened(0.4))
+
+
+# A BREACH (a hole to seal): a dark hull gap with GLOWING STARDUST welling through +
+# a couple of glints, framed by the torn (broken-plank) edge.
+func _draw_breach(r: Rect2, gx: int, gy: int) -> void:
+
+	draw_rect(r, COLOR_BREACH)
+	var ctr : Vector2 = r.position + r.size * 0.5
+	var g : Color = COLOR_STARDUST_GLOW
+	draw_circle(ctr, r.size.x * 0.46, Color(g.r, g.g, g.b, 0.16))
+	draw_circle(ctr, r.size.x * 0.30, Color(g.r, g.g, g.b, 0.34))
+	var gl : Color = g.lightened(0.4)
+	draw_circle(ctr, r.size.x * 0.15, Color(gl.r, gl.g, gl.b, 0.55))
+	var h : int = gx * 7 + gy * 13
+	draw_circle(ctr + Vector2(float(h % 5) - 2.0, float(h % 3) - 1.0) * 4.5, 1.2, Color(0.92, 0.86, 1.0, 0.8))
+	draw_circle(ctr + Vector2(float(h % 4) - 2.0, float((h + 2) % 5) - 2.0) * 3.6, 0.8, Color(0.92, 0.86, 1.0, 0.6))
+	draw_rect(r, COLOR_HULL_EDGE, false, 1.5)
+
+
 func _draw() -> void:
 
-	# Hull frame around the grid.
+	# Reinforced TIMBER hull frame (beveled band + corner bolts), around the grid.
 	var frame : Rect2 = Rect2(GRID_ORIGIN - Vector2(9.0, 9.0), Vector2(GRID_W * CELL + 18.0, GRID_H * CELL + 18.0))
 	draw_rect(frame, COLOR_HULL, true)
+	draw_rect(frame.grow(-1.5), COLOR_HULL.lightened(0.16), false, 1.5)
 	draw_rect(frame, COLOR_HULL_EDGE, false, 3.0)
-	# Cells: empty = Stardust-lit breach; planked = wood patch.
+	for bc in [frame.position + Vector2(4.0, 4.0), Vector2(frame.end.x - 4.0, frame.position.y + 4.0),
+			Vector2(frame.position.x + 4.0, frame.end.y - 4.0), frame.end - Vector2(4.0, 4.0)]:
+		draw_circle(bc, 3.0, COLOR_HULL_EDGE)
+		draw_circle(bc - Vector2(0.8, 0.8), 1.2, COLOR_HULL.lightened(0.3))
+	# Cells: empty = Stardust-lit BREACH (glowing hole); filled = wood PATCH (nailed plank).
 	for y in GRID_H:
 		for x in GRID_W:
 			var r : Rect2 = _cell_rect(x, y)
 			if _board.grid[y][x]:
-				draw_rect(r, COLOR_PATCH, true)
-				draw_rect(r, COLOR_PATCH_EDGE, false, 2.0)
+				_draw_patch(r, COLOR_PATCH)
 			else:
-				draw_rect(r, COLOR_BREACH, true)
-				draw_rect(r, COLOR_GRID_LINE, false, 1.0)
+				_draw_breach(r, x, y)
 	# The picked-up piece, ghosted at the hovered cell (green = fits, red = won't). Draw the WHOLE
 	# piece even where it overhangs the grid — so you can always see what you're dragging, on or off
 	# the board. (It reads red while any cell is off the board, since it won't place there.)
@@ -292,8 +332,7 @@ func _draw_tray() -> void:
 		var origin : Vector2 = slot.position + (slot.size - Vector2(float(mx + 1), float(my + 1)) * TRAY_CELL) * 0.5
 		for c in cells:
 			var r : Rect2 = Rect2(origin + Vector2(c) * TRAY_CELL + Vector2(1.0, 1.0), Vector2(TRAY_CELL - 2.0, TRAY_CELL - 2.0))
-			draw_rect(r, (COLOR_PATCH if picked else COLOR_PIECE), true)
-			draw_rect(r, COLOR_PATCH_EDGE, false, 1.5)
+			_draw_patch(r, COLOR_PATCH if picked else COLOR_PIECE)
 
 
 func _tray_slot_rect(i: int) -> Rect2:
