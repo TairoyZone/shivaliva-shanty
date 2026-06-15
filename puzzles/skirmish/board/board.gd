@@ -59,6 +59,8 @@ const COLORS : Array[Color] = [
 	Color(0.94, 0.60, 0.28),  # L orange
 ]
 const COLOR_EMPTY : Color = Color(0.10, 0.11, 0.16, 1.0)
+const COLOR_WELL_TOP : Color = Color(0.07, 0.08, 0.13, 1.0)   # deep arena pit (top)
+const COLOR_WELL_BOT : Color = Color(0.12, 0.13, 0.20, 1.0)   # lifted toward the floor
 const COLOR_GRID : Color = Color(0.20, 0.22, 0.30, 1.0)
 const COLOR_FRAME : Color = Color(0.55, 0.60, 0.78, 1.0)
 const COLOR_GHOST : Color = Color(1.0, 1.0, 1.0, 0.16)
@@ -955,9 +957,15 @@ func _draw() -> void:
 
 	var w : float = COLS * CELL
 	var h : float = ROWS * CELL
-	# Field background + frame.
-	draw_rect(Rect2(0, 0, w, h), COLOR_EMPTY, true)
-	# Grid lines.
+	# Field WELL — a deep arena pit: a subtle vertical gradient + a soft overhead
+	# light pooled at the top, so the glossy blocks pop against it (Skirmish glow-up).
+	var bands : int = 12
+	for i in bands:
+		var bt : float = float(i) / float(bands - 1)
+		draw_rect(Rect2(0, h * float(i) / float(bands), w, h / float(bands) + 1.0),
+			COLOR_WELL_TOP.lerp(COLOR_WELL_BOT, bt))
+	draw_circle(Vector2(w * 0.5, h * 0.10), w * 0.66, Color(0.42, 0.48, 0.70, 0.05))
+	# Grid lines (faint).
 	for c in range(1, COLS):
 		draw_line(Vector2(c * CELL, 0), Vector2(c * CELL, h), COLOR_GRID, 1.0)
 	for r in range(1, ROWS):
@@ -1031,8 +1039,10 @@ func _draw() -> void:
 			var gvr : int = (gdy + int(off.y)) - SPAWN_ROWS
 			if gc >= 0 and gc < COLS and gvr >= 0 and gvr < ROWS:
 				_draw_blockage(gc, gvr, gdecay)
-	# Outer frame.
-	draw_rect(Rect2(0, 0, w, h), COLOR_FRAME, false, 2.0)
+	# Steel arena frame — drawn OUTSIDE the tiles (lit lip + darker body) so it
+	# borders the well without painting over the edge blocks.
+	draw_rect(Rect2(0, 0, w, h).grow(0.75), COLOR_FRAME.lightened(0.20), false, 1.5)
+	draw_rect(Rect2(0, 0, w, h).grow(3.0), COLOR_FRAME.darkened(0.30), false, 3.0)
 	# Target ring (a team-fight scene marks the player's current foe).
 	if _highlight.a > 0.0:
 		draw_rect(Rect2(-4, -4, w + 8, h + 8), _highlight, false, 4.0)
@@ -1074,17 +1084,32 @@ func _draw_next_preview(field_w: float) -> void:
 	for cell in cells:
 		var x : float = ox + int(cell[0]) * s
 		var y : float = oy + int(cell[1]) * s
-		draw_rect(Rect2(x + 1, y + 1, s - 2, s - 2), COLORS[_next], true)
-		draw_rect(Rect2(x + 1, y + 1, s - 2, s - 2), COLORS[_next].darkened(0.4), false, 1.0)
+		_draw_block(Rect2(x + 1, y + 1, s - 2, s - 2), COLORS[_next])
 
 
 func _draw_cell(col: int, vis_row: int, color: Color) -> void:
 
-	_draw_cell_rect(col, vis_row, color, false)
-	# Bevel highlight + dark edge for a chunky block look.
-	var x : float = col * CELL
-	var y : float = vis_row * CELL
-	draw_rect(Rect2(x + 2, y + 2, CELL - 4, CELL - 4), color.lightened(0.12), false, 2.0)
+	_draw_block(Rect2(col * CELL + 1.0, vis_row * CELL + 1.0, CELL - 2.0, CELL - 2.0), color)
+
+
+# A glossy beveled GEM block (the Tetris-Battle look): face + top sheen / bottom
+# shade, a raised bevel (bright top-left, dark bottom-right), and a small specular
+# shine — so each cell reads as a lit, chunky gem instead of a flat square.
+func _draw_block(r: Rect2, color: Color) -> void:
+
+	draw_rect(r, color)
+	draw_rect(Rect2(r.position, Vector2(r.size.x, r.size.y * 0.44)), color.lightened(0.17))
+	draw_rect(Rect2(Vector2(r.position.x, r.end.y - r.size.y * 0.30),
+		Vector2(r.size.x, r.size.y * 0.30)), color.darkened(0.20))
+	var tl : Vector2 = r.position
+	var tr : Vector2 = Vector2(r.end.x, r.position.y)
+	var bl : Vector2 = Vector2(r.position.x, r.end.y)
+	var br : Vector2 = r.end
+	draw_line(tl, tr, color.lightened(0.55), 2.0)
+	draw_line(tl, bl, color.lightened(0.36), 2.0)
+	draw_line(bl, br, color.darkened(0.45), 2.0)
+	draw_line(tr, br, color.darkened(0.32), 2.0)
+	draw_circle(r.position + Vector2(r.size.x * 0.27, r.size.y * 0.25), r.size.x * 0.10, Color(1, 1, 1, 0.42))
 
 
 # Is (col, abs_row) the SETTLED spot of a tile currently mid-reveal-fall? Those cells are
@@ -1124,9 +1149,26 @@ func _draw_blockage(col: int, vis_row: int, age: int) -> void:
 	var base : Color = COLOR_BRUISE_DK if bruise else COLOR_GARBAGE_BLOCK
 	var ripe : Color = COLOR_BRUISE if bruise else COLOR_GARBAGE
 	var t : float = 1.0 - clampf(float(age) / float(DECAY_MOVES), 0.0, 1.0)
-	_draw_cell(col, vis_row, base.lerp(ripe, t * 0.6))
+	var face : Color = base.lerp(ripe, t * 0.6)
 	var x : float = col * CELL
 	var y : float = vis_row * CELL
+	var r : Rect2 = Rect2(x + 1.0, y + 1.0, CELL - 2.0, CELL - 2.0)
+	# MATTE riveted iron (deliberately NOT glossy like a playable block — it's inert).
+	draw_rect(r, face)
+	draw_rect(Rect2(r.position, Vector2(r.size.x, r.size.y * 0.30)), face.lightened(0.07))
+	var tl : Vector2 = r.position
+	var tr : Vector2 = Vector2(r.end.x, r.position.y)
+	var bl : Vector2 = Vector2(r.position.x, r.end.y)
+	var br : Vector2 = r.end
+	draw_line(tl, tr, face.lightened(0.18), 2.0)
+	draw_line(tl, bl, face.lightened(0.12), 2.0)
+	draw_line(bl, br, face.darkened(0.38), 2.0)
+	draw_line(tr, br, face.darkened(0.30), 2.0)
+	# Four corner rivets.
+	for cpt in [tl + Vector2(3, 3), tr + Vector2(-3, 3), bl + Vector2(3, -3), br + Vector2(-3, -3)]:
+		draw_circle(cpt, 1.7, Color(0, 0, 0, 0.45))
+		draw_circle(cpt - Vector2(0.5, 0.5), 0.7, Color(1, 1, 1, 0.18))
+	# Crack X — reads "can't clear yet".
 	var m : float = 7.0
 	var xc : Color = Color(0, 0, 0, 0.5)
 	draw_line(Vector2(x + m, y + m), Vector2(x + CELL - m, y + CELL - m), xc, 2.0)

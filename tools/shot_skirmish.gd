@@ -1,0 +1,70 @@
+## DEV-ONLY: populate a frozen SkirmishBoard with a varied stack + garbage + a
+## bruise so the glossy-block / iron-garbage / arena-well glow-up can be verified.
+## Not shipped. Caller backs up the save.
+extends Node2D
+
+const OUT : String = "user://shots"
+
+
+func _ready() -> void:
+
+	DirAccess.make_dir_recursive_absolute(OUT)
+	call_deferred("_go")
+
+
+func _go() -> void:
+
+	_hide_autoload_ui()
+	var bg : ColorRect = ColorRect.new()
+	bg.color = Color(0.05, 0.05, 0.08, 1.0)
+	bg.size = Vector2(1280, 720)
+	bg.z_index = -50
+	add_child(bg)
+
+	var board : SkirmishBoard = SkirmishBoard.new()
+	add_child(board)
+	board.position = Vector2(500, 96)
+	await get_tree().process_frame   # _ready ran: grid + garbage_age init + first spawn
+	board.set_process(false)
+	board.set_physics_process(false)
+	board.set_process_unhandled_input(false)
+
+	var cols : int = SkirmishBoard.COLS
+	# A believable varied stack in the bottom rows (gaps carved for realism).
+	for r in range(12, 20):
+		for c in range(cols):
+			var keep : bool = ((c * 7 + r * 3) % 5) != 0
+			if r >= 17:
+				keep = ((c * 5 + r) % 7) != 0
+			if keep:
+				board._grid[r][c] = (c + r) % 7
+	board._grid[12][3] = -1
+	board._grid[12][4] = -1
+	board._grid[13][6] = -1
+	# Garbage blockages (ripening) + a sticky bruise (purple).
+	board._grid[11][8] = SkirmishBoard.GARBAGE_CELL
+	board._garbage_age[11][8] = 1
+	board._grid[12][8] = SkirmishBoard.GARBAGE_CELL
+	board._garbage_age[12][8] = 2
+	board._grid[11][1] = SkirmishBoard.GARBAGE_CELL
+	board._garbage_age[11][1] = SkirmishBoard.DECAY_MOVES + 2
+	board._show_preview = true
+	board.queue_redraw()
+
+	await get_tree().create_timer(0.5).timeout
+	var img : Image = get_viewport().get_texture().get_image()
+	img.save_png("%s/skirmish_look.png" % OUT)
+	get_tree().quit()
+
+
+func _hide_autoload_ui() -> void:
+	for n in ["HUD", "Overlay", "EventFeed", "ChatBox", "UserPanel"]:
+		var node : Node = get_node_or_null("/root/" + n)
+		if node:
+			_hide_subtree(node)
+
+func _hide_subtree(node: Node) -> void:
+	if node is CanvasItem or node is CanvasLayer:
+		node.visible = false
+	for c in node.get_children():
+		_hide_subtree(c)
