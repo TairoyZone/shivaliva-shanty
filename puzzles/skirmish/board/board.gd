@@ -1196,14 +1196,14 @@ func _draw_block(r: Rect2, color: Color) -> void:
 	draw_rect(Rect2(r.position, Vector2(r.size.x, r.size.y * 0.44)), color.lightened(0.17))
 	draw_rect(Rect2(Vector2(r.position.x, r.end.y - r.size.y * 0.30),
 		Vector2(r.size.x, r.size.y * 0.30)), color.darkened(0.20))
-	var tl : Vector2 = r.position
-	var tr : Vector2 = Vector2(r.end.x, r.position.y)
-	var bl : Vector2 = Vector2(r.position.x, r.end.y)
-	var br : Vector2 = r.end
-	draw_line(tl, tr, color.lightened(0.55), 2.0)
-	draw_line(tl, bl, color.lightened(0.36), 2.0)
-	draw_line(bl, br, color.darkened(0.45), 2.0)
-	draw_line(tr, br, color.darkened(0.32), 2.0)
+	var c_tl : Vector2 = r.position
+	var c_tr : Vector2 = Vector2(r.end.x, r.position.y)
+	var c_bl : Vector2 = Vector2(r.position.x, r.end.y)
+	var c_br : Vector2 = r.end
+	draw_line(c_tl, c_tr, color.lightened(0.55), 2.0)
+	draw_line(c_tl, c_bl, color.lightened(0.36), 2.0)
+	draw_line(c_bl, c_br, color.darkened(0.45), 2.0)
+	draw_line(c_tr, c_br, color.darkened(0.32), 2.0)
 	draw_circle(r.position + Vector2(r.size.x * 0.27, r.size.y * 0.25), r.size.x * 0.10, Color(1, 1, 1, 0.42))
 
 
@@ -1251,16 +1251,16 @@ func _draw_blockage(col: int, vis_row: int, age: int) -> void:
 	# MATTE riveted iron (deliberately NOT glossy like a playable block — it's inert).
 	draw_rect(r, face)
 	draw_rect(Rect2(r.position, Vector2(r.size.x, r.size.y * 0.30)), face.lightened(0.07))
-	var tl : Vector2 = r.position
-	var tr : Vector2 = Vector2(r.end.x, r.position.y)
-	var bl : Vector2 = Vector2(r.position.x, r.end.y)
-	var br : Vector2 = r.end
-	draw_line(tl, tr, face.lightened(0.18), 2.0)
-	draw_line(tl, bl, face.lightened(0.12), 2.0)
-	draw_line(bl, br, face.darkened(0.38), 2.0)
-	draw_line(tr, br, face.darkened(0.30), 2.0)
+	var c_tl : Vector2 = r.position
+	var c_tr : Vector2 = Vector2(r.end.x, r.position.y)
+	var c_bl : Vector2 = Vector2(r.position.x, r.end.y)
+	var c_br : Vector2 = r.end
+	draw_line(c_tl, c_tr, face.lightened(0.18), 2.0)
+	draw_line(c_tl, c_bl, face.lightened(0.12), 2.0)
+	draw_line(c_bl, c_br, face.darkened(0.38), 2.0)
+	draw_line(c_tr, c_br, face.darkened(0.30), 2.0)
 	# Four corner rivets.
-	for cpt in [tl + Vector2(3, 3), tr + Vector2(-3, 3), bl + Vector2(3, -3), br + Vector2(-3, -3)]:
+	for cpt in [c_tl + Vector2(3, 3), c_tr + Vector2(-3, 3), c_bl + Vector2(3, -3), c_br + Vector2(-3, -3)]:
 		draw_circle(cpt, 1.7, Color(0, 0, 0, 0.45))
 		draw_circle(cpt - Vector2(0.5, 0.5), 0.7, Color(1, 1, 1, 0.18))
 	# Crack X — reads "can't clear yet".
