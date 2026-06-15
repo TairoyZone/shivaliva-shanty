@@ -31,7 +31,7 @@ func _go() -> void:
 		p.position = Vector2(210.0 + i * 150.0, 150.0)
 		p.scale = Vector2(3.0, 3.0)
 
-	_label("BREAKERS  (axe-stamped)", Vector2(60, 320))
+	_label("BREAKERS  (bare colored axes, per kind)", Vector2(60, 320))
 	for i in 4:
 		var p : Node2D = lp.instantiate()
 		add_child(p)

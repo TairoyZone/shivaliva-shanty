@@ -97,6 +97,11 @@ func _draw() -> void:
 	var face : Color = palette["face"]
 	var shadow : Color = palette["shadow"]
 	var grain : Color = palette["grain"]
+	# BREAKER = a bare COLORED axe, NO plank backing (Troy 2026-06-15). The axe
+	# wears the kind's own colour, so you read which planks it will shatter.
+	if variant == Variant.BREAKER:
+		_draw_axe(face, shadow)
+		return
 	# Extend to the cell boundary on edges shared with a same-group neighbour, so
 	# fused planks MERGE into one continuous surface with no internal seam.
 	var x0 : float = 0.0 if (fused_edges & _EDGE_W) else CELL_PAD
@@ -151,25 +156,41 @@ func _draw() -> void:
 		for _i in 2:
 			var fp : Vector2 = inner.position + inner.size * Vector2(rng.randf_range(0.20, 0.80), rng.randf_range(0.20, 0.80))
 			draw_line(fp, fp + Vector2(rng.randf_range(2.0, 4.0), 0.0), Color(0.20, 0.16, 0.10, 0.7), 1.4)
-	# Breaker variant — the axe stamp.
-	if variant == Variant.BREAKER:
-		_draw_axe_stamp()
 
 
-# Big dark axe silhouette: triangular wedge-head at the TOP-LEFT (the blade),
-# a thin handle to the bottom-right. Reads "breaker" on any plank color.
-func _draw_axe_stamp() -> void:
+# A bold COLORED axe on a bare cell (no plank backing) — the breaker piece.
+# Blade wears the kind's bright FACE colour (its identity), handle the darker
+# SHADOW tone; a near-black outline + a bright cutting edge keep EVERY kind
+# legible against the dark bin / preview panel (even dark spruce).
+func _draw_axe(face: Color, shadow: Color) -> void:
 
-	var stamp_color : Color = Color(0.06, 0.04, 0.02, 1.0)
-	var stamp_highlight : Color = Color(0.92, 0.82, 0.55, 0.85)
+	var outline : Color = Color(0.08, 0.05, 0.02, 1.0)
+	var edge_hi : Color = face.lightened(0.5)
+	# Blade wedge — cutting edge down the LEFT (points 0 -> 4), neck at the right.
 	var head : PackedVector2Array = PackedVector2Array([
-		Vector2(CELL_SIZE * 0.10, CELL_SIZE * 0.20),
-		Vector2(CELL_SIZE * 0.62, CELL_SIZE * 0.16),
-		Vector2(CELL_SIZE * 0.78, CELL_SIZE * 0.36),
-		Vector2(CELL_SIZE * 0.46, CELL_SIZE * 0.48),
-		Vector2(CELL_SIZE * 0.18, CELL_SIZE * 0.42),
+		Vector2(CELL_SIZE * 0.12, CELL_SIZE * 0.28),
+		Vector2(CELL_SIZE * 0.60, CELL_SIZE * 0.16),
+		Vector2(CELL_SIZE * 0.78, CELL_SIZE * 0.38),
+		Vector2(CELL_SIZE * 0.44, CELL_SIZE * 0.52),
+		Vector2(CELL_SIZE * 0.18, CELL_SIZE * 0.46),
 	])
-	draw_colored_polygon(head, stamp_color)
-	draw_line(Vector2(CELL_SIZE * 0.60, CELL_SIZE * 0.20), Vector2(CELL_SIZE * 0.76, CELL_SIZE * 0.34), stamp_highlight, 1.4)
-	draw_line(Vector2(CELL_SIZE * 0.36, CELL_SIZE * 0.48), Vector2(CELL_SIZE * 0.88, CELL_SIZE * 0.92), stamp_color, CELL_SIZE * 0.10)
-	draw_polyline(head, Color(1, 1, 1, 0.25), 1.2)
+	var closed : PackedVector2Array = head + PackedVector2Array([head[0]])
+	var handle_a : Vector2 = Vector2(CELL_SIZE * 0.54, CELL_SIZE * 0.40)
+	var handle_b : Vector2 = Vector2(CELL_SIZE * 0.86, CELL_SIZE * 0.90)
+	# Soft drop shadow so the axe sits in the cell against the dark bin.
+	var soff : Vector2 = Vector2(1.5, 2.0)
+	var head_sh : PackedVector2Array = PackedVector2Array()
+	for p in head:
+		head_sh.append(p + soff)
+	draw_colored_polygon(head_sh, Color(0.0, 0.0, 0.0, 0.30))
+	draw_line(handle_a + soff, handle_b + soff, Color(0.0, 0.0, 0.0, 0.30), CELL_SIZE * 0.15)
+	# Handle (drawn first so the blade overlaps its neck): dark outline + body.
+	draw_line(handle_a, handle_b, outline, CELL_SIZE * 0.17)
+	draw_line(handle_a, handle_b, shadow, CELL_SIZE * 0.11)
+	draw_line(handle_a + Vector2(-1.2, -1.0), handle_b + Vector2(-1.2, -1.0), shadow.lightened(0.22), 1.6)
+	# Blade: outline, kind-colour fill, top facet, bright sharpened edge.
+	draw_polyline(closed, outline, 2.4)
+	draw_colored_polygon(head, face)
+	draw_line(head[0], head[1], face.lightened(0.18), 1.6)        # top facet
+	draw_line(head[2], head[3], shadow, 1.4)                       # lower facet shade
+	draw_line(head[0], head[4], edge_hi, 2.6)                      # cutting edge (bright)
