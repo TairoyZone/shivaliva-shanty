@@ -927,65 +927,47 @@ func _animate_settle() -> void:
 func _detect_fusions() -> void:
 
 	_fusion_groups = []
-	# Clear last frame's fused edges; the new groups re-set them below.
-	for r in ROWS:
-		for c in COLS:
-			var pc : Node = grid[r][c]
-			if pc is LogPiece:
-				(pc as LogPiece).fused_edges = 0
-	var marked : Dictionary = {}
+	# A cell is FUSED if it belongs to ANY 2x2+ same-kind block. We mark every
+	# such cell first (overlapping 2x2s all count) — this is what makes the merge
+	# match reality: the old greedy-rectangle pass only merged cells inside ONE
+	# chosen rectangle, so same-kind cells in an L-shape / overlapping 2x2 were
+	# left un-merged (the bug Troy hit — red planks not joining). (Troy 2026-06-15)
+	var is_fused : Dictionary = {}
 	for row in range(ROWS - 1):
 		for col in range(COLS - 1):
-			if marked.has(Vector2i(row, col)):
-				continue
 			var kind : int = _solid_kind_at(row, col)
 			if kind == -1:
 				continue
-			# Greedy width — walk right while same kind + solid + unmarked.
-			var w : int = 1
-			while (col + w < COLS
-				and _solid_kind_at(row, col + w) == kind
-				and not marked.has(Vector2i(row, col + w))):
-				w += 1
-			# Greedy height — walk down; each candidate row must have
-			# ALL [col, col+w) cells be same kind + solid + unmarked.
-			var h : int = 1
-			while row + h < ROWS:
-				var row_ok : bool = true
-				for x in range(w):
-					if (_solid_kind_at(row + h, col + x) != kind
-						or marked.has(Vector2i(row + h, col + x))):
-						row_ok = false
-						break
-				if not row_ok:
-					break
-				h += 1
-			if w >= 2 and h >= 2:
-				_fusion_groups.append({"row": row, "col": col, "w": w, "h": h, "kind": kind})
-				for dx in range(w):
-					for dy in range(h):
-						marked[Vector2i(row + dy, col + dx)] = true
-	# Tell each member which edges abut a same-group cell, so the tiles MERGE
-	# into one continuous plank surface (the YPP "solidify" read) — no overlay.
-	for group in _fusion_groups:
-		var gr : int = group["row"]
-		var gc : int = group["col"]
-		var gw : int = group["w"]
-		var gh : int = group["h"]
-		for dy in gh:
-			for dx in gw:
-				var member : Node = grid[gr + dy][gc + dx]
-				if member is LogPiece:
-					var mask : int = 0
-					if dy > 0:
-						mask |= LogPiece._EDGE_N
-					if dx < gw - 1:
-						mask |= LogPiece._EDGE_E
-					if dy < gh - 1:
-						mask |= LogPiece._EDGE_S
-					if dx > 0:
-						mask |= LogPiece._EDGE_W
-					(member as LogPiece).fused_edges = mask
+			if (_solid_kind_at(row, col + 1) == kind
+				and _solid_kind_at(row + 1, col) == kind
+				and _solid_kind_at(row + 1, col + 1) == kind):
+				is_fused[Vector2i(row, col)] = true
+				is_fused[Vector2i(row, col + 1)] = true
+				is_fused[Vector2i(row + 1, col)] = true
+				is_fused[Vector2i(row + 1, col + 1)] = true
+	# Set each tile's fused-edge mask: suppress the seam to a same-kind neighbour
+	# when BOTH cells are fused, so EVERY connecting same-kind cell of a 2x2+
+	# block reads as one continuous merged plank surface (no overlay painted).
+	for row in ROWS:
+		for col in COLS:
+			var member : Node = grid[row][col]
+			if not (member is LogPiece):
+				continue
+			var lp : LogPiece = member as LogPiece
+			if not is_fused.has(Vector2i(row, col)):
+				lp.fused_edges = 0
+				continue
+			var my_kind : int = lp.wood_kind
+			var mask : int = 0
+			if is_fused.has(Vector2i(row - 1, col)) and _solid_kind_at(row - 1, col) == my_kind:
+				mask |= LogPiece._EDGE_N
+			if is_fused.has(Vector2i(row, col + 1)) and _solid_kind_at(row, col + 1) == my_kind:
+				mask |= LogPiece._EDGE_E
+			if is_fused.has(Vector2i(row + 1, col)) and _solid_kind_at(row + 1, col) == my_kind:
+				mask |= LogPiece._EDGE_S
+			if is_fused.has(Vector2i(row, col - 1)) and _solid_kind_at(row, col - 1) == my_kind:
+				mask |= LogPiece._EDGE_W
+			lp.fused_edges = mask
 
 
 # Returns the wood kind at (row, col) if that cell holds a SOLID

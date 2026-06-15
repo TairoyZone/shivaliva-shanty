@@ -40,7 +40,7 @@ func _go() -> void:
 		p.position = Vector2(210.0 + i * 150.0, 360.0)
 		p.scale = Vector2(3.0, 3.0)
 
-	_label("KNOT  (silver -> opaque -> translucent)", Vector2(60, 530))
+	_label("KNOT  (tough -> loosening -> dissolving)", Vector2(60, 530))
 	var kn : PackedScene = load("res://puzzles/lumberjacking/knot/knot.tscn")
 	for i in 3:
 		var k : Node2D = kn.instantiate()
