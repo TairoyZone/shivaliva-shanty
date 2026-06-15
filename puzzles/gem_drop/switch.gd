@@ -208,7 +208,6 @@ func _draw() -> void:
 		draw_colored_polygon(PackedVector2Array([
 			top_edge[i], top_edge[i + 1], bottom_edge[i + 1], bottom_edge[i]]), color_pad)
 	draw_polyline(top_edge, STEEL_HI, 1.6)                                          # lit cradle rim
-	draw_line(bottom_edge[0], bottom_edge[bottom_edge.size() - 1], STEEL_EDGE, 1.2) # shadowed under-edge
 	draw_circle(top_edge[0], 2.2, STEEL_HI)                                         # upturned lip horns
 	draw_circle(top_edge[top_edge.size() - 1], 2.2, STEEL_HI)
 
