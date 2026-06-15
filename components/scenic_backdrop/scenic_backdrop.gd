@@ -16,7 +16,7 @@ const W : float = 1280.0
 const H : float = 720.0
 
 
-@export_enum("forest", "quarry", "sky_battle") var mode : String = "forest" :
+@export_enum("forest", "quarry", "sky_battle", "stardust_drift") var mode : String = "forest" :
 	set(value):
 		mode = value
 		queue_redraw()
@@ -31,6 +31,9 @@ func _draw() -> void:
 	elif mode == "sky_battle":
 		rng.seed = 20260617
 		_draw_sky_battle(rng)
+	elif mode == "stardust_drift":
+		rng.seed = 20260618
+		_draw_stardust_drift(rng)
 	else:
 		rng.seed = 20260615
 		_draw_forest(rng)
@@ -452,6 +455,85 @@ func _draw_fighter(pos: Vector2, face: float, s: float) -> void:
 	var hand : Vector2 = Vector2(pos.x + face * 12.0 * s, pos.y - 32.0 * s)
 	draw_line(Vector2(pos.x + face * 3.0 * s, pos.y - 18.0 * s), hand, col, 3.0 * s)
 	draw_line(hand, hand + Vector2(face * 17.0 * s, -9.0 * s), Color(0.82, 0.84, 0.90, 0.9), 2.0 * s)
+
+
+# ===================================================== STARDUST DRIFT =========
+# The LOFT backdrop ([[loft-spec]] / [[sky-canon]]): floating islands hang in the
+# high sky above a glowing violet STARDUST DRIFT — the luminous sea you sing the
+# ship aloft over. Serene but tense (the drift is what swallows you if you sink).
+# The board sits centre-screen, so islands live in the gutters/top, the drift below.
+
+func _draw_stardust_drift(rng: RandomNumberGenerator) -> void:
+
+	var SKY_TOP : Color = Color(0.08, 0.10, 0.21)
+	var SKY_MID : Color = Color(0.25, 0.20, 0.40)
+	var SKY_LOW : Color = Color(0.44, 0.29, 0.52)
+	var DRIFT_DK : Color = Color(0.15, 0.09, 0.30)
+	var DRIFT_MID : Color = Color(0.34, 0.20, 0.54)
+	var DRIFT_GLOW : Color = Color(0.64, 0.44, 0.96)
+	var STAR : Color = Color(0.95, 0.93, 1.0)
+	var ISLAND : Color = Color(0.13, 0.12, 0.23)
+	var drift_top : float = 454.0
+
+	# 1. High-altitude sky (deep indigo top -> warm violet toward the drift).
+	for i in 22:
+		var t : float = float(i) / 21.0
+		var c : Color = SKY_TOP.lerp(SKY_MID, t / 0.65) if t < 0.65 else SKY_MID.lerp(SKY_LOW, (t - 0.65) / 0.35)
+		draw_rect(Rect2(0.0, drift_top * float(i) / 22.0, W, drift_top / 22.0 + 1.0), c)
+
+	# 2. Stars scattered across the upper sky.
+	for _i in 90:
+		var p : Vector2 = Vector2(rng.randf_range(0.0, W), rng.randf_range(0.0, drift_top * 0.82))
+		draw_circle(p, rng.randf_range(0.5, 1.6), Color(STAR.r, STAR.g, STAR.b, rng.randf_range(0.25, 0.9)))
+
+	# 3. Floating islands hanging in the sky, some tethered to the drift by a wisp.
+	for spec in [Vector2(118.0, 232.0), Vector2(258.0, 150.0), Vector2(1052.0, 250.0),
+			Vector2(1176.0, 158.0), Vector2(640.0, 116.0)]:
+		var iw : float = rng.randf_range(46.0, 78.0)
+		_draw_floating_island(spec, iw, ISLAND)
+		# a faint lit crown (dawn catching the top)
+		draw_line(spec + Vector2(-iw * 0.42, 0.0), spec + Vector2(iw * 0.42, 0.0), Color(0.55, 0.46, 0.66, 0.5), 1.5)
+
+	# 4. Soft drifting cloud wisps.
+	for _k in 5:
+		_draw_cloud(Vector2(rng.randf_range(0.0, W), rng.randf_range(150.0, 420.0)),
+			rng.randf_range(150.0, 250.0), Color(0.22, 0.16, 0.34), SKY_LOW.lightened(0.18), rng)
+
+	# 5. THE STARDUST DRIFT — a glowing violet nebula filling the lower screen.
+	for i in 13:
+		var t : float = float(i) / 12.0
+		draw_rect(Rect2(0.0, drift_top + (H - drift_top) * float(i) / 13.0, W, (H - drift_top) / 13.0 + 1.0),
+			DRIFT_DK.lerp(DRIFT_MID, t))
+	# A big soft glow welling up from the bottom centre.
+	for i in 9:
+		draw_circle(Vector2(640.0, H + 50.0), 560.0 - float(i) * 54.0, Color(DRIFT_GLOW.r, DRIFT_GLOW.g, DRIFT_GLOW.b, 0.05))
+	# The churning surface: a wavy bright crest line + puffs of stardust.
+	var crest : PackedVector2Array = PackedVector2Array()
+	var x : float = 0.0
+	while x <= W:
+		crest.append(Vector2(x, drift_top + sin(x * 0.012) * 10.0 + sin(x * 0.031 + 1.0) * 6.0))
+		x += 24.0
+	draw_polyline(crest, Color(DRIFT_GLOW.r, DRIFT_GLOW.g, DRIFT_GLOW.b, 0.7), 2.0)
+	for _k in 16:
+		var pc : Vector2 = Vector2(rng.randf_range(0.0, W), drift_top + rng.randf_range(-6.0, 40.0))
+		draw_circle(pc, rng.randf_range(8.0, 22.0), Color(DRIFT_MID.r, DRIFT_MID.g, DRIFT_MID.b, 0.4))
+	# Stardust motes glittering within the drift.
+	for _i in 70:
+		var pd : Vector2 = Vector2(rng.randf_range(0.0, W), rng.randf_range(drift_top, H))
+		var g : Color = DRIFT_GLOW.lightened(0.2)
+		draw_circle(pd, rng.randf_range(0.6, 2.1), Color(g.r, g.g, g.b, rng.randf_range(0.3, 0.85)))
+	# Rising wisps (faint vertical streaks lifting off the drift).
+	for _w in 7:
+		var wx : float = rng.randf_range(0.0, W)
+		var wtop : float = drift_top - rng.randf_range(40.0, 150.0)
+		draw_line(Vector2(wx, drift_top), Vector2(wx + rng.randf_range(-14.0, 14.0), wtop),
+			Color(DRIFT_GLOW.r, DRIFT_GLOW.g, DRIFT_GLOW.b, 0.10), rng.randf_range(6.0, 16.0))
+
+	# 6. Vignette + a few floating glimmer motes.
+	_draw_vignette(Color(0.04, 0.03, 0.09), 0.55, 140.0)
+	for _i in 18:
+		var pm : Vector2 = Vector2(rng.randf_range(0.0, W), rng.randf_range(120.0, 600.0))
+		draw_circle(pm, rng.randf_range(1.0, 2.0), Color(0.85, 0.80, 0.98, rng.randf_range(0.3, 0.6)))
 
 
 # ============================================================ SHARED ==========

@@ -103,7 +103,7 @@ const DAS_DELAY : float = 0.16
 const DAS_REPEAT : float = 0.05
 
 ## Styling.
-const BACKING_COLOR : Color = Color(0.09, 0.11, 0.17, 1.0)
+const BACKING_COLOR : Color = Color(0.09, 0.11, 0.17, 0.52)   # TRANSLUCENT so the stardust-drift backdrop shows behind the gems
 const GRID_LINE_COLOR : Color = Color(0.0, 0.0, 0.0, 0.26)
 const FRAME_COLOR : Color = Color(0.50, 0.60, 0.82, 0.95)
 const STARDUST_FILL : Color = Color(0.07, 0.05, 0.15, 0.62)
