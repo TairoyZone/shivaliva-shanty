@@ -402,7 +402,7 @@ func _draw_cloud(c: Vector2, w: float, dk: Color, lt: Color, rng: RandomNumberGe
 # A flanking airship: dark hull in the bottom corner, a mast + billowing sail in
 # the gutter, rigging, and two crew silhouettes brawling on the deck. `dir` = +1
 # anchors at the LEFT edge (everything extends inward/right), -1 mirrors it right.
-func _draw_airship(rng: RandomNumberGenerator, edge_x: float, dir: float) -> void:
+func _draw_airship(_rng: RandomNumberGenerator, edge_x: float, dir: float) -> void:
 
 	var HULL : Color = Color(0.19, 0.12, 0.07)
 	var HULL_LT : Color = Color(0.42, 0.27, 0.15)
