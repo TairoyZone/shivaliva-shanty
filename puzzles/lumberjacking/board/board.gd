@@ -250,6 +250,8 @@ var _last_difficulty_tier : String = "Steady"
 
 # --- Phase 3: visual fusion groups -----------------------------------
 
+## High-z child that paints the fused blocks + frame ABOVE the piece nodes.
+var _overlay : DrawOverlay = null
 ## Cached fusion rectangles re-computed after every gravity settle.
 ## Each entry: {"row": int, "col": int, "w": int, "h": int}.
 ## Drawn as a glow-outline overlay in [method _draw].
@@ -263,7 +265,7 @@ func _ready() -> void:
 	# Hide the spawn-buffer pieces ABOVE the top edge so they emerge INTO view as they fall in. A static cover
 	# (the scene bg colour) does this WITHOUT clip_children — its per-composite stencil is a heavy WebGL cost
 	# (Troy 2026-06-13, the mobile perf pass; see [SpawnCover]).
-	SpawnCover.add_above(self, Vector2(COLS * LogPiece.CELL_SIZE, ROWS * LogPiece.CELL_SIZE), Color(0.2, 0.14, 0.08, 1.0))
+	SpawnCover.add_above(self, Vector2(COLS * LogPiece.CELL_SIZE, ROWS * LogPiece.CELL_SIZE), Color(0.13, 0.10, 0.07, 1.0))
 	_init_grid()
 	# Seed the preview queue before the first spawn so the player always
 	# sees the upcoming pair (the first spawn consumes this and rolls the
@@ -271,6 +273,11 @@ func _ready() -> void:
 	_roll_next_pair()
 	_spawn_pair()
 	set_process_unhandled_input(true)
+	# Overlay paints the fused blocks + frame ON TOP of the piece nodes.
+	_overlay = DrawOverlay.new()
+	_overlay.z_index = 50
+	_overlay.draw_fn = _draw_overlay
+	add_child(_overlay)
 
 
 # Fresh empty grid — ROWS × COLS of nulls.
@@ -891,6 +898,8 @@ func _animate_settle() -> void:
 	var moves : Array = _settle_grid_logical()
 	_detect_fusions()
 	queue_redraw()
+	if is_instance_valid(_overlay):
+		_overlay.queue_redraw()
 	if moves.is_empty():
 		return
 	var tw : Tween = create_tween().set_parallel(true)
@@ -944,7 +953,7 @@ func _detect_fusions() -> void:
 					break
 				h += 1
 			if w >= 2 and h >= 2:
-				_fusion_groups.append({"row": row, "col": col, "w": w, "h": h})
+				_fusion_groups.append({"row": row, "col": col, "w": w, "h": h, "kind": kind})
 				for dx in range(w):
 					for dy in range(h):
 						marked[Vector2i(row + dy, col + dx)] = true
@@ -1136,20 +1145,62 @@ func _draw() -> void:
 	for r in range(1, ROWS):
 		var y : float = r * LogPiece.CELL_SIZE
 		draw_line(Vector2(0.0, y), Vector2(bin_size.x, y), BIN_GRID_COLOR, 1.0)
-	# Fusion overlays — draw BEHIND the LogPieces (parents draw first,
-	# children after, so this lands underneath). Renders as a faint
-	# inner glow + thick golden outline framing the fused group, so
-	# the player sees "this 2×2+ block will produce a fine plank."
+	# The fused-block tiles + the timber frame are painted by [_overlay] (a
+	# high-z DrawOverlay child) so they sit ON TOP of the piece nodes: pieces
+	# were bleeding over the frame, and a fused group must read as ONE solid
+	# tile, not 4 cells under an outline (Troy 2026-06-15, per the YPP wiki).
+
+
+# Painted on the high-z overlay so it sits above the piece nodes (the board's
+# own _draw renders BEHIND its children).
+func _draw_overlay(ci: CanvasItem) -> void:
+
+	var bin_size : Vector2 = Vector2(COLS * LogPiece.CELL_SIZE, ROWS * LogPiece.CELL_SIZE)
+	var bin_rect : Rect2 = Rect2(Vector2.ZERO, bin_size)
+	# YPP-style: a 2x2+ same-kind group SOLIDIFIES into one block.
 	for group in _fusion_groups:
-		var px : float = group["col"] * LogPiece.CELL_SIZE
-		var py : float = group["row"] * LogPiece.CELL_SIZE
-		var pw : float = group["w"] * LogPiece.CELL_SIZE
-		var ph : float = group["h"] * LogPiece.CELL_SIZE
-		var rect : Rect2 = Rect2(px, py, pw, ph)
-		draw_rect(rect, FUSION_INNER_GLOW_COLOR)
-		draw_rect(rect, FUSION_OUTLINE_COLOR, false, FUSION_OUTLINE_WIDTH)
-	# Beveled TIMBER frame (drawn last, on top): a dark outer edge, a warm wood
-	# band, and a lit inner lip — a hewn-beam border around the mill bin.
-	draw_rect(bin_rect, Color(0.09, 0.06, 0.03, 1.0), false, 6.0)
-	draw_rect(bin_rect.grow(-3.0), BIN_BORDER_COLOR, false, 4.0)
-	draw_rect(bin_rect.grow(-5.5), Color(0.86, 0.64, 0.34, 1.0), false, 1.5)
+		_draw_fused_block(ci, group)
+	# Beveled TIMBER frame on top (dark outer edge / warm band / lit inner lip).
+	ci.draw_rect(bin_rect, Color(0.09, 0.06, 0.03, 1.0), false, 6.0)
+	ci.draw_rect(bin_rect.grow(-3.0), BIN_BORDER_COLOR, false, 4.0)
+	ci.draw_rect(bin_rect.grow(-5.5), Color(0.86, 0.64, 0.34, 1.0), false, 1.5)
+
+
+# One solidified plank covering a fused group: a continuous face + grain that
+# spans the WHOLE group + a single beveled border + a warm "fused" rim, so the
+# group reads as a single tile (not 4 cells).
+func _draw_fused_block(ci: CanvasItem, group: Dictionary) -> void:
+
+	var cell : float = LogPiece.CELL_SIZE
+	var pad : float = 2.0
+	var px : float = group["col"] * cell + pad
+	var py : float = group["row"] * cell + pad
+	var pw : float = group["w"] * cell - 2.0 * pad
+	var ph : float = group["h"] * cell - 2.0 * pad
+	var rect : Rect2 = Rect2(px, py, pw, ph)
+	var palette : Dictionary = LogPiece.KIND_COLORS[group.get("kind", 0)]
+	var face : Color = (palette["face"] as Color).lightened(0.06)   # solidified = a touch brighter
+	var shadow : Color = palette["shadow"]
+	var grain : Color = palette["grain"]
+	ci.draw_rect(Rect2(px, py + 2.0, pw, ph), shadow.darkened(0.10))   # drop shadow
+	ci.draw_rect(rect, face)                                           # one solid face
+	var tl : Vector2 = rect.position
+	var tr : Vector2 = Vector2(rect.end.x, rect.position.y)
+	var bl : Vector2 = Vector2(rect.position.x, rect.end.y)
+	var br : Vector2 = rect.end
+	ci.draw_line(tl, tr, face.lightened(0.22), 2.0)
+	ci.draw_line(tl, bl, face.lightened(0.14), 1.8)
+	ci.draw_line(bl, br, shadow.darkened(0.12), 2.0)
+	ci.draw_line(tr, br, shadow.darkened(0.05), 1.8)
+	# Continuous grain spanning the whole block (one log).
+	var lines : int = maxi(2, int(ph / 12.0))
+	for k in lines:
+		var gy : float = py + ph * (float(k) + 0.6) / (float(lines) + 0.2)
+		var pts : PackedVector2Array = PackedVector2Array()
+		for j in 7:
+			var tx : float = float(j) / 6.0
+			var wob : float = sin(float(k) * 1.7 + tx * 7.0) * 1.8
+			pts.append(Vector2(px + 3.0 + (pw - 6.0) * tx, gy + wob))
+		ci.draw_polyline(pts, grain, 1.3)
+	# Warm "fused" rim so the solidified block reads as special.
+	ci.draw_rect(rect, FUSION_OUTLINE_COLOR, false, FUSION_OUTLINE_WIDTH)

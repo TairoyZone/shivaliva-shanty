@@ -151,6 +151,14 @@ func _ready() -> void:
 		_chunks_spawned += 1
 		first.position = _cell_pos(first.top_row, first.left_col)
 	progress_changed.emit(CHUNK_TARGET - _chunks_extracted, CHUNK_TARGET)
+	# Overlay paints the brass frame ON TOP of the tile nodes.
+	_overlay = DrawOverlay.new()
+	_overlay.z_index = 30
+	_overlay.draw_fn = _draw_overlay
+	add_child(_overlay)
+
+
+var _overlay : DrawOverlay = null
 
 
 func _draw() -> void:
@@ -172,11 +180,18 @@ func _draw() -> void:
 		var y : float = r * CELL
 		draw_line(Vector2(0.0, y), Vector2(w, y), groove, 1.5)
 		draw_line(Vector2(0.0, y + 1.0), Vector2(w, y + 1.0), lip, 1.0)
-	# Beveled brass frame (outer dark, brass band, bright inner inlay) — the
-	# same premium-metal language as Gem Drop / the forge.
-	draw_rect(rect, Palette.SKY_VOID, false, 7.0)
-	draw_rect(rect.grow(-3.5), Palette.BRASS_FRAME, false, 4.0)
-	draw_rect(rect.grow(-6.5), Palette.BRASS_INLAY, false, 1.5)
+	# The beveled brass frame is painted by [_overlay] (a high-z DrawOverlay
+	# child) so it sits ON TOP of the gem tiles — they were bleeding over the
+	# frame at the board edges (Troy 2026-06-15).
+
+
+# Painted on the high-z overlay so the brass frame sits above the tile nodes.
+func _draw_overlay(ci: CanvasItem) -> void:
+
+	var rect : Rect2 = Rect2(0.0, 0.0, COLS * CELL, ROWS * CELL)
+	ci.draw_rect(rect, Palette.SKY_VOID, false, 7.0)
+	ci.draw_rect(rect.grow(-3.5), Palette.BRASS_FRAME, false, 4.0)
+	ci.draw_rect(rect.grow(-6.5), Palette.BRASS_INLAY, false, 1.5)
 
 
 # --- Input -----------------------------------------------------------

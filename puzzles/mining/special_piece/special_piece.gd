@@ -66,7 +66,9 @@ var framed : bool = false :
 		if framed == value:
 			return
 		framed = value
-		z_index = 4 if value else 0
+		# Sit ABOVE the board's frame overlay (z 30) when framed, so the name +
+		# effect label is never hidden behind the frame (Troy 2026-06-15).
+		z_index = 60 if value else 0
 		queue_redraw()
 
 
