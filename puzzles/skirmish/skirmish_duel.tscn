@@ -1,10 +1,18 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://puzzles/skirmish/skirmish_duel.gd" id="1_duel"]
 [ext_resource type="Script" path="res://puzzles/skirmish/board/board.gd" id="2_bd"]
+[ext_resource type="Script" path="res://components/scenic_backdrop/scenic_backdrop.gd" id="3_bg"]
 
 [node name="SkirmishDuel" type="Node2D"]
 script = ExtResource("1_duel")
+
+[node name="Backdrop" type="CanvasLayer" parent="."]
+layer = -10
+
+[node name="SkyBattle" type="Node2D" parent="Backdrop"]
+script = ExtResource("3_bg")
+mode = "sky_battle"
 
 [node name="PlayerBoard" type="Node2D" parent="."]
 script = ExtResource("2_bd")

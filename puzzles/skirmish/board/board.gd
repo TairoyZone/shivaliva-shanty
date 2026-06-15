@@ -59,8 +59,8 @@ const COLORS : Array[Color] = [
 	Color(0.94, 0.60, 0.28),  # L orange
 ]
 const COLOR_EMPTY : Color = Color(0.10, 0.11, 0.16, 1.0)
-const COLOR_WELL_TOP : Color = Color(0.07, 0.08, 0.13, 1.0)   # deep arena pit (top)
-const COLOR_WELL_BOT : Color = Color(0.12, 0.13, 0.20, 1.0)   # lifted toward the floor
+const COLOR_WELL_TOP : Color = Color(0.07, 0.08, 0.13, 0.74)   # deep arena pit (top); slightly TRANSLUCENT
+const COLOR_WELL_BOT : Color = Color(0.12, 0.13, 0.20, 0.74)   # so the sky-battle backdrop shows faintly behind the blocks
 const COLOR_GRID : Color = Color(0.20, 0.22, 0.30, 1.0)
 const COLOR_FRAME : Color = Color(0.55, 0.60, 0.78, 1.0)
 const COLOR_GHOST : Color = Color(1.0, 1.0, 1.0, 0.16)

@@ -16,7 +16,7 @@ const W : float = 1280.0
 const H : float = 720.0
 
 
-@export_enum("forest", "quarry") var mode : String = "forest" :
+@export_enum("forest", "quarry", "sky_battle") var mode : String = "forest" :
 	set(value):
 		mode = value
 		queue_redraw()
@@ -28,6 +28,9 @@ func _draw() -> void:
 	if mode == "quarry":
 		rng.seed = 20260616
 		_draw_quarry(rng)
+	elif mode == "sky_battle":
+		rng.seed = 20260617
+		_draw_sky_battle(rng)
 	else:
 		rng.seed = 20260615
 		_draw_forest(rng)
@@ -307,6 +310,148 @@ func _draw_prop(_rng: RandomNumberGenerator, cx: float, face: Color, dark: Color
 		draw_line(Vector2(cx - hw, yy), Vector2(cx + hw, yy), dark, 1.4)
 		draw_circle(Vector2(cx - hw * 0.5, yy), 2.4, dark)
 		draw_circle(Vector2(cx + hw * 0.5, yy), 2.4, dark)
+
+
+# ======================================================== SKY BATTLE ==========
+# A sky-pirate BOARDING battle at altitude (the Skirmish backdrop): two grappled
+# airships flank the boards, crews clashing on their decks, under a dramatic dusk
+# sky with cloud banks + floating islands. The sky-canon answer to YPP's deck
+# brawl ([[sky-canon]]: airships among floating islands, never water). The boards
+# sit centre-screen, so the ships/crew live in the GUTTERS, sky up top, deck below.
+
+func _draw_sky_battle(rng: RandomNumberGenerator) -> void:
+
+	var SKY_TOP : Color = Color(0.09, 0.08, 0.20)
+	var SKY_MID : Color = Color(0.34, 0.20, 0.36)
+	var SKY_HORIZON : Color = Color(0.96, 0.55, 0.30)
+	var SKY_HAZE : Color = Color(0.50, 0.33, 0.40)
+	var SUN : Color = Color(1.0, 0.88, 0.58)
+	var CLOUD_DK : Color = Color(0.36, 0.27, 0.40)
+	var CLOUD_LT : Color = Color(0.98, 0.76, 0.56)
+	var ISLAND : Color = Color(0.16, 0.13, 0.24)
+	var EMBER : Color = Color(1.0, 0.72, 0.34)
+	var horizon : float = 442.0
+
+	# 1. Dusk sky: indigo high -> fiery horizon, then a hazy abyss below (you're aloft).
+	for i in 24:
+		var t : float = float(i) / 23.0
+		var c : Color = SKY_TOP.lerp(SKY_MID, t / 0.7) if t < 0.7 else SKY_MID.lerp(SKY_HORIZON, (t - 0.7) / 0.3)
+		draw_rect(Rect2(0.0, horizon * float(i) / 24.0, W, horizon / 24.0 + 1.0), c)
+	for i in 10:
+		var t : float = float(i) / 9.0
+		draw_rect(Rect2(0.0, horizon + (H - horizon) * float(i) / 10.0, W, (H - horizon) / 10.0 + 1.0),
+			SKY_HORIZON.lerp(SKY_HAZE, t).darkened(0.12 * t))
+
+	# 2. Low sun bloom (centre, behind the gap between the boards).
+	var sun_c : Vector2 = Vector2(640.0, horizon - 18.0)
+	for i in 9:
+		draw_circle(sun_c, 230.0 - float(i) * 24.0, Color(SUN.r, SUN.g, SUN.b, 0.11 - float(i) * 0.011))
+	draw_circle(sun_c, 44.0, Color(SUN.r, SUN.g, SUN.b, 0.5))
+
+	# 3. Distant floating islands on the horizon.
+	for ix in [150.0, 640.0, 1140.0]:
+		_draw_floating_island(Vector2(ix, horizon - rng.randf_range(4.0, 16.0)), rng.randf_range(64.0, 104.0), ISLAND)
+
+	# 4. Cloud banks (dark base, warm-lit crowns).
+	for _k in 8:
+		_draw_cloud(Vector2(rng.randf_range(0.0, W), rng.randf_range(170.0, 410.0)),
+			rng.randf_range(130.0, 250.0), CLOUD_DK, CLOUD_LT, rng)
+
+	# 5. The two grappled airships (flanks), crews clashing on the decks.
+	_draw_airship(rng, 0.0, 1.0)
+	_draw_airship(rng, W, -1.0)
+
+	# 6. Grappling lines slung across the top, ship to ship (the boarding hooks).
+	for i in 3:
+		var y0 : float = 96.0 + float(i) * 16.0
+		var rope : PackedVector2Array = PackedVector2Array()
+		for s in 13:
+			var tt : float = float(s) / 12.0
+			rope.append(Vector2(lerpf(150.0, 1130.0, tt), y0 + sin(tt * PI) * (54.0 + float(i) * 8.0)))
+		draw_polyline(rope, Color(0.16, 0.12, 0.08, 0.9), 2.0)
+
+	# 7. Battle embers drifting up + a deep vignette.
+	for _i in 22:
+		var p : Vector2 = Vector2(rng.randf_range(0.0, W), rng.randf_range(300.0, 700.0))
+		draw_circle(p, rng.randf_range(1.0, 2.2), Color(EMBER.r, EMBER.g, EMBER.b, rng.randf_range(0.3, 0.7)))
+	_draw_vignette(Color(0.03, 0.02, 0.05), 0.6, 150.0)
+
+
+# A floating-rock island silhouette: flat lit top, a chunky off-centre rocky
+# underside (kept convex so draw_colored_polygon triangulates it correctly).
+func _draw_floating_island(c: Vector2, w: float, col: Color) -> void:
+
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(c.x - w * 0.5, c.y), Vector2(c.x + w * 0.5, c.y),
+		Vector2(c.x + w * 0.36, c.y + w * 0.30), Vector2(c.x + w * 0.06, c.y + w * 0.44),
+		Vector2(c.x - w * 0.28, c.y + w * 0.34), Vector2(c.x - w * 0.44, c.y + w * 0.14)]), col)
+	draw_line(Vector2(c.x - w * 0.5, c.y), Vector2(c.x + w * 0.5, c.y), col.lightened(0.22), 2.0)
+
+
+# A cloud bank: overlapping puffs, dark body with a warm-lit upper edge.
+func _draw_cloud(c: Vector2, w: float, dk: Color, lt: Color, rng: RandomNumberGenerator) -> void:
+
+	var n : int = 5
+	for i in n:
+		var px : float = c.x - w * 0.5 + w * float(i) / float(n - 1)
+		var r : float = rng.randf_range(w * 0.18, w * 0.30)
+		draw_circle(Vector2(px, c.y), r, dk)
+		draw_circle(Vector2(px, c.y - r * 0.34), r * 0.7, Color(lt.r, lt.g, lt.b, 0.45))
+
+
+# A flanking airship: dark hull in the bottom corner, a mast + billowing sail in
+# the gutter, rigging, and two crew silhouettes brawling on the deck. `dir` = +1
+# anchors at the LEFT edge (everything extends inward/right), -1 mirrors it right.
+func _draw_airship(rng: RandomNumberGenerator, edge_x: float, dir: float) -> void:
+
+	var HULL : Color = Color(0.19, 0.12, 0.07)
+	var HULL_LT : Color = Color(0.42, 0.27, 0.15)
+	var SAIL : Color = Color(0.80, 0.73, 0.60)
+	var SAIL_DK : Color = Color(0.55, 0.47, 0.41)
+	var deck_y : float = 566.0
+	var prow_x : float = edge_x + dir * 388.0
+	# Hull (sweeps from the outer-bottom up to a prow reaching toward the centre).
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(edge_x - dir * 60.0, deck_y), Vector2(edge_x + dir * 70.0, deck_y - 16.0),
+		Vector2(prow_x, deck_y + 26.0), Vector2(prow_x - dir * 34.0, deck_y + 96.0),
+		Vector2(edge_x - dir * 60.0, H + 40.0)]), HULL)
+	draw_line(Vector2(edge_x + dir * 70.0, deck_y - 16.0), Vector2(prow_x, deck_y + 26.0), HULL_LT, 3.0)
+	# Gunport row + a couple of plank lines.
+	for g in 3:
+		var gx : float = edge_x + dir * (70.0 + float(g) * 95.0)
+		draw_rect(Rect2(gx - 9.0, deck_y + 36.0, 18.0, 16.0), Color(0.07, 0.05, 0.03, 1.0))
+	# Mast + yard + a billowing sail, set in the gutter.
+	var mast_x : float = edge_x + dir * 96.0
+	draw_line(Vector2(mast_x, deck_y), Vector2(mast_x, 92.0), Color(0.16, 0.10, 0.06, 1.0), 6.0)
+	var yard_y : float = 196.0
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(mast_x, yard_y), Vector2(mast_x + dir * 132.0, yard_y + 14.0),
+		Vector2(mast_x + dir * 120.0, yard_y + 150.0), Vector2(mast_x, yard_y + 138.0)]), SAIL)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(mast_x, yard_y + 70.0), Vector2(mast_x + dir * 124.0, yard_y + 84.0),
+		Vector2(mast_x + dir * 120.0, yard_y + 150.0), Vector2(mast_x, yard_y + 138.0)]), SAIL_DK)
+	draw_line(Vector2(mast_x - dir * 36.0, yard_y), Vector2(mast_x + dir * 150.0, yard_y), Color(0.16, 0.10, 0.06, 1.0), 3.0)
+	# Ratlines (rigging triangle).
+	for s in 4:
+		var rx : float = mast_x + dir * (18.0 + float(s) * 16.0)
+		draw_line(Vector2(mast_x, 150.0), Vector2(rx, deck_y), Color(0.16, 0.11, 0.07, 0.7), 1.0)
+	# Two crew on the deck — one of theirs, one lunging toward the centre fight.
+	_draw_fighter(Vector2(edge_x + dir * 64.0, deck_y - 2.0), dir, 1.05)
+	_draw_fighter(Vector2(edge_x + dir * 168.0, deck_y + 10.0), -dir, 0.92)
+
+
+# A sky-pirate silhouette mid-brawl: body + head + braced legs + a raised cutlass
+# (a faint steel glint). `face` is the swing direction.
+func _draw_fighter(pos: Vector2, face: float, s: float) -> void:
+
+	var col : Color = Color(0.07, 0.05, 0.08, 1.0)
+	draw_line(pos, Vector2(pos.x - 6.0 * s, pos.y + 13.0 * s), col, 3.0 * s)
+	draw_line(pos, Vector2(pos.x + 6.0 * s, pos.y + 13.0 * s), col, 3.0 * s)
+	draw_rect(Rect2(pos.x - 4.0 * s, pos.y - 22.0 * s, 8.0 * s, 22.0 * s), col)
+	draw_circle(Vector2(pos.x, pos.y - 27.0 * s), 5.0 * s, col)
+	var hand : Vector2 = Vector2(pos.x + face * 12.0 * s, pos.y - 32.0 * s)
+	draw_line(Vector2(pos.x + face * 3.0 * s, pos.y - 18.0 * s), hand, col, 3.0 * s)
+	draw_line(hand, hand + Vector2(face * 17.0 * s, -9.0 * s), Color(0.82, 0.84, 0.90, 0.9), 2.0 * s)
 
 
 # ============================================================ SHARED ==========

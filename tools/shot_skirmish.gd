@@ -15,19 +15,27 @@ func _ready() -> void:
 func _go() -> void:
 
 	_hide_autoload_ui()
-	var bg : ColorRect = ColorRect.new()
-	bg.color = Color(0.05, 0.05, 0.08, 1.0)
-	bg.size = Vector2(1280, 720)
-	bg.z_index = -50
-	add_child(bg)
+	# Sky-battle backdrop (same as the duel scene) behind both boards.
+	var layer : CanvasLayer = CanvasLayer.new()
+	layer.layer = -10
+	add_child(layer)
+	var bd : Node2D = load("res://components/scenic_backdrop/scenic_backdrop.gd").new()
+	bd.set("mode", "sky_battle")
+	layer.add_child(bd)
+
+	# Opponent board at the duel's right position (plain, just its spawned piece).
+	var opp : SkirmishBoard = SkirmishBoard.new()
+	add_child(opp)
+	opp.position = Vector2(675, 116)
 
 	var board : SkirmishBoard = SkirmishBoard.new()
 	add_child(board)
-	board.position = Vector2(500, 96)
+	board.position = Vector2(203, 116)   # the duel's player position
 	await get_tree().process_frame   # _ready ran: grid + garbage_age init + first spawn
-	board.set_process(false)
-	board.set_physics_process(false)
-	board.set_process_unhandled_input(false)
+	for b in [board, opp]:
+		b.set_process(false)
+		b.set_physics_process(false)
+		b.set_process_unhandled_input(false)
 
 	var cols : int = SkirmishBoard.COLS
 	# A believable varied stack in the bottom rows (gaps carved for realism).
