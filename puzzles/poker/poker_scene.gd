@@ -30,7 +30,10 @@ const DECK_POSITION : Vector2 = Vector2(640.0, 360.0)
 ## around this — seat 0 (you) at bottom-centre, the rest spaced evenly all the way around. See _seat_position.
 const TABLE_CENTER : Vector2 = Vector2(640.0, 336.0)
 const SEAT_RX : float = 520.0
-const SEAT_RY : float = 242.0
+## Pulled IN from 242 so the bottom seat's hole cards (centred 102px below the panel,
+## ~93px tall) stay fully on-screen — symmetric, so every seat moves in equally
+## (Troy 2026-06-16).
+const SEAT_RY : float = 205.0
 ## Delay between consecutive hole cards during the deal.
 const HOLE_DEAL_STAGGER : float = 0.07
 ## How long one hole card takes to slide from deck to its seat.
@@ -233,7 +236,9 @@ func _make_weave_texture() -> ImageTexture:
 	var img : Image = Image.create(s, s, false, Image.FORMAT_RGBA8)
 	for y in s:
 		for x in s:
+			@warning_ignore("integer_division")
 			var wx : int = (x / thread) % 2
+			@warning_ignore("integer_division")
 			var wy : int = (y / thread) % 2
 			var warp_over : bool = ((wx + wy) % 2) == 0
 			var across : float = (float(x % thread) if warp_over else float(y % thread)) / float(thread)
