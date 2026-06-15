@@ -113,11 +113,13 @@ The endgame loop, reskinned from YPP pillaging. You job onto a crew at the Skydo
   **Loft** — redone twice on Troy's notes: NOT shiny jewels → matte tiles with a DISTINCT SHAPE per hue, each
   carrying a flowing stardust PATTERN, and the board now sits INSIDE the ship's HOLD (planked walls, hull ribs,
   barrels, a lantern, a stardust porthole). **Patchworks** — nailed-plank patches vs glowing stardust BREACHES, a
-  hull-repair backdrop. 🆕 Added a Tetris **HOLD / swap** piece (Tab or the ⇄ button) with a HOLD panel — wired
-  into BOTH the duel and the team-fight boarding (which also dropped the redundant ◄T/T► target buttons; tap-to-
-  target stays). 🗑️ Patchworks' "Toss" button became a drawn TRASH-CAN drop-target (lid opens on hover, drop to
-  discard). A generalised `ScenicBackdrop` now carries 5 procedural scenes (forest / quarry / sky-battle /
-  ship-hold / hull-repair). All screenshot-verified; **both itch builds re-exported** to `build/`. ⚠️ The boarding
+  hull-repair backdrop. **Poker** — a cosy TAVERN-PARLOUR backdrop (warm plank floor + bar stools + a hearth +
+  lanterns) around the felt table (the last of the 7). 🆕 Added a Tetris **HOLD / swap** piece (Tab or the ⇄
+  button) with a HOLD panel — wired into BOTH the duel and the team-fight boarding (which also dropped the
+  redundant ◄T/T► target buttons; tap-to-target stays). 🗑️ Patchworks' "Toss" button became a drawn TRASH-CAN
+  drop-target (lid opens on hover, drop to discard). A generalised `ScenicBackdrop` now carries 6 procedural scenes
+  (forest / quarry / sky-battle / ship-hold / hull-repair / tavern). All screenshot-verified; **both itch builds
+  re-exported** to `build/`. ⚠️ The boarding
   HOLD-panel placement + the trash-can touch feel want a real-device eyeball; the swap LOGIC wants a live playtest.
 - **2026-06-14→15 — First public LAUNCH + the per-puzzle visual-polish pass begins (Gem Drop + Mining).** 🚀 Went
   PUBLIC: posted a 2:33 clip (poker + live NPC banter, 2x speed, landscape mobile) across YouTube / X
