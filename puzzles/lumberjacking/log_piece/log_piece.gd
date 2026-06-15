@@ -34,24 +34,24 @@ const CELL_PAD : float = 2.0
 ## Per-kind face + shadow + grain (seam) colors — the four Minecraft plank tones.
 const KIND_COLORS : Dictionary = {
 	WoodKind.OAK: {
-		"face": Color(0.72, 0.57, 0.34, 1.0),
-		"shadow": Color(0.50, 0.39, 0.22, 1.0),
-		"grain": Color(0.40, 0.30, 0.16, 1.0),
+		"face": Color(0.82, 0.59, 0.28, 1.0),     # saturated honey-tan
+		"shadow": Color(0.56, 0.40, 0.17, 1.0),
+		"grain": Color(0.40, 0.28, 0.12, 1.0),
 	},
 	WoodKind.BIRCH: {
-		"face": Color(0.85, 0.78, 0.57, 1.0),
-		"shadow": Color(0.64, 0.58, 0.40, 1.0),
-		"grain": Color(0.50, 0.44, 0.29, 1.0),
+		"face": Color(0.93, 0.85, 0.53, 1.0),     # bright pale cream
+		"shadow": Color(0.70, 0.63, 0.37, 1.0),
+		"grain": Color(0.52, 0.45, 0.26, 1.0),
 	},
 	WoodKind.SPRUCE: {
-		"face": Color(0.42, 0.30, 0.18, 1.0),
-		"shadow": Color(0.27, 0.19, 0.11, 1.0),
-		"grain": Color(0.17, 0.11, 0.06, 1.0),
+		"face": Color(0.47, 0.31, 0.15, 1.0),     # deep saturated brown
+		"shadow": Color(0.30, 0.19, 0.09, 1.0),
+		"grain": Color(0.17, 0.10, 0.05, 1.0),
 	},
 	WoodKind.JUNGLE: {
-		"face": Color(0.69, 0.45, 0.31, 1.0),
-		"shadow": Color(0.47, 0.28, 0.18, 1.0),
-		"grain": Color(0.34, 0.19, 0.12, 1.0),
+		"face": Color(0.80, 0.41, 0.22, 1.0),     # saturated red-orange (clearly apart from oak)
+		"shadow": Color(0.54, 0.25, 0.12, 1.0),
+		"grain": Color(0.35, 0.16, 0.08, 1.0),
 	},
 }
 

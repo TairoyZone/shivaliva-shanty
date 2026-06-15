@@ -143,7 +143,7 @@ const PAIR_B_RIGHT : int = 3
 # medium-brown workshop-floor backdrop to pop, not a near-black void.
 # Roughly matches the YPP SwF bin which is a soft warm brown.
 
-const BIN_BG_COLOR : Color = Color(0.16, 0.11, 0.07, 1.0)        # deep walnut so wood pieces pop (was a mid brown)
+const BIN_BG_COLOR : Color = Color(0.24, 0.23, 0.24, 1.0)        # lighter neutral slate so the SATURATED warm planks pop (Troy 2026-06-15)
 const BIN_BORDER_COLOR : Color = Color(0.68, 0.46, 0.22, 1.0)
 const BIN_GRID_COLOR : Color = Color(0.50, 0.34, 0.18, 0.22)
 const BIN_BORDER_WIDTH : float = 3.0
@@ -1183,50 +1183,38 @@ func _draw_fused_block(ci: CanvasItem, group: Dictionary) -> void:
 	var face : Color = palette["face"]
 	var shadow : Color = palette["shadow"]
 	var grain : Color = palette["grain"]
-	var horizontal : bool = pw >= ph
-	var bands : int = 6
-	var bark : Color = Color(grain.r, grain.g, grain.b, 0.55)
-	ci.draw_rect(Rect2(px, py + 2.0, pw, ph), shadow.darkened(0.10))   # drop shadow
-	ci.draw_rect(rect, face.darkened(0.04))                            # bark base
-	if horizontal:
-		# Round cross-section: dark top/bottom, lit centre; bark grain runs along X.
-		for b in bands:
-			var t : float = absf((float(b) + 0.5) / float(bands) - 0.5) * 2.0
-			ci.draw_rect(Rect2(px, py + ph * float(b) / float(bands), pw, ph / float(bands) + 1.0), face.lerp(shadow, t * 0.55))
-		for k in 4:
-			var gy : float = py + ph * (0.18 + float(k) * 0.21)
-			var pts : PackedVector2Array = PackedVector2Array()
-			for j in 9:
-				var tx : float = float(j) / 8.0
-				pts.append(Vector2(px + 4.0 + (pw - 8.0) * tx, gy + sin(float(k) + tx * 6.0) * 1.6))
-			ci.draw_polyline(pts, bark, 1.2)
-		var er : float = ph * 0.42
-		_draw_log_end_rings(ci, Vector2(px + 5.0, py + ph * 0.5), er, grain, -PI * 0.5, PI * 0.5)
-		_draw_log_end_rings(ci, Vector2(px + pw - 5.0, py + ph * 0.5), er, grain, PI * 0.5, PI * 1.5)
-	else:
-		# Vertical log: dark left/right, lit centre; bark grain runs along Y.
-		for b in bands:
-			var t : float = absf((float(b) + 0.5) / float(bands) - 0.5) * 2.0
-			ci.draw_rect(Rect2(px + pw * float(b) / float(bands), py, pw / float(bands) + 1.0, ph), face.lerp(shadow, t * 0.55))
-		for k in 4:
-			var gx : float = px + pw * (0.18 + float(k) * 0.21)
-			var pts : PackedVector2Array = PackedVector2Array()
-			for j in 9:
-				var ty : float = float(j) / 8.0
-				pts.append(Vector2(gx + sin(float(k) + ty * 6.0) * 1.6, py + 4.0 + (ph - 8.0) * ty))
-			ci.draw_polyline(pts, bark, 1.2)
-		var er : float = pw * 0.42
-		_draw_log_end_rings(ci, Vector2(px + pw * 0.5, py + 5.0), er, grain, 0.0, PI)
-		_draw_log_end_rings(ci, Vector2(px + pw * 0.5, py + ph - 5.0), er, grain, PI, TAU)
+	var cx : float = px + pw * 0.5
+	var cy : float = py + ph * 0.5
+	# Drop shadow + the sawn-LOG end-grain face (looking at the cut end).
+	ci.draw_rect(Rect2(px, py + 2.0, pw, ph), shadow.darkened(0.10))
+	ci.draw_rect(rect, face)
+	# A radial dome wash (lit centre -> darker rim) so the end reads rounded.
+	var dome : int = 4
+	for d in range(dome, 0, -1):
+		var f : float = float(d) / float(dome)
+		ci.draw_colored_polygon(_ellipse_pts(cx, cy, (pw * 0.5) * f, (ph * 0.5) * f, 26),
+			face.lerp(shadow, (1.0 - f) * 0.45))
+	# ONE unified set of concentric growth rings, centred (no mismatched halves).
+	var rings : int = maxi(3, int(minf(pw, ph) / 8.0))
+	for r in range(1, rings + 1):
+		var rf : float = float(r) / float(rings)
+		var rc : Color = Color(grain.r, grain.g, grain.b, 0.55 if r % 2 == 1 else 0.30)
+		ci.draw_polyline(_ellipse_pts(cx, cy, (pw * 0.5 - 2.0) * rf, (ph * 0.5 - 2.0) * rf, 30), rc, 1.3)
+	# Pith + a few medullary rays radiating out.
+	ci.draw_circle(Vector2(cx, cy), 2.0, grain)
+	for a in [0.5, 2.4, 3.9, 5.3]:
+		ci.draw_line(Vector2(cx, cy), Vector2(cx + cos(a) * (pw * 0.46), cy + sin(a) * (ph * 0.46)),
+			Color(grain.r, grain.g, grain.b, 0.32), 1.0)
 	# Bark rim + a lit top edge so the log reads crisp.
-	ci.draw_rect(rect, shadow.darkened(0.20), false, 2.0)
+	ci.draw_rect(rect, shadow.darkened(0.20), false, 2.5)
 	ci.draw_line(rect.position, Vector2(rect.end.x, rect.position.y), face.lightened(0.18), 1.5)
 
 
-# Concentric end-grain rings (a cut log end) from a pith, the arc facing inward.
-func _draw_log_end_rings(ci: CanvasItem, pith: Vector2, max_r: float, grain: Color, a0: float, a1: float) -> void:
+# Closed ellipse outline points (rings are elliptical so they fill non-square groups).
+func _ellipse_pts(cx: float, cy: float, rx: float, ry: float, segs: int) -> PackedVector2Array:
 
-	var g : Color = Color(grain.r, grain.g, grain.b, 0.7)
-	for i in range(1, 4):
-		ci.draw_arc(pith, max_r * float(i) / 3.0, a0, a1, 16, g, 1.3)
-	ci.draw_circle(pith, 1.6, grain)
+	var pts : PackedVector2Array = PackedVector2Array()
+	for s in segs + 1:
+		var a : float = TAU * float(s) / float(segs)
+		pts.append(Vector2(cx + cos(a) * rx, cy + sin(a) * ry))
+	return pts
