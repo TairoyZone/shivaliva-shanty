@@ -92,7 +92,6 @@ func _render() -> void:
 	var rom : String = _romance_standing()
 	if not rom.is_empty():
 		_content.add_child(_kv("Romance", rom))
-	_content.add_child(_hearts_bar())
 	var done : int = int(PlayerState.npc_favor_done.get(_npc_name, 0))
 	if done > 0:
 		_content.add_child(_muted("Favours done for them: %d" % done))
@@ -270,28 +269,6 @@ func _skill_row(skill: String, value: int) -> Control:
 
 
 # --- small builders ----------------------------------------------------
-
-func _hearts_bar() -> Control:
-
-	var bar : ProgressBar = ProgressBar.new()
-	var aff : int = PlayerState.get_affinity(_npc_name)
-	bar.min_value = 0.0
-	bar.max_value = float(PlayerState.MAX_AFFINITY)
-	bar.value = float(maxi(aff, 0))   # negative rapport reads as an EMPTY bar; the red trough below marks WHY
-	bar.show_percentage = false
-	bar.custom_minimum_size = Vector2(0, 12)
-	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var bg : StyleBoxFlat = StyleBoxFlat.new()
-	# A soured standing tints the empty trough RED, so a grudge no longer looks like a never-met Stranger.
-	bg.bg_color = Color(0.42, 0.16, 0.16, 1.0) if aff < 0 else Color(0.24, 0.20, 0.16, 1.0)
-	bg.set_corner_radius_all(6)
-	bar.add_theme_stylebox_override("background", bg)
-	var fill : StyleBoxFlat = StyleBoxFlat.new()
-	fill.bg_color = Color(0.90, 0.34, 0.40, 1.0)
-	fill.set_corner_radius_all(6)
-	bar.add_theme_stylebox_override("fill", fill)
-	return bar
-
 
 func _section(text: String) -> Label:
 	var l : Label = Label.new()

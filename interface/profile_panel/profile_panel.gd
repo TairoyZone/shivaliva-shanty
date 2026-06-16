@@ -78,6 +78,8 @@ func refresh() -> void:
 	_root.add_child(_rule())
 	_root.add_child(_make_left_column())     # reputation + fleet
 	_root.add_child(_rule())
+	_root.add_child(_make_hearties_section()) # per-NPC standings as worded tiers (was the Hearts tab)
+	_root.add_child(_rule())
 	_root.add_child(_make_crew_section())    # your crew roster
 	_root.add_child(_rule())
 	_root.add_child(_make_skills_column())   # skills
@@ -176,6 +178,20 @@ func _make_left_column() -> Control:
 		col.add_child(_muted_line("Flying the %s." % PlayerState.FIRST_SHIP_NAME))
 	else:
 		col.add_child(_muted_line("No ship yet — earn your wings."))
+	return col
+
+
+# The hearties standings — every islander you have any rapport with, as a worded tier (the Stardew Hearts
+# tab was retired 2026-06-16; the per-NPC affinity it read lives on unchanged, just shown as text here).
+func _make_hearties_section() -> Control:
+
+	var col : VBoxContainer = VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_child(_section_label("Hearties"))
+	var view : RelationshipsView = RelationshipsView.new()
+	view.embedded = true
+	col.add_child(view)
 	return col
 
 

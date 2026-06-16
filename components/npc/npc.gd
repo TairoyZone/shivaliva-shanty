@@ -235,13 +235,6 @@ func _talk() -> void:
 	SpeechBubble.say(self, lines[randi() % lines.size()])
 
 
-# Hearts → your Hearties page (rapport with the cast), via the backpack's Hearts tab.
-func _open_hearts() -> void:
-
-	if HUD != null:
-		HUD._open_inventory_tab("relationships")
-
-
 # Spar → challenge THIS NPC to a 1v1 Skirmish duel. Mirrors the Spar post's launch: seat this NPC as the
 # opponent (consumed by SkirmishDuel._resolve_opponent), set the return anchor next to them, change scene.
 func _challenge() -> void:

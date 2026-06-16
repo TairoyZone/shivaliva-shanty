@@ -101,16 +101,16 @@ func _on_purse_resized() -> void:
 	_purse.pivot_offset = _purse.size * 0.5
 
 
-# R opens the backpack straight to its Hearts tab — the Stardew-style
-# social-page shortcut. Same path the Hearts menu button uses.
-func _open_hearts() -> void:
+# R opens the backpack straight to the Profile — your standings with the cast now live there as worded
+# tiers (the standalone Stardew-style Hearts tab was retired 2026-06-16).
+func _open_profile() -> void:
 
-	_open_inventory_tab("relationships")
+	_open_inventory_tab("profile")
 
 
-# Open the backpack straight to [param tab] ("items" / "relationships" /
-# "profile"), or CLOSE it if it's already showing that page (so a button
-# toggles its own page). Shared by the quick-access menu + the R key.
+# Open the backpack straight to [param tab] ("items" / "profile" / …), or
+# CLOSE it if it's already showing that page (so a button toggles its own
+# page). Shared by the quick-access menu + the R key.
 func _open_inventory_tab(tab: String) -> void:
 
 	ChatBox.drop_focus()   # a mouse click on a HUD button leaves the chat bar (no stuck focus / world-freeze)
@@ -213,7 +213,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_toggle_inventory()   # the backpack key the docs have always promised (alongside ESC)
 		get_viewport().set_input_as_handled()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:
-		_open_hearts()
+		_open_profile()
 		get_viewport().set_input_as_handled()
 
 

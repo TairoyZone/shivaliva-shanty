@@ -44,8 +44,7 @@ const RAIL_TABS : Array = [
 	{"tab": "objectives", "glyph": "scroll", "tip": "Objectives — your current goals"},
 	{"tab": "tutorial", "glyph": "book", "tip": "Tutorials — how to play"},
 	{"tab": "items", "glyph": "bag", "tip": "Backpack — your items  (E)"},
-	{"tab": "relationships", "glyph": "heart", "tip": "Hearties — your bonds with the cast  (R)"},
-	{"tab": "profile", "glyph": "star", "tip": "Profile — your rank, trophies, and skills"},
+	{"tab": "profile", "glyph": "star", "tip": "Profile — rank, trophies, skills + your hearties  (R)"},
 ]
 
 
@@ -56,9 +55,8 @@ var _items_page : VBoxContainer
 var _gold_label : Label            # gold total, shown here now (the always-on HUD purse was retired)
 var _bag_row : HBoxContainer       # the Stardew-style "buy a bigger backpack" upgrade row
 var _grid : GridContainer
-## The Hearts tab — a [RelationshipsView] (Stardew-style social page).
-var _hearts_view : RelationshipsView
-## The Profile tab — a [ProfileView] (rank, reputation, fleet, trophies, mastery standings).
+## The Profile tab — a [ProfileView] (rank, reputation, fleet, trophies, mastery standings + your
+## hearties as worded tiers — the standalone Stardew-style Hearts tab was retired 2026-06-16).
 var _profile_view : ProfileView
 ## The Tutorial tab — the how-to for the CURRENT scene (the puzzle you're in, or the overworld controls).
 var _tutorial_page : Control
@@ -74,7 +72,7 @@ var _obj_list : VBoxContainer
 var _current_help_label : Label
 var _puzzle_help_text : String = ""
 var _rail_buttons : Dictionary = {}   # tab id → its rail Button (for active-state styling)
-## "tutorial" / "items" / "relationships" / "profile".
+## "ayo" / "objectives" / "tutorial" / "items" / "profile".
 var _current_tab : String = "items"
 var _is_open : bool = false           # is the content pane EXPANDED (the rail is always visible)
 
@@ -205,10 +203,7 @@ func _build_skeleton() -> void:
 	_bag_row.add_theme_constant_override("separation", 8)
 	_items_page.add_child(_bag_row)
 
-	# Hearts + Profile pages (hidden until their tab is picked).
-	_hearts_view = RelationshipsView.new()
-	_hearts_view.visible = false
-	vbox.add_child(_hearts_view)
+	# Profile page (hidden until its tab is picked) — it now also hosts the hearties list.
 	_profile_view = ProfileView.new()
 	_profile_view.visible = false
 	vbox.add_child(_profile_view)
@@ -918,8 +913,6 @@ func _switch_tab(tab: String) -> void:
 		_obj_page.visible = (tab == "objectives")
 	if _items_page != null:
 		_items_page.visible = (tab == "items")
-	if _hearts_view != null:
-		_hearts_view.visible = (tab == "relationships")
 	if _profile_view != null:
 		_profile_view.visible = (tab == "profile")
 	_update_rail_styles()
@@ -950,10 +943,6 @@ func _refresh() -> void:
 		return
 	if _current_tab == "objectives":
 		_refresh_objectives()
-		return
-	if _current_tab == "relationships":
-		if _hearts_view != null:
-			_hearts_view.refresh()
 		return
 	if _current_tab == "profile":
 		if _profile_view != null:

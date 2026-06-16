@@ -1,9 +1,7 @@
-## A scrollable list of the cast and the player's rapport with each: a
-## portrait swatch, name, rapport tier, a heart meter, and favour history.
-## NOT a standalone window — it's embedded as the "Hearts" TAB inside the
-## [InventoryPanel] (the Stardew-style unified menu), which supplies the
-## surrounding window/title/close. Self-refreshes on rapport changes while
-## it's the visible tab. See [[parlor-social-system]].
+## A list of the cast and the player's rapport with each: a portrait swatch, name, the worded rapport
+## TIER (no more Stardew hearts — Troy 2026-06-16), and favour history. Embedded into the [ProfileView]'s
+## "Hearties" section (set [member embedded] = true before add_child so it drops its own scroll + min size
+## and flows inside the Profile's scroll). Self-refreshes on rapport changes. See [[parlor-social-system]].
 class_name RelationshipsView
 extends Control
 
@@ -12,28 +10,35 @@ const COLOR_CARD : Color = Color(0.99, 0.94, 0.78, 1.0)
 const COLOR_INK : Color = Color(0.30, 0.20, 0.08, 1.0)
 const COLOR_INK_SOFT : Color = Color(0.42, 0.32, 0.18, 1.0)
 const COLOR_FRAME : Color = Color(0.52, 0.36, 0.16, 1.0)
-const COLOR_HEART : Color = Color(0.88, 0.32, 0.44, 1.0)
-
-## Heart pips in the meter; each = MAX_AFFINITY / HEARTS rapport points.
-const HEARTS : int = 10
+const COLOR_HEART : Color = Color(0.88, 0.32, 0.44, 1.0)   # romance/sweetheart note only
 
 # (Visibility rule: any NON-ZERO rapport shows — positive friendships AND soured standings, in red.
 # The whole untouched cast stays hidden. See refresh().)
+
+## Set true before add_child to flow INSIDE another scroll (the Profile) — no own ScrollContainer, no min size.
+var embedded : bool = false
 
 var _list : VBoxContainer
 
 
 func _ready() -> void:
 
-	custom_minimum_size = Vector2(560.0, 372.0)
-	var scroll : ScrollContainer = ScrollContainer.new()
-	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	add_child(scroll)
 	_list = VBoxContainer.new()
 	_list.add_theme_constant_override("separation", 8)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_list)
+	if embedded:
+		size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_list.set_anchors_preset(Control.PRESET_TOP_WIDE)   # full width, height = its content
+		add_child(_list)
+		# Report the list's height up so the Profile's VBox gives this Control the room it needs.
+		_list.resized.connect(func() -> void: custom_minimum_size = Vector2(0, _list.size.y))
+	else:
+		custom_minimum_size = Vector2(560.0, 372.0)
+		var scroll : ScrollContainer = ScrollContainer.new()
+		scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		add_child(scroll)
+		scroll.add_child(_list)
 	if not Engine.is_editor_hint():
 		PlayerState.affinity_changed.connect(_on_affinity_changed)
 	refresh()
@@ -105,13 +110,6 @@ func _make_npc_card(profile: NpcPersonality) -> Control:
 		rlabel.add_theme_font_size_override("font_size", 14)
 		rlabel.add_theme_color_override("font_color", COLOR_HEART)
 		col.add_child(rlabel)
-
-	var hearts : Label = Label.new()
-	hearts.text = _hearts_text(affinity)
-	hearts.add_theme_font_size_override("font_size", 22)
-	hearts.add_theme_color_override("font_color", COLOR_HEART)
-	hearts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(hearts)
 	return card
 
 
@@ -168,15 +166,6 @@ func _make_portrait(profile: NpcPersonality) -> Control:
 	initial.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	swatch.add_child(initial)
 	return swatch
-
-
-# Filled (♥) up to the rapport level, hollow (♡) for the rest — the two
-# glyphs read as full vs empty even in one colour.
-func _hearts_text(affinity: int) -> String:
-
-	var per : float = float(PlayerState.MAX_AFFINITY) / float(HEARTS)
-	var filled : int = clampi(int(round(float(affinity) / per)), 0, HEARTS)
-	return "♥".repeat(filled) + "♡".repeat(HEARTS - filled)
 
 
 func _favour_note(who: String) -> String:

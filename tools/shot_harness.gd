@@ -49,10 +49,10 @@ func _ready() -> void:
 	PlayerState.set_romance_stage("Flint Kerr", 1)      # "Courting — Fond"
 	PlayerState.add_affinity("Merry Geneva", 22)
 
-	# 4-6. The user panel's three pages: Backpack (weapons-as-items grid), Hearts (romance lines), Profile.
+	# 4-5. The user panel's pages: Backpack (weapons-as-items grid) + Profile (rank, trophies, hearties).
 	get_tree().paused = false   # the freed modal's pause-restore lands a frame late; its fade tween stalls paused
 	await get_tree().process_frame
-	for shot in [["items", "04_backpack"], ["relationships", "05_hearts"], ["profile", "06_profile"]]:
+	for shot in [["items", "04_backpack"], ["profile", "05_profile"]]:
 		UserPanel.open(String(shot[0]))   # direct — the HUD wrapper gates on HUD visibility + toggles
 		await _settle()
 		await _capture(String(shot[1]))
