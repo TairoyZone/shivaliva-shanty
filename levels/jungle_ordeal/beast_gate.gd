@@ -1,8 +1,8 @@
-## A BEAST GATE in the Jungle Ordeal maze — a corridor barred by a beast. While the beast stands, [JungleOrdeal]
-## paints a RAISED WALL TILE at this cell (the tile's own collision blocks you, like the maze walls); this
-## prop is the INTERACTABLE marker on it — a beast-hue banner + glowing eyes that read it apart from a plain
-## tree-wall. Click it (in range) to launch the beast's serious Skirmish bout; win and the wall drops (the
-## scene reloads with the gate beaten) so you pass. Extends [Interactable] for the click-ON-target prompt.
+## A BEAST GATE in the Jungle Ordeal maze — a corridor barred by a beast. The gate BLOCKS its own cell with a
+## "Blocker" StaticBody (an iso-diamond the size of one tile, on the same physics layer as the maze walls), so
+## it bars the corridor no matter how the maze is painted around it. This Area2D is the INTERACTABLE marker on
+## it — a beast-hue banner + glowing eyes. Click it (in range) to launch the beast's serious Skirmish bout; win
+## and the Blocker drops (the scene reloads with the gate beaten) so you pass. Extends [Interactable].
 @tool
 class_name BeastGate
 extends Interactable
@@ -24,7 +24,13 @@ func _ready() -> void:
 		queue_redraw()
 		return
 	marker_label = "%s  —  fight" % beast_label
-	_down = PlayerState.ordeal_defeated(beast_id)   # the WALL TILE (placed by JungleOrdeal) does the blocking
+	_down = PlayerState.ordeal_defeated(beast_id)
+	# The gate bars its corridor cell (the "Blocker" StaticBody) until the beast is beaten; once down, open it.
+	var blocker : Node = get_node_or_null("Blocker")
+	if blocker != null:
+		for c in blocker.get_children():
+			if c is CollisionShape2D or c is CollisionPolygon2D:
+				c.set_deferred("disabled", _down)
 	queue_redraw()
 
 

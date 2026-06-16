@@ -10,10 +10,14 @@ func _go() -> void:
 	get_tree().root.add_child(scene)
 	get_tree().current_scene = scene
 	await get_tree().create_timer(0.6).timeout
-	if scene.player != null:
-		var cam : Camera2D = scene.player.get_node_or_null("Camera2D")
-		if cam != null: cam.zoom = Vector2(0.42, 0.42)
-	await get_tree().create_timer(0.4).timeout
+	PlayerState.game_minutes = 720.0
+	# Overview camera centred on the maze, zoomed right out, so the whole baked labyrinth is in frame.
+	var ov := Camera2D.new()
+	ov.position = Vector2(1536, 430)
+	ov.zoom = Vector2(0.34, 0.34)
+	scene.add_child(ov)
+	ov.make_current()
+	await get_tree().create_timer(0.6).timeout
 	get_viewport().get_texture().get_image().save_png("%s/look_jungle.png" % OUT)
 	var gates : Array = []
 	_find_gates(scene, gates)
