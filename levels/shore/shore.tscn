@@ -5,7 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://brmstrkpawpq" path="res://buildings/outpost/outpost_building.tscn" id="4_inn"]
 [ext_resource type="PackedScene" uid="uid://dm7sl5hn2n7hi" path="res://buildings/player_shanty/player_shanty.tscn" id="5_shanty"]
 [ext_resource type="PackedScene" uid="uid://b1forge8k2qra" path="res://buildings/forge/forge.tscn" id="6_forge"]
-[ext_resource type="PackedScene" uid="uid://b2healh7k3qrb" path="res://buildings/healers_hut/healers_hut.tscn" id="7_apoth"]
+[ext_resource type="PackedScene" uid="uid://b2healh7k3qrb" path="res://buildings/cradle_gym/cradle_gym.tscn" id="7_apoth"]
 [ext_resource type="PackedScene" uid="uid://b3wkshp8k4qrc" path="res://buildings/workshop/workshop.tscn" id="8_wkshp"]
 [ext_resource type="PackedScene" uid="uid://b4skdclak5qrd" path="res://buildings/skydock/skydock.tscn" id="9_skdck"]
 [ext_resource type="PackedScene" path="res://levels/forest/tree.tscn" id="10_170tr"]
@@ -61,7 +61,7 @@ position = Vector2(-1024, 0)
 [node name="Forge" parent="YSortNode2D" unique_id=441243707 instance=ExtResource("6_forge")]
 position = Vector2(0, -488)
 
-[node name="HealersHut" parent="YSortNode2D" unique_id=308611854 instance=ExtResource("7_apoth")]
+[node name="CradleGym" parent="YSortNode2D" unique_id=308611854 instance=ExtResource("7_apoth")]
 position = Vector2(1032, 0)
 
 [node name="Workshop" parent="YSortNode2D" unique_id=921222377 instance=ExtResource("8_wkshp")]

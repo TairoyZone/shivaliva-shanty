@@ -8,7 +8,7 @@ const TARGETS : Array = [
 	["res://levels/shore/shore.tscn", "world_shore"],
 	["res://levels/tavern/tavern.tscn", "world_tavern"],
 	["res://levels/forge_interior/forge_interior.tscn", "world_forge"],
-	["res://levels/healers_hut_interior/healers_hut_interior.tscn", "world_garden"],
+	["res://levels/cradle_gym_interior/cradle_gym_interior.tscn", "world_cradle_gym"],
 	["res://puzzles/loft/loft.tscn", "play_loft"],
 	["res://puzzles/lumberjacking/lumberjacking.tscn", "play_lumberjacking"],
 	["res://puzzles/gem_drop/gem_drop.tscn", "play_gemdrop"],

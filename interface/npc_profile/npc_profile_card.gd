@@ -14,14 +14,14 @@ const HEADER : Color = Color(0.66, 0.74, 0.62, 1.0)
 ## What each cast member does — shown under their name. Data-driven; falls back to a generic role.
 const ROLES : Dictionary = {
 	"Flint Kerr": "Bladesmith", "Cinder Troy": "Blacksmith", "Hearty Brian": "Innkeeper",
-	"Merry Geneva": "Inn hostess", "Spritely Mia": "Whittler", "Mossy Jade": "Herbalist",
-	"Cogwise Godfrey": "Tinker", "Stormy Jericho": "Skydock master", "Hollow Ellison": "Old storyteller",
+	"Merry Geneva": "Inn hostess", "Spritely Mia": "Whittler", "Mossy Jade": "Gym healer",
+	"Cogwise Godfrey": "Tinker", "Stormy Jericho": "Skydock master", "Hollow Ellison": "Gym master",
 }
 ## Where each is usually found (for the "About" line).
 const HAUNTS : Dictionary = {
 	"Flint Kerr": "the Forge", "Cinder Troy": "the Forge", "Hearty Brian": "the Inn",
-	"Merry Geneva": "the Inn", "Spritely Mia": "the Inn", "Mossy Jade": "the Healer's Hut",
-	"Cogwise Godfrey": "the Workshop", "Stormy Jericho": "the Skydock", "Hollow Ellison": "the Inn",
+	"Merry Geneva": "the Inn", "Spritely Mia": "the Inn", "Mossy Jade": "the Cradle Gym",
+	"Cogwise Godfrey": "the Workshop", "Stormy Jericho": "the Skydock", "Hollow Ellison": "the Cradle Gym",
 }
 
 var _npc_name : String = ""

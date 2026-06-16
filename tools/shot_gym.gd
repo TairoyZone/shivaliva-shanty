@@ -1,6 +1,6 @@
 extends Node2D
 const OUT := "user://shots"
-const SHOTS := [["res://levels/healers_hut_interior/healers_hut_interior.tscn", "look_gym.png", 0.8],
+const SHOTS := [["res://levels/cradle_gym_interior/cradle_gym_interior.tscn", "look_gym.png", 0.8],
 	["res://levels/shore/shore.tscn", "look_gym_building.png", 1.0]]
 func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(OUT)

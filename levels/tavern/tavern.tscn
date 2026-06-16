@@ -7,7 +7,6 @@
 [ext_resource type="PackedScene" uid="uid://duapk8jxnk2qa" path="res://puzzles/poker/table/table.tscn" id="5_poker"]
 [ext_resource type="PackedScene" uid="uid://c84w318i58qgr" path="res://components/npc/npc.tscn" id="6_npc"]
 [ext_resource type="PackedScene" uid="uid://c1l5gbatp0um" path="res://buildings/tournament_board/tournament_board.tscn" id="7_tboard"]
-[ext_resource type="PackedScene" uid="uid://cskirmishsign01" path="res://puzzles/skirmish/skirmish_sign/skirmish_sign.tscn" id="8_skirm"]
 
 [sub_resource type="StyleBoxFlat" id="banner_style"]
 content_margin_left = 28.0
@@ -58,7 +57,6 @@ target_scene = "res://levels/shore/shore.tscn"
 target_spawn_anchor = "InnDoor"
 wall_facing = 1
 marker_label = "Step outside"
-interact_message = ""
 spawn_offset = Vector2(-60, -30)
 
 [node name="BrianNpc" parent="YSortNode2D" unique_id=1857623763 instance=ExtResource("6_npc")]
@@ -79,17 +77,14 @@ npc_name = "Flint Kerr"
 dialog_lines = Array[String](["Oh-ho, fresh blood. Come closer — I don't bite. The steel does.", "You here to scrap, or just to stand there looking unsharpened?", "Hear that? Shhk, shhk. That's the sound of me being better at this than anyone.", "Fancy a bout? The Spar post's right here in the Inn. Pick a foe. I'd pick me.", "No, I don't sell blades — Cinder Troy's smithy handles that. I just prove they work.", "Ellison? We're about even. ...Don't go checking the tally. Next time. That's the point.", "Mia's stew is the only thing on this rock sharper than my steel. Don't tell her.", "I've lost exactly one spar on purpose. The others— there were no others. Moving on."])
 portrait_color = Color(0.78, 0.32, 0.32, 1)
 
-[node name="GenevaNpc" parent="YSortNode2D" instance=ExtResource("6_npc")]
+[node name="GenevaNpc" parent="YSortNode2D" unique_id=1338682068 instance=ExtResource("6_npc")]
 position = Vector2(300, -150)
 npc_name = "Merry Geneva"
 dialog_lines = Array[String](["In you come, love — out of the wind and into a seat. The stew's hot and so's the gossip.", "Brian pours the drinks — I keep this whole place from falling to bits.", "Married that big-hearted oaf more years ago than I'll admit. Wouldn't trade him.", "Fancy a hand of poker or a turn at gem-drop? Pick a table, love — friendly or for gold.", "We float on a rock over endless Stardust, and folk still grumble about a wobbly stool.", "Kerr's never once beaten Ellison in a duel, and it gnaws at him. You never heard it from me.", "This ladle's settled more arguments than any blade on Cradle Rock. Don't test it, pet.", "What Brian doesn't know about this inn could fill a cellar. Bless his trusting heart."])
 portrait_color = Color(0.46, 0.68, 0.6, 1)
 
-[node name="TournamentBoard" parent="YSortNode2D" instance=ExtResource("7_tboard")]
-position = Vector2(360, -60)
-
-[node name="SkirmishSign" parent="YSortNode2D" instance=ExtResource("8_skirm")]
-position = Vector2(-380, 24)
+[node name="TournamentBoard" parent="YSortNode2D" unique_id=263057295 instance=ExtResource("7_tboard")]
+position = Vector2(-320, 128)
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=2028402885]
 layer = 5

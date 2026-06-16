@@ -1,12 +1,12 @@
 [gd_scene load_steps=3 format=3 uid="uid://b2healh7k3qrb"]
 
-[ext_resource type="Script" path="res://buildings/healers_hut/healers_hut.gd" id="1_healh"]
+[ext_resource type="Script" path="res://buildings/cradle_gym/cradle_gym.gd" id="1_gym"]
 [ext_resource type="PackedScene" uid="uid://blr4e33qxprt2" path="res://levels/door/door.tscn" id="2_door"]
 
-[node name="HealersHut" type="StaticBody2D"]
+[node name="CradleGym" type="StaticBody2D"]
 collision_layer = 2
 collision_mask = 0
-script = ExtResource("1_healh")
+script = ExtResource("1_gym")
 window_size = Vector2(48, 48)
 window_front_right = false
 color_walls = Color(0.54, 0.31, 0.26, 1)
@@ -20,9 +20,9 @@ color_window_frame = Color(0.26, 0.14, 0.12, 1)
 visible = false
 polygon = PackedVector2Array(0, 60, 120, 0, 0, -60, -120, 0)
 
-[node name="HealersHutDoor" parent="." instance=ExtResource("2_door")]
+[node name="CradleGymDoor" parent="." instance=ExtResource("2_door")]
 position = Vector2(60, 30)
-target_scene = "res://levels/healers_hut_interior/healers_hut_interior.tscn"
+target_scene = "res://levels/cradle_gym_interior/cradle_gym_interior.tscn"
 target_spawn_anchor = "DoorOut"
 wall_facing = 1
 marker_label = "Enter the Cradle Gym"

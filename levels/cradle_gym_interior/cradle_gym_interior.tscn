@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=4 uid="uid://c3healh0interr"]
+[gd_scene format=4 uid="uid://dplef4xg3yelf"]
 
-[ext_resource type="Script" path="res://levels/healers_hut_interior/healers_hut_interior.gd" id="1_healh"]
+[ext_resource type="Script" uid="uid://bw5oehdsums10" path="res://levels/cradle_gym_interior/cradle_gym_interior.gd" id="1_healh"]
 [ext_resource type="TileSet" uid="uid://ttl82eyaqrvu" path="res://assets/iso/isometric_tileset.tres" id="2_tileset"]
 [ext_resource type="PackedScene" uid="uid://blr4e33qxprt2" path="res://levels/door/door.tscn" id="3_door"]
 [ext_resource type="PackedScene" uid="uid://c84w318i58qgr" path="res://components/npc/npc.tscn" id="4_npc"]
+[ext_resource type="PackedScene" uid="uid://042rxtltydum" path="res://puzzles/skirmish/skirmish_sign/skirmish_sign.tscn" id="5_ui57a"]
 
 [sub_resource type="StyleBoxFlat" id="banner_style"]
 content_margin_left = 28.0
@@ -16,57 +17,56 @@ corner_radius_top_right = 14
 corner_radius_bottom_right = 14
 corner_radius_bottom_left = 14
 
-[node name="HealersHutInterior" type="Node2D"]
+[node name="CradleGymInterior" type="Node2D" unique_id=243464235]
 script = ExtResource("1_healh")
 pirate_spawn_position = Vector2(0, 0)
 
-[node name="GroundTileMapLayer" type="TileMapLayer" parent="."]
+[node name="GroundTileMapLayer" type="TileMapLayer" parent="." unique_id=1361599328]
 tile_map_data = PackedByteArray("AAD//wAAAAACAAAAAAD+////AAACAAAAAAD///7/AAACAAAAAAD///3/AAACAAAAAAAAAP7/AAACAAAAAAAAAP//AAACAAAAAAAAAAAAAAACAAAAAAD//wEAAAACAAAAAAD+/wAAAAACAAAAAAD+/wEAAAACAAAAAAD//wIAAAACAAAAAAD//wMAAAACAAAAAAAAAAIAAAACAAAAAAAAAAEAAAACAAAAAAABAAAAAAACAAAAAAABAP//AAACAAAAAAABAP7/AAACAAAAAAAAAP3/AAACAAAAAAAAAPz/AAACAAAAAAD///v/AAACAAAAAAD///z/AAACAAAAAAD+//3/AAACAAAAAAD+//7/AAACAAAAAAD9////AAACAAAAAAD/////AAACAAAAAAA=")
 tile_set = ExtResource("2_tileset")
 
-[node name="UpperTileMapLayer" type="TileMapLayer" parent="."]
+[node name="UpperTileMapLayer" type="TileMapLayer" parent="." unique_id=1148903054]
 position = Vector2(0, -78)
 tile_set = ExtResource("2_tileset")
 
-[node name="YSortNode2D" type="Node2D" parent="."]
+[node name="YSortNode2D" type="Node2D" parent="." unique_id=893092780]
 y_sort_enabled = true
 
-[node name="GroundObjectsTileMapLayer" type="TileMapLayer" parent="YSortNode2D"]
+[node name="GroundObjectsTileMapLayer" type="TileMapLayer" parent="YSortNode2D" unique_id=186006068]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAD//wQAAAADAAAAAAD+/wMAAAADAAAAAAD+/wIAAAADAAAAAAD9/wEAAAADAAAAAAD9/wAAAAADAAAAAAD8////AAADAAAAAAD9//7/AAADAAAAAAD9//3/AAADAAAAAAD+//z/AAADAAAAAAD+//v/AAADAAAAAAD///r/AAADAAAAAAD///n/AAADAAAAAAAAAPr/AAADAAAAAAAAAPv/AAADAAAAAAABAPz/AAADAAAAAAABAP3/AAADAAAAAAACAP7/AAADAAAAAAACAP//AAADAAAAAAACAAAAAAADAAAAAAABAAEAAAADAAAAAAABAAIAAAADAAAAAAAAAAMAAAADAAAAAAAAAAQAAAADAAAAAAD//wUAAAADAAAAAAA=")
 tile_set = ExtResource("2_tileset")
 
-[node name="UpperObjectsTileMapLayer" type="TileMapLayer" parent="YSortNode2D"]
+[node name="UpperObjectsTileMapLayer" type="TileMapLayer" parent="YSortNode2D" unique_id=319424393]
 y_sort_enabled = true
 position = Vector2(0, -78)
 tile_set = ExtResource("2_tileset")
 
-[node name="JadeNpc" parent="YSortNode2D" instance=ExtResource("4_npc")]
+[node name="JadeNpc" parent="YSortNode2D" unique_id=859128603 instance=ExtResource("4_npc")]
 position = Vector2(-16, -120)
 npc_name = "Mossy Jade"
 dialog_lines = Array[String](["Come in, dear — sit while I see to those bruises. No fighter leaves here aching if I can help it.", "Ellison works them hard out on the mats. I put them back together. We've always made a fine pair, she and I.", "Rest up whenever you need — I'll set your fighting health right again, no coin asked.", "Green salve for the aches, a warm brew for the nerves. Both mine, both free.", "That jungle past the forest's gone wild — beasts harrying the whole island. Come see me before you go in. And after. Especially after.", "I traded my planters for poultices the day this became a gym. The blooms still grow on the sill, mind.", "Win or lose, you come back to me in one piece. That's the only rule I keep."])
 portrait_color = Color(0.3, 0.62, 0.36, 1)
 heals_player = true
 
-[node name="EllisonNpc" parent="YSortNode2D" instance=ExtResource("4_npc")]
+[node name="EllisonNpc" parent="YSortNode2D" unique_id=1604588290 instance=ExtResource("4_npc")]
 position = Vector2(130, -70)
 npc_name = "Hollow Ellison"
 dialog_lines = Array[String](["...Welcome. The Cradle Gym. Mine to keep, now. Strange, the things we end up tending.", "A bout? ...I'll oblige. No stakes here — just steel, and what it teaches. I never miss. ...Rarely.", "Past the forest, the jungle's turned cruel. Beasts. Harrying the whole island. When you're ready — only then — you'll go. One at a time. Up to their boss.", "Jade mends what the mats break. Lean on her. ...Even I do.", "Kerr keeps our tally. I stopped counting wins a long while back. The number only matters to one of us.", "Lose a real fight and it stays in you — you start the next one worn. So rest. Then go again.", "I fight from range. Patience, mostly. Beat me here, and the jungle's yours to face."])
 portrait_color = Color(0.62, 0.55, 0.72, 1)
 
-[node name="DoorOut" parent="YSortNode2D" instance=ExtResource("3_door")]
+[node name="DoorOut" parent="YSortNode2D" unique_id=1952161983 instance=ExtResource("3_door")]
 position = Vector2(299, 150)
 target_scene = "res://levels/shore/shore.tscn"
-target_spawn_anchor = "HealersHutDoor"
+target_spawn_anchor = "CradleGymDoor"
 wall_facing = 1
 marker_label = "Step outside"
-interact_message = ""
 spawn_offset = Vector2(0, -60)
 
-[node name="UI" type="CanvasLayer" parent="."]
+[node name="UI" type="CanvasLayer" parent="." unique_id=1548829543]
 layer = 5
 
-[node name="LocationBanner" type="PanelContainer" parent="UI"]
+[node name="LocationBanner" type="PanelContainer" parent="UI" unique_id=171186548]
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
@@ -78,7 +78,7 @@ grow_horizontal = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("banner_style")
 
-[node name="LocationLabel" type="Label" parent="UI/LocationBanner"]
+[node name="LocationLabel" type="Label" parent="UI/LocationBanner" unique_id=757725720]
 modulate = Color(0.98, 0.92, 0.65, 1)
 layout_mode = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
@@ -87,3 +87,6 @@ theme_override_font_sizes/font_size = 26
 text = "Cradle Gym"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="SkirmishSign" parent="." unique_id=1660366251 instance=ExtResource("5_ui57a")]
+position = Vector2(-380, 24)
