@@ -94,6 +94,19 @@ func _ready() -> void:
 	if has_signal("visibility_changed"):
 		visibility_changed.connect(_on_visibility_changed)
 	_build_touch_menu_button()   # mobile: an on-screen way to open the pause menu (no Esc on a phone)
+	_build_clock()               # the persistent Stardew-style in-game clock (top-left, by the pause button)
+
+
+# A persistent in-game CLOCK widget so the player can always check the hour (pairs with the day/night cycle).
+# Top-LEFT, just right of the pause hamburger — the right edge is taken by the UserPanel rail, the deck's
+# vessel card, and the top-centre by the location banner. Hides with the HUD inside puzzles.
+func _build_clock() -> void:
+
+	var clock : ClockWidget = ClockWidget.new()
+	add_child(clock)
+	clock.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	clock.offset_left = 72.0
+	clock.offset_top = 14.0
 
 
 func _on_purse_resized() -> void:

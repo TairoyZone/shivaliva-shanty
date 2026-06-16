@@ -67,6 +67,18 @@ func is_night() -> bool:
 	return h < 5 or h >= 20
 
 
+## A compact 12-hour clock readout for the HUD clock widget ("7:10 AM").
+func time_string() -> String:
+
+	var h : int = hour()
+	var period : String = "AM" if h < 12 else "PM"
+	@warning_ignore("integer_division")
+	var h12 : int = h % 12
+	if h12 == 0:
+		h12 = 12
+	return "%d:%02d %s" % [h12, minute(), period]
+
+
 ## A natural 12-hour readout ("about 3 in the afternoon").
 func clock_phrase() -> String:
 
