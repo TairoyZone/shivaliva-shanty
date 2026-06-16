@@ -624,13 +624,13 @@ func _build_ui() -> void:
 	# before, against the "consolidated panel" intent). Lighter than the meter troughs so the bars still pop;
 	# cool to match the deck's sky-at-altitude theme. See [[cool-deck-hud]].
 	var vitals_card : PanelContainer = PanelContainer.new()
-	# TOP-RIGHT row, tucked just LEFT of the persistent HUD clock (which stays furthest-right; Troy
-	# 2026-06-16) so the condition report + clock read as one top-right cluster while pillaging. The old
-	# always-on gold purse that lived in this corner moved into the Backpack, freeing it.
-	vitals_card.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	vitals_card.offset_right = -14.0 - ClockWidget.W - 12.0   # clear the clock (14 margin + clock width + a gap)
+	# TOP-LEFT, just right of the pause hamburger (Troy 2026-06-16) — so the condition report sits in the
+	# left corner, the clock owns the right corner, and the chart banner is centred: one item per zone, no
+	# crowding. Clear of the ☰ (offset_left past it) so it never overlaps the pause button.
+	vitals_card.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	vitals_card.offset_left = 72.0
 	vitals_card.offset_top = 12.0
-	vitals_card.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	vitals_card.grow_horizontal = Control.GROW_DIRECTION_END
 	vitals_card.grow_vertical = Control.GROW_DIRECTION_END
 	var vcs : StyleBoxFlat = StyleBoxFlat.new()
 	vcs.bg_color = Palette.PANEL_TROUGH.lightened(0.05)
