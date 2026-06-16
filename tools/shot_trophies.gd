@@ -40,17 +40,22 @@ func _go() -> void:
 	title.add_theme_color_override("font_color", Color(0.95, 0.78, 0.30))
 	col.add_child(title)
 
-	var grid : GridContainer = GridContainer.new()
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 10)
-	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	col.add_child(grid)
+	var shelf : VBoxContainer = VBoxContainer.new()
+	shelf.add_theme_constant_override("separation", 10)
+	shelf.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_child(shelf)
 	var n : int = 0
+	var row : HBoxContainer = null
 	for t in Trophies.ALL:
 		if n >= 5:
 			break
-		grid.add_child(TrophyCell.make(t))
+		if n % 3 == 0:
+			row = HBoxContainer.new()
+			row.add_theme_constant_override("separation", 12)
+			row.alignment = BoxContainer.ALIGNMENT_CENTER
+			row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			shelf.add_child(row)
+		row.add_child(TrophyCell.make(t))
 		n += 1
 
 	var see_all : Label = Label.new()

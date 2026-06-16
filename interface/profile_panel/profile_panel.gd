@@ -221,16 +221,23 @@ func _make_center_column() -> Control:
 		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(none)
 		return col
-	var grid : GridContainer = GridContainer.new()   # a 3-wide window: 3 medallions on top, 2 below (not a column)
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 10)
-	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	# The shelf shows a small PREVIEW; the full collection lives on its own TROPHY ROOM page (the button below)
-	# so a growing collection never floods the profile (Troy 2026-06-10).
-	for t in claimed_list.slice(0, TROPHY_PREVIEW):
-		grid.add_child(_make_trophy(t))
-	col.add_child(grid)
+	# A 3-top / 2-bottom window, EACH ROW centred (Troy 2026-06-16) — a GridContainer
+	# left-aligns the short bottom row, so we stack centred HBox rows of up to 3 instead.
+	# A small PREVIEW only; the full collection lives on the TROPHY ROOM page (button below).
+	var shelf : VBoxContainer = VBoxContainer.new()
+	shelf.add_theme_constant_override("separation", 10)
+	shelf.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_child(shelf)
+	var preview : Array = claimed_list.slice(0, TROPHY_PREVIEW)
+	var row : HBoxContainer = null
+	for i in preview.size():
+		if i % 3 == 0:
+			row = HBoxContainer.new()
+			row.add_theme_constant_override("separation", 12)
+			row.alignment = BoxContainer.ALIGNMENT_CENTER
+			row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			shelf.add_child(row)
+		row.add_child(_make_trophy(preview[i]))
 	var see_all : Button = Button.new()
 	see_all.flat = true
 	see_all.focus_mode = Control.FOCUS_NONE
