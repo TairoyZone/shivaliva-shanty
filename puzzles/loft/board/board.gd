@@ -236,6 +236,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		get_viewport().set_input_as_handled()
+		# TAP-TO-SWAP: the pair swaps AT the tap (the boundary nearest it), not wherever
+		# the cursor was last dragged — no more sliding the frame around on touch and
+		# fat-fingering the wrong pair (Troy 2026-06-16).
+		_set_cursor_from_mouse()
 		_do_swap()
 	elif event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_SPACE or event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:

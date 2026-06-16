@@ -104,9 +104,9 @@ func _make_button(entry: Dictionary) -> Button:
 
 
 # A PSP-style D-PAD: the directional buttons clustered into a plus (up top, down
-# bottom, left/right on the sides) around a styled centre hub, so they read as ONE
-# control instead of a flat row (Troy 2026-06-15). Each entry carries
-# "dpad": "up"|"down"|"left"|"right". Buttons keep their normal action/hold wiring.
+# bottom, left/right on the sides) with an OPEN centre, so they read as a pad instead
+# of a flat row (Troy 2026-06-15/16). Each entry carries "dpad": "up"|"down"|"left"|
+# "right". Buttons keep their normal action/hold wiring.
 func _make_dpad(entries: Array) -> Control:
 
 	var grid : GridContainer = GridContainer.new()
@@ -116,36 +116,23 @@ func _make_dpad(entries: Array) -> Control:
 	var by_pos : Dictionary = {}
 	for e in entries:
 		by_pos[String(e["dpad"])] = _make_button(e)
-	# 3x3 cross: corners empty, a hub in the middle so the plus reads as connected.
-	for cell in ["", "up", "", "left", "hub", "right", "", "down", ""]:
-		if cell == "hub":
-			grid.add_child(_dpad_filler(true))
-		elif by_pos.has(cell):
+	# 3x3 cross: the 4 directional buttons; the corners AND the centre are empty
+	# spacers (no centre hub — Troy 2026-06-16 wanted the middle button gone).
+	for cell in ["", "up", "", "left", "", "right", "", "down", ""]:
+		if by_pos.has(cell):
 			grid.add_child(by_pos[cell])
 		else:
-			grid.add_child(_dpad_filler(false))
+			grid.add_child(_dpad_spacer())
 	return grid
 
 
-# A non-interactive d-pad cell. `hub` = the styled centre that bridges the arms;
-# otherwise an invisible spacer that holds a corner open.
-func _dpad_filler(hub: bool) -> Control:
+# A non-interactive spacer cell that holds a corner / the centre open.
+func _dpad_spacer() -> Control:
 
-	if not hub:
-		var c : Control = Control.new()
-		c.custom_minimum_size = Vector2(BTN_SIZE, BTN_SIZE)
-		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		return c
-	var p : Panel = Panel.new()
-	p.custom_minimum_size = Vector2(BTN_SIZE, BTN_SIZE)
-	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.18, 0.11, 0.06, 0.92)
-	s.set_border_width_all(2)
-	s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-	s.set_corner_radius_all(6)
-	p.add_theme_stylebox_override("panel", s)
-	return p
+	var c : Control = Control.new()
+	c.custom_minimum_size = Vector2(BTN_SIZE, BTN_SIZE)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return c
 
 
 func _press(btn: Button, what: Dictionary) -> void:

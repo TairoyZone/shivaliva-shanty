@@ -47,6 +47,10 @@ const VISIBLE_PER_COL : int = 3
 ## is derived so VISIBLE_PER_COL fit between the top and COLUMN_BOTTOM. Your centre board is full-size.
 const BOARD_TOP_Y : float = 140.0
 const COLUMN_BOTTOM : float = 706.0
+## On TOUCH the crew columns must END ABOVE the bottom-corner control buttons (~y616),
+## or their lower thumbnails sit BEHIND the ◄ ► / ↻ ▼ ⇄ buttons and you tap a board by
+## accident. Both columns use it, so they stay symmetric (Troy 2026-06-16).
+const COLUMN_BOTTOM_TOUCH : float = 590.0
 const COL_INSET : float = 190.0
 const CTRL_ROW_H : float = 26.0
 const THUMB_HEADER_H : float = 24.0
@@ -179,9 +183,10 @@ func _layout() -> void:
 func _compute_thumb_scale() -> float:
 
 	var field_h : float = float(SkirmishBoard.ROWS * SkirmishBoard.CELL)
+	var bottom : float = COLUMN_BOTTOM_TOUCH if TouchEnv.is_touch() else COLUMN_BOTTOM
 	var max_count : int = maxi(_members(false).size(), _members(true).size())
 	var shown : int = clampi(max_count, 1, VISIBLE_PER_COL)
-	var per : float = (COLUMN_BOTTOM - BOARD_TOP_Y) / float(shown)
+	var per : float = (bottom - BOARD_TOP_Y) / float(shown)
 	var s : float = (per - THUMB_HEADER_H - THUMB_GAP) / field_h
 	return clampf(s, 0.22, 0.5)
 

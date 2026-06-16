@@ -133,7 +133,13 @@ func _build_progress_meter(target: int) -> void:
 	panel.grow_horizontal = Control.GROW_DIRECTION_END
 	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_ui.add_child(panel)
+	# On a CanvasLayer BELOW the board (above the -10 backdrop), so a framed special's
+	# name tag (world-space, z 60) reads OVER the meter instead of behind it. The meter
+	# sits in the right gutter where no tile covers it, so it's fully visible (Troy 2026-06-16).
+	var meter_layer : CanvasLayer = CanvasLayer.new()
+	meter_layer.layer = -1
+	add_child(meter_layer)
+	meter_layer.add_child(panel)
 	var vbox : VBoxContainer = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 10)
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
