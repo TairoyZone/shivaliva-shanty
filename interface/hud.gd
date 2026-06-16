@@ -98,15 +98,18 @@ func _ready() -> void:
 
 
 # A persistent in-game CLOCK widget so the player can always check the hour (pairs with the day/night cycle).
-# Top-LEFT, just right of the pause hamburger — the right edge is taken by the UserPanel rail, the deck's
-# vessel card, and the top-centre by the location banner. Hides with the HUD inside puzzles.
+# TOP-RIGHT corner (Stardew-style) — above the vertically-centred UserPanel rail. On the ship deck the
+# vessel/condition card tucks in just LEFT of it (ship_deck makes room) so the two read as one top-right row,
+# the clock furthest right. Hides with the HUD inside puzzles.
 func _build_clock() -> void:
 
 	var clock : ClockWidget = ClockWidget.new()
 	add_child(clock)
-	clock.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	clock.offset_left = 72.0
-	clock.offset_top = 14.0
+	clock.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	clock.offset_top = 12.0
+	clock.offset_bottom = 12.0 + ClockWidget.H
+	clock.offset_right = -14.0
+	clock.offset_left = -14.0 - ClockWidget.W
 
 
 func _on_purse_resized() -> void:
