@@ -240,9 +240,9 @@ func _init_targets() -> void:
 		c.target = _pick_target_for(c)
 
 
-# Voyage "arrival footing", two-sided: a strong Loft run pre-buries the brigand CREW (your reward),
-# while a HOLED hull pre-buries your OWN board (the damaged-ship penalty). Harmless standalone (seed is
-# 0 and ship condition is read only on a voyage). See [[ship-condition-research]].
+# Voyage "arrival footing", two-sided: a strong Loft run pre-buries the brigand CREW (your reward), while
+# LOW fighter HEALTH pre-buries your OWN board (the worn-down penalty — this REPLACED the old hull-holes
+# footing, Troy 2026-06-16). Harmless standalone (the seed is 0; health footing is 0 at full health).
 func _apply_voyage_footing() -> void:
 
 	if not PlayerState.voyage_active:
@@ -257,8 +257,8 @@ func _apply_voyage_footing() -> void:
 				var foe : BoardingCombatant = foes[i % foes.size()]
 				atk = SkirmishWeapon.make_attack("brawl", 4, foe.board)
 				foe.board.receive_attack(atk["shape"], atk["col"], atk["color"])
-	if PlayerState.voyage_active and _player != null:
-		for _h in PlayerState.ship_open_holes():
+	if _player != null:
+		for _c in PlayerState.health_footing_clumps():
 			atk = SkirmishWeapon.make_attack("brawl", 4, _player.board)
 			_player.board.receive_attack(atk["shape"], atk["col"], atk["color"])
 
@@ -459,6 +459,8 @@ func _resolve_melee(won: bool) -> void:
 		quality = _player.board.score() + _player.sent * LINES_SENT_BONUS + (WIN_BONUS if won else 0)
 	_result = PlayerState.record_puzzle_result("skirmish", quality)
 	_result["player_won"] = won
+	if not won:
+		PlayerState.damage_health()   # a lost boarding wears you down → you start MORE buried next serious fight
 	melee_resolved.emit(won)
 
 

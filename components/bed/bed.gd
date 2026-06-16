@@ -1,6 +1,6 @@
-## A bed the player can rest at. Currently a stub: pressing E shows
-## the interact_message. Future: actual sleep-to-save logic that calls
-## [PlayerState.save_session] and fades the screen out/in.
+## A bed the player can rest at. Resting RESTORES fighting health (your Skirmish condition) to full — a
+## worn-down fighter sleeps off the bruises and starts the next serious fight on better footing (see
+## [PlayerState.restore_health] / [[ship-condition-research]]).
 ##
 ## When a second bed variant appears (an inn bed you have to pay for,
 ## a Doraka burrow cot, etc.), extract a `Furniture` base from this
@@ -10,16 +10,22 @@ class_name Bed
 extends Interactable
 
 
-# E on the bed surfaces its message (the authored interact_message, else a default) via the lore overlay
-# — so the first thing a new player tries E on (their cot) actually responds instead of doing nothing.
+# Click the bed → REST: top your fighting health back up + a confirming line. Already-full just rests for
+# flavour (the authored interact_message, else a default).
 func interact() -> void:
 
 	super.interact()
 	if Engine.is_editor_hint():
 		return
-	var msg : String = interact_message if not interact_message.is_empty() \
-		else "Your cot. You'll be able to sleep here to save your game, once resting's in."
-	Overlay.show_lore("Your cot", msg)
+	var was_full : bool = PlayerState.is_full_health()
+	PlayerState.restore_health()   # a full night's rest tops your fighting condition back up
+	var msg : String
+	if was_full:
+		msg = interact_message if not interact_message.is_empty() \
+			else "You're already in fighting shape. You rest a while and rise ready for anything."
+	else:
+		msg = "You sleep off the bruises and wake clear-headed — back to full fighting health."
+	Overlay.show_lore("A good rest", msg)
 
 
 func _draw() -> void:

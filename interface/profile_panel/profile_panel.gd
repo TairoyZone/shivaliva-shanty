@@ -160,6 +160,13 @@ func _make_left_column() -> Control:
 	if sweetheart != "":
 		col.add_child(_kv_line("Sweetheart", _given_name(sweetheart)))
 
+	var gap_cond : Control = Control.new()
+	gap_cond.custom_minimum_size = Vector2(0, 10)
+	col.add_child(gap_cond)
+	col.add_child(_section_label("Condition"))
+	col.add_child(_kv_line("Fighting health", "%d / %d" % [PlayerState.health, PlayerState.HEALTH_MAX]))
+	col.add_child(_kv_line("Shape", _condition_word()))
+
 	var gap : Control = Control.new()
 	gap.custom_minimum_size = Vector2(0, 10)
 	col.add_child(gap)
@@ -170,6 +177,19 @@ func _make_left_column() -> Control:
 	else:
 		col.add_child(_muted_line("No ship yet — earn your wings."))
 	return col
+
+
+# Worded fighting condition for the Profile — mirrors how low health buries you harder in a serious fight.
+func _condition_word() -> String:
+
+	var h : int = PlayerState.health
+	if h >= PlayerState.HEALTH_MAX:
+		return "Fighting fit"
+	if h >= 60:
+		return "Bruised"
+	if h >= 30:
+		return "Battered"
+	return "On the ropes"
 
 
 func _renown_word(friends: int, acquaintances: int, total: int) -> String:

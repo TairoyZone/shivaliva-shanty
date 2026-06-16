@@ -28,6 +28,8 @@ extends Node
 
 
 signal coins_changed(new_total: int)
+## Fighter health moved (0..HEALTH_MAX) — the Profile + any health bar listen to refresh.
+signal health_changed(new_health: int)
 ## Fires whenever the backpack contents change (item added/removed, or
 ## capacity expanded). UI (the inventory overlay, bag button) listens.
 signal inventory_changed
@@ -182,6 +184,19 @@ const AFFINITY_TIERS : Array = [
 	{"min": -100, "name": "Despised"},
 ]
 
+## --- Fighter health (the Skirmish stamina that drives starting footing) ---
+## A persistent 0..[constant HEALTH_MAX] condition. It DROPS when you LOSE a serious Skirmish (a pillage
+## boarding, a beast bout) and HEALS when you REST at a bed. The LOWER it sits, the more dead-block layers
+## you START a serious fight buried under ([method health_footing_clumps]) — this REPLACED the old
+## hull-holes footing penalty (Troy 2026-06-16). See [[ship-condition-research]].
+const HEALTH_MAX : int = 100
+## Health knocked off per serious defeat (5 straight losses with no rest = floored = max footing).
+const HEALTH_PER_DEFEAT : int = 20
+## Missing-health per starting footing clump (every 20 missing → +1 clump you start buried under).
+const HEALTH_PER_FOOTING_CLUMP : int = 20
+## Cap on low-health starting footing (a floored fighter is handicapped, never auto-topped-out).
+const HEALTH_FOOTING_CAP : int = 5
+
 # Permanent state — written to disk.
 var total_coins : int = STARTING_GOLD :
 	set(value):
@@ -195,6 +210,18 @@ var total_coins : int = STARTING_GOLD :
 ## wealth-milestone trophies stay earn-and-keep. Persisted; bumped in
 ## [method add_coins].
 var lifetime_coins_earned : int = 0
+
+## Fighter health — your Skirmish condition (0..[constant HEALTH_MAX]). Drops on a serious defeat, heals on
+## a rest; the lower it sits, the more buried you START a serious fight. Mutate via [method damage_health] /
+## [method restore_health]. Persisted.
+var health : int = HEALTH_MAX :
+	set(value):
+		var v : int = clampi(value, 0, HEALTH_MAX)
+		if health == v:
+			return
+		health = v
+		health_changed.emit(health)
+		_save()
 
 ## The backpack: a dense Array of `inventory_capacity` slots. Each slot
 ## is either {} (empty) or {"id": String, "count": int}. Mutate ONLY via
@@ -1542,6 +1569,42 @@ func add_affinity(npc_name: String, amount: int) -> void:
 	_save()
 
 
+# --- Fighter health (Skirmish footing) ---------------------------------
+
+## Knock health down after a serious Skirmish defeat (a pillage boarding, a beast bout). Clamped at 0; the
+## lower it sits, the more buried you start the NEXT serious fight ([method health_footing_clumps]). Logs
+## the hit to the event feed. No-op on a non-positive amount or when already floored.
+func damage_health(amount: int = HEALTH_PER_DEFEAT) -> void:
+
+	if amount <= 0 or health <= 0:
+		return
+	health = health - amount
+	log_event("You took a beating — fighting health %d/%d." % [health, HEALTH_MAX], Color(0.95, 0.5, 0.4))
+
+
+## Heal fighter health (a rest at a bed). Defaults to a FULL recovery. Logs the recovery if it moved.
+func restore_health(amount: int = HEALTH_MAX) -> void:
+
+	if amount <= 0 or health >= HEALTH_MAX:
+		return
+	health = health + amount
+	log_event("Rested up — fighting health %d/%d." % [health, HEALTH_MAX], Color(0.6, 0.95, 0.6))
+
+
+func is_full_health() -> bool:
+
+	return health >= HEALTH_MAX
+
+
+## Starting dead-block clumps your board is buried under at the start of a SERIOUS fight, from LOW health
+## (full health → 0). This REPLACED the old hull-holes footing. Every [constant HEALTH_PER_FOOTING_CLUMP]
+## missing → +1 clump, capped at [constant HEALTH_FOOTING_CAP]. Read by boarding_melee + the duel footing.
+func health_footing_clumps() -> int:
+
+	@warning_ignore("integer_division")
+	return clampi((HEALTH_MAX - health) / HEALTH_PER_FOOTING_CLUMP, 0, HEALTH_FOOTING_CAP)
+
+
 ## The saved chat history with [param npc_name] (a deep copy) — what they remember of past conversations.
 ## Empty for an NPC you've never chatted with. See [NpcBrain.enter_chat].
 func npc_chat_history(npc_name: String) -> Array:
@@ -2316,6 +2379,7 @@ func _save() -> void:
 	var config : ConfigFile = ConfigFile.new()
 	config.set_value(SAVE_SECTION, "total_coins", total_coins)
 	config.set_value(SAVE_SECTION, "lifetime_coins_earned", lifetime_coins_earned)
+	config.set_value(SAVE_SECTION, "health", health)
 	config.set_value(SAVE_SECTION, "inventory", inventory)
 	config.set_value(SAVE_SECTION, "inventory_capacity", inventory_capacity)
 	config.set_value(SAVE_SECTION, "hired_at_workshop", hired_at_workshop)
@@ -2367,6 +2431,7 @@ func _load() -> void:
 	total_coins = int(config.get_value(SAVE_SECTION, "total_coins", STARTING_GOLD))
 	# Backfill old saves (pre-trophy) with their current balance as lifetime.
 	lifetime_coins_earned = int(config.get_value(SAVE_SECTION, "lifetime_coins_earned", total_coins))
+	health = int(config.get_value(SAVE_SECTION, "health", HEALTH_MAX))
 	hired_at_workshop = bool(config.get_value(SAVE_SECTION, "hired_at_workshop", false))
 	godfrey_lumber_stock = int(config.get_value(SAVE_SECTION, "godfrey_lumber_stock", 0))
 	hired_at_forge = bool(config.get_value(SAVE_SECTION, "hired_at_forge", false))
