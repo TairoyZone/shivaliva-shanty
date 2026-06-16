@@ -1,20 +1,27 @@
-## THE JUNGLE ORDEAL — the Cradle Gym's beast trial (the Pokémon-gym "trial" off the Forest). A true
-## navigable jungle MAZE (a fixed-seed perfect labyrinth of foliage walls): you wind through it and the
-## five beasts bar your way one at a time — Lion → Gorilla → Rhino → Bear, then the Jungle King at the
-## heart — each a [BeastGate] blocking the corridor until you beat its serious Skirmish bout. Lose and your
-## health drops but the run continues (retreat to the gym to rest at Jade, then come back). Beat the King
-## and the Ordeal is won (the badge-of-honour trophy — C4). Placeholder-first procedural jungle. Extends
-## [BaseLocation]; the maze + props are built in code so the layout is data-driven (tune the seed / size).
+## THE JUNGLE ORDEAL — the Cradle Gym's beast trial, built on Troy's ISOMETRIC TILESET (the same atlas he
+## paints every other scene with — NOT a flat top-down draw). A fixed-seed perfect MAZE rendered as iso
+## tiles: a flat GroundTileMapLayer floor under a y-sorted WallTileMapLayer of RAISED walls (their tile
+## collision blocks you, exactly like the island edge), dressed with jungle trees. Five [BeastGate]s bar
+## the solution corridor — Lion → Gorilla → Rhino → Bear → the Jungle King — each a raised wall until you
+## beat its serious Skirmish bout; clear it and the wall drops so you pass. Lose and your health falls but
+## the run continues (rest at Jade, retry). Beat the King → the Badge of Honour + town respect. The maze is
+## generated in code (tune the seed / size); the look is all real tiles. See [[cradle-gym-jungle-ordeal]].
 class_name JungleOrdeal
 extends BaseLocation
 
-const CELL : float = 80.0     # world px per maze-grid cell (corridor width)
-const MAZE_W : int = 8        # maze cells wide / tall (grid is 2N+1)
-const MAZE_H : int = 8
+# --- The iso tileset (Troy's, shared with every scene) ---------------
+const TILE_SET : TileSet = preload("res://assets/iso/isometric_tileset.tres")
+const TILE_SRC : int = 0
+const FLOOR_TILE : Vector2i = Vector2i(2, 0)   # walkable iso floor (no collision)
+const WALL_TILE : Vector2i = Vector2i(3, 0)    # raised iso wall (full-diamond collision — blocks the player)
+
+const MAZE_W : int = 5        # maze cells wide/tall (the wall grid is 2N+1); iso tiles are big, so keep it tight
+const MAZE_H : int = 5
 const MAZE_SEED : int = 20260616
 
 const GATE_SCENE : PackedScene = preload("res://levels/jungle_ordeal/beast_gate.tscn")
 const DOOR_SCENE : PackedScene = preload("res://levels/door/door.tscn")
+const TREE_SCENE : PackedScene = preload("res://levels/forest/tree.tscn")
 ## The Ordeal entrance lives on the SHORE now (Troy 2026-06-16), so the exit returns there — to the shore's
 ## "JungleEntry" door, which spawns the player right in front of it.
 const SHORE_SCENE : String = "res://levels/shore/shore.tscn"
@@ -32,25 +39,121 @@ const BEASTS : Dictionary = {
 ## defeat record is idempotent so it can't be farmed).
 const TOWN_RESPECT : int = 12
 
-const GROUND : Color = Color(0.16, 0.22, 0.13, 1.0)
-const GROUND_PATH : Color = Color(0.22, 0.27, 0.16, 1.0)
-const FOLIAGE_DARK : Color = Color(0.08, 0.16, 0.08, 1.0)
-const FOLIAGE : Color = Color(0.13, 0.32, 0.15, 1.0)
-const FOLIAGE_LIGHT : Color = Color(0.22, 0.46, 0.22, 1.0)
-
 var _gw : int = 0
 var _gh : int = 0
-var _wall : Array = []   # [_gw][_gh] bool — true = foliage wall
+var _wall : Array = []   # [_gw][_gh] bool — true = raised wall cell
+var _ground : TileMapLayer
+var _walls : TileMapLayer
+var _ysort : Node2D
 
 
 func _ready() -> void:
 
+	mood_tint = Color(0.04, 0.16, 0.07, 0.16)   # a faint dark-green atmosphere over the whole scene
 	_generate_maze()
-	_build_wall_collision()
-	_place_props()        # gates + exit + sets pirate_spawn_position — BEFORE super spawns the player
-	super._ready()        # BaseLocation: spawn player (at the gate anchor on return, else the maze start)
+	_build_scene()        # iso floor + raised walls + trees + gates + exit — BEFORE super spawns the player
+	super._ready()        # BaseLocation spawns the player under our YSortNode2D, at the start (or gate, on return)
 	_resolve_fight_return()
-	queue_redraw()
+
+
+# --- Build the scene from real iso tiles -----------------------------
+func _build_scene() -> void:
+
+	# Flat floor layer — renders under everything, no collision.
+	_ground = TileMapLayer.new()
+	_ground.name = "GroundTileMapLayer"
+	_ground.tile_set = TILE_SET
+	_ground.modulate = Color(0.60, 0.84, 0.52)   # tint the light island floor to a jungle green (floor only)
+	add_child(_ground)
+
+	# Y-sort root: the raised walls + trees + gates + (the player, parented here by BaseLocation) all sort
+	# together by depth, the way every other scene's YSortNode2D works.
+	_ysort = Node2D.new()
+	_ysort.name = "YSortNode2D"
+	_ysort.y_sort_enabled = true
+	add_child(_ysort)
+	_walls = TileMapLayer.new()
+	_walls.name = "WallTileMapLayer"
+	_walls.tile_set = TILE_SET
+	_walls.y_sort_enabled = true
+	_walls.modulate = Color(0.58, 0.74, 0.46)   # mossy-green the raised walls (was island-orange)
+	_ysort.add_child(_walls)
+
+	var path : Array = _solution_path()
+	var gate_cells : Dictionary = _gate_cells(path)   # id → cell
+	var cell_is_gate : Dictionary = {}
+	for id in gate_cells:
+		cell_is_gate[gate_cells[id]] = String(id)
+
+	# Floor on every cell; a raised wall on each wall cell, plus on any UN-BEATEN gate cell (the gate IS a
+	# wall until you clear it). A tree dresses each plain wall cell (gate cells stay clear so the gate reads).
+	for x in _gw:
+		for y in _gh:
+			var cell : Vector2i = Vector2i(x, y)
+			_ground.set_cell(cell, TILE_SRC, FLOOR_TILE)
+			var gate_id : String = String(cell_is_gate.get(cell, ""))
+			var solid : bool = _wall[x][y]
+			if gate_id != "" and not PlayerState.ordeal_defeated(gate_id):
+				solid = true
+			if solid:
+				_walls.set_cell(cell, TILE_SRC, WALL_TILE)
+			if _wall[x][y] and gate_id == "":
+				var tree : Node2D = TREE_SCENE.instantiate()
+				tree.position = _walls.map_to_local(cell)
+				tree.set("size_variation", 0.6 + float((x * 7 + y * 3) % 5) * 0.12)
+				_ysort.add_child(tree)
+
+	for id in gate_cells:
+		_spawn_gate(String(id), gate_cells[id], path)
+
+	# Exit door + the player's start, at the maze's start cell.
+	var start : Vector2i = path[0] if not path.is_empty() else Vector2i(1, 1)
+	var start_world : Vector2 = _ground.map_to_local(start)
+	pirate_spawn_position = start_world + Vector2(0, 18.0)
+	var door : Node = DOOR_SCENE.instantiate()
+	door.name = "ForestExit"
+	door.position = start_world
+	door.target_scene = SHORE_SCENE
+	door.target_spawn_anchor = "JungleEntry"
+	door.marker_label = "Back to Cradle Rock"
+	door.spawn_offset = Vector2(0, 70.0)
+	_ysort.add_child(door)
+
+
+# The cells (id → cell) where each beast gate sits — spread along the solution corridor, King at the end.
+func _gate_cells(path: Array) -> Dictionary:
+
+	var out : Dictionary = {}
+	if path.size() < 6:
+		return out
+	var order : Array = PlayerState.ORDEAL_BEASTS
+	var fracs : Array = [0.26, 0.46, 0.64, 0.82]
+	var used : Dictionary = {}
+	for i in order.size():
+		var idx : int = clampi(int(round(float(path.size()) * float(fracs[i]))), 2, path.size() - 2)
+		while used.has(idx) and idx < path.size() - 2:
+			idx += 1
+		used[idx] = true
+		out[String(order[i])] = path[idx]
+	out[PlayerState.ORDEAL_KING] = path[path.size() - 1]
+	return out
+
+
+func _spawn_gate(id: String, cell: Vector2i, path: Array) -> void:
+
+	var cfg : Dictionary = BEASTS[id]
+	var g : BeastGate = GATE_SCENE.instantiate()
+	g.name = "Gate_%s" % id
+	g.beast_id = id
+	g.beast_path = String(cfg["path"])
+	g.beast_label = String(cfg["label"])
+	g.beast_color = cfg["color"]
+	g.position = _ground.map_to_local(cell)
+	# Return on the APPROACH side (the corridor cell before this gate on the solution path).
+	var idx : int = path.find(cell)
+	var approach : Vector2i = path[idx - 1] if idx > 0 else cell
+	g.spawn_offset = _ground.map_to_local(approach) - _ground.map_to_local(cell)
+	_ysort.add_child(g)
 
 
 # --- Maze generation (recursive backtracker, fixed seed → same labyrinth every run) ---
@@ -120,91 +223,20 @@ func _solution_path() -> Array:
 	return path
 
 
-func _cell_world(cell: Vector2i) -> Vector2:
-	return Vector2((float(cell.x) + 0.5) * CELL, (float(cell.y) + 0.5) * CELL)
-
-
-# --- Collision (one static body, a rect per foliage-wall cell) ---
-func _build_wall_collision() -> void:
-
-	var body : StaticBody2D = StaticBody2D.new()
-	body.name = "MazeWalls"
-	body.collision_layer = 2   # the solid layer the player collides with
-	body.collision_mask = 0
-	for x in _gw:
-		for y in _gh:
-			if not _wall[x][y]:
-				continue
-			var cs : CollisionShape2D = CollisionShape2D.new()
-			var shape : RectangleShape2D = RectangleShape2D.new()
-			shape.size = Vector2(CELL, CELL)
-			cs.shape = shape
-			cs.position = _cell_world(Vector2i(x, y))
-			body.add_child(cs)
-	add_child(body)
-
-
-# --- Props: the exit door + the five beast gates along the solution path ---
-func _place_props() -> void:
-
-	var path : Array = _solution_path()
-	var start : Vector2i = path[0] if not path.is_empty() else Vector2i(1, 1)
-	var start_world : Vector2 = _cell_world(start)
-	pirate_spawn_position = start_world + Vector2(0, 36)
-
-	var door : Node = DOOR_SCENE.instantiate()
-	door.name = "ForestExit"
-	door.position = start_world
-	door.target_scene = SHORE_SCENE
-	door.target_spawn_anchor = "JungleEntry"   # the shore door you came in through — spawns you in front of it
-	door.marker_label = "Back to Cradle Rock"
-	door.spawn_offset = Vector2(0, 48)
-	add_child(door)
-
-	if path.size() < 6:
-		return   # degenerate maze (shouldn't happen) — leave the gates out rather than stack them
-	var order : Array = PlayerState.ORDEAL_BEASTS
-	var fracs : Array = [0.26, 0.46, 0.64, 0.82]
-	var used : Dictionary = {}
-	for i in order.size():
-		var idx : int = clampi(int(round(float(path.size()) * float(fracs[i]))), 2, path.size() - 2)
-		while used.has(idx) and idx < path.size() - 2:
-			idx += 1
-		used[idx] = true
-		_spawn_gate(String(order[i]), path[idx], path[idx - 1])
-	var gidx : int = path.size() - 1
-	_spawn_gate(PlayerState.ORDEAL_KING, path[gidx], path[gidx - 1])
-
-
-func _spawn_gate(id: String, cell: Vector2i, approach: Vector2i) -> void:
-
-	var cfg : Dictionary = BEASTS[id]
-	var g : BeastGate = GATE_SCENE.instantiate()
-	g.name = "Gate_%s" % id
-	g.beast_id = id
-	g.beast_path = String(cfg["path"])
-	g.beast_label = String(cfg["label"])
-	g.beast_color = cfg["color"]
-	g.position = _cell_world(cell)
-	g.spawn_offset = Vector2(approach - cell) * (CELL * 0.66)   # come back on the approach side, in the corridor
-	add_child(g)
-
-
-# On return from a beast bout, record a WIN (the gate then reads as cleared). A loss leaves it standing.
+# On return from a beast bout, record a WIN (the gate's wall then drops). A loss leaves it standing.
 func _resolve_fight_return() -> void:
 
 	var id : String = PlayerState.jungle_ordeal_pending
 	if id.is_empty():
 		return
 	PlayerState.jungle_ordeal_pending = ""
-	if PlayerState.last_skirmish_won:
-		if PlayerState.ordeal_mark_defeated(id):
-			var label : String = String(BEASTS.get(id, {}).get("label", "the beast"))
-			if id == PlayerState.ORDEAL_KING:
-				PlayerState.log_event("The Jungle King falls! The Ordeal is won — the island salutes you.", Color(1.0, 0.86, 0.4))
-				_grant_town_respect()   # the whole town hears of it (+ the Badge of Honour, via the trophy check)
-			else:
-				PlayerState.log_event("%s is beaten — the way opens." % label, Color(0.7, 0.95, 0.6))
+	if PlayerState.last_skirmish_won and PlayerState.ordeal_mark_defeated(id):
+		var label : String = String(BEASTS.get(id, {}).get("label", "the beast"))
+		if id == PlayerState.ORDEAL_KING:
+			PlayerState.log_event("The Jungle King falls! The Ordeal is won — the island salutes you.", Color(1.0, 0.86, 0.4))
+			_grant_town_respect()
+		else:
+			PlayerState.log_event("%s is beaten — the way opens." % label, Color(0.7, 0.95, 0.6))
 
 
 # Win the Ordeal → every islander gains rapport (the town-wide respect). One-time (gated by the idempotent
@@ -213,27 +245,3 @@ func _grant_town_respect() -> void:
 
 	for profile in NpcRegistry.all():
 		PlayerState.add_affinity(profile.npc_name, TOWN_RESPECT)
-
-
-func _draw() -> void:
-
-	if _wall.is_empty():
-		return
-	draw_rect(Rect2(Vector2.ZERO, Vector2(float(_gw) * CELL, float(_gh) * CELL)), GROUND)
-	for x in _gw:
-		for y in _gh:
-			var c : Vector2 = _cell_world(Vector2i(x, y))
-			if _wall[x][y]:
-				_draw_foliage(c)
-			else:
-				draw_rect(Rect2(c - Vector2(CELL, CELL) * 0.5, Vector2(CELL, CELL)), GROUND_PATH)
-
-
-# A clump of dark jungle leaves filling a wall cell.
-func _draw_foliage(c: Vector2) -> void:
-
-	draw_circle(c, CELL * 0.52, FOLIAGE_DARK)
-	for o in [Vector2(-16, -12), Vector2(15, -9), Vector2(0, 13), Vector2(-12, 9), Vector2(13, 12), Vector2(2, -16)]:
-		draw_circle(c + o, 15.0, FOLIAGE)
-	draw_circle(c + Vector2(-7, -13), 11.0, FOLIAGE_LIGHT)
-	draw_circle(c + Vector2(9, 3), 9.0, FOLIAGE_LIGHT)

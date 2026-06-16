@@ -1,13 +1,13 @@
-## A BEAST GATE in the Jungle Ordeal maze — a corridor blocked by a beast. While the beast still stands the
-## gate is SOLID (a child StaticBody walls the cell) and clicking it launches that beast's serious Skirmish
-## bout (health stakes); win and the gate clears (collision drops, vines part) so you can pass. Placed by
-## [JungleOrdeal] along the maze's solution path. Extends [Interactable] for the click-ON-target prompt.
+## A BEAST GATE in the Jungle Ordeal maze — a corridor barred by a beast. While the beast stands, [JungleOrdeal]
+## paints a RAISED WALL TILE at this cell (the tile's own collision blocks you, like the maze walls); this
+## prop is the INTERACTABLE marker on it — a beast-hue banner + glowing eyes that read it apart from a plain
+## tree-wall. Click it (in range) to launch the beast's serious Skirmish bout; win and the wall drops (the
+## scene reloads with the gate beaten) so you pass. Extends [Interactable] for the click-ON-target prompt.
 @tool
 class_name BeastGate
 extends Interactable
 
 const DUEL_SCENE : String = "res://puzzles/skirmish/skirmish_duel.tscn"
-const SOLID_LAYER : int = 2   # the wall/building layer the player collides with
 
 @export var beast_id : String = "lion"
 @export_file("*.tres") var beast_path : String = ""
@@ -15,7 +15,6 @@ const SOLID_LAYER : int = 2   # the wall/building layer the player collides with
 @export var beast_color : Color = Color(0.82, 0.6, 0.26, 1.0)
 
 var _down : bool = false
-var _blocker : StaticBody2D
 
 
 func _ready() -> void:
@@ -25,17 +24,7 @@ func _ready() -> void:
 		queue_redraw()
 		return
 	marker_label = "%s  —  fight" % beast_label
-	_down = PlayerState.ordeal_defeated(beast_id)
-	if not _down:
-		_blocker = StaticBody2D.new()
-		_blocker.collision_layer = SOLID_LAYER
-		_blocker.collision_mask = 0
-		var cs : CollisionShape2D = CollisionShape2D.new()
-		var shape : RectangleShape2D = RectangleShape2D.new()
-		shape.size = Vector2(72.0, 72.0)   # fills the corridor cell so the beast bars the way
-		cs.shape = shape
-		_blocker.add_child(cs)
-		add_child(_blocker)
+	_down = PlayerState.ordeal_defeated(beast_id)   # the WALL TILE (placed by JungleOrdeal) does the blocking
 	queue_redraw()
 
 
@@ -60,6 +49,14 @@ func set_tooltip_visible(value: bool) -> void:
 	super.set_tooltip_visible(value)
 
 
+# Generous click target spanning the raised iso wall (the standing click-ON-target box is sized for a
+# 1-tile figure; a beast gate is a whole raised wall, so widen it).
+func contains_click(point: Vector2) -> bool:
+
+	var local : Vector2 = point - global_position
+	return absf(local.x) <= 92.0 and local.y <= 36.0 and local.y >= -150.0
+
+
 func _draw() -> void:
 
 	if _down:
@@ -68,30 +65,39 @@ func _draw() -> void:
 		_draw_gate()
 
 
-# Standing gate — a cluster of thick vines/claws barring the corridor in the beast's hue, eyes peering through.
+# Standing gate — a beast-hue banner crowning the raised wall + a glowing-eyed recess, so a gate reads
+# apart from a plain tree-wall. Drawn UP from the cell's floor origin onto the raised tile.
 func _draw_gate() -> void:
 
 	var col : Color = beast_color
-	var dark : Color = col.darkened(0.55)
-	for i in 5:
-		var x : float = -40.0 + float(i) * 20.0
-		var h : float = 80.0 - absf(float(i) - 2.0) * 6.0
-		draw_rect(Rect2(x - 4.0, -h, 8.0, h), col)
-		draw_rect(Rect2(x - 4.0, -h, 8.0, h), dark, false, 1.5)
-		draw_circle(Vector2(x, -h * 0.55), 5.0, col.lightened(0.12))
-	# A pair of watching eyes in the dark behind the bars.
-	draw_circle(Vector2(-11.0, -46.0), 4.5, Color(0.99, 0.9, 0.42))
-	draw_circle(Vector2(11.0, -46.0), 4.5, Color(0.99, 0.9, 0.42))
-	draw_circle(Vector2(-11.0, -46.0), 2.0, Color(0.1, 0.08, 0.05))
-	draw_circle(Vector2(11.0, -46.0), 2.0, Color(0.1, 0.08, 0.05))
+	var eye : Vector2 = Vector2(0.0, -92.0)
+	# Soft aura in the beast's hue.
+	for i in 4:
+		draw_circle(eye, 14.0 + float(i) * 10.0, Color(col.r, col.g, col.b, 0.09))
+	# Dark recess + a pair of glowing eyes peering from the wall.
+	draw_circle(eye, 15.0, Color(0.05, 0.04, 0.03, 0.9))
+	for ex in [-7.0, 7.0]:
+		draw_circle(eye + Vector2(ex, -1.0), 3.6, Color(1.0, 0.9, 0.42))
+		draw_circle(eye + Vector2(ex, -1.0), 1.6, Color(0.08, 0.05, 0.03))
+	# A banner crowning the wall-top (pennant cut), in the beast's colour.
+	var bw : float = 30.0
+	var pennant : PackedVector2Array = PackedVector2Array([
+		Vector2(-bw, -134.0), Vector2(bw, -134.0), Vector2(bw, -120.0), Vector2(0.0, -112.0), Vector2(-bw, -120.0)])
+	draw_colored_polygon(pennant, col)
+	draw_polyline(pennant + PackedVector2Array([Vector2(-bw, -134.0)]), col.darkened(0.5), 1.5)
+	# Three claw-gashes either side — the beast's mark on the stone.
+	for s in [-1.0, 1.0]:
+		for k in 3:
+			var gx : float = s * (24.0 + float(k) * 6.0)
+			draw_line(Vector2(gx, -106.0), Vector2(gx + s * 5.0, -78.0), col.lightened(0.1), 2.0)
 
 
-# Cleared gate — broken vine stubs parted aside, the way open.
+# Cleared gate — a fallen, faded banner on the open floor where the beast once barred the way.
 func _draw_cleared() -> void:
 
-	var faded : Color = beast_color.darkened(0.35)
-	faded.a = 0.55
-	draw_rect(Rect2(-42.0, -22.0, 7.0, 22.0), faded)
-	draw_rect(Rect2(35.0, -22.0, 7.0, 22.0), faded)
-	draw_rect(Rect2(-42.0, -22.0, 7.0, 22.0), faded.darkened(0.3), false, 1.0)
-	draw_rect(Rect2(35.0, -22.0, 7.0, 22.0), faded.darkened(0.3), false, 1.0)
+	var faded : Color = beast_color.darkened(0.3)
+	faded.a = 0.45
+	var lying : PackedVector2Array = PackedVector2Array([
+		Vector2(-26.0, -8.0), Vector2(26.0, -8.0), Vector2(20.0, 8.0), Vector2(-20.0, 8.0)])
+	draw_colored_polygon(lying, faded)
+	draw_polyline(lying + PackedVector2Array([Vector2(-26.0, -8.0)]), faded.darkened(0.3), 1.2)

@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://levels/jungle_ordeal/beast_gate.gd" id="1"]
 
 [sub_resource type="RectangleShape2D" id="1"]
-size = Vector2(150, 150)
+size = Vector2(300, 280)
 
 [node name="BeastGate" type="Area2D"]
 collision_layer = 4
@@ -13,7 +13,7 @@ script = ExtResource("1")
 marker_label = "Beast"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-position = Vector2(0, -40)
+position = Vector2(0, -70)
 shape = SubResource("1")
 
 [node name="Tooltip" type="Label" parent="."]
