@@ -98,7 +98,9 @@ func _on_continue() -> void:
 	# onto the deck would fabricate a phantom demo voyage (the deck's standalone seeder). Close-the-app
 	# mid-voyage makes this reachable — fall back to the home shore, fresh-spawned. (Troy 2026-06-10 review.)
 	var scene : String = PlayerState.last_scene
-	if scene.is_empty() or scene.find("ship_deck") != -1:
+	# Fall back to the home shore when there's no valid resume target: empty, the transient ship deck (see
+	# above), OR a scene that no longer exists (e.g. renamed/removed since the save — never crash Continue).
+	if scene.is_empty() or scene.find("ship_deck") != -1 or not ResourceLoader.exists(scene):
 		get_tree().change_scene_to_file("res://levels/shore/shore.tscn")
 		return
 	PlayerState.request_spawn_at_position(PlayerState.last_position)

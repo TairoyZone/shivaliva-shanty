@@ -2504,6 +2504,9 @@ func _load() -> void:
 	npc_chat_log = config.get_value(SAVE_SECTION, "npc_chat_log", {})
 	tournaments_won = int(config.get_value(SAVE_SECTION, "tournaments_won", 0))
 	last_scene = String(config.get_value(SAVE_SECTION, "last_scene", ""))
+	# Migrate a save whose last_scene points at a since-renamed scene so Continue resumes correctly
+	# (healers_hut_interior → cradle_gym_interior, 2026-06-16).
+	last_scene = last_scene.replace("levels/healers_hut_interior/healers_hut_interior", "levels/cradle_gym_interior/cradle_gym_interior")
 	last_position = Vector2(
 		float(config.get_value(SAVE_SECTION, "last_position_x", 0.0)),
 		float(config.get_value(SAVE_SECTION, "last_position_y", 0.0)),
