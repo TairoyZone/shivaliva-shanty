@@ -76,6 +76,7 @@ var _lines_sent : int = 0
 var _opp_lines_sent : int = 0
 var _duel_over : bool = false
 var _player_won_duel : bool = false   # who won, for the chatting foe's GROUND TRUTH once _duel_over (Troy 2026-06-14)
+var _serious_fight : bool = false     # a Jungle Ordeal beast bout — carries health stakes (footing + loss)
 
 var _das_dir : int = 0
 var _das_timer : float = 0.0
@@ -107,6 +108,14 @@ func _ready() -> void:
 	_opponent_board.game_over.connect(_on_opponent_ko)
 	_opponent_board.piece_spawned.connect(_on_opponent_spawned)
 	_build_ui()
+	# A SERIOUS fight (a Jungle Ordeal beast bout) carries health stakes: low health pre-buries YOUR board,
+	# and a loss docks your health. Consumed here; a friendly Spar leaves it false. See [[ship-condition-research]].
+	_serious_fight = PlayerState.skirmish_stakes
+	PlayerState.skirmish_stakes = false
+	if _serious_fight:
+		for _c in PlayerState.health_footing_clumps():
+			var hf : Dictionary = SkirmishWeapon.make_attack("brawl", 4, _player_board)
+			_player_board.receive_attack(hf["shape"], hf["col"], hf["color"])
 	# The opponent's FIRST piece spawned during its own _ready (before we
 	# connected to piece_spawned), so wake the bot for it now.
 	_on_opponent_spawned()
@@ -312,6 +321,9 @@ func _end_duel(player_won: bool) -> void:
 	# they remember the result — drives post-fight banter + chat awareness. See [[npc-battle-memory]].
 	if _opponent_profile != null:
 		PlayerState.record_battle(_opponent_profile.npc_name, player_won)
+	# A lost SERIOUS fight (a Jungle Ordeal beast) wears you down → you start the next serious bout more buried.
+	if _serious_fight and not player_won:
+		PlayerState.damage_health()
 	# The LOSER's board floods red (defeat); the winner just freezes (stop).
 	if player_won:
 		_player_board.stop()

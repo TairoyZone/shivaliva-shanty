@@ -667,6 +667,10 @@ func clear_voyage() -> void:
 ## Transient: the chosen Skirmish-duel opponent's NPC resource path. Set by the
 ## Spar post's challenge picker; consumed (and cleared) by SkirmishDuel on load.
 var skirmish_opponent : String = ""
+## Transient: true when the NEXT duel is a SERIOUS fight (a Jungle Ordeal beast bout) — the duel then
+## applies health footing (low health buries your board) + docks health on a loss. Friendly spars leave it
+## false. Set by the beast-fight launcher; consumed (cleared) by SkirmishDuel on load.
+var skirmish_stakes : bool = false
 
 # --- Tournament (transient — drives the TournamentScene bracket flow) ---
 ## True while the player is in a tournament bracket.
