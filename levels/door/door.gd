@@ -27,6 +27,14 @@ enum WallFacing { FRONT, RIGHT, LEFT }
 ## in the inspector. (0, 40) works for doors on a building front; flip to
 ## (0, -60) for an inward-facing door that lands the player inside.)
 
+## LOCKED door: the inventory item id (a "key_*", see [PlayerState.ITEM_DEFS]) the player must HOLD to open
+## this door. Empty = always open. Keys are earned + kept forever, so a door unlocks PERMANENTLY once you
+## have the key. A padlock draws over a locked door, and clicking it shows [member locked_hint] instead of
+## changing scene. See [method PlayerState.grant_key].
+@export var required_key : String = ""
+## What the "it's locked" popup says — name the key + where to earn it.
+@export_multiline var locked_hint : String = "It's locked. You'll need the right key."
+
 ## Door dimensions for the placeholder. FRONT uses these as a slab w/h;
 ## SIDE variants use DOOR_W as the extent ALONG the iso wall and DOOR_H
 ## as the vertical height (smaller than the smallest building wall_height).
@@ -78,6 +86,10 @@ func interact() -> void:
 		return
 	if target_scene.is_empty():
 		return
+	# LOCKED — you don't hold the key yet. Tell the player how to earn it; don't change scene.
+	if _is_locked():
+		Overlay.show_lore("Locked", locked_hint)
+		return
 	if not target_spawn_anchor.is_empty():
 		PlayerState.request_spawn_at_anchor(target_spawn_anchor)
 	Audio.play_sfx("whoosh")   # the door transition whoosh
@@ -100,6 +112,32 @@ func _draw() -> void:
 			_draw_side(frame_color, 1.0)
 		WallFacing.LEFT:
 			_draw_side(frame_color, -1.0)
+	# A padlock over any locked door (in the editor too, so a designer sees which doors gate).
+	if _is_locked() or (Engine.is_editor_hint() and not required_key.is_empty()):
+		_draw_padlock()
+
+
+# True at RUNTIME when this door needs a key the player doesn't hold yet. The editor never locks
+# (PlayerState isn't running there); the padlock there is just a design-time marker.
+func _is_locked() -> bool:
+
+	if Engine.is_editor_hint() or required_key.is_empty():
+		return false
+	return PlayerState.item_count(required_key) <= 0
+
+
+# A small brass padlock centred on the door face — the "you need a key" tell.
+func _draw_padlock() -> void:
+
+	var p : Vector2 = Vector2(0.0, -DOOR_H * 0.55)
+	var body : Color = Color(0.88, 0.74, 0.30, 1.0)
+	var dark : Color = Color(0.28, 0.20, 0.09, 1.0)
+	draw_arc(p + Vector2(0.0, -7.0), 8.0, PI, TAU, 16, dark, 4.0)   # shackle
+	var body_rect : Rect2 = Rect2(p.x - 11.0, p.y, 22.0, 17.0)
+	draw_rect(body_rect, body)
+	draw_rect(body_rect, dark, false, 2.0)
+	draw_circle(p + Vector2(0.0, 7.0), 3.0, dark)                   # keyhole
+	draw_rect(Rect2(p.x - 1.3, p.y + 7.0, 2.6, 5.0), dark)
 
 
 # Vertical wooden slab + flat threshold diamond. Origin = foot of door.

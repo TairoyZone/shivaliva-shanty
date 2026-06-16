@@ -1014,12 +1014,23 @@ func _make_slot(slot: Dictionary, index: int = -1) -> Control:
 
 
 # Per-item icon. Wood/ore reuse the procedural icons; unknown items get a placeholder swatch.
+## Per-key metal hue so the three door keys read apart in the backpack (the [KeyIcon] tint).
+const KEY_TINTS : Dictionary = {
+	"key_mine": Color(0.66, 0.70, 0.76, 1.0),    # iron grey — the Mine
+	"key_grove": Color(0.55, 0.78, 0.42, 1.0),   # mossy green — the Grove
+	"key_jungle": Color(0.95, 0.78, 0.32, 1.0),  # gold — the Jungle Ordeal
+}
+
 func _make_item_icon(item_id: String) -> Control:
 
 	if item_id == PlayerState.ITEM_WOOD:
 		return WoodIcon.new()
 	if item_id == PlayerState.ITEM_ORE:
 		return OreIcon.new()
+	if item_id.begins_with("key_"):   # door keys — one icon, tinted per key so they read apart
+		var k : KeyIcon = KeyIcon.new()
+		k.key_tint = KEY_TINTS.get(item_id, Color(0.95, 0.82, 0.32, 1.0))
+		return k
 	if PlayerState.is_weapon(item_id):   # weapons are items now — draw their weapon icon
 		var w : WeaponIcon = WeaponIcon.new()
 		w.weapon_id = item_id

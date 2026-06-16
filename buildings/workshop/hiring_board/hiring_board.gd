@@ -184,8 +184,10 @@ func _set_hired() -> void:
 
 	if job == Job.FORGE:
 		PlayerState.hired_at_forge = true
+		PlayerState.grant_key(PlayerState.KEY_MINE)     # the digging job hands you the Mine Key
 	else:
 		PlayerState.hired_at_workshop = true
+		PlayerState.grant_key(PlayerState.KEY_GROVE)    # the lumber job hands you the Grove Key
 
 
 func _on_close_pressed() -> void:

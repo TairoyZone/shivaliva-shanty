@@ -149,12 +149,21 @@ const ITEM_WOOD : String = "wood"
 ## The canonical item id for raw ore (mined at the Mine, delivered to
 ## Cinder Troy at the Forge).
 const ITEM_ORE : String = "ore"
+## Door KEYS — earned items (1 max), kept forever; each unlocks a gated door on Cradle Rock. Mine = apply
+## for the digging job (Forge); Grove = apply for the lumber job (Workshop); Jungle = beat the gym ladder.
+## See [method grant_key] + the [Door] `required_key`.
+const KEY_MINE : String = "key_mine"
+const KEY_GROVE : String = "key_grove"
+const KEY_JUNGLE : String = "key_jungle"
 ## Per-item definitions. max_stack is how many fit in one slot — Troy
 ## chose a "tight" backpack (small stacks) so space pressure is felt
 ## early and expansion matters.
 const ITEM_DEFS : Dictionary = {
 	"wood": {"name": "Wood", "max_stack": 50, "value": 1},   # value = the canonical delivery sale rate (WOOD_TO_GOLD_RATE),
 	"ore": {"name": "Ore", "max_stack": 50, "value": 2},     # so NPC barter can never out-pay the dedicated delivery sinks
+	"key_mine": {"name": "Mine Key", "max_stack": 1, "value": 0},     # keys are kept, not sold (value 0)
+	"key_grove": {"name": "Grove Key", "max_stack": 1, "value": 0},
+	"key_jungle": {"name": "Jungle Key", "max_stack": 1, "value": 0},
 }
 ## Fallback stack cap for any item missing from ITEM_DEFS.
 const DEFAULT_MAX_STACK : int = 50
@@ -734,6 +743,8 @@ func ladder_mark_beaten(who: String) -> bool:
 	gym_ladder_beats.append(who)
 	_save()
 	check_new_trophies()   # clearing the top earns the Gym Champion trophy — toast it the moment it lands
+	if ladder_complete():
+		grant_key(KEY_JUNGLE)   # beating the gym hands you the Jungle Key — unlocks the Jungle Ordeal door
 	return true
 
 ## The next rung to fight (the first roster member not yet beaten), or "" if the ladder is cleared.
@@ -1050,6 +1061,19 @@ func add_item(item_id: String, count: int) -> int:
 		var iname : String = String((ITEM_DEFS.get(item_id, {}) as Dictionary).get("name", item_id.capitalize()))
 		log_event("+%d %s" % [count - remaining, iname], Color(0.78, 0.92, 0.7))
 	return remaining
+
+
+## Hand the player a door KEY (idempotent — at most one of each; kept forever). The key lands in the
+## backpack and unlocks its [Door] (`required_key`). No-op + returns false if already held. Used at the
+## job-apply (Mine/Grove keys) + the gym-ladder clear (Jungle key) + the load-time backfill.
+func grant_key(key_id: String) -> bool:
+
+	if item_count(key_id) > 0:
+		return false
+	add_item(key_id, 1)   # toasts "+1 <Key>" + lands it in the bag
+	var kname : String = String((ITEM_DEFS.get(key_id, {}) as Dictionary).get("name", "A key"))
+	log_event("%s in hand — it unlocks a door on Cradle Rock for good." % kname, Color(0.96, 0.86, 0.4))
+	return true
 
 
 ## Remove up to [param count] of [param item_id]. Returns the amount
@@ -2570,6 +2594,15 @@ func _load() -> void:
 					inventory[i] = {"id": w, "count": 1}
 					break
 		owned_weapons = [SkirmishWeapon.DEFAULT_WEAPON]
+	# Door-keys backfill (2026-06-16): older saves earned the hire / gym-champion BEFORE keys existed, so
+	# they hold no key item and would be locked out. Mint the keys their progress already entitles them to.
+	# Direct slot inserts (skip add_item's toast/log — silent on load) only when the bag lacks the key.
+	for pair in [[hired_at_forge, KEY_MINE], [hired_at_workshop, KEY_GROVE], [ladder_complete(), KEY_JUNGLE]]:
+		if bool(pair[0]) and item_count(String(pair[1])) == 0:
+			for i in inventory.size():
+				if (inventory[i] as Dictionary).is_empty():
+					inventory[i] = {"id": String(pair[1]), "count": 1}
+					break
 	_suppress_save = false
 	# Mark already-earned trophies as seen so loading never spam-toasts; only live earns notify.
 	_seed_trophies_seen()

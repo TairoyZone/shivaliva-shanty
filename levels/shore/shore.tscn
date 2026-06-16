@@ -82,6 +82,8 @@ position = Vector2(-456, -320)
 target_scene = "res://levels/forest/forest.tscn"
 target_spawn_anchor = "ToShore"
 marker_label = "To the Grove"
+required_key = "key_grove"
+locked_hint = "The grove path is locked. Apply for the lumber job at the Workshop — Cogwise Godfrey hands you the Grove Key with it."
 
 [node name="Trees" type="Node2D" parent="YSortNode2D/ToForest" unique_id=2116011873]
 y_sort_enabled = true
@@ -116,6 +118,8 @@ position = Vector2(456, -320)
 target_scene = "res://levels/mine/mine.tscn"
 target_spawn_anchor = "ToShore"
 marker_label = "To the Mine"
+required_key = "key_mine"
+locked_hint = "The Mine is locked. Apply for the digging job at the Forge — Cinder Troy hands you the Mine Key with it."
 
 [node name="Boulders" type="Node2D" parent="YSortNode2D/ToMine" unique_id=1520059860]
 y_sort_enabled = true
@@ -151,6 +155,77 @@ size_variation = 1.2
 [node name="Boulder8" parent="YSortNode2D/ToMine/Boulders" unique_id=2062122306 instance=ExtResource("11_1n1ob")]
 position = Vector2(176, -56)
 size_variation = 1.2
+
+[node name="JungleEntry" parent="YSortNode2D" unique_id=2119106129 instance=ExtResource("10_door")]
+position = Vector2(-632, 256)
+target_scene = "uid://cq7126vj7do7h"
+target_spawn_anchor = "ForestExit"
+marker_label = "Into the Jungle Ordeal"
+spawn_offset = Vector2(0, -60)
+required_key = "key_jungle"
+locked_hint = "The Jungle Ordeal is sealed. Become Gym Champion at the Cradle Gym to earn the Jungle Key."
+
+[node name="Boulders" type="Node2D" parent="YSortNode2D/JungleEntry" unique_id=881768003]
+y_sort_enabled = true
+
+[node name="Boulder" parent="YSortNode2D/JungleEntry/Boulders" unique_id=1601825587 instance=ExtResource("11_1n1ob")]
+position = Vector2(-104, -80)
+size_variation = 1.2
+
+[node name="Boulder2" parent="YSortNode2D/JungleEntry/Boulders" unique_id=1317693181 instance=ExtResource("11_1n1ob")]
+position = Vector2(0, -112)
+size_variation = 1.2
+
+[node name="Boulder3" parent="YSortNode2D/JungleEntry/Boulders" unique_id=28129019 instance=ExtResource("11_1n1ob")]
+position = Vector2(8, 112)
+size_variation = 1.2
+
+[node name="Boulder4" parent="YSortNode2D/JungleEntry/Boulders" unique_id=177429198 instance=ExtResource("11_1n1ob")]
+position = Vector2(136, 24)
+size_variation = 1.2
+
+[node name="Boulder5" parent="YSortNode2D/JungleEntry/Boulders" unique_id=322663458 instance=ExtResource("11_1n1ob")]
+position = Vector2(88, 64)
+size_variation = 1.2
+
+[node name="Boulder6" parent="YSortNode2D/JungleEntry/Boulders" unique_id=234579225 instance=ExtResource("11_1n1ob")]
+position = Vector2(-80, -128)
+size_variation = 1.2
+
+[node name="Boulder7" parent="YSortNode2D/JungleEntry/Boulders" unique_id=725062577 instance=ExtResource("11_1n1ob")]
+position = Vector2(-88, -32)
+size_variation = 1.2
+
+[node name="Boulder8" parent="YSortNode2D/JungleEntry/Boulders" unique_id=1807197562 instance=ExtResource("11_1n1ob")]
+position = Vector2(176, -56)
+size_variation = 1.2
+
+[node name="Trees" type="Node2D" parent="YSortNode2D/JungleEntry" unique_id=2015408246]
+y_sort_enabled = true
+
+[node name="ForestTree" parent="YSortNode2D/JungleEntry/Trees" unique_id=149602460 instance=ExtResource("10_170tr")]
+position = Vector2(80, 136)
+
+[node name="ForestTree3" parent="YSortNode2D/JungleEntry/Trees" unique_id=1711191419 instance=ExtResource("10_170tr")]
+position = Vector2(-24, -96)
+
+[node name="ForestTree8" parent="YSortNode2D/JungleEntry/Trees" unique_id=1244788009 instance=ExtResource("10_170tr")]
+position = Vector2(-72, -24)
+
+[node name="ForestTree4" parent="YSortNode2D/JungleEntry/Trees" unique_id=1741803285 instance=ExtResource("10_170tr")]
+position = Vector2(56, -80)
+
+[node name="ForestTree5" parent="YSortNode2D/JungleEntry/Trees" unique_id=1898528378 instance=ExtResource("10_170tr")]
+position = Vector2(104, -8)
+
+[node name="ForestTree6" parent="YSortNode2D/JungleEntry/Trees" unique_id=271462311 instance=ExtResource("10_170tr")]
+position = Vector2(-160, -40)
+
+[node name="ForestTree7" parent="YSortNode2D/JungleEntry/Trees" unique_id=1783955247 instance=ExtResource("10_170tr")]
+position = Vector2(-48, 80)
+
+[node name="ForestTree2" parent="YSortNode2D/JungleEntry/Trees" unique_id=272030747 instance=ExtResource("10_170tr")]
+position = Vector2(-160, 40)
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=1533197401]
 layer = 5
