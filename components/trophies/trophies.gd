@@ -24,6 +24,7 @@ const ALL : Array = [
 	{"id": "gemcutter", "name": "Gemcutter", "desc": "Reach Master rank at Gem Drop."},
 	{"id": "card_shark", "name": "Card Shark", "desc": "Reach Master rank at Poker."},
 	{"id": "skirmisher", "name": "Skirmisher", "desc": "Reach Master rank at Skirmish."},
+	{"id": "badge_of_honour", "name": "Badge of Honour", "desc": "Conquer the Jungle Ordeal — best every beast up to the Jungle King."},
 	{"id": "first_voyage", "name": "First Voyage", "desc": "Complete your maiden voyage."},
 	{"id": "tournament_champ", "name": "Tournament Champion", "desc": "Win a Gem Drop tournament."},
 	{"id": "full_purse", "name": "Full Purse", "desc": "Earn 1,000 gold across your career."},
@@ -46,6 +47,8 @@ static func is_earned(id: String) -> bool:
 			return _mastered("poker")
 		"skirmisher":
 			return _mastered("skirmish")
+		"badge_of_honour":
+			return PlayerState.ordeal_complete()
 		"first_voyage":
 			return PlayerState.frontier_unlocked
 		"tournament_champ":

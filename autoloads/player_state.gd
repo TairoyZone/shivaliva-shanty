@@ -691,6 +691,7 @@ func ordeal_mark_defeated(id: String) -> bool:
 		return false
 	jungle_ordeal_beats.append(id)
 	_save()
+	check_new_trophies()   # beating the King earns the Badge of Honour — toast it the moment it lands
 	return true
 
 ## All four MINOR beasts down → the King's gate is reachable/active.

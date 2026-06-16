@@ -26,6 +26,10 @@ const BEASTS : Dictionary = {
 	"king": {"path": "res://puzzles/skirmish/beasts/beast_jungle_king.tres", "label": "The Jungle King", "color": Color(0.72, 0.22, 0.26, 1.0)},
 }
 
+## Rapport every islander gains when you win the whole Ordeal — the town-wide respect (one-time; the
+## defeat record is idempotent so it can't be farmed).
+const TOWN_RESPECT : int = 12
+
 const GROUND : Color = Color(0.16, 0.22, 0.13, 1.0)
 const GROUND_PATH : Color = Color(0.22, 0.27, 0.16, 1.0)
 const FOLIAGE_DARK : Color = Color(0.08, 0.16, 0.08, 1.0)
@@ -195,9 +199,18 @@ func _resolve_fight_return() -> void:
 		if PlayerState.ordeal_mark_defeated(id):
 			var label : String = String(BEASTS.get(id, {}).get("label", "the beast"))
 			if id == PlayerState.ORDEAL_KING:
-				PlayerState.log_event("The Jungle King falls! The Ordeal is won.", Color(1.0, 0.86, 0.4))
+				PlayerState.log_event("The Jungle King falls! The Ordeal is won — the island salutes you.", Color(1.0, 0.86, 0.4))
+				_grant_town_respect()   # the whole town hears of it (+ the Badge of Honour, via the trophy check)
 			else:
 				PlayerState.log_event("%s is beaten — the way opens." % label, Color(0.7, 0.95, 0.6))
+
+
+# Win the Ordeal → every islander gains rapport (the town-wide respect). One-time (gated by the idempotent
+# defeat record above), so it can't be farmed.
+func _grant_town_respect() -> void:
+
+	for profile in NpcRegistry.all():
+		PlayerState.add_affinity(profile.npc_name, TOWN_RESPECT)
 
 
 func _draw() -> void:
