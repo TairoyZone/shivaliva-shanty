@@ -487,7 +487,12 @@ func _build_ui() -> void:
 	title.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
 	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	title.add_theme_constant_override("outline_size", 4)
-	title.position = Vector2(40.0, 18.0)
+	# Centred across the top (full-width label, centred text) so it clears the Leave button (top-left) +
+	# the Chat button (top-right) — was pinned top-left, overlapping Leave (Troy 2026-06-16).
+	title.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	title.offset_top = 18.0
+	title.offset_bottom = 54.0
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_ui.add_child(title)
 
 	for c in _combatants:
