@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://cq4v8wtc70t4n" path="res://levels/forest/forest.gd" id="1_forest"]
 [ext_resource type="TileSet" uid="uid://ttl82eyaqrvu" path="res://assets/iso/isometric_tileset.tres" id="2_05q5h"]
 [ext_resource type="PackedScene" uid="uid://blr4e33qxprt2" path="res://levels/door/door.tscn" id="2_door"]
-[ext_resource type="PackedScene" path="res://puzzles/lumberjacking/station/station.tscn" id="3_sign"]
+[ext_resource type="PackedScene" uid="uid://brer52jj4hmi7" path="res://puzzles/lumberjacking/station/station.tscn" id="3_sign"]
 [ext_resource type="PackedScene" path="res://levels/forest/tree.tscn" id="4_tree"]
 
 [sub_resource type="StyleBoxFlat" id="banner_style"]
@@ -95,15 +95,6 @@ position = Vector2(0, 280)
 target_scene = "res://levels/shore/shore.tscn"
 target_spawn_anchor = "ToForest"
 marker_label = "Back to Cradle Rock"
-interact_message = ""
-spawn_offset = Vector2(0, -60)
-
-[node name="JungleEntry" parent="YSortNode2D" instance=ExtResource("2_door")]
-position = Vector2(300, -80)
-target_scene = "res://levels/jungle_ordeal/jungle_ordeal.tscn"
-target_spawn_anchor = "ForestExit"
-marker_label = "Into the Jungle Ordeal"
-interact_message = ""
 spawn_offset = Vector2(0, -60)
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=2043595081]

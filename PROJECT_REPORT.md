@@ -1,6 +1,6 @@
 # Shivaliva Shanty — Project Report
 
-_Last updated: 2026-06-16_
+_Last updated: 2026-06-17_
 
 ## What it is
 A single-player-first, retro-charming **puzzle-skill adventure** among floating sky-islands — a
@@ -11,9 +11,9 @@ term is reskinned to a sky/Stardust equivalent ("the Stardust" = the abyss below
 
 ## Dev journey + velocity (the numbers)
 _Recompute these from git each report — first-commit date, `git rev-list --count HEAD`, `.gd`/`.tscn` line counts._
-- **Started: ~2026-05-24/25** (first locked design calls) → **~23 days** as of 2026-06-16.
-- **434 commits** (git baseline 2026-06-03; ~13 active git days).
-- **~48,000 lines of hand-built game** — **~44,000 GDScript** across **209 `.gd` files** (incl. ~19 dev/screenshot tool scripts in `tools/`) + **~3,735 lines** across **101 scenes** (plus a ~242-line key-safe chat proxy). Full-working-tree count from git (a prior figure under-counted by reading tracked files only).
+- **Started: ~2026-05-24/25** (first locked design calls) → **~24 days** as of 2026-06-17.
+- **469 commits** (git baseline 2026-06-03; ~14 active git days).
+- **~50,000 lines of hand-built game** — **~45,700 GDScript** across **229 `.gd` files** (incl. ~34 dev/screenshot tool scripts in `tools/`) + **~4,040 lines** across **117 scenes** + **15 autoloads** (plus a ~242-line key-safe chat proxy). Counts from `git ls-files` (full working tree).
 - **Scope:** a walkable iso overworld + a 9-NPC cast · **7 full mini-games** (each a Board+Scene engine w/ AI +
   animation + mastery) · the **voyage meta-system** (deck, set-sail routes, charts, duty reports, a LIVE
   background boarding melee, sinkable ships) · **AI-powered NPC chat** (LLM via a key-safe proxy — a novel hook,
@@ -21,7 +21,7 @@ _Recompute these from git each report — first-commit date, `git rev-list --cou
   a social parlor · and a **mobile-web (HTML5) port** with full touch controls.
 - **What it'd take a normal person:** this scope is realistically **~10–14 months** of solid solo-dev work
   (7 polished mini-games alone ≈ 4–6 months) — **1.5–2+ years for most hobbyists** (many never finish). Troy
-  did it in **~22 days → roughly a 20–25× pace.**
+  did it in **~23 days → roughly a 20–25× pace.**
 
 ## Status: DEMO LIVE on itch.io (Windows + mobile web) → polishing from real play
 **Locked 2026-06-05:** the core loop is done. **7 puzzles is the final count — no more puzzles.** Since
@@ -52,9 +52,26 @@ puzzle's own HUD. Lots still to tune on real devices, but reachability-wise this
 | **Patchworks** | Block-blast hull-repair — fill a row/column to seal the ship's holes |
 
 ## The world + economy
-- **Cradle Rock** (the playable island): shore, tavern, forest, mine, interiors, the Skydock. A locked
-  **9-NPC cast** (Brian, Jericho, Kerr, Cinder Troy, Godfrey, Mia, Jade, Ellison, Geneva) with jobs + puzzle
-  pipelines. Each persona carries pronouns + a grounded `chat_role` (what they do/offer in the real systems).
+- **Cradle Rock** (the playable island): shore, tavern, forest, mine, interiors, the Skydock, the **Cradle Gym**.
+  A locked **9-NPC cast** (Brian, Jericho, Kerr, Cinder Troy, Godfrey, Mia, Jade, Ellison, Geneva) with jobs +
+  puzzle pipelines. Each persona carries pronouns + a grounded `chat_role` (what they do/offer in the real systems).
+- **The Cradle Gym + the Jungle Ordeal** (new 2026-06-16): Jade's old healer's hut is now the **Cradle Gym** —
+  Hollow Ellison runs a friendly Skirmish **ladder** (spar the whole cast rung-by-rung, easiest→hardest, Ellison
+  pinned to the top; clear it = the **Gym Champion** trophy); Mossy Jade heals fighters free. Beyond the forest,
+  the **Jungle Ordeal** is a hand-authored iso maze of five self-blocking **beast gates** (Lion → Gorilla → Rhino
+  → Bear → the Jungle King) — *serious* bouts; clear it for the **Badge of Honour** + a one-time town-wide respect bump.
+- **Fighter HEALTH → footing** (replaced hull-holes 2026-06-16): your fighter carries **health** (0–100, persisted)
+  that drives the Skirmish **dead-block footing** — `(1 − health/100) × 0.80`, so a floored fighter starts a serious
+  bout up to **80% buried** (each buried row gapped + diggable, so still playable). Losing a serious bout docks 20
+  health; **rest at the gym (Jade) or a bed** to recover. Friendly gym-ladder bouts carry no stakes.
+- **Progression by earned keys** (2026-06-16): the Mine / Grove / Jungle doors are **locked** until you hold the
+  matching key (a kept-forever backpack item, padlock on the door). The Mine + Grove keys come from the
+  Forge/Workshop **jobs — but the owners (Cinder Troy / Cogwise Godfrey) won't hire you until you BEAT THEM at the
+  gym ladder**; the Jungle key comes from becoming Gym Champion. The gym is the spine that gates the jobs + the jungle.
+- **Day/night + a clock + worded rapport:** a universal procedural **day/night cycle** (world tint + a sun/moon arc
+  + a day-sky gradient) washes every outdoor scene, driven by `GameClock` (~30 real min = 1 in-game day), with a
+  persistent top-right brass **clock** widget; NPC chat is fed the live hour. Affinity now reads as **worded tiers**
+  on the Profile (Despised … Stranger … Friend … Confidant; the Stardew hearts UI retired).
 - **Economy:** ONE earned currency = **gold**. Earn-and-keep — no decay, no upkeep, no premium
   currency, no pay-to-win. (Legally safe *only* while gold stays earn-only — never real-money-purchasable.)
 - **Multiplayer direction (decided, not yet built):** co-op (Stardew-style, ~4–8p, one shared world) +
@@ -103,6 +120,29 @@ The endgame loop, reskinned from YPP pillaging. You job onto a crew at the Skydo
 - Build proactively, flag only big design forks; commit freely; **never push without an explicit ask.**
 
 ## Session changelog (newest first — older per-session detail intentionally condensed)
+- **2026-06-16→17 — A TRAINING + CHALLENGE + PROGRESSION LAYER: the Cradle Gym, the Jungle Ordeal, health-stakes
+  combat, day/night + a clock, earned keys, and a prove-yourself hire gate.** 🥊 Jade's healer's hut became the
+  **Cradle Gym** (full file/folder/class rename `healers_hut → cradle_gym`; Ellison = master, Jade = free healer,
+  both made role-aware) with a friendly **Skirmish LADDER** (whole cast easiest→hardest, Ellison pinned last,
+  rungs unlock one at a time → **Gym Champion** trophy; the old free-Spar option was retired everywhere). Past the
+  forest, the **Jungle Ordeal**: a beast gauntlet of five self-blocking gates (Lion→Gorilla→Rhino→Bear→Jungle King)
+  → **Badge of Honour** + town respect — rebuilt as a **hand-authored, editor-editable iso maze** baked into the
+  scene (real `TileMapLayer` nodes painted with Troy's atlas, not runtime-generated) + the universal Stardust sky.
+  ⚔️ Fighter **HEALTH** (0–100) now drives the Skirmish dead-block **footing** (`(1−h/100)×0.80`, up to 80% buried
+  at defeat, gapped/diggable; serious losses dock 20, rest to recover) — **replacing the old hull-holes footing**.
+  🌅 A universal procedural **day/night cycle** (world tint + sun/moon arc + day-sky gradient on the outdoor
+  `SKY_LOCATIONS`, `GameClock` = 30 real min/day) + a persistent top-right **clock** widget (deck-condition card
+  moved to the top-LEFT); the live hour is fed into NPC chat. 💛 Affinity hearts UI **retired → worded tiers** on
+  the Profile. 🔒 **Earned-key progression**: Mine/Grove/Jungle doors lock until you hold the key (kept-forever
+  backpack item) — **and the shop owners (Cinder Troy / Cogwise Godfrey) won't hire you for the mining/lumber jobs
+  until you BEAT THEM at the gym ladder** (Jungle key = Gym Champion). 🃏 Poker + Gem Drop went **cash-only** in the
+  parlor (free table survives only in tournaments). 🪓 Lumberjacking now **holds the break animation** before tiles
+  fall (YPP swordfight feel). HUD reshuffle (gold purse hidden → gold in the Backpack; vessel/Duty-Report card top-
+  right then clock takes the corner) + boarding title centred. The NPC **gazetteer + the three relevant `chat_role`s
+  were updated** so the cast speaks accurately to the gym, the jungle, the keys, the hire gate, and cash-only tables.
+  Both itch builds re-exported + re-zipped; fresh storefront screenshots of all 7 puzzles staged in `press/itch/`.
+  ⚠️ NEEDS PLAYTEST: the gym-ladder → jobs → jungle progression curve, the health-rest loop, and where Cinder
+  Troy/Godfrey sit on the ladder (both ~mid, "Regular" tier) so the basic jobs don't gate too late.
 - **2026-06-15→16 — VISUAL-POLISH PASS COMPLETE (all 7 puzzles) + a HOLD mechanic + two feel fixes.** 🎨 Finished
   the per-puzzle glow-up across the board (Troy signed off each): **Lumberjacking** — Minecraft-style oak/birch/
   spruce/jungle PLANKS that merge into one continuous surface on a 2×2+ fuse (fixed a real merge bug), bare
@@ -189,6 +229,10 @@ The endgame loop, reskinned from YPP pillaging. You job onto a crew at the Skydo
   trophies / save-load / onboarding. **Locked 2026-06-05:** 7 puzzles is the final count; polish, not content.
 
 ## What's next
+- **🥊 PLAYTEST THE NEW PROGRESSION SPINE (the immediate one):** gym ladder → beat Cinder Troy/Godfrey → get the
+  job + key → mine/chop; clear the ladder → Gym Champion → Jungle key → the Ordeal. Does the curve feel right, or
+  do the basic jobs gate too late (Troy 0.6 / Godfrey 0.45 sit mid-ladder)? Does the **health → rest → re-fight**
+  loop read clearly? Is the baked Jungle maze (now Troy's to paint/decorate in the editor) fun to navigate?
 - **🎨 THE PER-PUZZLE VISUAL-POLISH PASS — ✅ COMPLETE (all 7 glowed up).** Each puzzle now has a procedural
   `ScenicBackdrop` + a piece/material reskin, screenshot-verified, Troy-signed-off. Held the visual-HIERARCHY rule
   (humble/matte for common pieces, shiny only for the rare) + the YPP reference where it mattered (Loft inside the
