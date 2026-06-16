@@ -228,15 +228,14 @@ func _sync_create_defaults() -> void:
 	_create_seats = clampi(default_seats, int(_active["min_seats"]), int(_active["max_seats"]))
 
 
-# Parlor play is cash-only now — can the player cover the buy-in for the chosen game/stake? Gem Drop
-# bills at exit (never up-front) and caps the loss to your gold, so it's always affordable.
+# Parlor play is cash-only now — can the player cover the stake for the chosen game? Poker checks the
+# buy-in; every other game gates on its cash_cost, whether that's charged at launch or billed at exit
+# (Gem Drop). You must be able to cover the stake to sit down.
 func _can_afford() -> bool:
 
 	if _is_poker():
 		return PlayerState.total_coins >= PokerConfig.buy_in_min(_create_min_bet)
-	if bool(_active.get("charges_buy_in", false)):
-		return PlayerState.total_coins >= int(_active.get("cash_cost", 0))
-	return true
+	return PlayerState.total_coins >= int(_active.get("cash_cost", 0))
 
 
 # --- Handlers ---------------------------------------------------------

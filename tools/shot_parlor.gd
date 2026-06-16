@@ -20,11 +20,9 @@ func _go() -> void:
 	await get_tree().create_timer(0.9).timeout
 
 	_set_gold(5000)
-	await _shoot("poker", "look_parlor_poker_cash.png")    # affordable: Sit enabled, cash note, no checkbox
-	_set_gold(5)
-	await _shoot("poker", "look_parlor_poker_broke.png")   # broke: Sit disabled + orange "need 20 gold" note
-	_set_gold(5000)
-	await _shoot("gem_drop", "look_parlor_gemdrop.png")    # exit-billed: always affordable, plain cash note
+	await _shoot("gem_drop", "look_parlor_gemdrop_cash.png")   # affordable: Sit enabled, "win +10 / lose 5"
+	_set_gold(3)
+	await _shoot("gem_drop", "look_parlor_gemdrop_broke.png")  # broke: Sit disabled + "need 5 gold" note
 	get_tree().quit()
 
 

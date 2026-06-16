@@ -3,6 +3,7 @@
 ## click-to-dismiss, and the winnings helper from [PuzzleScene]; this
 ## script only owns puzzle-specific UI label bindings + signal wiring. Extends [VersusPuzzleScene] so the
 ## NPC opponent inherits situational awareness + the talk-influence seam (open board → no _own_secret_view).
+class_name GemDropScene
 extends VersusPuzzleScene
 
 
@@ -14,9 +15,9 @@ const HUMAN_COLOR : Color = Palette.GOLD_TEXT
 const AI_COLOR : Color = Palette.GEM_RUBY_LIGHT
 const INACTIVE_DIM : float = 0.45  # multiplier on the identity color
 const WINNINGS_ON_VICTORY := 10
-## Gold taken on the way OUT if the human didn't win this
-## session. Covers both completed losses and mid-match Leaves —
-## winners exit free. Should match [member GemDropTable.play_cost].
+## Gold taken on the way OUT if the human didn't win this session. Covers both completed losses and
+## mid-match Leaves — winners exit free. This is the STAKE: [GemDropTable] reads it for the lobby's
+## affordability gate + note, so the gate, the label, and the billing never disagree.
 const PLAY_COST_ON_EXIT : int = 5
 ## Rapport gained with the opponent for finishing a match, plus a bonus
 ## for beating them.

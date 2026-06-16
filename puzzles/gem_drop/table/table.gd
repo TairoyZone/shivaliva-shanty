@@ -10,9 +10,10 @@ extends ParlorTable
 
 
 # --- Parlor config (see [ParlorTable]) --------------------------------
-# Gem Drop: fixed 2 seats (you + 1 opponent); NO entry buy-in — the cost
-# is billed at puzzle EXIT (a clean -5 toast), and a FREE table suppresses
-# it entirely inside [GemDropScene]. So it charges nothing at launch.
+# Gem Drop: fixed 2 seats (you + 1 opponent); NO entry buy-in — the stake is billed at puzzle EXIT (a
+# clean -5 toast on a loss). It still charges nothing at LAUNCH, but you must be able to COVER the stake
+# to sit (the lobby gates the Sit button on _cash_cost, same as poker's buy-in). Numbers come from
+# [GemDropScene] so the gate, the note, and the actual billing never disagree.
 
 func _game_id() -> String:
 	return "gem_drop"
@@ -20,12 +21,14 @@ func _game_id() -> String:
 func _game_name() -> String:
 	return "Gem Drop"
 
+# The stake you risk (the loss billed at exit) — what the lobby checks you can afford before seating you.
 func _cash_cost() -> int:
-	return 0
+	return GemDropScene.PLAY_COST_ON_EXIT
 
 func _cash_note() -> String:
-	return "win +10 gold, lose 5 on a loss"
+	return "win +%d gold, lose %d on a loss" % [GemDropScene.WINNINGS_ON_VICTORY, GemDropScene.PLAY_COST_ON_EXIT]
 
+# Billed at EXIT, not launch — so launch_table never deducts up front (the gate already ensured you can pay).
 func _charges_buy_in() -> bool:
 	return false
 
