@@ -12,3 +12,6 @@ npc_chat.cfg
 # Exported builds
 /build/
 /export/
+
+# Dev-only verification screenshots (the shot_*.gd tools dump here — throwaway, not source)
+/tools/_shots/
