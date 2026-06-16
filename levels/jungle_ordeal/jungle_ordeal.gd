@@ -15,7 +15,9 @@ const MAZE_SEED : int = 20260616
 
 const GATE_SCENE : PackedScene = preload("res://levels/jungle_ordeal/beast_gate.tscn")
 const DOOR_SCENE : PackedScene = preload("res://levels/door/door.tscn")
-const FOREST_SCENE : String = "res://levels/forest/forest.tscn"
+## The Ordeal entrance lives on the SHORE now (Troy 2026-06-16), so the exit returns there — to the shore's
+## "JungleEntry" door, which spawns the player right in front of it.
+const SHORE_SCENE : String = "res://levels/shore/shore.tscn"
 
 # Per-beast gate config (id → its profile, display name, hue), in escalating order + the King.
 const BEASTS : Dictionary = {
@@ -153,9 +155,9 @@ func _place_props() -> void:
 	var door : Node = DOOR_SCENE.instantiate()
 	door.name = "ForestExit"
 	door.position = start_world
-	door.target_scene = FOREST_SCENE
-	door.target_spawn_anchor = "JungleEntry"
-	door.marker_label = "Back to the forest"
+	door.target_scene = SHORE_SCENE
+	door.target_spawn_anchor = "JungleEntry"   # the shore door you came in through — spawns you in front of it
+	door.marker_label = "Back to Cradle Rock"
 	door.spawn_offset = Vector2(0, 48)
 	add_child(door)
 
