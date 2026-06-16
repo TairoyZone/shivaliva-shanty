@@ -1,0 +1,32 @@
+[gd_scene load_steps=3 format=3 uid="uid://cbeastgate0ord"]
+
+[ext_resource type="Script" path="res://levels/jungle_ordeal/beast_gate.gd" id="1"]
+
+[sub_resource type="RectangleShape2D" id="1"]
+size = Vector2(150, 150)
+
+[node name="BeastGate" type="Area2D"]
+collision_layer = 4
+collision_mask = 0
+monitoring = false
+script = ExtResource("1")
+marker_label = "Beast"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -40)
+shape = SubResource("1")
+
+[node name="Tooltip" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+modulate = Color(0.98, 0.92, 0.55, 1)
+z_index = 1
+offset_left = -150.0
+offset_top = -126.0
+offset_right = 150.0
+offset_bottom = -102.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+vertical_alignment = 1

@@ -98,6 +98,14 @@ marker_label = "Back to Cradle Rock"
 interact_message = ""
 spawn_offset = Vector2(0, -60)
 
+[node name="JungleEntry" parent="YSortNode2D" instance=ExtResource("2_door")]
+position = Vector2(300, -80)
+target_scene = "res://levels/jungle_ordeal/jungle_ordeal.tscn"
+target_spawn_anchor = "ForestExit"
+marker_label = "Into the Jungle Ordeal"
+interact_message = ""
+spawn_offset = Vector2(0, -60)
+
 [node name="UI" type="CanvasLayer" parent="." unique_id=2043595081]
 layer = 5
 

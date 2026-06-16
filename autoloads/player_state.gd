@@ -672,6 +672,38 @@ var skirmish_opponent : String = ""
 ## false. Set by the beast-fight launcher; consumed (cleared) by SkirmishDuel on load.
 var skirmish_stakes : bool = false
 
+# --- Jungle Ordeal (the Cradle Gym's beast trial) ----------------------
+## The four minor beasts, in escalating order; clearing all four opens the way to the King.
+const ORDEAL_BEASTS : Array[String] = ["lion", "gorilla", "rhino", "bear"]
+const ORDEAL_KING : String = "king"
+## Beast ids the player has defeated in the Jungle Ordeal (persisted, so progress survives leaving).
+var jungle_ordeal_beats : Array = []
+## Transient: the beast id currently being fought — the Ordeal scene reads it on RETURN (with
+## last_skirmish_won) to record the win, then clears it.
+var jungle_ordeal_pending : String = ""
+
+func ordeal_defeated(id: String) -> bool:
+	return id in jungle_ordeal_beats
+
+## Record a beast defeated (idempotent, persisted). Returns true if this was a NEW defeat.
+func ordeal_mark_defeated(id: String) -> bool:
+	if id.is_empty() or id in jungle_ordeal_beats:
+		return false
+	jungle_ordeal_beats.append(id)
+	_save()
+	return true
+
+## All four MINOR beasts down → the King's gate is reachable/active.
+func ordeal_minors_cleared() -> bool:
+	for b in ORDEAL_BEASTS:
+		if not (b in jungle_ordeal_beats):
+			return false
+	return true
+
+## The whole Ordeal beaten (the King is down) → the badge-of-honour is earned.
+func ordeal_complete() -> bool:
+	return ORDEAL_KING in jungle_ordeal_beats
+
 # --- Tournament (transient — drives the TournamentScene bracket flow) ---
 ## True while the player is in a tournament bracket.
 var tournament_active : bool = false
@@ -2384,6 +2416,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "total_coins", total_coins)
 	config.set_value(SAVE_SECTION, "lifetime_coins_earned", lifetime_coins_earned)
 	config.set_value(SAVE_SECTION, "health", health)
+	config.set_value(SAVE_SECTION, "jungle_ordeal_beats", jungle_ordeal_beats)
 	config.set_value(SAVE_SECTION, "inventory", inventory)
 	config.set_value(SAVE_SECTION, "inventory_capacity", inventory_capacity)
 	config.set_value(SAVE_SECTION, "hired_at_workshop", hired_at_workshop)
@@ -2436,6 +2469,7 @@ func _load() -> void:
 	# Backfill old saves (pre-trophy) with their current balance as lifetime.
 	lifetime_coins_earned = int(config.get_value(SAVE_SECTION, "lifetime_coins_earned", total_coins))
 	health = int(config.get_value(SAVE_SECTION, "health", HEALTH_MAX))
+	jungle_ordeal_beats = config.get_value(SAVE_SECTION, "jungle_ordeal_beats", [])
 	hired_at_workshop = bool(config.get_value(SAVE_SECTION, "hired_at_workshop", false))
 	godfrey_lumber_stock = int(config.get_value(SAVE_SECTION, "godfrey_lumber_stock", 0))
 	hired_at_forge = bool(config.get_value(SAVE_SECTION, "hired_at_forge", false))
