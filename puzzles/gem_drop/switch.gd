@@ -207,9 +207,7 @@ func _draw() -> void:
 	for i in samples:
 		draw_colored_polygon(PackedVector2Array([
 			top_edge[i], top_edge[i + 1], bottom_edge[i + 1], bottom_edge[i]]), color_pad)
-	draw_polyline(top_edge, KNOB_HI, 1.6)                                           # lit bronze cradle rim
-	draw_circle(top_edge[0], 2.2, KNOB_HI)                                          # upturned lip horns
-	draw_circle(top_edge[top_edge.size() - 1], 2.2, KNOB_HI)
+	draw_polyline(top_edge, KNOB_HI, 1.6)                                           # lit bronze cradle rim (no lip "horns" — Troy 2026-06-16: they cluttered the board)
 
 	# --- Two screw-bolt PIVOTS, both real axes of rotation (Troy 2026-06-15):
 	# the CUP-HOLDER pivot at the arm tip (the cradle gimbals on it to stay

@@ -33,7 +33,8 @@ const SKILL_GROUPS : Array = [
 	{"label": "Voyage", "puzzles": ["loft", "patchworks"]},   # the shipboard stations — were missing here
 ]
 
-## How many trophies the shelf previews before the "See all" button opens the full TrophiesPanel page.
+## How many trophies the shelf previews before the "See all" button opens the full
+## TrophiesPanel page. 5 in a 3-column grid = a tidy 3-top / 2-bottom window.
 const TROPHY_PREVIEW : int = 5
 
 var _root : VBoxContainer
@@ -220,9 +221,10 @@ func _make_center_column() -> Control:
 		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(none)
 		return col
-	var grid : HFlowContainer = HFlowContainer.new()   # wraps the trophy shelf responsively as more are claimed
-	grid.add_theme_constant_override("h_separation", 6)
-	grid.add_theme_constant_override("v_separation", 8)
+	var grid : GridContainer = GridContainer.new()   # a 3-wide window: 3 medallions on top, 2 below (not a column)
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 10)
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	# The shelf shows a small PREVIEW; the full collection lives on its own TROPHY ROOM page (the button below)
 	# so a growing collection never floods the profile (Troy 2026-06-10).
