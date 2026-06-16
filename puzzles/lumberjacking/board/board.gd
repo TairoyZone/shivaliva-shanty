@@ -93,6 +93,10 @@ const PLANK_MAX : int = 50
 const GRAVITY_FALL_PER_ROW : float = 0.055
 const GRAVITY_FALL_MIN : float = 0.07
 const GRAVITY_FALL_MAX : float = 0.30
+## YPP swordfight feel (Troy 2026-06-16): the surviving tiles do NOT begin falling until the BREAK
+## animation finishes. The shatter tween in [method _free_cell] runs ~0.40s (pop → fade → free); we HOLD
+## roughly that long after triggering the shatters, before the gravity settle. Tune alongside that tween.
+const SHATTER_HOLD : float = 0.36
 ## Knot entry drop — much faster than the gravity settle. YPP-style:
 ## almost instant, but a quick visible streak from above so the eye
 ## registers it fell in rather than blinking into place. Fixed duration
@@ -696,6 +700,12 @@ func _resolve_cascade() -> Dictionary:
 				_free_cell(coord)
 		total_score += pass_score * chain_depth
 		chain_landed.emit(chain_depth)
+		# YPP swordfight: HOLD until the break finishes — surviving tiles only start falling once the
+		# shattering pieces have played out their pop/fade, never overlapping the break (Troy 2026-06-16).
+		if is_inside_tree():
+			await get_tree().create_timer(SHATTER_HOLD).timeout
+		if not is_inside_tree():
+			break
 		await _animate_settle()
 		# Player left mid-cascade → stop touching the (freed) board.
 		if not is_inside_tree():
