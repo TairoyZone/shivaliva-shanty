@@ -53,6 +53,7 @@ var _dim : ColorRect
 var _window : PanelContainer
 ## The "items" (Backpack) page — a Weapon equip bar above the backpack slot grid.
 var _items_page : VBoxContainer
+var _gold_label : Label            # gold total, shown here now (the always-on HUD purse was retired)
 var _bag_row : HBoxContainer       # the Stardew-style "buy a bigger backpack" upgrade row
 var _grid : GridContainer
 ## The Hearts tab — a [RelationshipsView] (Stardew-style social page).
@@ -103,6 +104,7 @@ func _ready() -> void:
 		PlayerState.challenges_changed.connect(_on_trophies_changed)
 		PlayerState.objective_changed.connect(_on_objectives_changed)
 		PlayerState.coins_changed.connect(_on_objectives_changed)
+		PlayerState.coins_changed.connect(_refresh_gold)   # keep the Backpack's gold total live
 		_update_ayo_badge()
 
 
@@ -169,6 +171,26 @@ func _build_skeleton() -> void:
 	_items_page = VBoxContainer.new()
 	_items_page.add_theme_constant_override("separation", 10)
 	vbox.add_child(_items_page)
+	# GOLD — moved here off the always-on top-right HUD purse (Troy 2026-06-16). A coin + the total,
+	# refreshed live on coins_changed (see _refresh_gold).
+	var gold_row : HBoxContainer = HBoxContainer.new()
+	gold_row.add_theme_constant_override("separation", 8)
+	_items_page.add_child(gold_row)
+	var coin : Label = Label.new()
+	coin.text = "◉"
+	coin.add_theme_font_size_override("font_size", 24)
+	coin.add_theme_color_override("font_color", Color(0.98, 0.80, 0.30, 1.0))
+	coin.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	coin.add_theme_constant_override("outline_size", 3)
+	gold_row.add_child(coin)
+	_gold_label = Label.new()
+	_gold_label.add_theme_font_size_override("font_size", 22)
+	_gold_label.add_theme_color_override("font_color", Color(0.98, 0.88, 0.52, 1.0))
+	_gold_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	_gold_label.add_theme_constant_override("outline_size", 3)
+	_gold_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	gold_row.add_child(_gold_label)
+	_refresh_gold()
 	var whint : Label = Label.new()
 	whint.text = "Double-click a weapon to equip it"
 	whint.add_theme_font_size_override("font_size", 13)
@@ -712,6 +734,13 @@ func _make_quest_card(quest: Dictionary) -> Control:
 	detail.custom_minimum_size = Vector2(380.0, 0.0)
 	col.add_child(detail)
 	return card
+
+
+## The Backpack's gold readout (gold lives here now, not an always-on HUD purse).
+func _refresh_gold(_a = null) -> void:
+
+	if _gold_label != null:
+		_gold_label.text = "%d  gold" % PlayerState.total_coins
 
 
 func _on_objectives_changed(_a = null) -> void:

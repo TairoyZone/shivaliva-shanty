@@ -71,6 +71,9 @@ func _ready() -> void:
 	# actually fires on hover.
 	_purse.mouse_filter = Control.MOUSE_FILTER_STOP
 	_purse.tooltip_text = "Gold — your in-world currency. Earned from puzzles, parlor games, and treasures."
+	# Gold moved INTO the Backpack panel — no more always-on top-right purse (Troy 2026-06-16). The node
+	# stays (its count-up + signal wiring still run) so a re-show is trivial, it's just hidden.
+	_purse.visible = false
 	_purse.resized.connect(_on_purse_resized)
 	PlayerState.coins_changed.connect(_on_coins_changed)
 	# A trophy earned anywhere (even mid-puzzle, while this HUD is hidden) pops a TrophyToast

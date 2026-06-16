@@ -624,8 +624,13 @@ func _build_ui() -> void:
 	# before, against the "consolidated panel" intent). Lighter than the meter troughs so the bars still pop;
 	# cool to match the deck's sky-at-altitude theme. See [[cool-deck-hud]].
 	var vitals_card : PanelContainer = PanelContainer.new()
-	vitals_card.offset_left = 14.0
+	# TOP-RIGHT now (was top-LEFT, where it overlapped the pause-menu ☰). The always-on
+	# gold purse that lived here moved into the Backpack, freeing this corner (Troy 2026-06-16).
+	vitals_card.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	vitals_card.offset_right = -14.0
 	vitals_card.offset_top = 12.0
+	vitals_card.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	vitals_card.grow_vertical = Control.GROW_DIRECTION_END
 	var vcs : StyleBoxFlat = StyleBoxFlat.new()
 	vcs.bg_color = Palette.PANEL_TROUGH.lightened(0.05)
 	vcs.border_color = Palette.SKY_FRAME
