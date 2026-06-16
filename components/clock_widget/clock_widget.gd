@@ -5,8 +5,9 @@
 class_name ClockWidget
 extends Control
 
-const W : float = 168.0
+const W : float = 212.0   # wide enough for the longest phase ("The Dead Of Night") so text never bleeds the pill
 const H : float = 64.0
+const TEXT_X : float = 70.0   # left edge of the time + phase text (clears the arc)
 const ARC_C : Vector2 = Vector2(36.0, 44.0)   # arc centre (left side of the pill)
 const ARC_R : float = 26.0
 
@@ -42,18 +43,26 @@ func _ready() -> void:
 	_panel_style.set_border_width_all(2)
 	_panel_style.set_corner_radius_all(12)
 
+	# Both labels are width-bounded + clipped to the pill's inner width, so a long string (e.g. "The Dead Of
+	# Night") can never bleed past the brass background — it stays inside the text column.
+	var text_w : float = W - TEXT_X - 8.0
+
 	_time_label = Label.new()
 	_time_label.add_theme_font_size_override("font_size", 21)
 	_time_label.add_theme_color_override("font_color", TEXT)
 	_time_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	_time_label.add_theme_constant_override("outline_size", 4)
-	_time_label.position = Vector2(70.0, 9.0)
+	_time_label.position = Vector2(TEXT_X, 9.0)
+	_time_label.size = Vector2(text_w, 26.0)
+	_time_label.clip_text = true
 	add_child(_time_label)
 
 	_phase_label = Label.new()
 	_phase_label.add_theme_font_size_override("font_size", 12)
 	_phase_label.add_theme_color_override("font_color", PHASE_TEXT)
-	_phase_label.position = Vector2(70.0, 36.0)
+	_phase_label.position = Vector2(TEXT_X, 37.0)
+	_phase_label.size = Vector2(text_w, 18.0)
+	_phase_label.clip_text = true
 	add_child(_phase_label)
 
 	_refresh(true)
