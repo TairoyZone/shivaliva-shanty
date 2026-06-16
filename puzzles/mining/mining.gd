@@ -39,7 +39,6 @@ const COMBO_NAMES : Array = [
 @onready var _board : MiningBoard = $Board
 @onready var _ore_label : Label = $UI/TopBar/OrePanel/OreLabel
 @onready var _dug_label : Label = $UI/TopBar/DugPanel/DugLabel
-@onready var _ui : CanvasLayer = $UI
 
 
 ## Progress-meter pips (top = first to deplete as you dig).
