@@ -90,6 +90,10 @@ var _opp_lines_label : Label
 func _ready() -> void:
 
 	super._ready()
+	# A fresh bout has no result yet — clear last_skirmish_won so an EARLY LEAVE (before _end_duel fires)
+	# can't read a stale TRUE from a prior win and falsely mark a gym-ladder rung / Jungle Ordeal beast
+	# beaten on return. Only a real resolution (_end_duel) sets it. (Review catch, Troy 2026-06-16.)
+	PlayerState.last_skirmish_won = false
 	_player_weapon = PlayerState.equipped_weapon   # what you've equipped in the inventory
 	_opponent_name = _resolve_opponent()
 	# Chat-reachable + situationally aware foe — the poker hook in the duel too (Troy 2026-06-10). The scope
