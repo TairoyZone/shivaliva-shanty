@@ -113,9 +113,7 @@ func _ready() -> void:
 	_serious_fight = PlayerState.skirmish_stakes
 	PlayerState.skirmish_stakes = false
 	if _serious_fight:
-		for _c in PlayerState.health_footing_clumps():
-			var hf : Dictionary = SkirmishWeapon.make_attack("brawl", 4, _player_board)
-			_player_board.receive_attack(hf["shape"], hf["col"], hf["color"])
+		_player_board.bury_fraction(PlayerState.health_footing_fill())   # low health → buried rows (up to 80%)
 	# The opponent's FIRST piece spawned during its own _ready (before we
 	# connected to piece_spawned), so wake the bot for it now.
 	_on_opponent_spawned()

@@ -258,9 +258,7 @@ func _apply_voyage_footing() -> void:
 				atk = SkirmishWeapon.make_attack("brawl", 4, foe.board)
 				foe.board.receive_attack(atk["shape"], atk["col"], atk["color"])
 	if _player != null:
-		for _c in PlayerState.health_footing_clumps():
-			atk = SkirmishWeapon.make_attack("brawl", 4, _player.board)
-			_player.board.receive_attack(atk["shape"], atk["col"], atk["color"])
+		_player.board.bury_fraction(PlayerState.health_footing_fill())   # low health → buried rows (up to 80%)
 
 
 # --- Per-frame: drive the AI boards (the player's input is pushed in by the view) -----

@@ -186,16 +186,15 @@ const AFFINITY_TIERS : Array = [
 
 ## --- Fighter health (the Skirmish stamina that drives starting footing) ---
 ## A persistent 0..[constant HEALTH_MAX] condition. It DROPS when you LOSE a serious Skirmish (a pillage
-## boarding, a beast bout) and HEALS when you REST at a bed. The LOWER it sits, the more dead-block layers
-## you START a serious fight buried under ([method health_footing_clumps]) — this REPLACED the old
-## hull-holes footing penalty (Troy 2026-06-16). See [[ship-condition-research]].
+## boarding, a beast bout) and HEALS when you REST at a bed. The LOWER it sits, the more of your board you
+## START a serious fight buried under in dead BLOCKAGE rows ([method health_footing_fill]) — this REPLACED
+## the old hull-holes footing penalty (Troy 2026-06-16). See [[ship-condition-research]].
 const HEALTH_MAX : int = 100
 ## Health knocked off per serious defeat (5 straight losses with no rest = floored = max footing).
 const HEALTH_PER_DEFEAT : int = 20
-## Missing-health per starting footing clump (every 20 missing → +1 clump you start buried under).
-const HEALTH_PER_FOOTING_CLUMP : int = 20
-## Cap on low-health starting footing (a floored fighter is handicapped, never auto-topped-out).
-const HEALTH_FOOTING_CAP : int = 5
+## Board fraction buried at ZERO health (defeated) — the MAX footing (Troy 2026-06-16). 0.80 leaves the top
+## 20% open so a floored fighter can still play. Footing scales linearly from 0 (full health) to this.
+const HEALTH_FOOTING_MAX_FILL : float = 0.80
 
 # Permanent state — written to disk.
 var total_coins : int = STARTING_GOLD :
@@ -1653,8 +1652,8 @@ func add_affinity(npc_name: String, amount: int) -> void:
 # --- Fighter health (Skirmish footing) ---------------------------------
 
 ## Knock health down after a serious Skirmish defeat (a pillage boarding, a beast bout). Clamped at 0; the
-## lower it sits, the more buried you start the NEXT serious fight ([method health_footing_clumps]). Logs
-## the hit to the event feed. No-op on a non-positive amount or when already floored.
+## lower it sits, the more of your board you start the NEXT serious fight buried under
+## ([method health_footing_fill]). Logs the hit to the event feed. No-op on a non-positive amount or floored.
 func damage_health(amount: int = HEALTH_PER_DEFEAT) -> void:
 
 	if amount <= 0 or health <= 0:
@@ -1677,13 +1676,13 @@ func is_full_health() -> bool:
 	return health >= HEALTH_MAX
 
 
-## Starting dead-block clumps your board is buried under at the start of a SERIOUS fight, from LOW health
-## (full health → 0). This REPLACED the old hull-holes footing. Every [constant HEALTH_PER_FOOTING_CLUMP]
-## missing → +1 clump, capped at [constant HEALTH_FOOTING_CAP]. Read by boarding_melee + the duel footing.
-func health_footing_clumps() -> int:
+## The FRACTION of your board (0..[constant HEALTH_FOOTING_MAX_FILL]) buried under dead BLOCKAGE rows at
+## the start of a SERIOUS fight, scaling with how worn down you are: 0 at full health → MAX_FILL (0.80) at
+## zero health (defeated). The board turns this into rows ([method SkirmishBoard.bury_fraction]). Read by
+## boarding_melee + the duel footing. This REPLACED the old per-clump footing (Troy 2026-06-16).
+func health_footing_fill() -> float:
 
-	@warning_ignore("integer_division")
-	return clampi((HEALTH_MAX - health) / HEALTH_PER_FOOTING_CLUMP, 0, HEALTH_FOOTING_CAP)
+	return (1.0 - float(health) / float(HEALTH_MAX)) * HEALTH_FOOTING_MAX_FILL
 
 
 ## The saved chat history with [param npc_name] (a deep copy) — what they remember of past conversations.

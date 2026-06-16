@@ -12,14 +12,14 @@ func _go() -> void:
 	var fails : int = 0
 	var P : Object = PlayerState
 
-	# 1) health -> footing clumps: clampi((100 - h) / 20, 0, 5)
-	var cases : Array = [[100, 0], [99, 0], [80, 1], [79, 1], [60, 2], [40, 3], [20, 4], [1, 4], [0, 5]]
+	# 1) health -> footing FILL fraction: (1 - h/100) * 0.80
+	var cases : Array = [[100, 0.0], [80, 0.16], [50, 0.40], [20, 0.64], [0, 0.80]]
 	for c in cases:
 		P.health = int(c[0])
-		var got : int = P.health_footing_clumps()
-		if got != int(c[1]):
+		var got : float = P.health_footing_fill()
+		if absf(got - float(c[1])) > 0.001:
 			fails += 1
-			print("FAIL footing: health %d -> %d (expected %d)" % [int(c[0]), got, int(c[1])])
+			print("FAIL footing: health %d -> %.3f (expected %.3f)" % [int(c[0]), got, float(c[1])])
 
 	# 2) damage clamps at 0
 	P.health = 10
@@ -40,9 +40,10 @@ func _go() -> void:
 	if P.health != P.HEALTH_MAX - P.HEALTH_PER_DEFEAT:
 		fails += 1
 		print("FAIL defeat: expected %d, got %d" % [P.HEALTH_MAX - P.HEALTH_PER_DEFEAT, P.health])
-	if P.health_footing_clumps() != 1:
+	# one defeat (health 80) → fill (1 - 0.8)*0.8 = 0.16
+	if absf(P.health_footing_fill() - 0.16) > 0.001:
 		fails += 1
-		print("FAIL defeat footing: expected 1 clump after one defeat, got %d" % P.health_footing_clumps())
+		print("FAIL defeat footing: expected 0.16 fill after one defeat, got %.3f" % P.health_footing_fill())
 
 	print("HEALTH TEST: %s (%d failure(s))" % ["PASS" if fails == 0 else "FAIL", fails])
 	get_tree().quit()

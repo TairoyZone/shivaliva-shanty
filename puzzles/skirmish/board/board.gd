@@ -944,6 +944,34 @@ func _write_garbage(shape: Array, col: int, dy: int, decay: int = DECAY_MOVES) -
 	queue_redraw()
 
 
+## HEALTH FOOTING: bury the bottom [param n] rows of a fresh board under gapped BLOCKAGE garbage — the
+## "you start a serious fight worn down" handicap (the lower your health, the more rows; see
+## [PlayerState.health_footing_fill]). Each row carries ONE staggered gap so a ripened row is NOT an
+## auto-complete line — you must DIG through it, so the handicap actually persists. Call at fight start,
+## before the first piece. Capped at ROWS (the top rows stay open — always playable).
+func bury_rows(n: int) -> void:
+
+	n = clampi(n, 0, ROWS)
+	if n == 0:
+		return
+	for i in n:
+		var r : int = TOTAL_ROWS - 1 - i
+		var gap : int = (i * 3 + 1) % COLS   # staggered so the gaps never line up into a free column
+		for c in COLS:
+			if c == gap:
+				continue
+			if _grid[r][c] < 0:
+				_grid[r][c] = GARBAGE_CELL
+				_garbage_age[r][c] = DECAY_MOVES
+	queue_redraw()
+
+
+## Bury the bottom [param fill] FRACTION (0..1) of the board — rows = round(ROWS × fill).
+func bury_fraction(fill: float) -> void:
+
+	bury_rows(roundi(float(ROWS) * clampf(fill, 0.0, 1.0)))
+
+
 ## The resting row-offset for [param shape] dropped into [param col] against the
 ## CURRENT stack — the single source of truth for the telegraph (_draw), the fall
 ## target (_begin_garbage_fall) and the settle write (_write_garbage), so they can
