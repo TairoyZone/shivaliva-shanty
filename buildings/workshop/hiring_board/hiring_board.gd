@@ -71,6 +71,9 @@ func _show_modal() -> void:
 	if is_instance_valid(_modal):
 		return
 	var is_hired : bool = _is_hired()
+	# PROVE-YOURSELF GATE (Troy 2026-06-16): the shop owner won't take you on until you've BEATEN them at the
+	# Cradle Gym ladder — only then do they hire you + hand over the key. (Once hired, this no longer matters.)
+	var gate_cleared : bool = is_hired or PlayerState.ladder_beaten(_gate_owner())
 	var layer : CanvasLayer = CanvasLayer.new()
 	layer.layer = 30
 	# Process while paused so the buttons still work after we pause the
@@ -120,21 +123,30 @@ func _show_modal() -> void:
 				+ "Mine at the Mine (its entrance is out on Cradle Rock). "
 				+ "Bring the ore back here and drop it at the ore bin. "
 				+ "Wages: 2 gold per ore delivered.")
+		elif not gate_cleared:
+			body.text = ("Cinder Troy sizes you up.\n\n"
+				+ "\"The Mine's no place for someone who can't hold their own. "
+				+ "Best me at the Cradle Gym first — prove you've the grit for it — "
+				+ "and the job, and the Mine key, are yours.\"")
 		else:
-			body.text = ("Cinder Troy needs ore for the forge.\n\n"
-				+ "Apply to take the job. Wages: 2 gold per ore delivered. "
-				+ "Dig at the Mine out on Cradle Rock, then bring the ore back "
-				+ "to the bin here at the Forge.")
+			body.text = ("Cinder Troy nods. \"You held your own on the mats. Good — you'll do.\"\n\n"
+				+ "Apply to take the job and he'll hand you the Mine key. "
+				+ "Wages: 2 gold per ore delivered. Dig at the Mine out on Cradle Rock, "
+				+ "then bring the ore back to the bin here at the Forge.")
 	elif is_hired:
 		body.text = ("You're on Cogwise Godfrey's lumber payroll.\n\n"
 			+ "Chop at the Grove (east of the Workshop). "
 			+ "Bring the wood back here and drop it at the lumber pile. "
 			+ "Wages: 1 gold per wood delivered.")
+	elif not gate_cleared:
+		body.text = ("Cogwise Godfrey looks you over.\n\n"
+			+ "\"I'll not send a greenhorn out to the Grove. Best me at the Cradle Gym first — "
+			+ "show me you can swing — and the lumber job, and the Grove key, are yours.\"")
 	else:
-		body.text = ("Cogwise Godfrey's always after good timber for the Workshop.\n\n"
-			+ "Apply to take the job. Wages: 1 gold per wood delivered. "
-			+ "Chop at the Grove east of here, then bring the lumber back "
-			+ "to the drop-off in this shop.")
+		body.text = ("Cogwise Godfrey grins. \"Beat me fair and square, did you? Then you've earned a place.\"\n\n"
+			+ "Apply to take the job and he'll hand you the Grove key. "
+			+ "Wages: 1 gold per wood delivered. Chop at the Grove east of here, "
+			+ "then bring the lumber back to the drop-off in this shop.")
 	body.add_theme_font_size_override("font_size", 17)
 	body.add_theme_color_override("font_color", Color(0.92, 0.82, 0.58, 1.0))
 	body.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
@@ -147,7 +159,8 @@ func _show_modal() -> void:
 	hbox.add_theme_constant_override("separation", 18)
 	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	vbox.add_child(hbox)
-	if not is_hired:
+	# The Apply button shows ONLY once you've proven yourself at the gym (gate_cleared) and aren't already hired.
+	if not is_hired and gate_cleared:
 		var apply_btn : Button = _make_walnut_button(
 			"Apply for the job", Color(0.78, 1.0, 0.62, 1.0))
 		apply_btn.pressed.connect(_on_apply_pressed)
@@ -178,6 +191,12 @@ func _is_hired() -> bool:
 	if job == Job.FORGE:
 		return PlayerState.hired_at_forge
 	return PlayerState.hired_at_workshop
+
+
+# The shop OWNER you must beat at the Cradle Gym ladder before this board will hire you (prove competence).
+func _gate_owner() -> String:
+
+	return "Cinder Troy" if job == Job.FORGE else "Cogwise Godfrey"
 
 
 func _set_hired() -> void:
