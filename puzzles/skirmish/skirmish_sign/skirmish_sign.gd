@@ -1,14 +1,13 @@
-## A sparring post in the Inn that launches a SKIRMISH DUEL. Extends [Puzzle]
-## for the proximity / scene-launch wiring, but OVERRIDES [method interact] to
-## first open the [SkirmishChallengeModal] — you pick a Cradle Rock islander to
-## spar, then the duel loads against them. (Skirmish is versus-only; there is no
-## solo play.) See [[combat-puzzle-direction]].
+## The Cradle Gym's Spar post — opens the GYM LADDER board ([SkirmishChallengeModal]). You climb a fixed
+## ladder of the cast (beat one to unlock the next, master last) rather than picking anyone; the chosen
+## rung loads as a FRIENDLY duel. Extends [Puzzle] for the proximity / scene-launch wiring. (Skirmish is
+## versus-only; there is no solo play.) See [[cradle-gym-jungle-ordeal]] / [[combat-puzzle-direction]].
 @tool
 class_name SkirmishSign
 extends Puzzle
 
 
-# Open the "who do you want to spar?" picker instead of launching straight in.
+# Open the ladder board instead of launching straight in.
 func interact() -> void:
 
 	if Engine.is_editor_hint():
@@ -18,12 +17,13 @@ func interact() -> void:
 	add_child(modal)
 
 
-# Picker chose a foe — seat them (consumed by SkirmishDuel) + launch the duel
-# down the normal Puzzle return-anchor + scene-change path.
+# A rung was challenged — seat the foe (consumed by SkirmishDuel), tag the pending ladder rung so the gym
+# records the win on return, and launch a FRIENDLY bout (skirmish_stakes stays false — no health hit).
 func _on_challenged(profile: NpcPersonality) -> void:
 
 	if profile != null:
 		PlayerState.skirmish_opponent = profile.resource_path
+		PlayerState.gym_ladder_pending = String(profile.npc_name)
 	_launch_puzzle(true)
 
 

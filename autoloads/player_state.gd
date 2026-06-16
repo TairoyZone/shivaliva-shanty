@@ -705,6 +705,50 @@ func ordeal_minors_cleared() -> bool:
 func ordeal_complete() -> bool:
 	return ORDEAL_KING in jungle_ordeal_beats
 
+# --- Cradle Gym ladder (the cast Skirmish ladder — FRIENDLY, no health stakes) ---
+## Cast names beaten on the gym ladder (monotonic, saved). Beat the current rung to unlock the next; clear
+## the top (the master) for the Gym Champion trophy. See [[cradle-gym-jungle-ordeal]].
+var gym_ladder_beats : Array = []
+## Transient: the ladder opponent currently being fought — resolved on return to the gym.
+var gym_ladder_pending : String = ""
+
+## The ladder roster — the whole cast ordered easiest→hardest by skirmish_skill, with the gym MASTER
+## (Hollow Ellison) pinned to the final rung regardless of raw skill.
+func ladder_roster() -> Array:
+	var cast : Array = NpcRegistry.all().duplicate()
+	cast.sort_custom(func(a, b): return a.skirmish_skill < b.skirmish_skill)
+	for i in cast.size():
+		if String(cast[i].npc_name) == "Hollow Ellison":
+			var m : Variant = cast[i]
+			cast.remove_at(i)
+			cast.append(m)
+			break
+	return cast
+
+func ladder_beaten(who: String) -> bool:
+	return who in gym_ladder_beats
+
+## Record a ladder rung beaten (idempotent, persisted, fires the trophy check). Returns true if NEW.
+func ladder_mark_beaten(who: String) -> bool:
+	if who.is_empty() or who in gym_ladder_beats:
+		return false
+	gym_ladder_beats.append(who)
+	_save()
+	check_new_trophies()   # clearing the top earns the Gym Champion trophy — toast it the moment it lands
+	return true
+
+## The next rung to fight (the first roster member not yet beaten), or "" if the ladder is cleared.
+func ladder_next() -> String:
+	for p in ladder_roster():
+		if not ladder_beaten(String(p.npc_name)):
+			return String(p.npc_name)
+	return ""
+
+## The whole ladder cleared (every rung beaten) → the Gym Champion trophy.
+func ladder_complete() -> bool:
+	var roster : Array = ladder_roster()
+	return not roster.is_empty() and ladder_next() == ""
+
 # --- Tournament (transient — drives the TournamentScene bracket flow) ---
 ## True while the player is in a tournament bracket.
 var tournament_active : bool = false
@@ -2418,6 +2462,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "lifetime_coins_earned", lifetime_coins_earned)
 	config.set_value(SAVE_SECTION, "health", health)
 	config.set_value(SAVE_SECTION, "jungle_ordeal_beats", jungle_ordeal_beats)
+	config.set_value(SAVE_SECTION, "gym_ladder_beats", gym_ladder_beats)
 	config.set_value(SAVE_SECTION, "inventory", inventory)
 	config.set_value(SAVE_SECTION, "inventory_capacity", inventory_capacity)
 	config.set_value(SAVE_SECTION, "hired_at_workshop", hired_at_workshop)
@@ -2471,6 +2516,7 @@ func _load() -> void:
 	lifetime_coins_earned = int(config.get_value(SAVE_SECTION, "lifetime_coins_earned", total_coins))
 	health = int(config.get_value(SAVE_SECTION, "health", HEALTH_MAX))
 	jungle_ordeal_beats = config.get_value(SAVE_SECTION, "jungle_ordeal_beats", [])
+	gym_ladder_beats = config.get_value(SAVE_SECTION, "gym_ladder_beats", [])
 	hired_at_workshop = bool(config.get_value(SAVE_SECTION, "hired_at_workshop", false))
 	godfrey_lumber_stock = int(config.get_value(SAVE_SECTION, "godfrey_lumber_stock", 0))
 	hired_at_forge = bool(config.get_value(SAVE_SECTION, "hired_at_forge", false))

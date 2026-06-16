@@ -24,10 +24,6 @@ const TALK_AFFINITY : int = 1
 ## single rapport tap (they cost real items), just not a fast track.
 const FAVOR_AFFINITY : int = 8
 
-## The 1v1 Skirmish DUEL scene — the radial menu's "Spar" launches it against THIS NPC (mirrors the
-## Spar post). See [[combat-puzzle-direction]].
-const SKIRMISH_DUEL_SCENE : String = "res://puzzles/skirmish/skirmish_duel.tscn"
-
 ## Standing favours, keyed by NPC name — the cozy "do a good turn first"
 ## rapport tap (the One Piece "earn their liking by helping" feeling). Each
 ## is a small ask for something the player already produces (wood/ore), and
@@ -153,7 +149,9 @@ func interact() -> void:
 		return
 	# Click an NPC → a RADIAL options menu (YPP-style), NOT a dialogue box. The favour is just ONE option
 	# here, never demanded to your face. See [NpcMenu] / [[Official:Communications]].
-	var opts : Array = [{"label": "Chat", "action": _chat}, {"label": "Spar", "action": _challenge}]
+	# NOTE: no "Spar" here — sparring lives ONLY at the Cradle Gym's ladder now (Troy 2026-06-16), so the
+	# gym has a real purpose. The free spar-anyone-anywhere option was retired with it.
+	var opts : Array = [{"label": "Chat", "action": _chat}]
 	opts.append({"label": "Trade", "action": _open_trade})
 	# A healer (Jade at the Cradle Gym) can patch up your fighting HEALTH — the Pokémon-Center beat.
 	if heals_player:
@@ -252,18 +250,6 @@ func _heal_player() -> void:
 	PlayerState.restore_health()
 	SpeechBubble.say(self, "There — patched up and limber. Off you go, fighting fit.")
 
-
-# Spar → challenge THIS NPC to a 1v1 Skirmish duel. Mirrors the Spar post's launch: seat this NPC as the
-# opponent (consumed by SkirmishDuel._resolve_opponent), set the return anchor next to them, change scene.
-func _challenge() -> void:
-
-	for profile in NpcRegistry.all():
-		if profile.npc_name == npc_name:
-			PlayerState.skirmish_opponent = profile.resource_path
-			break
-	PlayerState.request_spawn_at_anchor(name)
-	Audio.play_sfx("whoosh")
-	get_tree().change_scene_to_file(SKIRMISH_DUEL_SCENE)
 
 
 # POST-FIGHT BANTER — if the player just finished a duel against THIS NPC, greet their return to the world with

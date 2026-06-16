@@ -1,9 +1,8 @@
-## The Skirmish "who do you want to spar?" picker — opened by the Spar post
-## ([SkirmishSign]) BEFORE the duel loads. Lists the Cradle Rock cast (with the
-## player's rapport tier for flavour) and, on a pick, emits [signal challenged]
-## with that NPC so the prop can seat the foe + launch the duel. A pause-tree
-## CanvasLayer that owns its own input — chrome cloned from [LobbyModal]. See
-## [[combat-puzzle-direction]] (versus-only).
+## The Cradle Gym LADDER board — opened by the Spar post ([SkirmishSign]) in the gym. Lists the cast in
+## difficulty order as a LADDER: beaten rungs are checked off, the next-up is the only one you can
+## CHALLENGE, the rest are locked until you climb to them (master Ellison last). On a pick it emits
+## [signal challenged] so the prop seats the foe + launches a FRIENDLY duel. Beat the top for the Gym
+## Champion trophy. A pause-tree CanvasLayer; chrome cloned from [LobbyModal]. See [[cradle-gym-jungle-ordeal]].
 class_name SkirmishChallengeModal
 extends CanvasLayer
 
@@ -53,8 +52,8 @@ func _build() -> void:
 	var vbox : VBoxContainer = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 14)
 	panel.add_child(vbox)
-	vbox.add_child(_make_title("CHALLENGE TO A SPAR"))
-	vbox.add_child(_make_caption("Who do you want to test your mettle against?"))
+	vbox.add_child(_make_title("THE GYM LADDER"))
+	vbox.add_child(_make_caption("Climb the ladder — beat each fighter to unlock the next, up to the master."))
 
 	var scroll : ScrollContainer = ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0.0, 280.0)
@@ -65,18 +64,31 @@ func _build() -> void:
 	list.add_theme_constant_override("separation", 8)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
-	# Easiest foes first (by their FISTS skill — skirmish_skill, not card wits), so a new player
-	# naturally starts gentle. Each button is colour-coded by difficulty.
-	var cast : Array[NpcPersonality] = NpcRegistry.all().duplicate()
-	cast.sort_custom(func(a, b): return a.skirmish_skill < b.skirmish_skill)
-	for profile in cast:
+	# The LADDER: the cast in difficulty order (master last). Beaten rungs are checked off, the next-up is
+	# the only CHALLENGE-able one, the rest are locked. (Roster is PlayerState's single source of truth.)
+	var roster : Array = PlayerState.ladder_roster()
+	var next_up : String = PlayerState.ladder_next()
+	for profile in roster:
+		var who : String = String(profile.npc_name)
 		var diff : String = _difficulty_tier(profile.skirmish_skill)
-		var btn : Button = _make_walnut_button("%s   ·   %s" % [profile.npc_name, diff],
-			_difficulty_color(profile.skirmish_skill))
-		btn.pressed.connect(_on_pick.bind(profile))
+		var btn : Button
+		if PlayerState.ladder_beaten(who):
+			btn = _make_walnut_button("✓   %s   ·   bested" % who, Color(0.62, 0.86, 0.62, 1.0))
+			btn.disabled = true
+			btn.modulate = Color(1, 1, 1, 0.6)
+		elif who == next_up:
+			btn = _make_walnut_button("%s   ·   %s   —   CHALLENGE" % [who, diff], _difficulty_color(profile.skirmish_skill))
+			btn.pressed.connect(_on_pick.bind(profile))
+		else:
+			btn = _make_walnut_button("🔒   %s   ·   %s" % [who, diff], Color(0.7, 0.7, 0.7, 1.0))
+			btn.disabled = true
+			btn.modulate = Color(1, 1, 1, 0.45)
 		list.add_child(btn)
 
-	vbox.add_child(_make_caption("Tougher foes fight sharper. New to sparring? Start near the top of the list."))
+	var foot : String = "Friendly bouts — lose and just try again. Win to climb the next rung."
+	if PlayerState.ladder_complete():
+		foot = "You've topped the ladder — Gym Champion! Drop in for a rematch any time."
+	vbox.add_child(_make_caption(foot))
 	var back : Button = _make_walnut_button("Never mind", Color(0.95, 0.84, 0.56, 1.0))
 	back.pressed.connect(_on_cancel)
 	vbox.add_child(back)
