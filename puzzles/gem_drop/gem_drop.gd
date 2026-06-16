@@ -48,13 +48,11 @@ var _match_winner : int = -1          # the winning seat (GemDropBoard.HUMAN_PLA
 var _final_human_rounds : int = 0
 var _final_ai_rounds : int = 0
 
-## Set from the lobby on entry — a FREE table plays for rapport only, no
-## gold won or lost. Read in [method _on_game_complete] +
-## [method _return_to_launching_scene] to suppress every gold change.
+## Set from the lobby on entry — a FREE table plays for rapport only, no gold won or lost. Parlor play is
+## cash-only now (the "free table" option was retired 2026-06-16); only the TOURNAMENT still flags this
+## (via PlayerState.free_table). Read in [method _on_game_complete] + [method _return_to_launching_scene]
+## to suppress every gold change.
 var _free_table : bool = false
-## True when the player had NO coin to wager → a friendly, no-stake bonding game (rapport only). Distinct from
-## a lobby-chosen free table only for the result wording.
-var _friendly : bool = false
 
 
 ## Pinch to zoom the table on a phone — it reads small there. The board's drop input is camera-aware
@@ -82,12 +80,9 @@ func _ready() -> void:
 	# back to a fresh roll if launched without one. Their personality is
 	# handed to the board so the minimax eval reads from it.
 	var setup : Dictionary = PlayerState.consume_lobby_setup()
+	# Cash-only parlor play (only the tournament sets "free" now). A broke player can still play — a loss
+	# only ever takes the gold you HAVE (capped in _return_to_launching_scene), and a win still pays out.
 	_free_table = bool(setup.get("free", false))
-	# No coin to wager → a FRIENDLY game: no gold won or lost, just a little rapport with the opponent (Troy
-	# 2026-06-08). Reuses the free-table gold suppression; rapport is granted either way.
-	if PlayerState.total_coins <= 0:
-		_free_table = true
-		_friendly = true
 	var seated : Array[NpcPersonality] = NpcRegistry.profiles_from_paths(setup.get("seated_paths", []))
 	_opponent = seated[0] if not seated.is_empty() else NpcRegistry.pick_one()
 	if _opponent != null:
@@ -257,8 +252,6 @@ func _on_game_complete(winner: int, human_rounds: int, ai_rounds: int) -> void:
 	# Rapport — playing a full match builds a little rapport with the opponent; winning earns a bit more.
 	var gain : int = PLAY_AFFINITY + (WIN_AFFINITY_BONUS if winner == GemDropBoard.HUMAN_PLAYER else 0)
 	var tail : String = "tap anywhere to return" if TouchEnv.is_touch() else "click anywhere or ESC to return"
-	if _friendly:
-		tail = "Friendly game — +%d rapport with %s   ·   %s" % [gain, _opponent_short_name(), tail]
 	if winner == GemDropBoard.HUMAN_PLAYER:
 		_rounds_label.text = "YOU WIN!   %d rounds to %d   ·   %s" % [human_rounds, ai_rounds, tail]
 		if not _free_table:

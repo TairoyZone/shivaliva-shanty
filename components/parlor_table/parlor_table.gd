@@ -65,16 +65,17 @@ func _on_browser_cancelled() -> void:
 	_browser = null
 
 
-# Seat the chosen opponents + stake into the handoff, then launch THIS game. Cash tables charge the
-# buy-in; free tables and exit-billed games (Gem Drop) charge nothing here. Called by the browser on
-# Join / Create (it's the same stash+launch the old lobby did, now driven by the browser's choice).
-func launch_table(seated_paths: Array, free: bool, config: Dictionary = {}) -> void:
+# Seat the chosen opponents + stake into the handoff, then launch THIS game. Parlor play is ALWAYS for
+# gold now — the "free table" lobby option was retired (Troy 2026-06-16): cash tables charge the buy-in
+# here, exit-billed games (Gem Drop) charge nothing here. Called by the browser on Create. (The
+# tournament still runs no-stake sessions, but it sets PlayerState.free_table itself, not via here.)
+func launch_table(seated_paths: Array, config: Dictionary = {}) -> void:
 
 	PlayerState.lobby_seated_paths = seated_paths
-	PlayerState.free_table = free
+	PlayerState.free_table = false
 	PlayerState.lobby_table_config = config   # poker: {structure, min_bet, seats, turn_time}; else {}
 	PlayerState.last_lobby_seated_paths = seated_paths
-	_launch_puzzle(_charges_buy_in() and not free)
+	_launch_puzzle(_charges_buy_in())
 
 
 # --- Read surface for the browser -------------------------------------
@@ -103,8 +104,8 @@ func hosted_table() -> Dictionary:
 
 
 # Parlor tables DON'T show a "gold to play" / "Need N gold" tooltip — the
-# stake (Free vs Cash buy-in) is chosen in the lobby, which surfaces all the
-# real info. So the proximity tooltip is just the table's label, never a cost.
+# cash buy-in + affordability are surfaced in the lobby. So the proximity
+# tooltip is just the table's label, never a cost.
 func _refresh_tooltip_text() -> void:
 
 	if _tooltip == null:

@@ -21,10 +21,8 @@ signal cancelled
 var _games : Array = []
 var _focused_id : String = ""
 var _active : Dictionary = {}
-# Create-panel state.
+# Create-panel state. (Parlor play is cash-only now — the "free table" option was retired 2026-06-16.)
 var _create_seats : int = 2
-var _create_free : bool = false
-var _create_locked_free : bool = false
 # Poker-only create config (the YPP "configure bet structure / stake / turn time"); ignored otherwise.
 var _create_structure : int = PokerConfig.BetStructure.NO_LIMIT
 var _create_min_bet : int = PokerConfig.STAKE_MIN_BETS[0]
@@ -172,10 +170,9 @@ func _build_create_panel() -> void:
 	else:
 		_body.add_child(_make_caption("%d players (heads-up)" % min_s))
 
-	# Poker CASH table: configure the bet structure + stake (which sets blinds + buy-in range), each a DROPDOWN.
-	# A FREE table is plain standard poker (fixed 1000 chips, 10/20 blinds, No Limit) — no stake/structure
-	# choice (Troy 2026-06-08). Other games have no extra config.
-	if _is_poker() and not _create_free:
+	# Poker CASH table: configure the bet structure + stake (which sets blinds + buy-in range), each a
+	# DROPDOWN. Other games have no extra config. (The "free table" option was retired 2026-06-16.)
+	if _is_poker():
 		var struct_items : Array = []
 		for s in 3:
 			struct_items.append(PokerConfig.structure_name(s))
@@ -188,30 +185,26 @@ func _build_create_panel() -> void:
 		var stake_idx : int = PokerConfig.STAKE_MIN_BETS.find(_create_min_bet)
 		_body.add_child(_make_dropdown("Stake", stake_items, maxi(stake_idx, 0), _on_pick_stake))
 
-	var free_check : CheckButton = CheckButton.new()
-	free_check.text = "Free table — learn the ropes (no gold at stake)"
-	free_check.button_pressed = _create_free
-	free_check.disabled = _create_locked_free
-	free_check.focus_mode = Control.FOCUS_NONE
-	free_check.add_theme_font_size_override("font_size", 18)
-	free_check.add_theme_color_override("font_color", Color(0.95, 0.88, 0.66, 1.0))
-	free_check.toggled.connect(_on_create_free_toggled)
-	_body.add_child(free_check)
-
+	# Parlor play is cash-only now. Gate a player who can't cover the buy-in (poker) — Gem Drop bills at
+	# exit (never up-front) and caps the loss to your gold, so it's always affordable.
+	var affordable : bool = _can_afford()
 	var note : String
-	if _create_free and _is_poker():
-		note = "Free table — standard poker: %d chips each, blinds %d/%d. No gold won or lost, just rapport." % [
-			PokerConfig.FREE_TABLE_STACK, PokerConfig.small_blind(PokerConfig.FREE_TABLE_MIN_BET),
-			PokerConfig.big_blind(PokerConfig.FREE_TABLE_MIN_BET)]
-	elif _create_free:
-		note = "No gold for the buy-in — playing free. No gold won or lost, just rapport." \
-			if _create_locked_free else "Free table — no gold won or lost, just rapport."
+	if not affordable:
+		if _is_poker():
+			note = "You need at least %d gold to buy in at this stake — earn some at the puzzles first." \
+				% PokerConfig.buy_in_min(_create_min_bet)
+		else:
+			note = "You need %d gold to sit at this table — earn some at the puzzles first." \
+				% int(g["cash_cost"])
 	elif _is_poker():
 		note = "Cash table — you'll buy in %d–%d gold when you sit." % [
 			PokerConfig.buy_in_min(_create_min_bet), PokerConfig.buy_in_max(_create_min_bet)]
 	else:
 		note = "Cash table — %s." % String(g["cash_note"])
-	_body.add_child(_make_caption(note))
+	var note_lbl : Label = _make_caption(note)
+	if not affordable:
+		note_lbl.add_theme_color_override("font_color", Color(0.98, 0.66, 0.40, 1.0))
+	_body.add_child(note_lbl)
 
 	_body.add_child(_spacer(8))
 	var btn_row : HBoxContainer = HBoxContainer.new()
@@ -219,12 +212,12 @@ func _build_create_panel() -> void:
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_body.add_child(btn_row)
 	var sit : Button = _make_button("Sit down  ▸", Color(0.78, 1.0, 0.62, 1.0))
+	sit.disabled = not affordable
 	sit.pressed.connect(_on_create_sit)
 	btn_row.add_child(sit)
 
 
-# Default the create panel to a full table at the chosen game's stake (forced free if you can't
-# afford the buy-in — play is never blocked).
+# Default the create panel to a full table at the chosen game's stake.
 func _sync_create_defaults() -> void:
 
 	if _active.is_empty():
@@ -233,13 +226,17 @@ func _sync_create_defaults() -> void:
 	# packed ring crowds the felt); other games default to their max.
 	var default_seats : int = 6 if _is_poker() else int(_active["max_seats"])
 	_create_seats = clampi(default_seats, int(_active["min_seats"]), int(_active["max_seats"]))
+
+
+# Parlor play is cash-only now — can the player cover the buy-in for the chosen game/stake? Gem Drop
+# bills at exit (never up-front) and caps the loss to your gold, so it's always affordable.
+func _can_afford() -> bool:
+
 	if _is_poker():
-		# Poker is force-free only if you can't cover the lowest buy-in for the chosen stake.
-		_create_locked_free = PlayerState.total_coins < PokerConfig.buy_in_min(_create_min_bet)
-	else:
-		_create_locked_free = bool(_active["charges_buy_in"]) \
-			and PlayerState.total_coins < int(_active["cash_cost"])
-	_create_free = _create_locked_free
+		return PlayerState.total_coins >= PokerConfig.buy_in_min(_create_min_bet)
+	if bool(_active.get("charges_buy_in", false)):
+		return PlayerState.total_coins >= int(_active.get("cash_cost", 0))
+	return true
 
 
 # --- Handlers ---------------------------------------------------------
@@ -254,14 +251,6 @@ func _on_tab(game: Dictionary) -> void:
 func _on_pick_seats(idx: int, min_s: int) -> void:
 
 	_create_seats = clampi(min_s + idx, int(_active["min_seats"]), int(_active["max_seats"]))
-	_render()
-
-
-func _on_create_free_toggled(pressed: bool) -> void:
-
-	if _create_locked_free:
-		return
-	_create_free = pressed
 	_render()
 
 
@@ -337,15 +326,13 @@ func _on_pick_structure(idx: int) -> void:
 func _on_pick_stake(idx: int) -> void:
 
 	_create_min_bet = PokerConfig.STAKE_MIN_BETS[clampi(idx, 0, PokerConfig.STAKE_MIN_BETS.size() - 1)]
-	# A higher stake may price you out of a cash buy-in — re-check the force-free lock.
-	_create_locked_free = PlayerState.total_coins < PokerConfig.buy_in_min(_create_min_bet)
-	if _create_locked_free:
-		_create_free = true
-	_render()
+	_render()   # a higher stake may price you out of its buy-in — re-render to update the Sit gate + note
 
 
 func _on_create_sit() -> void:
 
+	if not _can_afford():
+		return   # the Sit button is disabled in this state; guard the launch path too
 	# Poker now seats AT THE FELT (pick a chair + invite folk) — launch with NO opponents. Other games
 	# still auto-seat their AI here.
 	var opponents : Array[NpcPersonality] = []
@@ -353,7 +340,7 @@ func _on_create_sit() -> void:
 		opponents = NpcRegistry.pick_for_lobby(
 			_create_seats - 1, PlayerState.get_affinity,
 			NpcRegistry.profiles_from_paths(PlayerState.last_lobby_seated_paths))
-	_launch(_active, _paths_of(opponents), _create_free, _create_poker_config())
+	_launch(_active, _paths_of(opponents), _create_poker_config())
 
 
 func _is_poker() -> bool:
@@ -381,13 +368,13 @@ func _on_leave() -> void:
 
 # Hand the chosen opponents + stake to the game's OWN prop (so its buy-in + return-anchor are right),
 # unpausing first so the launched scene isn't frozen.
-func _launch(game: Dictionary, paths: Array, free: bool, config: Dictionary = {}) -> void:
+func _launch(game: Dictionary, paths: Array, config: Dictionary = {}) -> void:
 
 	if game.is_empty():
 		return
 	if get_tree() != null:
 		get_tree().paused = false
-	(game["prop"] as ParlorTable).launch_table(paths, free, config)
+	(game["prop"] as ParlorTable).launch_table(paths, config)
 	queue_free()
 
 
