@@ -79,6 +79,11 @@ const NAME_TAG_NEAR_COLOR : Color = Color(0.98, 0.85, 0.40, 1.0)
 		portrait_color = value
 		_apply_tint()
 
+## When true this NPC is a HEALER — their radial menu offers "Rest up", which restores the player's
+## fighting HEALTH (the Skirmish condition) to full, free. Jade does this at the Cradle Gym (her
+## Pokémon-Center role). See [PlayerState.restore_health] / [[ship-condition-research]].
+@export var heals_player : bool = false
+
 @onready var _sprite : Sprite2D = %Sprite
 
 # True once this NPC has granted its per-visit rapport bump. Reset
@@ -150,6 +155,9 @@ func interact() -> void:
 	# here, never demanded to your face. See [NpcMenu] / [[Official:Communications]].
 	var opts : Array = [{"label": "Chat", "action": _chat}, {"label": "Spar", "action": _challenge}]
 	opts.append({"label": "Trade", "action": _open_trade})
+	# A healer (Jade at the Cradle Gym) can patch up your fighting HEALTH — the Pokémon-Center beat.
+	if heals_player:
+		opts.append({"label": "Rest up", "action": _heal_player})
 	# A SOURED NPC (negative rapport) entrusts you with no favours — hate withholds the BONUS loop only;
 	# chat/trade/spar (the core) stay open, per the parlor LAW. Make amends and the option returns.
 	if NPC_FAVORS.has(npc_name) and PlayerState.get_affinity(npc_name) >= 0:
@@ -233,6 +241,16 @@ func _talk() -> void:
 		_granted_affinity_this_visit = true
 	var lines : Array[String] = dialog_lines if not dialog_lines.is_empty() else ["..."]
 	SpeechBubble.say(self, lines[randi() % lines.size()])
+
+
+# Rest up → a healer restores the player's fighting HEALTH to full (free), and floats a confirming line.
+func _heal_player() -> void:
+
+	if PlayerState.is_full_health():
+		SpeechBubble.say(self, "You're in fighting shape already — go give 'em what for.")
+		return
+	PlayerState.restore_health()
+	SpeechBubble.say(self, "There — patched up and limber. Off you go, fighting fit.")
 
 
 # Spar → challenge THIS NPC to a 1v1 Skirmish duel. Mirrors the Spar post's launch: seat this NPC as the

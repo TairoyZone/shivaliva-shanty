@@ -79,12 +79,6 @@ npc_name = "Flint Kerr"
 dialog_lines = Array[String](["Oh-ho, fresh blood. Come closer — I don't bite. The steel does.", "You here to scrap, or just to stand there looking unsharpened?", "Hear that? Shhk, shhk. That's the sound of me being better at this than anyone.", "Fancy a bout? The Spar post's right here in the Inn. Pick a foe. I'd pick me.", "No, I don't sell blades — Cinder Troy's smithy handles that. I just prove they work.", "Ellison? We're about even. ...Don't go checking the tally. Next time. That's the point.", "Mia's stew is the only thing on this rock sharper than my steel. Don't tell her.", "I've lost exactly one spar on purpose. The others— there were no others. Moving on."])
 portrait_color = Color(0.78, 0.32, 0.32, 1)
 
-[node name="EllisonNpc" parent="YSortNode2D" unique_id=2641224 instance=ExtResource("6_npc")]
-position = Vector2(-40, -232)
-npc_name = "Hollow Ellison"
-dialog_lines = Array[String](["...Ah. You again. Good. The fire was getting quiet.", "Sit by the fire. I'll tell you something true. Mostly true.", "Every island remembers more than its people do.", "If it's a fight you want, the Spar post is just there. I'll be gentle. Mostly.", "Kerr counts our duels. I stopped. The number only matters to one of us.", "Brian and Geneva. Married all this time, still smiling. Some stories end well.", "From far enough away, every fight looks slow. That's where I stand.", "Some words keep better unsent. ...Hm. Forget I said that."])
-portrait_color = Color(0.62, 0.55, 0.72, 1)
-
 [node name="GenevaNpc" parent="YSortNode2D" instance=ExtResource("6_npc")]
 position = Vector2(300, -150)
 npc_name = "Merry Geneva"

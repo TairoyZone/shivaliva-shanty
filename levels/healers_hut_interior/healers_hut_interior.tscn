@@ -44,8 +44,15 @@ tile_set = ExtResource("2_tileset")
 [node name="JadeNpc" parent="YSortNode2D" instance=ExtResource("4_npc")]
 position = Vector2(-16, -120)
 npc_name = "Mossy Jade"
-dialog_lines = Array[String](["There's a warm seat and a warmer kettle, dear. Nothing here needs hurrying.", "Comfrey's nearly dry. One more day on the rafter and it's ready for bruises.", "No shop here — just a bench, a brew, and an ear. All three are free.", "Looking for coin or wares? The forge and workshop want hands. I only grow things here.", "These blooms shouldn't live this high in the sky. They do anyway. I've stopped asking.", "The Stardust below, the sky above, and us rooted snug between. I find that comforting.", "Brian and Geneva grew like two vines on one stake. Can't tell whose leaf is whose now.", "Mind the green bottles, dear. The red ones mind themselves."])
+dialog_lines = Array[String](["Come in, dear — sit while I see to those bruises. No fighter leaves here aching if I can help it.", "Ellison works them hard out on the mats. I put them back together. We've always made a fine pair, she and I.", "Rest up whenever you need — I'll set your fighting health right again, no coin asked.", "Green salve for the aches, a warm brew for the nerves. Both mine, both free.", "That jungle past the forest's gone wild — beasts harrying the whole island. Come see me before you go in. And after. Especially after.", "I traded my planters for poultices the day this became a gym. The blooms still grow on the sill, mind.", "Win or lose, you come back to me in one piece. That's the only rule I keep."])
 portrait_color = Color(0.3, 0.62, 0.36, 1)
+heals_player = true
+
+[node name="EllisonNpc" parent="YSortNode2D" instance=ExtResource("4_npc")]
+position = Vector2(130, -70)
+npc_name = "Hollow Ellison"
+dialog_lines = Array[String](["...Welcome. The Cradle Gym. Mine to keep, now. Strange, the things we end up tending.", "A bout? ...I'll oblige. No stakes here — just steel, and what it teaches. I never miss. ...Rarely.", "Past the forest, the jungle's turned cruel. Beasts. Harrying the whole island. When you're ready — only then — you'll go. One at a time. Up to their boss.", "Jade mends what the mats break. Lean on her. ...Even I do.", "Kerr keeps our tally. I stopped counting wins a long while back. The number only matters to one of us.", "Lose a real fight and it stays in you — you start the next one worn. So rest. Then go again.", "I fight from range. Patience, mostly. Beat me here, and the jungle's yours to face."])
+portrait_color = Color(0.62, 0.55, 0.72, 1)
 
 [node name="DoorOut" parent="YSortNode2D" instance=ExtResource("3_door")]
 position = Vector2(299, 150)
@@ -77,6 +84,6 @@ layout_mode = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 26
-text = "Healer's Hut"
+text = "Cradle Gym"
 horizontal_alignment = 1
 vertical_alignment = 1
