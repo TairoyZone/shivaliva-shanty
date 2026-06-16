@@ -138,6 +138,9 @@ func _apply_sky() -> void:
 	# two full-viewport procedural passes tax a phone GPU (Troy 2026-06-13, the mobile perf pass). Desktop keeps it.
 	if not TouchEnv.is_touch():
 		add_child(DriftFog.make(SKY_FOG_TINT))
+	# The day/night cycle — tints the world + shifts the sky (sun by day, moon + stardust by night), driven by
+	# the GameClock so you can physically read the hour outdoors. Added last so its world CanvasModulate wins.
+	add_child(DayNight.new())
 
 
 func _wants_sky() -> bool:
