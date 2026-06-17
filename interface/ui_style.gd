@@ -16,12 +16,18 @@ const GLOW_SIZE : int = 12
 const GLOW_ALPHA : float = 0.34
 
 
-## Turn a stylebox's drop-shadow into an even accent-tinted HALO (the outer glow). offset stays ZERO.
+## DARK schemes: turn the drop-shadow into an even accent-tinted HALO (the outer glow), offset ZERO.
+## LIGHT schemes (the YPP-flat page): a gentle neutral drop-shadow for depth instead — no neon halo.
 static func glow_shadow(sb: StyleBoxFlat, hue: Color = Palette.GLOW, size: int = GLOW_SIZE) -> void:
 
-	sb.shadow_color = Color(hue.r, hue.g, hue.b, GLOW_ALPHA)
-	sb.shadow_size = size
-	sb.shadow_offset = Vector2.ZERO
+	if Palette.IS_DARK:
+		sb.shadow_color = Color(hue.r, hue.g, hue.b, GLOW_ALPHA)
+		sb.shadow_size = size
+		sb.shadow_offset = Vector2.ZERO
+	else:
+		sb.shadow_color = Color(0, 0, 0, 0.18)
+		sb.shadow_size = 5
+		sb.shadow_offset = Vector2(0, 2)
 
 
 ## A centered modal / pop-up surface — deep panel bg + accent rim + soft glow halo.
@@ -176,8 +182,11 @@ static func style_button(btn: Button, fg: Color = Palette.ACCENT, bg: Color = Pa
 static func apply_primary(l: Label) -> void:
 
 	l.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
-	l.add_theme_color_override("font_outline_color", Palette.OUTLINE_HARD)
-	l.add_theme_constant_override("outline_size", 3)
+	# Dark schemes: a hard ink outline keeps light text crisp on busy worlds. Light schemes (dark text on a
+	# light page) need NO outline — a black halo around dark text just looks heavy/muddy.
+	if Palette.IS_DARK:
+		l.add_theme_color_override("font_outline_color", Palette.OUTLINE_HARD)
+		l.add_theme_constant_override("outline_size", 3)
 
 
 static func apply_muted(l: Label) -> void:
@@ -188,5 +197,7 @@ static func apply_muted(l: Label) -> void:
 static func apply_title(l: Label) -> void:
 
 	l.add_theme_color_override("font_color", Palette.ACCENT)
-	l.add_theme_color_override("font_outline_color", Color(Palette.GLOW.r, Palette.GLOW.g, Palette.GLOW.b, 0.5))
-	l.add_theme_constant_override("outline_size", 4)
+	# Dark schemes: a soft accent glow makes headings read as lit. Light schemes: clean blue headers (YPP), no glow.
+	if Palette.IS_DARK:
+		l.add_theme_color_override("font_outline_color", Color(Palette.GLOW.r, Palette.GLOW.g, Palette.GLOW.b, 0.5))
+		l.add_theme_constant_override("outline_size", 4)

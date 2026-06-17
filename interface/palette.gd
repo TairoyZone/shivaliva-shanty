@@ -77,12 +77,13 @@ const OUTLINE_HARD : Color = Color(0, 0, 0, 0.9)
 # the cool-deck PANEL_TROUGH/SKY_FRAME family ABOVE are deliberate and stay UNCHANGED — these tokens are for
 # the menu/HUD chrome only.
 
-const DEFAULT_SCHEME : String = "stardust_gold"
+const DEFAULT_SCHEME : String = "pirateology"
 
 # Role tokens — read directly as Palette.PANEL_BG, Palette.TEXT_PRIMARY, … Initialized from the default scheme
 # at load (robust, no _static_init dependency); reassigned by use_scheme() to retheme live.
 static var _ACTIVE : Dictionary = _schemes()[DEFAULT_SCHEME]
 static var SCHEME_NAME : String = DEFAULT_SCHEME
+static var IS_DARK : bool = _ACTIVE["is_dark"]   # light schemes drop the glow/outlines (a YPP-flat page, not dark-mode)
 static var PANEL_BG : Color = _ACTIVE["panel_bg"]          # modal / window surface
 static var PANEL_BG_DARK : Color = _ACTIVE["panel_bg_dark"] # app backdrop / inset / rail
 static var CARD_BG : Color = _ACTIVE["card_bg"]            # raised list-row / button idle
@@ -106,6 +107,7 @@ static func use_scheme(name: String) -> void:
 	var all : Dictionary = _schemes()
 	_ACTIVE = all.get(name, all[DEFAULT_SCHEME])
 	SCHEME_NAME = name if all.has(name) else DEFAULT_SCHEME
+	IS_DARK = _ACTIVE["is_dark"]
 	PANEL_BG = _ACTIVE["panel_bg"]
 	PANEL_BG_DARK = _ACTIVE["panel_bg_dark"]
 	CARD_BG = _ACTIVE["card_bg"]
@@ -132,9 +134,22 @@ static func scheme_names() -> Array:
 static func _schemes() -> Dictionary:
 
 	return {
+		# THE DEFAULT — a faithful Puzzle Pirates "Pirateology" look (Troy 2026-06-17: "learn from puzzle pirates,
+		# its that simple but very effective"). A LIGHT parchment page, near-black body text, BLUE section
+		# headers / links, gold-tan ornate frames, gold trophies. Flat + high-contrast (dark-on-light); no glow.
+		"pirateology": {
+			"is_dark": false,
+			"panel_bg": Color.html("#E4DFD0"), "panel_bg_dark": Color.html("#D2CCB8"),
+			"card_bg": Color.html("#F0EBDC"), "slot_bg": Color.html("#CFC8B2"),
+			"border": Color.html("#B7995A"), "glow": Color.html("#C9A24B"), "accent": Color.html("#3F6FB5"),
+			"text_primary": Color.html("#221E16"), "text_muted": Color.html("#5B5340"),
+			"ink_on_light": Color.html("#221E16"), "ink_on_light_soft": Color.html("#5B5340"),
+			"card_light": Color.html("#F2EDDE"), "danger": Color.html("#B23A48"), "positive": Color.html("#3E7D4F"),
+		},
 		# Navy + treasure-GOLD ("celestial luxury") — keeps the pirate-gold brand (coins/trophies), on deep
-		# stardust-navy instead of mud. Cream text. The recommended ship-it.
+		# stardust-navy instead of mud. Cream text. (A dark alternate.)
 		"stardust_gold": {
+			"is_dark": true,
 			"panel_bg": Color.html("#131A30"), "panel_bg_dark": Color.html("#0A0E1E"),
 			"card_bg": Color.html("#1E2742"), "slot_bg": Color.html("#0E1426"),
 			"border": Color.html("#C39B45"), "glow": Color.html("#E8B85C"), "accent": Color.html("#FFD479"),
@@ -144,6 +159,7 @@ static func _schemes() -> Dictionary:
 		},
 		# Cool deep-space midnight-blue with an ice-blue glow — the most "new" / on-fiction read of the Stardust.
 		"stardust_indigo": {
+			"is_dark": true,
 			"panel_bg": Color.html("#141B30"), "panel_bg_dark": Color.html("#0B1020"),
 			"card_bg": Color.html("#1E2842"), "slot_bg": Color.html("#0C1124"),
 			"border": Color.html("#3C4E7A"), "glow": Color.html("#5E8BE0"), "accent": Color.html("#7FB2FF"),
@@ -153,6 +169,7 @@ static func _schemes() -> Dictionary:
 		},
 		# Warm BRASS on a near-black charcoal-aubergine hull — most continuous with the current gold art, safest.
 		"skyforge_brass": {
+			"is_dark": true,
 			"panel_bg": Color.html("#1E1822"), "panel_bg_dark": Color.html("#141017"),
 			"card_bg": Color.html("#2B222E"), "slot_bg": Color.html("#171019"),
 			"border": Color.html("#C08A3E"), "glow": Color.html("#E8A23C"), "accent": Color.html("#FFC964"),
@@ -162,6 +179,7 @@ static func _schemes() -> Dictionary:
 		},
 		# Royal violet-plum dusk with an orchid glow — the boldest, "magic-hour nebula" (ties to the Mystic).
 		"nebula_plum": {
+			"is_dark": true,
 			"panel_bg": Color.html("#21172F"), "panel_bg_dark": Color.html("#160E22"),
 			"card_bg": Color.html("#2E2140"), "slot_bg": Color.html("#190F26"),
 			"border": Color.html("#5A3E78"), "glow": Color.html("#B070E0"), "accent": Color.html("#E0A0FF"),
