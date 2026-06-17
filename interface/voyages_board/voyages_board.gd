@@ -112,7 +112,7 @@ func _show_list() -> void:
 		_content.add_child(_make_crew_row(crew))
 	_content.add_child(_make_caption("You job a single station and fight the boarding; you can't strand yourself."))
 	_content.add_child(_make_fare_row(_destination_island()))
-	var back : Button = _make_button("Never mind", Color(0.95, 0.84, 0.56, 1.0))
+	var back : Button = _make_button("Never mind", Palette.ACCENT)
 	back.pressed.connect(_close)
 	_content.add_child(back)
 
@@ -132,7 +132,7 @@ func _make_crew_row(crew: Dictionary) -> PanelContainer:
 	info.text = "%s   ·   %s\nCap'n %s   ·   %d%% jobber cut" % [
 		crew["ship"], crew["crew"], crew["captain"], int(crew["cut"])]
 	info.add_theme_font_size_override("font_size", 16)
-	info.add_theme_color_override("font_color", Color(0.92, 0.88, 0.74, 1.0))
+	info.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
 	left.add_child(info)
 
 	# What experience the crew's after — shown so the choice is informed. You can APPLY regardless; fall short
@@ -143,13 +143,13 @@ func _make_crew_row(crew: Dictionary) -> PanelContainer:
 		req_l.add_theme_font_size_override("font_size", 13)
 		if bool(rq["met"]):
 			req_l.text = "✓ Wants %s ▸ %s — you qualify" % [rq["skill_name"], rq["req_name"]]
-			req_l.add_theme_color_override("font_color", Color(0.62, 0.86, 0.6, 1.0))
+			req_l.add_theme_color_override("font_color", Palette.POSITIVE)
 		else:
 			req_l.text = "Wants %s ▸ %s   (you're %s)" % [rq["skill_name"], rq["req_name"], rq["cur_name"]]
-			req_l.add_theme_color_override("font_color", Color(0.92, 0.80, 0.5, 1.0))
+			req_l.add_theme_color_override("font_color", Palette.TEXT_MUTED)
 		left.add_child(req_l)
 
-	var apply : Button = _make_button("Apply", Color(0.80, 1.0, 0.66, 1.0))
+	var apply : Button = _make_button("Apply", Palette.POSITIVE)
 	apply.pressed.connect(_on_apply.bind(crew))
 	apply.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(apply)
@@ -203,9 +203,9 @@ func _show_rejection(crew: Dictionary) -> void:
 	_content.add_child(_make_caption("Cap'n %s reads your application, then shakes their head:" % crew["captain"]))
 	var msg : Label = _make_caption("\"Not yet, %s. The %s is no place for a %s — I need a hand who's reached %s at %s for this run. Go earn your stripes, then come find me.\"" % [
 		who, crew["crew"], rq["cur_name"], rq["req_name"], rq["skill_name"]])
-	msg.add_theme_color_override("font_color", Color(0.97, 0.82, 0.56, 1.0))
+	msg.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
 	_content.add_child(msg)
-	var back : Button = _make_button("Back", Color(0.95, 0.84, 0.56, 1.0))
+	var back : Button = _make_button("Back", Palette.ACCENT)
 	back.pressed.connect(_show_list)
 	_content.add_child(back)
 
@@ -232,10 +232,10 @@ func _show_invite(crew: Dictionary) -> void:
 		"%s has offered ye a temporary jobbing position with '%s' aboard the %s — a run to %s (%d stops, ~%d likely scrap%s) for a %d%% cut of the booty." % [
 		crew["captain"], crew["crew"], crew["ship"], String(crew["destination"]),
 		int(crew["legs"]), fights, "" if fights == 1 else "s", int(crew["cut"])]))
-	var accept : Button = _make_button("Accept — board the ship", Color(0.80, 1.0, 0.66, 1.0))
+	var accept : Button = _make_button("Accept — board the ship", Palette.POSITIVE)
 	accept.pressed.connect(_on_accept.bind(crew))
 	_content.add_child(accept)
-	var decline : Button = _make_button("Decline", Color(0.95, 0.84, 0.56, 1.0))
+	var decline : Button = _make_button("Decline", Palette.ACCENT)
 	decline.pressed.connect(_show_list)
 	_content.add_child(decline)
 
@@ -289,10 +289,10 @@ func _make_captain_own_row() -> PanelContainer:
 	info.text = "Captain the %s — YOUR ship.\nShe sails on her own hull (and keeps the wear). Bound for %s." % [
 		PlayerState.active_ship_name(), String(_destination_island()["name"])]
 	info.add_theme_font_size_override("font_size", 16)
-	info.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
+	info.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(info)
-	var sail : Button = _make_button("Set sail", Color(0.80, 1.0, 0.66, 1.0))
+	var sail : Button = _make_button("Set sail", Palette.POSITIVE)
 	sail.pressed.connect(_on_captain_own)
 	row.add_child(sail)
 	return row_panel
@@ -320,12 +320,12 @@ func _make_fare_row(dest: Dictionary) -> PanelContainer:
 	var info : Label = Label.new()
 	info.text = "Buy fare — a straight ride to %s, no pillaging.   %d gold" % [String(dest["name"]), FARE_GOLD]
 	info.add_theme_font_size_override("font_size", 15)
-	info.add_theme_color_override("font_color", Color(0.86, 0.92, 1.0, 1.0))
+	info.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(info)
 	var can_afford : bool = PlayerState.total_coins >= FARE_GOLD
 	var fare : Button = _make_button("Pay fare" if can_afford else "Need %d gold" % FARE_GOLD,
-		Color(0.80, 1.0, 0.66, 1.0) if can_afford else Color(0.72, 0.72, 0.76, 1.0))
+		Palette.POSITIVE if can_afford else Palette.TEXT_MUTED)
 	fare.disabled = not can_afford
 	if can_afford:
 		fare.pressed.connect(_on_fare.bind(dest))
@@ -357,9 +357,7 @@ func _make_title(text: String) -> Label:
 	var label : Label = Label.new()
 	label.text = text
 	label.add_theme_font_size_override("font_size", 28)
-	label.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
-	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	label.add_theme_constant_override("outline_size", 4)
+	UiStyle.apply_title(label)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return label
 
@@ -369,7 +367,7 @@ func _make_caption(text: String) -> Label:
 	var label : Label = Label.new()
 	label.text = text
 	label.add_theme_font_size_override("font_size", 15)
-	label.add_theme_color_override("font_color", Color(0.74, 0.80, 0.92, 1.0))
+	UiStyle.apply_muted(label)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.custom_minimum_size = Vector2(620.0, 0.0)
@@ -378,49 +376,20 @@ func _make_caption(text: String) -> Label:
 
 func _panel_style() -> StyleBoxFlat:
 
-	var style : StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = Color(0.18, 0.11, 0.06, 0.96)
-	style.border_color = Color(0.78, 0.58, 0.24, 1.0)
-	style.set_border_width_all(3)
-	style.set_corner_radius_all(14)
+	var style : StyleBoxFlat = UiStyle.panel(true)
 	style.set_content_margin_all(28)
 	return style
 
 
 func _row_style() -> StyleBoxFlat:
 
-	var style : StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = Color(0.22, 0.14, 0.08, 0.92)
-	style.border_color = Color(0.5, 0.4, 0.22, 1.0)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(10)
-	return style
+	return UiStyle.card()
 
 
 func _make_button(text: String, font_color: Color) -> Button:
 
 	var btn : Button = Button.new()
 	btn.text = text
-	btn.focus_mode = Control.FOCUS_NONE
 	btn.add_theme_font_size_override("font_size", 18)
-	btn.add_theme_color_override("font_color", font_color)
-	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	btn.add_theme_constant_override("outline_size", 3)
-	for state in ["normal", "hover", "pressed"]:
-		var s : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.24, 0.16, 0.09, 0.95)
-		if state == "hover":
-			bg = bg.lightened(0.10)
-		elif state == "pressed":
-			bg = bg.darkened(0.12)
-		s.bg_color = bg
-		s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-		s.set_border_width_all(2)
-		s.set_corner_radius_all(8)
-		s.content_margin_left = 16
-		s.content_margin_right = 16
-		s.content_margin_top = 7
-		s.content_margin_bottom = 7
-		btn.add_theme_stylebox_override(state, s)
+	UiStyle.style_button(btn, font_color)
 	return btn

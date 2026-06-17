@@ -187,17 +187,10 @@ func _build_touch_menu_button() -> void:
 		return
 	var btn : Button = Button.new()
 	btn.text = "≡"
-	btn.focus_mode = Control.FOCUS_NONE
 	btn.custom_minimum_size = Vector2(54.0, 54.0)
 	btn.add_theme_font_size_override("font_size", 30)
-	for state in ["normal", "hover", "pressed"]:
-		var s : StyleBoxFlat = StyleBoxFlat.new()
-		s.bg_color = Color(0.30, 0.20, 0.10, 0.96) if state == "pressed" else Color(0.18, 0.11, 0.06, 0.92)
-		s.set_border_width_all(2)
-		s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-		s.set_corner_radius_all(10)
-		btn.add_theme_stylebox_override(state, s)
-	btn.add_theme_color_override("font_color", Color(0.97, 0.87, 0.55, 1.0))
+	# Themed chrome (adapts light/dark) — accent label on a card surface with the gold-tan rim.
+	UiStyle.style_button(btn, Palette.ACCENT, Palette.CARD_BG, Palette.BORDER)
 	btn.anchor_left = 0.0
 	btn.anchor_top = 0.0
 	btn.offset_left = 16.0

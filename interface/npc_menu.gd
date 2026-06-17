@@ -57,7 +57,7 @@ func _ready() -> void:
 	var portrait : Panel = Panel.new()
 	var ps : StyleBoxFlat = StyleBoxFlat.new()
 	ps.bg_color = _color
-	ps.border_color = Color(1, 1, 1, 0.85)
+	ps.border_color = Palette.BORDER
 	ps.set_border_width_all(3)
 	ps.set_corner_radius_all(int(PORTRAIT_SIZE * 0.5))
 	portrait.add_theme_stylebox_override("panel", ps)
@@ -107,19 +107,15 @@ func _make_option(opt: Dictionary) -> Button:
 	b.size = Vector2(BTN_SIZE, BTN_SIZE)
 	b.focus_mode = Control.FOCUS_NONE
 	b.add_theme_font_size_override("font_size", 13)
-	b.add_theme_color_override("font_color", Color(0.97, 0.9, 0.7, 1.0))
-	b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
-	b.add_theme_constant_override("outline_size", 2)
+	# Central theme: accent label + the themed button states — but keep the round radial-menu disc shape, so we
+	# build the state styleboxes via the factory and re-apply the circular corner radius rather than style_button().
+	b.add_theme_color_override("font_color", Palette.ACCENT)
+	if Palette.IS_DARK:
+		b.add_theme_color_override("font_outline_color", Palette.OUTLINE_HARD)
+		b.add_theme_constant_override("outline_size", 2)
+	var styles : Dictionary = UiStyle.button_styles(Palette.CARD_BG, Palette.BORDER)
 	for state in ["normal", "hover", "pressed"]:
-		var s : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.18, 0.12, 0.07, 0.97)
-		if state == "hover":
-			bg = bg.lightened(0.12)
-		elif state == "pressed":
-			bg = bg.darkened(0.1)
-		s.bg_color = bg
-		s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-		s.set_border_width_all(2)
+		var s : StyleBoxFlat = styles[state]
 		s.set_corner_radius_all(int(BTN_SIZE * 0.5))
 		b.add_theme_stylebox_override(state, s)
 	var act : Callable = opt.get("action", Callable())

@@ -30,9 +30,9 @@ func _modal_scrollable() -> bool:
 	return true
 
 func _modal_panel_style() -> StyleBoxFlat:
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.99, 0.94, 0.78, 1.0)   # cream card — so the TrophyCells (dark ink on gold) read
-	s.border_color = Color(0.52, 0.36, 0.16, 1.0)
+	# The INTENTIONAL cream outlier — themed cream card (so the TrophyCells read as dark ink on gold), kept at
+	# the larger modal scale (border 3 / radius 14 / margin 20). Routes through the factory so it retunes.
+	var s : StyleBoxFlat = UiStyle.cream_card()
 	s.set_border_width_all(3)
 	s.set_corner_radius_all(14)
 	s.set_content_margin_all(20)
@@ -49,14 +49,14 @@ func _build_content() -> void:
 	var title : Label = Label.new()
 	title.text = "TROPHY ROOM   %d / %d" % [earned, Trophies.ALL.size()]
 	title.add_theme_font_size_override("font_size", 24)
-	title.add_theme_color_override("font_color", Color(0.30, 0.20, 0.08, 1.0))
+	title.add_theme_color_override("font_color", Palette.INK_ON_LIGHT)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_content.add_child(title)
 
 	var sub : Label = Label.new()
 	sub.text = "Every honour on the rock — earned ones gleam, the rest await."
 	sub.add_theme_font_size_override("font_size", 13)
-	sub.add_theme_color_override("font_color", Color(0.42, 0.32, 0.18, 1.0))
+	sub.add_theme_color_override("font_color", Palette.INK_ON_LIGHT_SOFT)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_content.add_child(sub)

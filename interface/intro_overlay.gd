@@ -82,18 +82,14 @@ func _build() -> void:
 	var title : Label = Label.new()
 	title.text = TITLE_TEXT
 	title.add_theme_font_size_override("font_size", 30)
-	title.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
-	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	title.add_theme_constant_override("outline_size", 4)
+	UiStyle.apply_title(title)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
 
 	var body : Label = Label.new()
 	body.text = _body_for_platform()
 	body.add_theme_font_size_override("font_size", 18)
-	body.add_theme_color_override("font_color", Color(0.92, 0.84, 0.62, 1.0))
-	body.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.55))
-	body.add_theme_constant_override("outline_size", 2)
+	UiStyle.apply_primary(body)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(body)
@@ -121,53 +117,14 @@ func _do_begin() -> void:
 
 func _panel_style() -> StyleBoxFlat:
 
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.18, 0.11, 0.06, 0.97)
-	s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-	s.border_width_left = 3
-	s.border_width_top = 3
-	s.border_width_right = 3
-	s.border_width_bottom = 3
-	s.corner_radius_top_left = 14
-	s.corner_radius_top_right = 14
-	s.corner_radius_bottom_right = 14
-	s.corner_radius_bottom_left = 14
-	s.content_margin_left = 32
-	s.content_margin_right = 32
-	s.content_margin_top = 26
-	s.content_margin_bottom = 26
-	return s
+	# Routed through the central theme so the welcome panel recolors with Palette.use_scheme() (was a hardcoded brown).
+	return UiStyle.panel(true)
 
 
 func _make_button(text: String) -> Button:
 
 	var btn : Button = Button.new()
 	btn.text = text
-	btn.focus_mode = Control.FOCUS_NONE
 	btn.add_theme_font_size_override("font_size", 20)
-	btn.add_theme_color_override("font_color", Color(0.78, 1.0, 0.62, 1.0))
-	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	btn.add_theme_constant_override("outline_size", 3)
-	for state in ["normal", "hover", "pressed"]:
-		var sb : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.22, 0.14, 0.08, 0.95)
-		if state == "hover":
-			bg = bg.lightened(0.10)
-		elif state == "pressed":
-			bg = bg.darkened(0.12)
-		sb.bg_color = bg
-		sb.border_color = Color(0.78, 0.58, 0.24, 1.0)
-		sb.border_width_left = 2
-		sb.border_width_top = 2
-		sb.border_width_right = 2
-		sb.border_width_bottom = 2
-		sb.corner_radius_top_left = 8
-		sb.corner_radius_top_right = 8
-		sb.corner_radius_bottom_right = 8
-		sb.corner_radius_bottom_left = 8
-		sb.content_margin_left = 22
-		sb.content_margin_right = 22
-		sb.content_margin_top = 10
-		sb.content_margin_bottom = 10
-		btn.add_theme_stylebox_override(state, sb)
+	UiStyle.style_button(btn, Palette.POSITIVE)   # "get to it" = a positive/confirm call-to-action
 	return btn

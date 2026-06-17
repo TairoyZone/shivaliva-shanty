@@ -109,7 +109,7 @@ func _build_content() -> void:
 	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(_body)
 	col.add_child(_hsep())
-	var leave : Button = _make_button("Leave", Color(0.95, 0.84, 0.56, 1.0))
+	var leave : Button = _make_button("Leave", Palette.ACCENT)
 	leave.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	leave.pressed.connect(_on_leave)
 	col.add_child(leave)
@@ -142,7 +142,7 @@ func _render_tabs() -> void:
 	for g in _games:
 		var is_active : bool = String(g["id"]) == String(_active.get("id", ""))
 		var btn : Button = _make_button(String(g["name"]),
-			Color(0.98, 0.90, 0.55, 1.0) if is_active else Color(0.74, 0.72, 0.66, 1.0))
+			Palette.ACCENT if is_active else Palette.TEXT_MUTED)
 		btn.disabled = is_active
 		btn.pressed.connect(_on_tab.bind(g))
 		_tab_row.add_child(btn)
@@ -203,7 +203,7 @@ func _build_create_panel() -> void:
 		note = "Cash table — %s." % String(g["cash_note"])
 	var note_lbl : Label = _make_caption(note)
 	if not affordable:
-		note_lbl.add_theme_color_override("font_color", Color(0.98, 0.66, 0.40, 1.0))
+		note_lbl.add_theme_color_override("font_color", Palette.DANGER)
 	_body.add_child(note_lbl)
 
 	_body.add_child(_spacer(8))
@@ -211,7 +211,7 @@ func _build_create_panel() -> void:
 	btn_row.add_theme_constant_override("separation", 16)
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_body.add_child(btn_row)
-	var sit : Button = _make_button("Sit down  ▸", Color(0.78, 1.0, 0.62, 1.0))
+	var sit : Button = _make_button("Sit down  ▸", Palette.POSITIVE)
 	sit.disabled = not affordable
 	sit.pressed.connect(_on_create_sit)
 	btn_row.add_child(sit)
@@ -262,7 +262,7 @@ func _make_dropdown(label_text: String, items: Array, selected: int, on_sel: Cal
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	var lbl : Label = _make_caption("%s:" % label_text)
 	lbl.add_theme_font_size_override("font_size", 18)
-	lbl.add_theme_color_override("font_color", Color(0.92, 0.86, 0.62, 1.0))
+	lbl.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
 	row.add_child(lbl)
 	var opt : OptionButton = OptionButton.new()
 	opt.focus_mode = Control.FOCUS_NONE
@@ -280,18 +280,19 @@ func _make_dropdown(label_text: String, items: Array, selected: int, on_sel: Cal
 func _style_option_button(opt: OptionButton) -> void:
 
 	opt.add_theme_font_size_override("font_size", 17)
-	opt.add_theme_color_override("font_color", Color(0.96, 0.90, 0.66, 1.0))
-	opt.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	opt.add_theme_constant_override("outline_size", 3)
+	opt.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
+	if Palette.IS_DARK:
+		opt.add_theme_color_override("font_outline_color", Palette.OUTLINE_HARD)
+		opt.add_theme_constant_override("outline_size", 3)
 	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
 		var s : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.22, 0.14, 0.08, 0.95)
+		var bg : Color = Palette.CARD_BG
 		if state == "hover":
 			bg = bg.lightened(0.10)
 		elif state == "pressed":
 			bg = bg.darkened(0.12)
 		s.bg_color = bg
-		s.border_color = Color(0.78, 0.58, 0.24, 1.0)
+		s.border_color = Palette.BORDER
 		s.set_border_width_all(2)
 		s.set_corner_radius_all(8)
 		s.content_margin_left = 16
@@ -301,17 +302,17 @@ func _style_option_button(opt: OptionButton) -> void:
 		opt.add_theme_stylebox_override(state, s)
 	var popup : PopupMenu = opt.get_popup()
 	var panel : StyleBoxFlat = StyleBoxFlat.new()
-	panel.bg_color = Color(0.16, 0.10, 0.05, 0.99)
-	panel.border_color = Color(0.78, 0.58, 0.24, 1.0)
+	panel.bg_color = Palette.PANEL_BG
+	panel.border_color = Palette.BORDER
 	panel.set_border_width_all(2)
 	panel.set_corner_radius_all(8)
 	panel.set_content_margin_all(6)
 	popup.add_theme_stylebox_override("panel", panel)
-	popup.add_theme_color_override("font_color", Color(0.90, 0.84, 0.62, 1.0))
-	popup.add_theme_color_override("font_hover_color", Color(1.0, 0.94, 0.6, 1.0))
+	popup.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
+	popup.add_theme_color_override("font_hover_color", Palette.ACCENT)
 	popup.add_theme_font_size_override("font_size", 16)
 	var hov : StyleBoxFlat = StyleBoxFlat.new()
-	hov.bg_color = Color(0.30, 0.20, 0.10, 1.0)
+	hov.bg_color = Palette.SLOT_BG
 	hov.set_corner_radius_all(6)
 	popup.add_theme_stylebox_override("hover", hov)
 
@@ -402,9 +403,7 @@ func _make_title(text: String) -> Label:
 	var l : Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 30)
-	l.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
-	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	l.add_theme_constant_override("outline_size", 4)
+	UiStyle.apply_title(l)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return l
 
@@ -421,7 +420,7 @@ func _make_caption(text: String) -> Label:
 	var l : Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 15)
-	l.add_theme_color_override("font_color", Color(0.80, 0.84, 0.92, 1.0))
+	UiStyle.apply_primary(l)
 	return l
 
 
@@ -429,7 +428,7 @@ func _hsep() -> HSeparator:
 
 	var sep : HSeparator = HSeparator.new()
 	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.78, 0.58, 0.24, 0.4)
+	s.bg_color = Color(Palette.BORDER.r, Palette.BORDER.g, Palette.BORDER.b, 0.4)
 	s.content_margin_top = 1
 	s.content_margin_bottom = 1
 	sep.add_theme_stylebox_override("separator", s)
@@ -445,15 +444,9 @@ func _spacer(h: float) -> Control:
 
 func _panel_style() -> StyleBoxFlat:
 
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.18, 0.11, 0.06, 0.97)
-	s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-	s.set_border_width_all(3)
-	s.set_corner_radius_all(14)
+	var s : StyleBoxFlat = UiStyle.panel(true)
 	s.content_margin_left = 28
 	s.content_margin_right = 28
-	s.content_margin_top = 22
-	s.content_margin_bottom = 22
 	return s
 
 
@@ -464,21 +457,11 @@ func _make_button(text: String, font_color: Color) -> Button:
 	btn.focus_mode = Control.FOCUS_NONE
 	btn.add_theme_font_size_override("font_size", 18)
 	btn.add_theme_color_override("font_color", font_color)
-	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	btn.add_theme_color_override("font_outline_color", Palette.OUTLINE_HARD)
 	btn.add_theme_constant_override("outline_size", 3)
-	for state in ["normal", "hover", "pressed", "disabled"]:
-		var s : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.22, 0.14, 0.08, 0.95)
-		if state == "hover":
-			bg = bg.lightened(0.10)
-		elif state == "pressed":
-			bg = bg.darkened(0.12)
-		elif state == "disabled":
-			bg = bg.darkened(0.30)
-		s.bg_color = bg
-		s.border_color = Color(0.78, 0.58, 0.24, 1.0) if state != "disabled" else Color(0.5, 0.42, 0.3, 1.0)
-		s.set_border_width_all(2)
-		s.set_corner_radius_all(8)
+	var styles : Dictionary = UiStyle.button_styles(Palette.CARD_BG, Palette.BORDER)
+	for state in styles:
+		var s : StyleBoxFlat = styles[state]
 		s.content_margin_left = 16
 		s.content_margin_right = 16
 		s.content_margin_top = 7

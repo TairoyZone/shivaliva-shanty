@@ -7,9 +7,6 @@ extends Modal
 
 
 const GROUP : StringName = &"npc_profile_card"
-const INK : Color = Color(0.95, 0.88, 0.66, 1.0)
-const INK_SOFT : Color = Color(0.78, 0.72, 0.56, 1.0)
-const HEADER : Color = Color(0.66, 0.74, 0.62, 1.0)
 
 ## What each cast member does — shown under their name. Data-driven; falls back to a generic role.
 const ROLES : Dictionary = {
@@ -60,9 +57,6 @@ func _modal_scrollable() -> bool:
 
 func _modal_content_separation() -> int:
 	return 8
-
-func _modal_panel_style() -> StyleBoxFlat:
-	return _panel_style()
 
 
 func _build_content() -> void:
@@ -115,7 +109,7 @@ func _render() -> void:
 	_content.add_child(_gap(6))
 	var row : HBoxContainer = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	var close : Button = _btn("Close", INK)
+	var close : Button = _btn("Close", Palette.ACCENT)
 	close.pressed.connect(_close)
 	row.add_child(close)
 	_content.add_child(row)
@@ -152,15 +146,13 @@ func _header() -> Control:
 	var name_l : Label = Label.new()
 	name_l.text = _npc_name
 	name_l.add_theme_font_size_override("font_size", 26)
-	name_l.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
-	name_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	name_l.add_theme_constant_override("outline_size", 3)
+	UiStyle.apply_title(name_l)
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(name_l)
 	var role_l : Label = Label.new()
 	role_l.text = String(ROLES.get(_npc_name, "Cradle Rock local"))
 	role_l.add_theme_font_size_override("font_size", 15)
-	role_l.add_theme_color_override("font_color", INK_SOFT)
+	UiStyle.apply_muted(role_l)
 	role_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(role_l)
 	return box
@@ -173,28 +165,28 @@ func _crew_section() -> Control:
 	box.add_theme_constant_override("separation", 6)
 	box.add_child(_section("Crew"))
 	if PlayerState.is_in_crew(_npc_name):
-		_content_note(box, "Aboard your crew  ·  %s" % PlayerState.crew_rank(_npc_name), INK)
+		_content_note(box, "Aboard your crew  ·  %s" % PlayerState.crew_rank(_npc_name), Palette.TEXT_PRIMARY)
 		var idx : int = int(PlayerState.crew.get(_npc_name, 0))
 		var row : HBoxContainer = HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 		row.add_theme_constant_override("separation", 8)
-		var up : Button = _btn("Promote ▲", Color(0.82, 1.0, 0.66, 1.0))
+		var up : Button = _btn("Promote ▲", Palette.POSITIVE)
 		up.disabled = idx >= PlayerState.CREW_RANKS.size() - 1
 		up.pressed.connect(_promote)
 		row.add_child(up)
-		var down : Button = _btn("Demote ▼", Color(0.95, 0.84, 0.56, 1.0))
+		var down : Button = _btn("Demote ▼", Palette.ACCENT)
 		down.disabled = idx <= 0
 		down.pressed.connect(_demote)
 		row.add_child(down)
-		var off : Button = _btn("Dismiss", Color(0.95, 0.72, 0.6, 1.0))
+		var off : Button = _btn("Dismiss", Palette.DANGER)
 		off.pressed.connect(_dismiss)
 		row.add_child(off)
 		box.add_child(row)
 	elif PlayerState.can_recruit(_npc_name):
-		_content_note(box, "They'd sail with you.", INK_SOFT)
+		_content_note(box, "They'd sail with you.", Palette.TEXT_MUTED)
 		var row : HBoxContainer = HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		var hire : Button = _btn("Hire to crew  ▸", Color(0.82, 1.0, 0.66, 1.0))
+		var hire : Button = _btn("Hire to crew  ▸", Palette.POSITIVE)
 		hire.pressed.connect(_hire)
 		row.add_child(hire)
 		box.add_child(row)
@@ -202,10 +194,10 @@ func _crew_section() -> Control:
 		var aff : int = PlayerState.get_affinity(_npc_name)
 		if aff < 0:
 			_content_note(box, "They've soured on you (%s) — mend things before they'd ever crew for you." % \
-				PlayerState.affinity_tier(_npc_name), Color(0.92, 0.5, 0.45, 1.0))
+				PlayerState.affinity_tier(_npc_name), Palette.DANGER)
 		else:
 			_content_note(box, "Earn their trust to recruit — become their Confidant.  (rapport %d / %d)" % [
-				aff, PlayerState.RECRUIT_MIN_AFFINITY], INK_SOFT)
+				aff, PlayerState.RECRUIT_MIN_AFFINITY], Palette.TEXT_MUTED)
 	return box
 
 
@@ -257,13 +249,13 @@ func _skill_row(skill: String, value: int) -> Control:
 	var l : Label = Label.new()
 	l.text = skill
 	l.add_theme_font_size_override("font_size", 14)
-	l.add_theme_color_override("font_color", INK)
+	UiStyle.apply_primary(l)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(l)
 	var st : Label = Label.new()
 	st.text = CrewSkills.tier_name(value)
 	st.add_theme_font_size_override("font_size", 14)
-	st.add_theme_color_override("font_color", Color(0.95, 0.78, 0.30, 1.0))
+	st.add_theme_color_override("font_color", Palette.ACCENT)
 	row.add_child(st)
 	return row
 
@@ -274,7 +266,7 @@ func _section(text: String) -> Label:
 	var l : Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 17)
-	l.add_theme_color_override("font_color", HEADER)
+	UiStyle.apply_title(l)
 	return l
 
 
@@ -282,7 +274,7 @@ func _kv(key: String, value: String) -> Label:
 	var l : Label = Label.new()
 	l.text = "%s:  %s" % [key, value]
 	l.add_theme_font_size_override("font_size", 15)
-	l.add_theme_color_override("font_color", INK)
+	UiStyle.apply_primary(l)
 	return l
 
 
@@ -290,7 +282,7 @@ func _body(text: String) -> Label:
 	var l : Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 14)
-	l.add_theme_color_override("font_color", INK)
+	UiStyle.apply_primary(l)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD
 	return l
 
@@ -299,7 +291,7 @@ func _muted(text: String) -> Label:
 	var l : Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 13)
-	l.add_theme_color_override("font_color", INK_SOFT)
+	UiStyle.apply_muted(l)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD
 	return l
 
@@ -313,7 +305,7 @@ func _content_note(box: VBoxContainer, text: String, color: Color) -> void:
 
 func _rule() -> Control:
 	var r : ColorRect = ColorRect.new()
-	r.color = Color(0.52, 0.36, 0.16, 1.0)
+	r.color = Color(Palette.BORDER.r, Palette.BORDER.g, Palette.BORDER.b, 0.55)
 	r.custom_minimum_size = Vector2(0, 2)
 	return r
 
@@ -334,37 +326,17 @@ func _short() -> String:
 	return parts[parts.size() - 1] if parts.size() > 0 else _npc_name
 
 
-func _panel_style() -> StyleBoxFlat:
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.18, 0.11, 0.06, 0.97)
-	s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-	s.set_border_width_all(3)
-	s.set_corner_radius_all(14)
-	s.set_content_margin_all(22)
-	return s
-
-
 func _btn(text: String, font_color: Color) -> Button:
 	var b : Button = Button.new()
 	b.text = text
 	b.focus_mode = Control.FOCUS_NONE
 	b.add_theme_font_size_override("font_size", 16)
 	b.add_theme_color_override("font_color", font_color)
-	b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	b.add_theme_color_override("font_outline_color", Palette.OUTLINE_HARD)
 	b.add_theme_constant_override("outline_size", 2)
-	for st in ["normal", "hover", "pressed", "disabled"]:
-		var s : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.22, 0.14, 0.08, 0.95)
-		if st == "hover":
-			bg = bg.lightened(0.10)
-		elif st == "pressed":
-			bg = bg.darkened(0.12)
-		elif st == "disabled":
-			bg = bg.darkened(0.32)
-		s.bg_color = bg
-		s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-		s.set_border_width_all(2)
-		s.set_corner_radius_all(8)
+	var styles : Dictionary = UiStyle.button_styles(Palette.CARD_BG, Palette.BORDER)
+	for st in styles:
+		var s : StyleBoxFlat = styles[st]
 		s.content_margin_left = 13
 		s.content_margin_right = 13
 		s.content_margin_top = 6

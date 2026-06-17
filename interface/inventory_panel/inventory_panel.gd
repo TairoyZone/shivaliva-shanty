@@ -18,11 +18,6 @@ const SLOT_SEP : float = 8.0
 const COLS : int = 6   # slots per row in the grid
 
 const COLOR_DIM : Color = Color(0, 0, 0, 0.5)
-const COLOR_SLOT_BG : Color = Color(0.14, 0.09, 0.05, 1.0)
-const COLOR_SLOT_BORDER : Color = Color(0.55, 0.38, 0.18, 1.0)
-const COLOR_SLOT_EMPTY_BORDER : Color = Color(0.34, 0.24, 0.12, 1.0)
-const COLOR_TITLE : Color = Color(0.98, 0.86, 0.42, 1.0)
-const COLOR_COUNT : Color = Color(1.0, 0.95, 0.78, 1.0)
 
 ## The Tutorial tab's default text when you're NOT in a puzzle (the overworld controls). In a puzzle,
 ## PuzzleScene.set_help_text replaces it with THAT puzzle's how-to — only ever what's relevant to where you are.
@@ -186,16 +181,14 @@ func _build_skeleton() -> void:
 	gold_row.add_child(coin)
 	_gold_label = Label.new()
 	_gold_label.add_theme_font_size_override("font_size", 22)
-	_gold_label.add_theme_color_override("font_color", Color(0.98, 0.88, 0.52, 1.0))
-	_gold_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	_gold_label.add_theme_constant_override("outline_size", 3)
+	UiStyle.apply_primary(_gold_label)   # the gold NUMBER reads as body text now (the coin icon stays gold)
 	_gold_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	gold_row.add_child(_gold_label)
 	_refresh_gold()
 	var whint : Label = Label.new()
 	whint.text = "Double-click a weapon to equip it"
 	whint.add_theme_font_size_override("font_size", 13)
-	whint.add_theme_color_override("font_color", Color(0.78, 0.66, 0.42, 1.0))
+	whint.add_theme_color_override("font_color", Palette.TEXT_MUTED)
 	_items_page.add_child(whint)
 	_grid = GridContainer.new()
 	_grid.columns = COLS
@@ -212,7 +205,7 @@ func _build_skeleton() -> void:
 	var trash_hint : Label = Label.new()
 	trash_hint.text = "Drag an item here to discard  →"
 	trash_hint.add_theme_font_size_override("font_size", 12)
-	trash_hint.add_theme_color_override("font_color", Color(0.72, 0.66, 0.56, 0.95))
+	trash_hint.add_theme_color_override("font_color", Palette.TEXT_MUTED)
 	trash_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	trash_row.add_child(trash_hint)
 	trash_row.add_child(InventoryTrash.new())
@@ -227,7 +220,7 @@ func _build_skeleton() -> void:
 	var hint : Label = Label.new()
 	hint.text = "Click the tab again, or press  Esc,  to close"
 	hint.add_theme_font_size_override("font_size", 14)
-	hint.add_theme_color_override("font_color", Color(0.8, 0.68, 0.42, 1.0))
+	hint.add_theme_color_override("font_color", Palette.TEXT_MUTED)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(hint)
 
@@ -290,11 +283,11 @@ func _make_rail_handle() -> Button:
 	b.mouse_filter = Control.MOUSE_FILTER_STOP
 	b.tooltip_text = "Hide / show the side tabs"
 	b.add_theme_font_size_override("font_size", 22)
-	b.add_theme_color_override("font_color", Color(0.97, 0.87, 0.55, 1.0))
+	b.add_theme_color_override("font_color", Palette.ACCENT)
 	for state in ["normal", "hover", "pressed"]:
 		var s : StyleBoxFlat = StyleBoxFlat.new()
-		s.bg_color = Color(0.27, 0.17, 0.09, 1.0) if state == "pressed" else Color(0.16, 0.11, 0.06, 0.92)
-		s.border_color = Color(Palette.BRASS_FRAME.r, Palette.BRASS_FRAME.g, Palette.BRASS_FRAME.b, 0.6)
+		s.bg_color = Palette.CARD_BG if state == "pressed" else Color(Palette.PANEL_BG_DARK.r, Palette.PANEL_BG_DARK.g, Palette.PANEL_BG_DARK.b, 0.92)
+		s.border_color = Color(Palette.BORDER.r, Palette.BORDER.g, Palette.BORDER.b, 0.6)
 		s.set_border_width_all(2)
 		s.corner_radius_top_left = 11
 		s.corner_radius_bottom_left = 11
@@ -422,7 +415,7 @@ func _refresh_ayo() -> void:
 	var head : Label = Label.new()
 	head.text = "Ayo!"
 	head.add_theme_font_size_override("font_size", 22)
-	head.add_theme_color_override("font_color", COLOR_TITLE)
+	head.add_theme_color_override("font_color", Palette.ACCENT)
 	_ayo_list.add_child(head)
 	var challenges : Array = PlayerState.pending_challenges
 	var ids : Array = PlayerState.unclaimed_trophy_ids()
@@ -430,15 +423,15 @@ func _refresh_ayo() -> void:
 		var none : Label = Label.new()
 		none.text = "No new tidings — you're all caught up."
 		none.add_theme_font_size_override("font_size", 14)
-		none.add_theme_color_override("font_color", Color(0.8, 0.72, 0.56, 1.0))
+		none.add_theme_color_override("font_color", Palette.TEXT_MUTED)
 		_ayo_list.add_child(none)
 		return
 	if not challenges.is_empty():
-		_ayo_list.add_child(_ayo_subhead("You've been challenged to a duel!", Color(1.0, 0.74, 0.55, 1.0)))
+		_ayo_list.add_child(_ayo_subhead("You've been challenged to a duel!", Palette.ACCENT))
 		for nm in challenges.duplicate():   # duplicate — Reject mutates the live array mid-loop
 			_ayo_list.add_child(_make_challenge_card(String(nm)))
 	if not ids.is_empty():
-		_ayo_list.add_child(_ayo_subhead("New trophies earned — claim them!", Color(0.86, 0.78, 0.6, 1.0)))
+		_ayo_list.add_child(_ayo_subhead("New trophies earned — claim them!", Palette.ACCENT))
 		for id in ids:
 			_ayo_list.add_child(_make_claim_card(String(id)))
 
@@ -458,11 +451,9 @@ func _make_challenge_card(npc_name: String) -> Control:
 	var prof : NpcPersonality = NpcRegistry.by_name(npc_name)
 	var tint : Color = prof.portrait_color if prof != null else Color(0.8, 0.5, 0.4, 1.0)
 	var card : PanelContainer = PanelContainer.new()
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.24, 0.12, 0.10, 0.96)   # a warm combat tint, distinct from the trophy card
-	s.border_color = tint.lerp(Palette.BRASS_FRAME, 0.4)
+	var s : StyleBoxFlat = UiStyle.card()
+	s.border_color = tint.lerp(Palette.BORDER, 0.4)   # keep the per-NPC tint in the rim, on the themed card
 	s.set_border_width_all(2)
-	s.set_corner_radius_all(8)
 	s.set_content_margin_all(10)
 	card.add_theme_stylebox_override("panel", s)
 	var hb : HBoxContainer = HBoxContainer.new()
@@ -479,12 +470,12 @@ func _make_challenge_card(npc_name: String) -> Control:
 	var nm : Label = Label.new()
 	nm.text = "%s wants to spar!" % npc_name
 	nm.add_theme_font_size_override("font_size", 16)
-	nm.add_theme_color_override("font_color", tint.lightened(0.35))
+	nm.add_theme_color_override("font_color", Palette.ACCENT)
 	col.add_child(nm)
 	var ds : Label = Label.new()
 	ds.text = "A friendly Skirmish bout — your board against theirs."
 	ds.add_theme_font_size_override("font_size", 13)
-	ds.add_theme_color_override("font_color", Color(0.85, 0.78, 0.62, 1.0))
+	ds.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
 	ds.autowrap_mode = TextServer.AUTOWRAP_WORD
 	ds.custom_minimum_size = Vector2(220.0, 0.0)
 	col.add_child(ds)
@@ -553,11 +544,8 @@ func _make_claim_card(id: String) -> Control:
 
 	var info : Dictionary = _trophy_info(id)
 	var card : PanelContainer = PanelContainer.new()
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.22, 0.15, 0.08, 0.95)
-	s.border_color = Palette.BRASS_FRAME
+	var s : StyleBoxFlat = UiStyle.card()
 	s.set_border_width_all(2)
-	s.set_corner_radius_all(8)
 	s.set_content_margin_all(10)
 	card.add_theme_stylebox_override("panel", s)
 	var hb : HBoxContainer = HBoxContainer.new()
@@ -573,12 +561,12 @@ func _make_claim_card(id: String) -> Control:
 	var nm : Label = Label.new()
 	nm.text = String(info.get("name", id))
 	nm.add_theme_font_size_override("font_size", 16)
-	nm.add_theme_color_override("font_color", COLOR_TITLE)
+	nm.add_theme_color_override("font_color", Palette.ACCENT)
 	col.add_child(nm)
 	var ds : Label = Label.new()
 	ds.text = String(info.get("desc", ""))
 	ds.add_theme_font_size_override("font_size", 13)
-	ds.add_theme_color_override("font_color", Color(0.85, 0.78, 0.62, 1.0))
+	ds.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
 	ds.autowrap_mode = TextServer.AUTOWRAP_WORD
 	ds.custom_minimum_size = Vector2(300.0, 0.0)
 	col.add_child(ds)
@@ -689,7 +677,7 @@ func _refresh_objectives() -> void:
 	var head : Label = Label.new()
 	head.text = "Objectives"
 	head.add_theme_font_size_override("font_size", 22)
-	head.add_theme_color_override("font_color", COLOR_TITLE)
+	head.add_theme_color_override("font_color", Palette.ACCENT)
 	_obj_list.add_child(head)
 	var shown : int = 0
 	for quest in PlayerState.current_quests():
@@ -701,7 +689,7 @@ func _refresh_objectives() -> void:
 		var none : Label = Label.new()
 		none.text = "All caught up! Wander Cradle Rock and talk to the folk — some may ask a small favour."
 		none.add_theme_font_size_override("font_size", 14)
-		none.add_theme_color_override("font_color", Color(0.85, 0.78, 0.62, 1.0))
+		none.add_theme_color_override("font_color", Palette.TEXT_MUTED)
 		none.autowrap_mode = TextServer.AUTOWRAP_WORD
 		none.custom_minimum_size = Vector2(440.0, 0.0)
 		_obj_list.add_child(none)
@@ -710,11 +698,8 @@ func _refresh_objectives() -> void:
 func _make_quest_card(quest: Dictionary) -> Control:
 
 	var card : PanelContainer = PanelContainer.new()
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.22, 0.15, 0.08, 0.95)
-	s.border_color = Palette.BRASS_FRAME
+	var s : StyleBoxFlat = UiStyle.card()
 	s.set_border_width_all(2)
-	s.set_corner_radius_all(8)
 	s.set_content_margin_all(10)
 	card.add_theme_stylebox_override("panel", s)
 	var row : HBoxContainer = HBoxContainer.new()
@@ -734,12 +719,12 @@ func _make_quest_card(quest: Dictionary) -> Control:
 	var title : Label = Label.new()
 	title.text = String(quest.get("title", ""))
 	title.add_theme_font_size_override("font_size", 16)
-	title.add_theme_color_override("font_color", COLOR_TITLE)
+	title.add_theme_color_override("font_color", Palette.ACCENT)
 	col.add_child(title)
 	var detail : Label = Label.new()
 	detail.text = String(quest.get("detail", ""))
 	detail.add_theme_font_size_override("font_size", 13)
-	detail.add_theme_color_override("font_color", Color(0.85, 0.78, 0.62, 1.0))
+	detail.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD
 	detail.custom_minimum_size = Vector2(380.0, 0.0)
 	col.add_child(detail)
@@ -778,14 +763,14 @@ func _build_tutorial_page() -> Control:
 	var head : Label = Label.new()
 	head.text = "How to play"
 	head.add_theme_font_size_override("font_size", 22)
-	head.add_theme_color_override("font_color", COLOR_TITLE)
+	head.add_theme_color_override("font_color", Palette.ACCENT)
 	col.add_child(head)
 	# ONLY the current context's how-to — the puzzle you're in (PuzzleScene.set_help_text) or the overworld
 	# controls by default. Never a list of every puzzle.
 	_current_help_label = Label.new()
 	_current_help_label.text = _overworld_help()
 	_current_help_label.add_theme_font_size_override("font_size", 15)
-	_current_help_label.add_theme_color_override("font_color", Color(0.93, 0.88, 0.74, 1.0))
+	_current_help_label.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
 	_current_help_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_current_help_label.custom_minimum_size = Vector2(460.0, 0.0)
 	col.add_child(_current_help_label)
@@ -989,7 +974,7 @@ func _make_slot(slot: Dictionary, index: int = -1) -> Control:
 		var count : Label = Label.new()
 		count.text = str(int(slot["count"]))
 		count.add_theme_font_size_override("font_size", 15)
-		count.add_theme_color_override("font_color", COLOR_COUNT)
+		count.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
 		count.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 		count.add_theme_constant_override("outline_size", 4)
 		count.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1058,7 +1043,7 @@ func make_drag_preview(item_id: String, count: int) -> Control:
 		var lbl : Label = Label.new()
 		lbl.text = str(count)
 		lbl.add_theme_font_size_override("font_size", 15)
-		lbl.add_theme_color_override("font_color", COLOR_COUNT)
+		lbl.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
 		lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 		lbl.add_theme_constant_override("outline_size", 4)
 		lbl.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1089,14 +1074,14 @@ func _refresh_bag_row() -> void:
 		var done : Label = Label.new()
 		done.text = "Backpack fully upgraded"
 		done.add_theme_font_size_override("font_size", 13)
-		done.add_theme_color_override("font_color", Color(0.7, 0.62, 0.42, 1.0))
+		done.add_theme_color_override("font_color", Palette.TEXT_MUTED)
 		_bag_row.add_child(done)
 		return
 	var cost : int = int(up["cost"])
 	var lbl : Label = Label.new()
 	lbl.text = "Bigger Backpack — %d slots" % int(up["slots"])
 	lbl.add_theme_font_size_override("font_size", 13)
-	lbl.add_theme_color_override("font_color", COLOR_COUNT)
+	lbl.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_bag_row.add_child(lbl)
 	var buy : Button = Button.new()

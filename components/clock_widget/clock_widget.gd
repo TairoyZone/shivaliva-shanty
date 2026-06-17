@@ -11,20 +11,19 @@ const TEXT_X : float = 70.0   # left edge of the time + phase text (clears the a
 const ARC_C : Vector2 = Vector2(36.0, 44.0)   # arc centre (left side of the pill)
 const ARC_R : float = 26.0
 
-# Warm-brass HUD theme (matches the overworld panels).
-const BG : Color = Color(0.22, 0.14, 0.08, 0.95)
-const BORDER : Color = Color(0.78, 0.58, 0.24, 1.0)
+# Pill chrome + text route through the swappable HUD theme (Palette tokens, read at build time so a scheme
+# swap retunes the clock too). The day/night ARC art (sun gold, moon pale, dim track) stays fixed — it's a
+# drawn indicator, not chrome.
 const ARC_TRACK : Color = Color(0.55, 0.45, 0.28, 0.7)
 const SUN : Color = Color(1.0, 0.86, 0.4, 1.0)
 const MOON : Color = Color(0.86, 0.89, 0.99, 1.0)
-const TEXT : Color = Color(0.99, 0.92, 0.6, 1.0)
-const PHASE_TEXT : Color = Color(0.82, 0.74, 0.52, 1.0)
 
 # Sun clock (mirrors DayNight): rises ~6:30, sets ~18:30, peaks 12:30.
 const SUNRISE : float = 390.0
 const SUNSET : float = 1110.0
 
 var _panel_style : StyleBoxFlat
+var _bg : Color = Palette.PANEL_BG   # the pill backing — also painted over the moon to cut its crescent
 var _time_label : Label
 var _phase_label : Label
 var _last_min : int = -1
@@ -37,21 +36,24 @@ func _ready() -> void:
 	size = Vector2(W, H)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
+	_bg = Palette.PANEL_BG
 	_panel_style = StyleBoxFlat.new()
-	_panel_style.bg_color = BG
-	_panel_style.border_color = BORDER
+	_panel_style.bg_color = _bg
+	_panel_style.border_color = Palette.BORDER
 	_panel_style.set_border_width_all(2)
 	_panel_style.set_corner_radius_all(12)
 
 	# Both labels are width-bounded + clipped to the pill's inner width, so a long string (e.g. "The Dead Of
-	# Night") can never bleed past the brass background — it stays inside the text column.
+	# Night") can never bleed past the pill background — it stays inside the text column.
 	var text_w : float = W - TEXT_X - 8.0
 
 	_time_label = Label.new()
 	_time_label.add_theme_font_size_override("font_size", 21)
-	_time_label.add_theme_color_override("font_color", TEXT)
-	_time_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	_time_label.add_theme_constant_override("outline_size", 4)
+	_time_label.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
+	# Light schemes (dark text on a light pill) drop the heavy black outline; dark schemes keep it crisp.
+	if Palette.IS_DARK:
+		_time_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		_time_label.add_theme_constant_override("outline_size", 4)
 	_time_label.position = Vector2(TEXT_X, 9.0)
 	_time_label.size = Vector2(text_w, 26.0)
 	_time_label.clip_text = true
@@ -59,7 +61,7 @@ func _ready() -> void:
 
 	_phase_label = Label.new()
 	_phase_label.add_theme_font_size_override("font_size", 12)
-	_phase_label.add_theme_color_override("font_color", PHASE_TEXT)
+	_phase_label.add_theme_color_override("font_color", Palette.TEXT_MUTED)
 	_phase_label.position = Vector2(TEXT_X, 37.0)
 	_phase_label.size = Vector2(text_w, 18.0)
 	_phase_label.clip_text = true
@@ -106,7 +108,7 @@ func _draw() -> void:
 		# Night — a moon presides at the crown of the (dim) arc, with a crescent bite + a couple of stars.
 		var moon : Vector2 = ARC_C + Vector2(0.0, -ARC_R)
 		draw_circle(moon, 6.5, MOON)
-		draw_circle(moon + Vector2(2.5, -1.5), 5.0, BG)   # crescent shadow
+		draw_circle(moon + Vector2(2.5, -1.5), 5.0, _bg)   # crescent shadow (the pill bg, cuts the crescent)
 		draw_circle(ARC_C + Vector2(-18.0, -8.0), 1.2, MOON)
 		draw_circle(ARC_C + Vector2(16.0, -12.0), 1.0, MOON)
 		draw_circle(ARC_C + Vector2(10.0, 2.0), 1.1, MOON)

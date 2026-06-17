@@ -77,7 +77,7 @@ func _build() -> void:
 	var spacer : Control = Control.new()
 	spacer.custom_minimum_size = Vector2(0.0, 6.0)
 	vbox.add_child(spacer)
-	var back : Button = _make_button("Never mind", Color(0.95, 0.84, 0.56, 1.0))
+	var back : Button = _make_button("Never mind", Palette.ACCENT)
 	back.pressed.connect(_close)
 	vbox.add_child(back)
 	# ESC closes the board — the ONE reusable primitive (standing rule), not a hand-rolled _unhandled_input.
@@ -100,13 +100,13 @@ func _make_job_row(job: Dictionary) -> PanelContainer:
 		sub += "   ·   get hired at %s first" % String(job["site"])
 	info.text = "%s\n%s" % [String(job["title"]), sub]
 	info.add_theme_font_size_override("font_size", 17)
-	info.add_theme_color_override("font_color", Color(0.95, 0.9, 0.74, 1.0))
+	info.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(info)
 
 	# "Go" always takes you to the work-site (head there to apply / look even before you're hired).
-	var go : Button = _make_button("Go", Color(0.80, 1.0, 0.66, 1.0))
+	var go : Button = _make_button("Go", Palette.POSITIVE)
 	go.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	go.pressed.connect(_on_go.bind(job))
 	row.add_child(go)
@@ -147,9 +147,7 @@ func _make_title(text: String) -> Label:
 	var l : Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 28)
-	l.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
-	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	l.add_theme_constant_override("outline_size", 4)
+	UiStyle.apply_title(l)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return l
 
@@ -159,7 +157,7 @@ func _make_caption(text: String) -> Label:
 	var l : Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 15)
-	l.add_theme_color_override("font_color", Color(0.82, 0.74, 0.56, 1.0))
+	UiStyle.apply_muted(l)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return l
@@ -169,50 +167,18 @@ func _make_button(text: String, font_color: Color) -> Button:
 
 	var btn : Button = Button.new()
 	btn.text = text
-	btn.focus_mode = Control.FOCUS_NONE
 	btn.add_theme_font_size_override("font_size", 18)
-	btn.add_theme_color_override("font_color", font_color)
-	btn.add_theme_color_override("font_color_disabled", Color(0.6, 0.55, 0.44, 0.8))
-	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	btn.add_theme_constant_override("outline_size", 3)
-	for state in ["normal", "hover", "pressed", "disabled"]:
-		var s : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.24, 0.16, 0.09, 0.95)
-		if state == "hover":
-			bg = bg.lightened(0.10)
-		elif state == "pressed":
-			bg = bg.darkened(0.12)
-		elif state == "disabled":
-			bg = Color(0.15, 0.11, 0.07, 0.55)
-		s.bg_color = bg
-		s.border_color = Color(0.78, 0.58, 0.24, 1.0) if state != "disabled" else Color(0.42, 0.32, 0.2, 0.6)
-		s.set_border_width_all(2)
-		s.set_corner_radius_all(8)
-		s.content_margin_left = 18.0
-		s.content_margin_right = 18.0
-		s.content_margin_top = 7.0
-		s.content_margin_bottom = 7.0
-		btn.add_theme_stylebox_override(state, s)
+	UiStyle.style_button(btn, font_color)
 	return btn
 
 
 func _panel_style() -> StyleBoxFlat:
 
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.18, 0.11, 0.06, 0.97)
-	s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-	s.set_border_width_all(3)
-	s.set_corner_radius_all(14)
+	var s : StyleBoxFlat = UiStyle.panel(true)
 	s.set_content_margin_all(26)
 	return s
 
 
 func _row_style() -> StyleBoxFlat:
 
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.22, 0.14, 0.08, 0.92)
-	s.border_color = Color(0.5, 0.4, 0.22, 1.0)
-	s.set_border_width_all(1)
-	s.set_corner_radius_all(8)
-	s.set_content_margin_all(12)
-	return s
+	return UiStyle.card()

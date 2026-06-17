@@ -7,7 +7,6 @@ class_name PauseMenu
 extends Modal
 
 const GROUP : StringName = &"pause_menu"
-const GOLD : Color = Color(0.96, 0.86, 0.5, 1.0)
 
 
 ## Open the pause menu (added to the tree root + pauses). No-op if one is already showing.
@@ -40,18 +39,13 @@ func _modal_dim_alpha() -> float:
 func _modal_esc_to_close() -> bool:
 	return false   # PauseMenu handles ESC itself (_unhandled_input) so the Options panel can stack over it
 
-func _modal_panel_style() -> StyleBoxFlat:
-	return _panel_style()
-
 
 func _build_content() -> void:
 
 	var title : Label = Label.new()
 	title.text = "Paused"
 	title.add_theme_font_size_override("font_size", 32)
-	title.add_theme_color_override("font_color", GOLD)
-	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	title.add_theme_constant_override("outline_size", 4)
+	UiStyle.apply_title(title)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_content.add_child(title)
 
@@ -59,60 +53,26 @@ func _build_content() -> void:
 	spacer.custom_minimum_size = Vector2(0.0, 8.0)
 	_content.add_child(spacer)
 
-	_content.add_child(_make_button("Resume", Color(0.86, 0.94, 0.82, 1.0), Color(0.16, 0.22, 0.14, 0.94),
-		Color(0.46, 0.66, 0.36, 1.0), _close))
-	_content.add_child(_make_button("Options", Color(0.80, 0.86, 0.96, 1.0), Color(0.14, 0.13, 0.20, 0.94),
-		Color(0.40, 0.42, 0.58, 1.0), func() -> void: OptionsPanel.open(self)))
-	_content.add_child(_make_button("Save & Quit", Color(0.92, 0.72, 0.52, 1.0), Color(0.20, 0.12, 0.07, 0.94),
-		Color(0.55, 0.38, 0.18, 1.0), _on_quit_to_title))
+	_content.add_child(_make_button("Resume", Palette.POSITIVE, _close))
+	_content.add_child(_make_button("Options", Palette.ACCENT, func() -> void: OptionsPanel.open(self)))
+	_content.add_child(_make_button("Save & Quit", Palette.DANGER, _on_quit_to_title))
 
 	var hint : Label = Label.new()
 	hint.text = "Tap Resume to continue" if TouchEnv.is_touch() else "Esc to resume"
 	hint.add_theme_font_size_override("font_size", 14)
-	hint.add_theme_color_override("font_color", Color(0.8, 0.68, 0.42, 0.85))
+	UiStyle.apply_muted(hint)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_content.add_child(hint)
 
 
-func _make_button(text: String, fg: Color, bg: Color, border: Color, action: Callable) -> Button:
+func _make_button(text: String, fg: Color, action: Callable) -> Button:
 
 	var b : Button = Button.new()
 	b.text = text
-	b.focus_mode = Control.FOCUS_NONE
 	b.add_theme_font_size_override("font_size", 20)
-	b.add_theme_color_override("font_color", fg)
-	b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	b.add_theme_constant_override("outline_size", 3)
-	# 3-state styling so the button responds to hover/press (was normal-only — inert, no affordance).
-	for state in ["normal", "hover", "pressed"]:
-		var s : StyleBoxFlat = StyleBoxFlat.new()
-		var sb : Color = bg
-		if state == "hover":
-			sb = bg.lightened(0.10)
-		elif state == "pressed":
-			sb = bg.darkened(0.12)
-		s.bg_color = sb
-		s.border_color = border
-		s.set_border_width_all(2)
-		s.set_corner_radius_all(8)   # the modal-button family radius (options/voyages/shoppe/favor all 8)
-		s.content_margin_left = 18
-		s.content_margin_right = 18
-		s.content_margin_top = 9
-		s.content_margin_bottom = 9
-		b.add_theme_stylebox_override(state, s)
+	UiStyle.style_button(b, fg)   # themed 3-state states + label color + ink outline (one call)
 	b.pressed.connect(action)
 	return b
-
-
-func _panel_style() -> StyleBoxFlat:
-
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.16, 0.11, 0.06, 0.98)
-	s.border_color = Palette.BRASS_FRAME   # the ONE brass source of truth (was a hand-typed duplicate)
-	s.set_border_width_all(3)
-	s.set_corner_radius_all(14)
-	s.set_content_margin_all(26)
-	return s
 
 
 func _unhandled_input(event: InputEvent) -> void:

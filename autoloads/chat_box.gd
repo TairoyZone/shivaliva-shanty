@@ -298,7 +298,9 @@ func _build_touch_chat_button() -> void:
 	_chat_btn.focus_mode = Control.FOCUS_NONE
 	_chat_btn.custom_minimum_size = Vector2(96.0, 64.0)
 	_chat_btn.add_theme_font_size_override("font_size", 22)
-	_style_chat_button(_chat_btn)
+	# The standalone Chat button floats over the WORLD (not on the parchment bar), so it wears the central HUD
+	# theme like the clock/rail — adapts light/dark. (The in-bar Send/Log keep _style_chat_button.)
+	UiStyle.style_button(_chat_btn, Palette.ACCENT, Palette.CARD_BG, Palette.BORDER)
 	_chat_btn.anchor_left = 1.0
 	_chat_btn.anchor_right = 1.0
 	_chat_btn.anchor_top = 1.0

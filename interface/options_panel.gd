@@ -6,7 +6,6 @@
 class_name OptionsPanel
 extends CanvasLayer
 
-const GOLD : Color = Color(0.96, 0.86, 0.5, 1.0)
 const GROUP : StringName = &"options_panel"
 
 var _panel : PanelContainer   # pop-in / dismiss target
@@ -61,9 +60,7 @@ func _ready() -> void:
 	var title : Label = Label.new()
 	title.text = "Options"
 	title.add_theme_font_size_override("font_size", 30)
-	title.add_theme_color_override("font_color", GOLD)
-	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	title.add_theme_constant_override("outline_size", 4)
+	UiStyle.apply_title(title)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
 
@@ -80,28 +77,8 @@ func _ready() -> void:
 
 	var close : Button = Button.new()
 	close.text = "Close"
-	close.focus_mode = Control.FOCUS_NONE
 	close.add_theme_font_size_override("font_size", 20)
-	close.add_theme_color_override("font_color", GOLD)
-	close.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	close.add_theme_constant_override("outline_size", 3)
-	# Walnut/brass 3-state styling so it matches the family (was a bare default-grey button in a brass panel).
-	for state in ["normal", "hover", "pressed"]:
-		var s : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.24, 0.16, 0.09, 0.95)
-		if state == "hover":
-			bg = bg.lightened(0.10)
-		elif state == "pressed":
-			bg = bg.darkened(0.12)
-		s.bg_color = bg
-		s.border_color = Palette.BRASS_FRAME
-		s.set_border_width_all(2)
-		s.set_corner_radius_all(9)
-		s.content_margin_left = 18
-		s.content_margin_right = 18
-		s.content_margin_top = 9
-		s.content_margin_bottom = 9
-		close.add_theme_stylebox_override(state, s)
+	UiStyle.style_button(close)   # themed accent button (states + label + ink outline)
 	close.pressed.connect(_close)
 	vbox.add_child(close)
 
@@ -116,7 +93,7 @@ func _make_toggle(text: String, on: bool, setter: Callable) -> CheckButton:
 	cb.button_pressed = on
 	cb.focus_mode = Control.FOCUS_NONE
 	cb.add_theme_font_size_override("font_size", 21)
-	cb.add_theme_color_override("font_color", Color(0.95, 0.9, 0.78, 1.0))
+	cb.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
 	cb.toggled.connect(func(pressed: bool) -> void: setter.call(pressed))
 	return cb
 
@@ -129,7 +106,7 @@ func _make_slider(text: String, value: float, setter: Callable) -> VBoxContainer
 	var lbl : Label = Label.new()
 	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", 18)
-	lbl.add_theme_color_override("font_color", Color(0.95, 0.9, 0.78, 1.0))
+	lbl.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
 	box.add_child(lbl)
 	var sl : HSlider = HSlider.new()
 	sl.min_value = 0.0
@@ -145,13 +122,8 @@ func _make_slider(text: String, value: float, setter: Callable) -> VBoxContainer
 
 func _panel_style() -> StyleBoxFlat:
 
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.16, 0.11, 0.06, 0.98)
-	s.border_color = Palette.BRASS_FRAME   # the ONE brass source of truth (was a hand-typed duplicate)
-	s.set_border_width_all(3)
-	s.set_corner_radius_all(14)
-	s.set_content_margin_all(28)
-	return s
+	# Routed through the central theme so the panel recolors with Palette.use_scheme() (was a hardcoded brown).
+	return UiStyle.panel(true)
 
 
 func _on_dim_input(event: InputEvent) -> void:

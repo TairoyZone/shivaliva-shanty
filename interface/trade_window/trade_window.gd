@@ -198,7 +198,7 @@ func _render() -> void:
 	cols.add_child(_make_divider())
 	cols.add_child(_their_column())
 
-	_add_note(_npc_note, Color(0.74, 0.84, 0.72, 1.0) if _npc_willing else Color(0.86, 0.66, 0.5, 1.0))
+	_add_note(_npc_note, Palette.POSITIVE if _npc_willing else Palette.DANGER)
 	_content.add_child(_ready_row())
 
 
@@ -273,15 +273,15 @@ func _ready_row() -> Control:
 	var npc_state : Label = Label.new()
 	npc_state.text = "✔ %s ready" % _short() if _npc_willing else "… %s considering" % _short()
 	npc_state.add_theme_font_size_override("font_size", 15)
-	npc_state.add_theme_color_override("font_color", Color(0.7, 0.92, 0.66, 1.0) if _npc_willing else Color(0.8, 0.75, 0.6, 1.0))
+	npc_state.add_theme_color_override("font_color", Palette.POSITIVE if _npc_willing else Palette.TEXT_MUTED)
 	row.add_child(npc_state)
 
-	var ready_btn : Button = _make_walnut_button("I'm Ready  ✔", Color(0.82, 1.0, 0.66, 1.0))
+	var ready_btn : Button = _make_walnut_button("I'm Ready  ✔", Palette.POSITIVE)
 	ready_btn.disabled = not _npc_willing
 	ready_btn.pressed.connect(_confirm)
 	row.add_child(ready_btn)
 
-	var reject : Button = _make_walnut_button("Reject", Color(0.95, 0.78, 0.6, 1.0))
+	var reject : Button = _make_walnut_button("Reject", Palette.DANGER)
 	reject.pressed.connect(_close)
 	row.add_child(reject)
 	return row
@@ -298,10 +298,10 @@ func _show_done(title: String, note: String) -> void:
 	for c in _content.get_children():
 		c.queue_free()
 	_add_title(title)
-	_add_note(note, Color(0.98, 0.88, 0.46, 1.0))
+	_add_note(note, Palette.ACCENT)
 	var row : HBoxContainer = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	var ok : Button = _make_walnut_button("Done  ▸", Color(0.95, 0.84, 0.56, 1.0))
+	var ok : Button = _make_walnut_button("Done  ▸", Palette.ACCENT)
 	ok.pressed.connect(_close)
 	row.add_child(ok)
 	_content.add_child(row)
@@ -317,9 +317,7 @@ func _column_box(header: String) -> VBoxContainer:
 	var h : Label = Label.new()
 	h.text = header
 	h.add_theme_font_size_override("font_size", 21)
-	h.add_theme_color_override("font_color", _npc_color.lightened(0.4) if header == _npc_name else Color(0.82, 1.0, 0.74, 1.0))
-	h.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
-	h.add_theme_constant_override("outline_size", 3)
+	UiStyle.apply_title(h)
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(h)
 	return box
@@ -371,7 +369,7 @@ func _gold_chip(amount: int) -> Control:
 	var num : Label = Label.new()
 	num.text = str(amount)
 	num.add_theme_font_size_override("font_size", 21)
-	num.add_theme_color_override("font_color", Color(0.24, 0.17, 0.05, 1.0))
+	num.add_theme_color_override("font_color", Palette.INK_ON_LIGHT)   # dark ink on the light/gold coin chip
 	num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	num.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	chip.add_child(num)
@@ -431,8 +429,8 @@ func make_item_preview(item_id: String) -> Control:
 func _offer_zone_style() -> StyleBoxFlat:
 
 	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.1, 0.12, 0.15, 0.55)
-	s.border_color = Color(0.5, 0.55, 0.66, 0.45)
+	s.bg_color = Palette.SLOT_BG
+	s.border_color = Color(Palette.BORDER.r, Palette.BORDER.g, Palette.BORDER.b, 0.45)
 	s.set_border_width_all(1)
 	s.set_corner_radius_all(8)
 	s.content_margin_left = 10
@@ -445,7 +443,7 @@ func _offer_zone_style() -> StyleBoxFlat:
 func _slot_style(state: String) -> StyleBoxFlat:
 
 	var s : StyleBoxFlat = StyleBoxFlat.new()
-	var bg : Color = Color(0.12, 0.13, 0.17, 1.0)
+	var bg : Color = Palette.SLOT_BG
 	if state == "hover":
 		bg = bg.lightened(0.16)
 	elif state == "pressed":
@@ -453,7 +451,7 @@ func _slot_style(state: String) -> StyleBoxFlat:
 	elif state == "disabled":
 		bg = bg.darkened(0.18)
 	s.bg_color = bg
-	s.border_color = Color(0.52, 0.57, 0.68, 0.9) if state != "disabled" else Color(0.4, 0.42, 0.5, 0.5)
+	s.border_color = Palette.BORDER if state != "disabled" else Color(Palette.BORDER.r, Palette.BORDER.g, Palette.BORDER.b, 0.5)
 	s.set_border_width_all(2)
 	s.set_corner_radius_all(7)
 	return s
@@ -474,7 +472,7 @@ func _tiny(text: String) -> Label:
 	var l : Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 13)
-	l.add_theme_color_override("font_color", Color(0.8, 0.78, 0.66, 1.0))
+	UiStyle.apply_muted(l)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return l
 
@@ -485,11 +483,11 @@ func _gold_gift_row() -> Control:
 	row.add_theme_constant_override("separation", 8)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_child(_make_caption("Gift gold"))
-	var minus : Button = _make_walnut_button("−%d" % GOLD_STEP, Color(0.95, 0.8, 0.6, 1.0))
+	var minus : Button = _make_walnut_button("−%d" % GOLD_STEP, Palette.ACCENT)
 	minus.pressed.connect(_nudge_gold.bind(-GOLD_STEP))
 	row.add_child(minus)
 	row.add_child(_make_caption(str(_offer_gold)))
-	var plus : Button = _make_walnut_button("+%d" % GOLD_STEP, Color(0.82, 0.95, 0.7, 1.0))
+	var plus : Button = _make_walnut_button("+%d" % GOLD_STEP, Palette.ACCENT)
 	plus.disabled = _offer_gold >= PlayerState.total_coins
 	plus.pressed.connect(_nudge_gold.bind(GOLD_STEP))
 	row.add_child(plus)
@@ -501,7 +499,7 @@ func _make_divider() -> Control:
 	var sep : Panel = Panel.new()
 	sep.custom_minimum_size = Vector2(2.0, 200.0)
 	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.78, 0.58, 0.24, 0.5)
+	s.bg_color = Color(Palette.BORDER.r, Palette.BORDER.g, Palette.BORDER.b, 0.5)
 	sep.add_theme_stylebox_override("panel", s)
 	return sep
 
@@ -511,9 +509,7 @@ func _add_title(text: String) -> void:
 	var l : Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 27)
-	l.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
-	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	l.add_theme_constant_override("outline_size", 4)
+	UiStyle.apply_title(l)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD
 	l.custom_minimum_size = Vector2(600.0, 0.0)
@@ -525,7 +521,7 @@ func _add_hint(text: String) -> void:
 	var l : Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 16)
-	l.add_theme_color_override("font_color", Color(0.9, 0.81, 0.57, 1.0))
+	UiStyle.apply_muted(l)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD
 	l.custom_minimum_size = Vector2(560.0, 0.0)
@@ -547,7 +543,7 @@ func _sub(text: String) -> Control:
 	var l : Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 14)
-	l.add_theme_color_override("font_color", Color(0.66, 0.74, 0.62, 1.0))
+	UiStyle.apply_muted(l)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return l
 
@@ -557,7 +553,7 @@ func _make_caption(text: String) -> Label:
 	var l : Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 17)
-	l.add_theme_color_override("font_color", Color(0.95, 0.88, 0.66, 1.0))
+	UiStyle.apply_primary(l)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return l
 
@@ -575,11 +571,7 @@ func _short() -> String:
 
 func _panel_style() -> StyleBoxFlat:
 
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.18, 0.11, 0.06, 0.97)
-	s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-	s.set_border_width_all(3)
-	s.set_corner_radius_all(14)
+	var s : StyleBoxFlat = UiStyle.panel(true)
 	s.set_content_margin_all(26)
 	return s
 
@@ -591,21 +583,11 @@ func _make_walnut_button(text: String, font_color: Color) -> Button:
 	b.focus_mode = Control.FOCUS_NONE
 	b.add_theme_font_size_override("font_size", 17)
 	b.add_theme_color_override("font_color", font_color)
-	b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	b.add_theme_color_override("font_outline_color", Palette.OUTLINE_HARD)
 	b.add_theme_constant_override("outline_size", 2)
-	for state in ["normal", "hover", "pressed", "disabled"]:
-		var s : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.22, 0.14, 0.08, 0.95)
-		if state == "hover":
-			bg = bg.lightened(0.10)
-		elif state == "pressed":
-			bg = bg.darkened(0.12)
-		elif state == "disabled":
-			bg = bg.darkened(0.34)
-		s.bg_color = bg
-		s.border_color = Color(0.78, 0.58, 0.24, 1.0) if state != "disabled" else Color(0.5, 0.42, 0.3, 1.0)
-		s.set_border_width_all(2)
-		s.set_corner_radius_all(8)
+	var styles : Dictionary = UiStyle.button_styles(Palette.CARD_BG, Palette.BORDER)
+	for state in styles:
+		var s : StyleBoxFlat = styles[state]
 		s.content_margin_left = 13
 		s.content_margin_right = 13
 		s.content_margin_top = 6

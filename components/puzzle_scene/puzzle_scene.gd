@@ -158,32 +158,9 @@ func _build_leave_button() -> void:
 		btn.offset_top = -56.0
 		btn.offset_bottom = -16.0
 	btn.add_theme_font_size_override("font_size", 18)
-	# Walnut/brass styling to match the tavern UI. Same box for normal /
-	# hover / pressed with small tint shifts so it reads as a real button.
-	for state in ["normal", "hover", "pressed"]:
-		var style : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.18, 0.11, 0.06, 0.94)
-		if state == "hover":
-			bg = bg.lightened(0.08)
-		elif state == "pressed":
-			bg = bg.darkened(0.15)
-		style.bg_color = bg
-		style.border_width_left = 2
-		style.border_width_top = 2
-		style.border_width_right = 2
-		style.border_width_bottom = 2
-		style.border_color = Color(0.78, 0.58, 0.24, 1.0)
-		style.corner_radius_top_left = 8
-		style.corner_radius_top_right = 8
-		style.corner_radius_bottom_right = 8
-		style.corner_radius_bottom_left = 8
-		style.content_margin_left = 12
-		style.content_margin_right = 12
-		style.content_margin_top = 6
-		style.content_margin_bottom = 6
-		btn.add_theme_stylebox_override(state, style)
-	btn.add_theme_color_override("font_color", Color(0.97, 0.87, 0.55, 1.0))
-	btn.add_theme_color_override("font_hover_color", Color(1.0, 0.92, 0.6, 1.0))
+	# Themed button chrome routed through the central factory (panel-card bg + accent rim + adaptive text),
+	# so the Leave button recolors with the whole HUD via Palette.use_scheme().
+	UiStyle.style_button(btn)
 	btn.pressed.connect(_return_to_launching_scene)   # the click SFX comes from the global Audio button hook
 	layer.add_child(btn)
 
