@@ -18,19 +18,28 @@ func _ready() -> void:
 # and closes with a line. Gated on gym_intro_seen so it plays exactly once.
 func _maybe_play_intro() -> void:
 
-	if PlayerState.gym_intro_seen:
+	# The master keeps offering the choice until you COMMIT: decline ("Not yet") and he just asks again next time
+	# you come in (players can be unsure — that's fine). Only actually PICKING is permanent — once has_power_type()
+	# is true he never asks again. The full cinematic plays the first time; later nudges are a single line.
+	if PlayerState.has_power_type():
 		return
-	PlayerState.gym_intro_seen = true   # set up front so it's one-time even if they back out
+	var first : bool = not PlayerState.gym_intro_seen
+	PlayerState.gym_intro_seen = true
 	PlayerState._save()
 	await get_tree().create_timer(0.5).timeout   # let the scene settle + the player land before the cinematic
-	if not is_inside_tree():
+	if not is_inside_tree() or PlayerState.has_power_type():
 		return
-	Overlay.show_dialog("Hollow Ellison", [
-		"So. A new face wanders into my gym.",
-		"Everyone who climbs my ladder fights their own way — the brawler's fists, the swordsman's edge, the marksman's aim... and stranger paths still.",
-		"Before you spar a single soul here, you'll need to know YOURS.",
-		"Tell me, traveller — what kind of fighter are you?",
-	], _open_intro_picker)
+	var lines : Array[String]
+	if first:
+		lines = [
+			"So. A new face wanders into my gym.",
+			"Everyone who climbs my ladder fights their own way — the brawler's fists, the swordsman's edge, the marksman's aim... and stranger paths still.",
+			"Before you spar a single soul here, you'll need to know YOURS.",
+			"Tell me, traveller — what kind of fighter are you?",
+		]
+	else:
+		lines = ["Back again. Made up your mind — what kind of fighter are you?"]
+	Overlay.show_dialog("Hollow Ellison", lines, _open_intro_picker)
 
 
 func _open_intro_picker() -> void:
