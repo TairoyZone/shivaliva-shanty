@@ -47,6 +47,19 @@ const DESCRIPTIONS : Dictionary = {
 	"long_range": "Snipe — a thin blade AIMED at the foe's weakest column (precision).",
 	"mystic": "Hex — garbage SCATTERS across the columns; no clean line to clear (chaos).",
 }
+## The free CLASS weapon shows as a humble STARTER (a Swordsman wields a Twig until they buy the forge's steel
+## Sword; a Marksman a Slingshot; a Mystic their Spellbook). Brawl has none — it IS fists. Used by the equip slot.
+const STARTER_NAMES : Dictionary = {
+	"sword": "Twig", "long_range": "Slingshot", "mystic": "Spellbook",
+}
+
+
+## The name to SHOW on the equip slot: the humble starter (Twig/Slingshot/Spellbook) when it's the free class
+## weapon, else the real weapon name (Fists / Sword / Long Shot / Mystic).
+static func equip_display_name(weapon_id: String, starter: bool) -> String:
+	if starter and STARTER_NAMES.has(weapon_id):
+		return String(STARTER_NAMES[weapon_id])
+	return display_name(weapon_id)
 
 
 static func power_type_name(weapon_id: String) -> String:

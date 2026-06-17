@@ -103,8 +103,20 @@ func _rebuild_rows() -> void:
 		return
 	for child in _rows_vbox.get_children():
 		child.queue_free()
+	var any : bool = false
 	for entry in WEAPONS_FOR_SALE:
+		if not PlayerState.weapon_matches_style(String(entry["id"])):
+			continue   # STYLE-LOCKED (Troy 2026-06-17): Cinder Troy only forges for YOUR fighting path
 		_rows_vbox.add_child(_make_weapon_row(entry))
+		any = true
+	if not any:
+		var none : Label = Label.new()
+		none.text = "Nothing here suits your path — your weapon isn't forged at an anvil."
+		none.add_theme_font_size_override("font_size", 15)
+		none.add_theme_color_override("font_color", Palette.TEXT_MUTED)
+		none.autowrap_mode = TextServer.AUTOWRAP_WORD
+		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_rows_vbox.add_child(none)
 
 
 func _make_weapon_row(entry: Dictionary) -> Control:

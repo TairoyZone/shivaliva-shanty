@@ -19,6 +19,13 @@ var weapon_id : String = "brawl" :
 		weapon_id = value
 		queue_redraw()
 
+## The humble class STARTER look (a Swordsman's Twig vs the forge's steel Sword; a Marksman's Slingshot vs the
+## arrow). Set true for the free class weapon, false for the bought forge upgrade.
+var starter : bool = false :
+	set(value):
+		starter = value
+		queue_redraw()
+
 
 func _draw() -> void:
 
@@ -26,11 +33,58 @@ func _draw() -> void:
 	var u : float = minf(size.x, size.y)
 	match weapon_id:
 		"sword":
-			_draw_sword(c, u)
+			if starter:
+				_draw_twig(c, u)
+			else:
+				_draw_sword(c, u)
 		"long_range":
-			_draw_arrow(c, u)
+			if starter:
+				_draw_slingshot(c, u)
+			else:
+				_draw_arrow(c, u)
+		"mystic":
+			_draw_book(c, u)
 		_:
 			_draw_fist(c, u)
+
+
+# A practice TWIG (the Swordsman's starter): a plain wooden blade, no steel — a stick with a nub guard.
+func _draw_twig(c: Vector2, u: float) -> void:
+
+	var bw : float = u * 0.11
+	draw_rect(Rect2(c.x - bw * 0.5, c.y - u * 0.40, bw, u * 0.60), WOOD)
+	draw_circle(Vector2(c.x, c.y - u * 0.40), bw * 0.5, WOOD)              # rounded tip
+	draw_rect(Rect2(c.x - u * 0.13, c.y + u * 0.10, u * 0.26, u * 0.06), WOOD.darkened(0.25))  # nub guard
+	draw_line(Vector2(c.x - bw * 0.2, c.y - u * 0.18), Vector2(c.x + bw * 0.2, c.y - u * 0.06), WOOD.darkened(0.35), 1.0)  # a knot
+
+
+# A SLINGSHOT (the Marksman's starter): a Y-fork of wood + an elastic band cradling a pebble.
+func _draw_slingshot(c: Vector2, u: float) -> void:
+
+	var fork : Vector2 = c + Vector2(0.0, -u * 0.02)
+	var left : Vector2 = c + Vector2(-u * 0.20, -u * 0.34)
+	var right : Vector2 = c + Vector2(u * 0.20, -u * 0.34)
+	draw_line(c + Vector2(0.0, u * 0.42), fork, WOOD, 4.0)   # handle
+	draw_line(fork, left, WOOD, 3.5)                          # fork arms
+	draw_line(fork, right, WOOD, 3.5)
+	var pouch : Vector2 = c + Vector2(0.0, -u * 0.16)
+	draw_line(left, pouch, Color(0.42, 0.30, 0.28, 1.0), 1.5)   # elastic band
+	draw_line(right, pouch, Color(0.42, 0.30, 0.28, 1.0), 1.5)
+	draw_circle(pouch, u * 0.05, Color(0.55, 0.55, 0.60, 1.0))  # pebble
+
+
+# A SPELLBOOK (the Mystic's weapon): a purple tome with a gilded rune.
+func _draw_book(c: Vector2, u: float) -> void:
+
+	var w : float = u * 0.46
+	var hh : float = u * 0.56
+	draw_rect(Rect2(c.x - w * 0.5, c.y - hh * 0.5, w, hh), Color(0.36, 0.23, 0.54, 1.0))     # purple cover
+	draw_rect(Rect2(c.x - w * 0.5, c.y - hh * 0.5, u * 0.06, hh), Color(0.24, 0.14, 0.40, 1.0))  # spine
+	draw_rect(Rect2(c.x + w * 0.5 - u * 0.04, c.y - hh * 0.5 + 2.0, u * 0.04, hh - 4.0), Color(0.92, 0.88, 0.78, 1.0))  # page edge
+	var rc : Vector2 = c + Vector2(u * 0.04, 0.0)   # a gilded rune (a small star) on the cover
+	draw_line(rc + Vector2(0.0, -u * 0.11), rc + Vector2(0.0, u * 0.11), GOLD, 1.6)
+	draw_line(rc + Vector2(-u * 0.10, 0.0), rc + Vector2(u * 0.10, 0.0), GOLD, 1.6)
+	draw_circle(rc, u * 0.035, GOLD)
 
 
 # An upright blade: steel point + blade, gold crossguard, wooden grip + pommel.

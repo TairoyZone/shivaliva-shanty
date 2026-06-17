@@ -1568,10 +1568,33 @@ func equip_weapon(weapon_id: String) -> void:
 
 	if not owns_weapon(weapon_id):
 		return
+	if not weapon_matches_style(weapon_id):
+		return   # STYLE-LOCKED (Troy 2026-06-17): you only wield weapons of your chosen path
 	equipped_weapon = weapon_id
 	weapons_changed.emit()
 	inventory_changed.emit()   # the backpack re-highlights the equipped weapon item
 	_save()
+
+
+## STYLE-LOCK: a weapon is wieldable only if it matches your chosen fighting class (Swordsman → blades, Marksman →
+## ranged, …). Bare fists are universal; before you've chosen a class, nothing is restricted. (Troy 2026-06-17.)
+func weapon_matches_style(weapon_id: String) -> bool:
+
+	if weapon_id == SkirmishWeapon.DEFAULT_WEAPON:
+		return true
+	if player_power_type.is_empty():
+		return true
+	return weapon_id == player_power_type
+
+
+## What the player is WIELDING, for the equip-slot UI: the live combat weapon id, whether it's the humble class
+## STARTER (e.g. a Swordsman's Twig) or the bought FORGE upgrade (the steel Sword), and its display name.
+func current_weapon_view() -> Dictionary:
+
+	var id : String = combat_weapon()
+	var is_forge : bool = id == equipped_weapon and id != SkirmishWeapon.DEFAULT_WEAPON and _inventory_has(id)
+	var starter : bool = not is_forge and id != SkirmishWeapon.DEFAULT_WEAPON
+	return {"id": id, "starter": starter, "name": SkirmishWeapon.equip_display_name(id, starter)}
 
 
 ## Has the player chosen their fighting CLASS with the gym master yet? Gates the gym ladder.
@@ -1636,7 +1659,7 @@ func is_weapon(item_id: String) -> bool:
 ## never grows the bag — buy a bigger backpack first).
 func can_buy_weapon(weapon_id: String, gold_cost: int) -> bool:
 
-	return not owns_weapon(weapon_id) and total_coins >= gold_cost and space_for(weapon_id) >= 1
+	return weapon_matches_style(weapon_id) and not owns_weapon(weapon_id) and total_coins >= gold_cost and space_for(weapon_id) >= 1
 
 
 ## Buy a weapon at the forge: spend gold, drop it into the BAG as an item (then double-click to equip). Returns

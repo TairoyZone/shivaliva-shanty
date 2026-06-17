@@ -50,6 +50,8 @@ var _items_page : VBoxContainer
 var _gold_label : Label            # gold total, shown here now (the always-on HUD purse was retired)
 var _bag_row : HBoxContainer       # the Stardew-style "buy a bigger backpack" upgrade row
 var _grid : GridContainer
+var _equip_slot : EquipWeaponSlot  # the visible weapon equip cell (above the grid)
+var _equip_name : Label            # the wielded-weapon name beside the slot
 ## The Profile tab — a [ProfileView] (rank, reputation, fleet, trophies, mastery standings + your
 ## hearties as worded tiers — the standalone Stardew-style Hearts tab was retired 2026-06-16).
 var _profile_view : ProfileView
@@ -98,7 +100,17 @@ func _ready() -> void:
 		PlayerState.objective_changed.connect(_on_objectives_changed)
 		PlayerState.coins_changed.connect(_on_objectives_changed)
 		PlayerState.coins_changed.connect(_refresh_gold)   # keep the Backpack's gold total live
+		PlayerState.weapons_changed.connect(_refresh_equip)   # the wielded-weapon name beside the equip slot
+		PlayerState.power_type_changed.connect(_refresh_equip)
+		_refresh_equip()
 		_update_ayo_badge()
+
+
+# Keep the "Wielding: <name>" label beside the equip slot in sync (the slot refreshes its own icon).
+func _refresh_equip() -> void:
+
+	if _equip_name != null and _equip_slot != null:
+		_equip_name.text = _equip_slot.weapon_name()
 
 
 # Fill the viewport (and keep filling it on resize) so the right-edge rail + pane land at the screen edge.
@@ -185,8 +197,27 @@ func _build_skeleton() -> void:
 	_gold_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	gold_row.add_child(_gold_label)
 	_refresh_gold()
+	# --- The WEAPON equip slot (Minecraft-style): shows what you're wielding; drag a class weapon on / double-
+	# click off. A paper-doll of cosmetic armour slots joins it here later. ---
+	var equip_row : HBoxContainer = HBoxContainer.new()
+	equip_row.add_theme_constant_override("separation", 12)
+	var equip_cap : Label = Label.new()
+	equip_cap.text = "Wielding"
+	equip_cap.add_theme_font_size_override("font_size", 15)
+	UiStyle.apply_title(equip_cap)
+	equip_cap.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	equip_row.add_child(equip_cap)
+	_equip_slot = EquipWeaponSlot.new()
+	_equip_slot.inv_panel = self
+	equip_row.add_child(_equip_slot)
+	_equip_name = Label.new()
+	_equip_name.add_theme_font_size_override("font_size", 16)
+	_equip_name.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
+	_equip_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	equip_row.add_child(_equip_name)
+	_items_page.add_child(equip_row)
 	var whint : Label = Label.new()
-	whint.text = "Double-click a weapon to equip it"
+	whint.text = "Double-click a weapon — or drag it onto the slot — to equip it"
 	whint.add_theme_font_size_override("font_size", 13)
 	whint.add_theme_color_override("font_color", Palette.TEXT_MUTED)
 	_items_page.add_child(whint)
