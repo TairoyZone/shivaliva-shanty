@@ -12,8 +12,8 @@ const COLOR_INK_SOFT : Color = Color(0.42, 0.32, 0.18, 1.0)
 const COLOR_FRAME : Color = Color(0.52, 0.36, 0.16, 1.0)
 const COLOR_HEART : Color = Color(0.88, 0.32, 0.44, 1.0)   # romance/sweetheart note only
 
-# (Visibility rule: any NON-ZERO rapport shows — positive friendships AND soured standings, in red.
-# The whole untouched cast stays hidden. See refresh().)
+# (Visibility rule: ONLY hearties — genuine FRIENDS (≥ Friend tier) — show. Strangers, acquaintances and
+# soured standings stay hidden; this is your friends roster, not the whole cast. See refresh() / PlayerState.is_heartie.)
 
 ## Set true before add_child to flow INSIDE another scroll (the Profile) — no own ScrollContainer, no min size.
 var embedded : bool = false
@@ -57,12 +57,12 @@ func refresh() -> void:
 		return
 	for child in _list.get_children():
 		child.queue_free()
-	# Show islanders with any REAL standing — befriended (positive rapport) AND soured (negative: they
-	# remember what you did, and so should you). Untouched (0) stay hidden — it's a relationships list,
-	# not a roster of the whole cast. Empty until you talk to / help (or wrong) someone.
+	# Show only HEARTIES — genuine FRIENDS (≥ Friend tier). A stranger you said hi to once, a passing
+	# acquaintance, or a soured standing does NOT belong on your friends roster (Troy 2026-06-17). The
+	# rule lives in PlayerState.is_heartie so multiplayer "added as a friend" can later extend it there.
 	var shown : int = 0
 	for profile in NpcRegistry.all():
-		if PlayerState.get_affinity(profile.npc_name) == 0:
+		if not PlayerState.is_heartie(profile.npc_name):
 			continue
 		_list.add_child(_make_npc_card(profile))
 		shown += 1
@@ -130,7 +130,7 @@ func _romance_note(who: String, profile: NpcPersonality) -> String:
 func _make_empty_hint() -> Control:
 
 	var hint : Label = Label.new()
-	hint.text = "No hearties yet.\n\nClick an islander and choose Talk — lend a hand with a favour — and they'll appear here as you befriend them."
+	hint.text = "No hearties yet.\n\nChat and lend a hand with favours to grow close — once an islander becomes a Friend, they'll appear here as a heartie."
 	hint.add_theme_font_size_override("font_size", 16)
 	hint.add_theme_color_override("font_color", COLOR_INK_SOFT)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

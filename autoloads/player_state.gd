@@ -192,6 +192,11 @@ const AFFINITY_TIERS : Array = [
 	{"min": -59, "name": "Disliked"},
 	{"min": -100, "name": "Despised"},
 ]
+## A HEARTIE is a genuine FRIEND (the "befriended" milestone, ≥ Friend tier) — NOT a stranger you said hi
+## to once or a passing acquaintance. The Hearties list (RelationshipsView) shows ONLY these, so it reads
+## as your friends roster, not a log of the whole cast. Single source of truth via [method is_heartie] —
+## a future multiplayer "added as a friend" set would OR into that one helper, nothing else.
+const HEARTIE_MIN_AFFINITY : int = 50
 
 ## --- Fighter health (the Skirmish stamina that drives starting footing) ---
 ## A persistent 0..[constant HEALTH_MAX] condition. It DROPS when you LOSE a serious Skirmish (a pillage
@@ -1746,6 +1751,14 @@ func affinity_tier(npc_name: String) -> String:
 		if value >= tier["min"]:
 			return tier["name"]
 	return "Stranger"
+
+
+## True when this NPC counts as a HEARTIE — a real friend (≥ [constant HEARTIE_MIN_AFFINITY]), not a
+## stranger/acquaintance and not a soured standing. The one gate the Hearties list filters on. (Future:
+## a multiplayer friend-add would extend this with an explicit friends set.)
+func is_heartie(npc_name: String) -> bool:
+
+	return get_affinity(npc_name) >= HEARTIE_MIN_AFFINITY
 
 
 ## Raise (or lower) rapport with an NPC, clamped to [MIN_AFFINITY, MAX_AFFINITY] — rapport can go
