@@ -351,6 +351,28 @@ func _place_chat_button(action_puzzle: bool, swapped: bool) -> void:
 		_chat_btn.offset_bottom = -18.0
 
 
+# Pin the Chat button to a named CORNER (a puzzle that overrides chat_button_corner()). Fixed 96x64 box, 18px
+# inset from the chosen corner — independent of the action-puzzle/swap logic above.
+func _place_chat_button_corner(corner: String) -> void:
+
+	if _chat_btn == null:
+		return
+	const W : float = 96.0
+	const H : float = 64.0
+	const M : float = 18.0
+	_chat_btn.grow_horizontal = Control.GROW_DIRECTION_END
+	var left : bool = corner.ends_with("left")
+	var top : bool = corner.begins_with("top")
+	_chat_btn.anchor_left = 0.0 if left else 1.0
+	_chat_btn.anchor_right = 0.0 if left else 1.0
+	_chat_btn.anchor_top = 0.0 if top else 1.0
+	_chat_btn.anchor_bottom = 0.0 if top else 1.0
+	_chat_btn.offset_left = M if left else -M - W
+	_chat_btn.offset_right = M + W if left else -M
+	_chat_btn.offset_top = M if top else -M - H
+	_chat_btn.offset_bottom = M + H if top else -M
+
+
 # Summon the input bar + the recent log (Enter, or the start of a private chat). Focuses the field so you can
 # type straight away.
 func _open_bar() -> void:
@@ -744,7 +766,13 @@ func _process(_delta: float) -> void:
 		# puzzle that hasn't swapped yet -> top-centre; else the flush bottom-right corner (Troy 2026-06-12).
 		var action_puzzle : bool = sc is PuzzleScene and sc.has_method("_has_touch_bar") and bool(sc.call("_has_touch_bar"))
 		var hud_swapped : bool = sc is PuzzleScene and sc.has_method("touch_hud_swapped") and bool(sc.call("touch_hud_swapped"))
-		_place_chat_button(action_puzzle, hud_swapped)
+		# A puzzle may FORCE the Chat button into a specific corner (Patchworks wants bottom-left, Troy 2026-06-17);
+		# otherwise fall back to the action-puzzle/swapped placement above.
+		var forced_corner : String = String(sc.call("chat_button_corner")) if (sc is PuzzleScene and sc.has_method("chat_button_corner")) else ""
+		if forced_corner != "":
+			_place_chat_button_corner(forced_corner)
+		else:
+			_place_chat_button(action_puzzle, hud_swapped)
 	# UNIVERSAL now: chat is available in EVERY gameplay scene — the overworld AND every puzzle/voyage — hidden
 	# by default; only the title has no chat (Troy 2026-06-10, the Minecraft/Stardew/Valorant model).
 	# On TOUCH the Chat button rides EVERY non-title scene (so it's always one tap away — and ready for co-op

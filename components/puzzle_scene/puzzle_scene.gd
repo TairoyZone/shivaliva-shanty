@@ -92,6 +92,13 @@ func touch_hud_swapped() -> bool:
 	return _hud_swapped
 
 
+## Override → a corner name ("top_left" / "top_right" / "bottom_left" / "bottom_right") to FORCE where the touch
+## Chat button sits, instead of the default action-puzzle/swapped logic. "" = default. Read by ChatBox. (Troy
+## 2026-06-17: Patchworks wants Leave top-left + Chat bottom-left + the title centred.)
+func chat_button_corner() -> String:
+	return ""
+
+
 # Centre the puzzle's top HUD (if it declares one) at the TOP, content-sized — between the Leave (top-left) and
 # Chat (top-right) buttons that take the corners. MINSIZE preset so an HBox HUD still lays its children out (a
 # zero-width grown anchor would not).

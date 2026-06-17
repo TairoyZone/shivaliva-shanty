@@ -118,12 +118,24 @@ func _process(_delta: float) -> void:
 
 # --- HUD ---------------------------------------------------------------
 
+# Standard placement for the Patchworks (Troy 2026-06-17): Leave button in the TOP-LEFT corner, the Chat button
+# in the BOTTOM-LEFT corner, the title centred (see _build_hud). The tray's rotate/flip/toss controls own the
+# bottom-right, so the left edge is free for Leave (top) + Chat (bottom).
+func _leave_at_top_left() -> bool:
+	return true
+
+
+func chat_button_corner() -> String:
+	return "bottom_left"
+
+
 func _build_hud() -> void:
 
 	var layer : CanvasLayer = CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	_make_label(layer, "The Patchworks", Vector2(40.0, 26.0), 30, Color(0.98, 0.86, 0.5), HORIZONTAL_ALIGNMENT_LEFT, 320.0)
+	# Title CENTRED at the top (Leave owns the top-left corner, Chat the bottom-left — Troy 2026-06-17).
+	_make_label(layer, "The Patchworks", Vector2(440.0, 26.0), 30, Color(0.98, 0.86, 0.5), HORIZONTAL_ALIGNMENT_CENTER, 400.0)
 	_score_label = _make_label(layer, "0", Vector2(960.0, 26.0), 28, Color(0.98, 0.9, 0.55), HORIZONTAL_ALIGNMENT_RIGHT, 280.0)
 	_combo_label = _make_label(layer, "", Vector2(960.0, 64.0), 20, Color(0.78, 1.0, 0.68), HORIZONTAL_ALIGNMENT_RIGHT, 280.0)
 	_flash_label = _make_label(layer, "", Vector2(440.0, 40.0), 44, Color(1.0, 0.95, 0.6), HORIZONTAL_ALIGNMENT_CENTER, 400.0)
@@ -618,7 +630,7 @@ func _restore_voyage_state(state: Dictionary) -> void:
 	_refresh_ship_meters()   # the boarding may have opened holes — reflect the post-fight hull
 
 
-# Chart top-left, nudged DOWN clear of the "The Patchworks" title (the Leave button owns bottom-left).
+# Chart top-left, nudged DOWN so it clears the Leave button (which now owns the top-left corner).
 func _voyage_chart_placement(layer: CanvasLayer) -> void:
 
 	_voyage_chart.place_at(layer, true)
