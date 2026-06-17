@@ -53,7 +53,13 @@ func _build() -> void:
 	vbox.add_theme_constant_override("separation", 14)
 	panel.add_child(vbox)
 	vbox.add_child(_make_title("THE GYM LADDER"))
-	vbox.add_child(_make_caption("Climb the ladder — beat each fighter to unlock the next, up to the master."))
+	# No fighting style yet → the WHOLE ladder is locked; the master (Ellison) is the only one who can set you on a
+	# path (choosing a style is HIS doing, not this sign's).
+	var no_style : bool = not PlayerState.has_power_type()
+	if no_style:
+		vbox.add_child(_make_caption("Hollow Ellison bars the way. \"Choose your fighting style with me first — no one climbs my ladder 'til they know who they are.\""))
+	else:
+		vbox.add_child(_make_caption("Climb the ladder — beat each fighter to unlock the next, up to the master."))
 
 	var scroll : ScrollContainer = ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0.0, 280.0)
@@ -72,7 +78,12 @@ func _build() -> void:
 		var who : String = String(profile.npc_name)
 		var diff : String = _difficulty_tier(profile.skirmish_skill)
 		var btn : Button
-		if PlayerState.ladder_beaten(who):
+		if no_style:
+			# Everything LOCKED until you've chosen a style with Ellison.
+			btn = _make_walnut_button("🔒   %s   ·   %s" % [who, diff], Color(0.7, 0.7, 0.7, 1.0))
+			btn.disabled = true
+			btn.modulate = Color(1, 1, 1, 0.4)
+		elif PlayerState.ladder_beaten(who):
 			btn = _make_walnut_button("✓   %s   ·   bested" % who, Color(0.62, 0.86, 0.62, 1.0))
 			btn.disabled = true
 			btn.modulate = Color(1, 1, 1, 0.6)
@@ -86,7 +97,9 @@ func _build() -> void:
 		list.add_child(btn)
 
 	var foot : String = "Friendly bouts — lose and just try again. Win to climb the next rung."
-	if PlayerState.ladder_complete():
+	if no_style:
+		foot = "Talk to Hollow Ellison to choose your fighting style — then come back and climb."
+	elif PlayerState.ladder_complete():
 		foot = "You've topped the ladder — Gym Champion! Drop in for a rematch any time."
 	vbox.add_child(_make_caption(foot))
 	var back : Button = _make_walnut_button("Never mind", Color(0.95, 0.84, 0.56, 1.0))

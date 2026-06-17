@@ -7,34 +7,13 @@ class_name SkirmishSign
 extends Puzzle
 
 
-# Open the ladder — but FIRST the gym master makes you pick your fighting style (the intro RPG beat). The ladder
-# is LOCKED until you've chosen a power type; once you have, this opens the ladder straight away.
+# Open the gym LADDER. Choosing your fighting STYLE is the gym master's (Ellison's) doing, NOT this sign's — so
+# with no style yet, the ladder simply shows every rung LOCKED (go see Ellison first). Once you've a style, the
+# ladder works normally.
 func interact() -> void:
 
 	if Engine.is_editor_hint():
 		return
-	if not PlayerState.has_power_type():
-		_open_picker()
-	else:
-		_open_ladder()
-
-
-# The gym master's style choice. On a pick, set the player's power type, then drop them straight into the ladder.
-func _open_picker() -> void:
-
-	var picker : PowerTypePicker = PowerTypePicker.new()
-	picker.chosen.connect(_on_power_chosen)
-	add_child(picker)
-
-
-func _on_power_chosen(weapon_id: String) -> void:
-
-	PlayerState.choose_power_type(weapon_id)
-	_open_ladder()
-
-
-func _open_ladder() -> void:
-
 	var modal : SkirmishChallengeModal = SkirmishChallengeModal.new()
 	modal.challenged.connect(_on_challenged)
 	add_child(modal)
