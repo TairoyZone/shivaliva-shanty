@@ -120,6 +120,17 @@ The endgame loop, reskinned from YPP pillaging. You job onto a crew at the Skydo
 - Build proactively, flag only big design forks; commit freely; **never push without an explicit ask.**
 
 ## Session changelog (newest first — older per-session detail intentionally condensed)
+- **2026-06-17 — a whole new HUD theme + smaller polish.** 🎨 **Central, swappable HUD theme**: `interface/palette.gd`
+  is now the single source of truth (role tokens set from a named SCHEME) + a new `interface/ui_style.gd` stylebox
+  factory — recoloring the UI is a one-line `Palette.use_scheme()`. Default = a faithful Puzzle-Pirates **light
+  "Pirateology"** look (parchment, blue headers, dark text, gold frames); 3 dark schemes kept as alternates. Rolled
+  across the HUD (Modal base + every modal, shops, tournament, **main menu**, tabs, backpack, theme-aware ICONS,
+  the scene-title banner) with a playtest contrast pass (no over-bold outlines, COLORED hovers not white, options
+  toggles, dropdowns). Fixed the Profile contrast bug (name was 1.39:1). ⚠️ Still to sweep: **puzzle-side + voyage/
+  deck/boarding** surfaces. 💛 **Hearties = real FRIENDS only** (`PlayerState.is_heartie`, ≥ Friend 50). 🗡️
+  Equip-system **designed, not built** (visible weapon slot + Twig/Slingshot/Spellbook starters; one fork open —
+  cross-style vs style-locked weapons). Plus earlier: power-type RPG element + gym cinematic, atomic saves, a
+  shared NPC social-memory awareness layer, backpack trash slot, permanent door unlocks.
 - **2026-06-16→17 — A TRAINING + CHALLENGE + PROGRESSION LAYER: the Cradle Gym, the Jungle Ordeal, health-stakes
   combat, day/night + a clock, earned keys, and a prove-yourself hire gate.** 🥊 Jade's healer's hut became the
   **Cradle Gym** (full file/folder/class rename `healers_hut → cradle_gym`; Ellison = master, Jade = free healer,
