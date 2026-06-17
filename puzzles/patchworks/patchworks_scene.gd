@@ -256,7 +256,9 @@ func _draw_breach(r: Rect2, gx: int, gy: int) -> void:
 
 func _trash_rect() -> Rect2:
 
-	return Rect2(982.0, 552.0, 108.0, 104.0)
+	# Tucked just RIGHT of the hull board (its frame ends at x≈849 / bottom≈501), beside the lower-right corner —
+	# off the bottom button row, so the can reads as part of the board (Troy 2026-06-17, the red-arrow note).
+	return Rect2(872.0, 388.0, 108.0, 104.0)
 
 
 # The TOSS trash-can drop-target: lid CLOSED normally, lid OPEN (lifted off, a green
