@@ -50,5 +50,28 @@ func _go() -> void:
 	print("CAP held: ", PlayerState.recent_happenings.size(), " <= ", PlayerState.HAPPENINGS_CAP)
 	if PlayerState.recent_happenings.size() > PlayerState.HAPPENINGS_CAP: fails += 1
 
+	# NEW EVENT SITE flows through the same feed (a duel loss):
+	PlayerState.recent_happenings = []
+	PlayerState.record_battle("Flint Kerr", false)
+	var loss_logged : bool = false
+	for e in PlayerState.recent_happenings:
+		if "bested by Flint Kerr" in String(e.get("text", "")): loss_logged = true
+	print("DUEL-LOSS event logged: ", loss_logged)
+	if not loss_logged: fails += 1
+
+	# ATOMIC SAVE + crash-recovery: a 2nd save leaves a .bak; a corrupt primary recovers from it.
+	PlayerState._save()
+	PlayerState._save()
+	var bak_exists : bool = FileAccess.file_exists(PlayerState.SAVE_PATH + ".bak")
+	# Simulate a crash mid-swap: save.cfg gone but .bak intact (ConfigFile parses text garbage as empty-OK, so a
+	# MISSING primary is the reliable way to trigger the recovery path — and it IS the exact swap-window scenario).
+	DirAccess.remove_absolute(PlayerState.SAVE_PATH)
+	PlayerState.recent_happenings = []
+	PlayerState._load()
+	var recovered : bool = PlayerState.recent_happenings.size() > 0
+	print("ATOMIC: bak_exists=", bak_exists, " recovered_from_bak=", recovered)
+	if not bak_exists: fails += 1
+	if not recovered: fails += 1
+
 	print("MEMORY TEST: %s (%d fail)" % ["PASS" if fails == 0 else "FAIL", fails])
 	get_tree().quit()

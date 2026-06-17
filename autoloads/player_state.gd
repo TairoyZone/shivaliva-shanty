@@ -878,10 +878,13 @@ signal battle_record_changed
 ## Max NOTABLE happenings kept — a HARD cap, so the save AND the per-prompt token cost stay BOUNDED no matter
 ## how many hours you play (they're a rolling window, never a growing list). See Troy's perf question 2026-06-17.
 const HAPPENINGS_CAP : int = 12
-## ONE global, persisted, capped log of NOTABLE PUBLIC goings-on — {text, place} — a gym win, a beast downed,
-## etc. Folded into EVERY NPC's prompt (via [NpcBrain]) so the whole cast has CROSS-NPC + cross-scene awareness
-## ("word reached me you bested Jade at the gym") that survives scene changes AND reloads. PUBLIC events ONLY —
-## never private chat lines, romance, secrets, or hidden game state, so it's hidden-info-safe BY CONSTRUCTION.
+## ONE global, persisted, capped log of NOTABLE goings-on the cast gossips about — {text, place} — a gym win, a
+## beast downed, a ship bought, a job taken, a duel lost, a budding romance. Folded into EVERY NPC's prompt (via
+## [NpcBrain]) so the whole cast has CROSS-NPC + cross-scene awareness ("word reached me you bested Jade at the
+## gym") that survives scene changes AND reloads. HARD INVARIANT (hidden-info-safe): record ONLY observable
+## SOCIAL facts — never raw chat lines, a held SECRET (`chat_secret`), or hidden GAME state (a rival's poker hole
+## cards / any per-seat `_own_secret_view`). A NOTICED romance IS fair game (Troy 2026-06-17 wants the cast to
+## gossip) — the flirty WORDS stay private, only the FACT that you're growing close goes around.
 ## Written ONLY via [method note_happening] (the one choke-point a new activity / island calls). This is the
 ## "shared social memory" layer of the NPC Awareness Stack — see CLAUDE.md + [[npc-situational-awareness]].
 var recent_happenings : Array = []
@@ -1277,6 +1280,7 @@ func buy_ship(ship_id: String, gold_cost: int) -> bool:
 		return false
 	add_coins(-gold_cost, "Bought the %s" % ShipClasses.display(ship_id))
 	owned_ships.append(ship_id)
+	note_happening("%s took ownership of a %s of their own." % [_player_ref(), ShipClasses.display(ship_id)])   # cast-wide
 	if active_ship.is_empty() or not owned_ships.has(active_ship):
 		active_ship = ship_id   # your first hull berths as the active ship; later buys swap at the dock
 	ships_changed.emit()
@@ -1898,6 +1902,12 @@ func advance_romance(npc_name: String) -> int:
 		return romance_stage(npc_name)
 	var next_stage : int = romance_stage(npc_name) + 1
 	npc_romance[npc_name] = next_stage
+	# The cast NOTICES a budding romance (gossip — Troy 2026-06-17: "I want the cast to notice romances"). The
+	# private flirty WORDS stay between the two of you; only the FACT that you're growing close goes around.
+	var gossip : String = "%s and %s have taken a shine to one another." % [_player_ref(), npc_name]
+	if next_stage >= 2:
+		gossip = "%s and %s have grown close — there's talk of it around the island." % [_player_ref(), npc_name]
+	note_happening(gossip)
 	Audio.play_sfx("chime", -6.0)   # a soft heart-beat as the courtship deepens mid-chat
 	romance_changed.emit(npc_name, next_stage)
 	_save()
@@ -1919,6 +1929,7 @@ func become_sweetheart(npc_name: String) -> bool:
 		romance_changed.emit(existing, 0)
 	npc_romance[npc_name] = ROMANCE_STAGES.size() - 1
 	has_been_sweetheart = true   # monotonic keepsake — the Sweetheart trophy never un-earns
+	note_happening("%s and %s are sweethearts now." % [_player_ref(), npc_name])   # the big one — the whole island hears
 	romance_changed.emit(npc_name, romance_stage(npc_name))
 	_save()
 	return true
@@ -2345,6 +2356,8 @@ func record_battle(npc_name: String, player_won: bool) -> void:
 	else:
 		rec["losses"] = int(rec.get("losses", 0)) + 1
 	npc_battle_record[npc_name] = rec
+	if not player_won:
+		note_happening("%s was bested by %s in a bout." % [_player_ref(), npc_name])   # a loss is gossip too (wins log at their own sites)
 	# Stamp with a monotonic tick so chat can tell "just now" from "a while ago" (freshness decays). Not
 	# persisted, so the tick is always same-session-valid (recent_duel is blank on a fresh boot).
 	recent_duel = {"npc": npc_name, "player_won": player_won, "ts": Time.get_ticks_msec()}
@@ -2566,14 +2579,27 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "last_scene", last_scene)
 	config.set_value(SAVE_SECTION, "last_position_x", last_position.x)
 	config.set_value(SAVE_SECTION, "last_position_y", last_position.y)
-	config.save(SAVE_PATH)
+	# ATOMIC write (Troy 2026-06-17): serialize to a TMP file first, then swap it in — so a crash / power-loss
+	# DURING the serialize can never corrupt the live save (worst case the previous good save survives untouched).
+	# A .bak guards the brief swap window: if the game dies between removing the old file and renaming the tmp in,
+	# _load recovers from the backup. Matters more now that the shared social memory makes us save a touch more.
+	var tmp_path : String = SAVE_PATH + ".tmp"
+	if config.save(tmp_path) != OK:
+		return   # couldn't write the tmp — leave the existing save.cfg untouched (still the last good one)
+	if FileAccess.file_exists(SAVE_PATH):
+		DirAccess.copy_absolute(SAVE_PATH, SAVE_PATH + ".bak")
+		DirAccess.remove_absolute(SAVE_PATH)   # Godot's rename won't overwrite an existing target
+	DirAccess.rename_absolute(tmp_path, SAVE_PATH)
 
 
 func _load() -> void:
 
 	var config : ConfigFile = ConfigFile.new()
 	if config.load(SAVE_PATH) != OK:
-		return
+		# Primary save missing/corrupt (e.g. a crash during the atomic swap) — recover from the .bak if present.
+		if not FileAccess.file_exists(SAVE_PATH + ".bak") or config.load(SAVE_PATH + ".bak") != OK:
+			return
+		push_warning("PlayerState: save.cfg unreadable — recovered from save.cfg.bak")
 	# Suppress per-field saves while we assign — the property setters each
 	# call _save(), which (before this guard) wrote the file before
 	# npc_affinity/last_scene/last_position were read back, blanking them

@@ -51,9 +51,12 @@ Compatibility, 1280×720. No build step — run `main.tscn`, or any `puzzles/*/<
   cross-scene, reload-surviving layer: `PlayerState.recent_happenings` — a HARD-CAPPED (`HAPPENINGS_CAP`) global
   log of NOTABLE **public** events, written ONLY via the one choke-point **`PlayerState.note_happening(text, place)`**
   (so a new activity/island just adds one call) and folded in by `NpcBrain._happenings_block` as island-scoped
-  **hearsay** ("around here lately" vs "word from afar"). **Hidden-info-safe by construction**: it may hold ONLY
-  public facts — NEVER a private chat line, romance step, secret, or per-seat state. Because it's capped, the save
-  + the per-prompt token cost stay BOUNDED no matter how long you play. Multi-island scope = the
+  **hearsay** ("around here lately" vs "word from afar"). Wired at gym/ordeal wins, ship bought, job hired, a duel
+  lost, and a budding romance (the cast gossips). **Hidden-info-safe by construction**: record ONLY observable
+  SOCIAL facts — NEVER a raw chat line, a held `chat_secret`, or hidden GAME state (a rival's hole cards / a
+  per-seat `_own_secret_view`). A *noticed* romance is fair game (the flirty words stay private; only the fact
+  you're close goes around). Because it's capped, the save + the per-prompt token cost stay BOUNDED no matter how
+  long you play. Multi-island scope = the
   `NpcPersonality.island` field + `NpcBrain.SCENE_ISLAND` map; nothing else.
 - For **risky logic / new systems**, prefer design → build → adversarial review before handoff. Be
   deliberate about multi-agent *workflows* — they're powerful but slow/expensive; reserve them for

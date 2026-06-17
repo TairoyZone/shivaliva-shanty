@@ -201,12 +201,15 @@ func _gate_owner() -> String:
 
 func _set_hired() -> void:
 
+	var who : String = PlayerState.player_name if not PlayerState.player_name.is_empty() else "The traveller"
 	if job == Job.FORGE:
 		PlayerState.hired_at_forge = true
 		PlayerState.grant_key(PlayerState.KEY_MINE)     # the digging job hands you the Mine Key
+		PlayerState.note_happening("%s took up the digging job at the Forge." % who)   # cast-wide awareness
 	else:
 		PlayerState.hired_at_workshop = true
 		PlayerState.grant_key(PlayerState.KEY_GROVE)    # the lumber job hands you the Grove Key
+		PlayerState.note_happening("%s took up the lumber job at the Workshop." % who)
 
 
 func _on_close_pressed() -> void:
