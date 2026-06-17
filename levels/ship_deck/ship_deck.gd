@@ -633,8 +633,9 @@ func _build_ui() -> void:
 	vitals_card.grow_horizontal = Control.GROW_DIRECTION_END
 	vitals_card.grow_vertical = Control.GROW_DIRECTION_END
 	var vcs : StyleBoxFlat = StyleBoxFlat.new()
-	vcs.bg_color = Palette.PANEL_TROUGH.lightened(0.05)
-	vcs.border_color = Palette.SKY_FRAME
+	# Light card FRAME (matches the HUD theme); the gauges inside stay dark "displays" (Troy 2026-06-17).
+	vcs.bg_color = Palette.PANEL_BG
+	vcs.border_color = Palette.BORDER
 	vcs.set_border_width_all(2)
 	vcs.set_corner_radius_all(10)
 	vcs.set_content_margin_all(10)
@@ -671,27 +672,7 @@ func _build_ui() -> void:
 	report_btn.focus_mode = Control.FOCUS_NONE
 	report_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	report_btn.add_theme_font_size_override("font_size", 14)
-	report_btn.add_theme_color_override("font_color", Color(0.86, 0.92, 1.0, 1.0))   # cool sky-blue text
-	report_btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	report_btn.add_theme_constant_override("outline_size", 3)
-	# COOL 3-state styling to match the deck's sky-at-altitude HUD (was a bare default-grey button under the
-	# navy meter bars). The deck is deliberately cool, not brass — see the cool-deck decision.
-	for state in ["normal", "hover", "pressed"]:
-		var rs : StyleBoxFlat = StyleBoxFlat.new()
-		var rbg : Color = Color(0.12, 0.17, 0.27, 0.94)   # a touch lighter than the trough so it reads as a button
-		if state == "hover":
-			rbg = rbg.lightened(0.10)
-		elif state == "pressed":
-			rbg = rbg.darkened(0.12)
-		rs.bg_color = rbg
-		rs.border_color = Palette.SKY_FRAME
-		rs.set_border_width_all(2)
-		rs.set_corner_radius_all(8)
-		rs.content_margin_left = 14
-		rs.content_margin_right = 14
-		rs.content_margin_top = 6
-		rs.content_margin_bottom = 6
-		report_btn.add_theme_stylebox_override(state, rs)
+	UiStyle.style_button(report_btn, Palette.ACCENT)   # follows the HUD theme (was the cool-deck navy button)
 	report_btn.pressed.connect(_open_duty_report)
 	vitals.add_child(report_btn)
 	_report_btn = report_btn
@@ -782,25 +763,7 @@ func _deck_button(text: String) -> Button:
 	b.focus_mode = Control.FOCUS_NONE
 	b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	b.add_theme_font_size_override("font_size", 14)
-	b.add_theme_color_override("font_color", Color(0.86, 0.92, 1.0, 1.0))
-	b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	b.add_theme_constant_override("outline_size", 3)
-	for state in ["normal", "hover", "pressed"]:
-		var rs : StyleBoxFlat = StyleBoxFlat.new()
-		var rbg : Color = Color(0.12, 0.17, 0.27, 0.94)
-		if state == "hover":
-			rbg = rbg.lightened(0.10)
-		elif state == "pressed":
-			rbg = rbg.darkened(0.12)
-		rs.bg_color = rbg
-		rs.border_color = Palette.SKY_FRAME
-		rs.set_border_width_all(2)
-		rs.set_corner_radius_all(8)
-		rs.content_margin_left = 14
-		rs.content_margin_right = 14
-		rs.content_margin_top = 6
-		rs.content_margin_bottom = 6
-		b.add_theme_stylebox_override(state, rs)
+	UiStyle.style_button(b, Palette.ACCENT)   # follows the HUD theme (was the cool-deck navy button)
 	return b
 
 
