@@ -9,6 +9,8 @@
 ##   /holes [n]  — open n hull holes on the ACTIVE ship (the voyage ship mid-run, else your owned ship; default 3).
 ##   /mend       — fully mend the active ship (seal all holes).
 ##   /wreck      — wreck the active ship (max holes) — to feel the holed Loft / set up a sink.
+##   /style      — RESET your fighting style + the gym intro, so the Pokémon-professor cinematic plays again on
+##                 the next Cradle Gym entry (the style is normally a one-time commitment).
 ##   /help       — list the commands.
 ## (Function-key cheats were dropped — F8/F9 etc. collide with Godot's editor shortcuts.) Built 2026-06-08.
 extends Node
@@ -43,8 +45,15 @@ func run_command(text: String) -> void:
 		"/wreck":
 			PlayerState.wreck_active_ship()
 			_note("WRECKED the active ship — max holes")
+		"/style":
+			PlayerState.player_power_type = ""
+			PlayerState.gym_intro_seen = false
+			PlayerState.equipped_weapon = "brawl"
+			PlayerState.power_type_changed.emit()
+			PlayerState._save()
+			_note("fighting style + gym intro RESET — re-enter the Cradle Gym to see the cinematic + choose again")
 		"/help", "/?", "/commands":
-			_note("/crew · /gold [n] · /skills · /holes [n] · /mend · /wreck")
+			_note("/crew · /gold [n] · /skills · /holes [n] · /mend · /wreck · /style")
 		_:
 			_note("unknown command '%s' — try /help" % cmd)
 
