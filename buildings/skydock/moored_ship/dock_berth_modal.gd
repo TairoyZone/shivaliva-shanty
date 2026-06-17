@@ -58,15 +58,13 @@ func _render() -> void:
 	var title : Label = Label.new()
 	title.text = "YOUR BERTH"
 	title.add_theme_font_size_override("font_size", 26)
-	title.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
-	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	title.add_theme_constant_override("outline_size", 3)
+	UiStyle.apply_title(title)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_content.add_child(title)
 	var sub : Label = Label.new()
 	sub.text = "— the ★ ship is berthed here, ready to sail —"
 	sub.add_theme_font_size_override("font_size", 13)
-	sub.add_theme_color_override("font_color", Color(0.82, 0.74, 0.56, 1.0))
+	UiStyle.apply_muted(sub)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_content.add_child(sub)
 
@@ -101,9 +99,8 @@ func _ship_card(sid: String) -> Control:
 
 	var active : bool = sid == PlayerState.active_ship_id()
 	var card : PanelContainer = PanelContainer.new()
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.13, 0.08, 0.04, 0.92)
-	s.border_color = Color(0.95, 0.80, 0.40, 1.0) if active else Color(0.5, 0.36, 0.18, 1.0)
+	var s : StyleBoxFlat = UiStyle.card()
+	s.border_color = Palette.ACCENT if active else Palette.BORDER
 	s.set_border_width_all(2)
 	s.set_corner_radius_all(10)
 	s.content_margin_left = 14
@@ -125,10 +122,10 @@ func _ship_card(sid: String) -> Control:
 	var name_l : Label = Label.new()
 	name_l.text = "%s%s   (%s)" % ["★ " if active else "", PlayerState.ship_name(sid), ShipClasses.display(sid)]
 	name_l.add_theme_font_size_override("font_size", 18)
-	name_l.add_theme_color_override("font_color", Color(0.98, 0.90, 0.55, 1.0) if active else Color(0.90, 0.84, 0.70, 1.0))
+	name_l.add_theme_color_override("font_color", Palette.ACCENT if active else Palette.TEXT_PRIMARY)
 	info.add_child(name_l)
-	_small(info, ShipClasses.stat_line(sid), Color(0.72, 0.86, 0.72, 1.0))
-	_small(info, cond, Color(0.70, 0.92, 0.74, 1.0) if holes <= 0 else Color(0.96, 0.68, 0.5, 1.0))
+	_small(info, ShipClasses.stat_line(sid), Palette.TEXT_MUTED)
+	_small(info, cond, Palette.TEXT_MUTED if holes <= 0 else Palette.DANGER)
 
 	var btns : VBoxContainer = VBoxContainer.new()
 	btns.add_theme_constant_override("separation", 4)
@@ -145,8 +142,7 @@ func _ship_card(sid: String) -> Control:
 	sub_row.add_child(rename)
 	var price : int = ShipClasses.sell_price(sid)
 	var sell : Button = _btn(("Sure? +%dg" % price) if _confirm_sell == sid else ("Sell %dg" % price), 12)
-	if _confirm_sell == sid:
-		sell.add_theme_color_override("font_color", Color(1.0, 0.62, 0.5, 1.0))
+	UiStyle.style_button(sell, Palette.DANGER)
 	sell.pressed.connect(_on_sell.bind(sid))
 	sub_row.add_child(sell)
 	return card
@@ -195,6 +191,6 @@ func _btn(text: String, font_size: int) -> Button:
 
 	var b : Button = Button.new()
 	b.text = text
-	b.focus_mode = Control.FOCUS_NONE
 	b.add_theme_font_size_override("font_size", font_size)
+	UiStyle.style_button(b, Palette.ACCENT)
 	return b

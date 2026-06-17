@@ -110,9 +110,7 @@ func _show_modal() -> void:
 	else:
 		title.text = ("WORKSHOP JOB" if is_hired else "WANTED:  LUMBERJACKS")
 	title.add_theme_font_size_override("font_size", 30)
-	title.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
-	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	title.add_theme_constant_override("outline_size", 4)
+	UiStyle.apply_title(title)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
 	# Body text — different per job + state.
@@ -148,9 +146,7 @@ func _show_modal() -> void:
 			+ "Wages: 1 gold per wood delivered. Chop at the Grove east of here, "
 			+ "then bring the lumber back to the drop-off in this shop.")
 	body.add_theme_font_size_override("font_size", 17)
-	body.add_theme_color_override("font_color", Color(0.92, 0.82, 0.58, 1.0))
-	body.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
-	body.add_theme_constant_override("outline_size", 2)
+	UiStyle.apply_primary(body)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(body)
@@ -162,11 +158,11 @@ func _show_modal() -> void:
 	# The Apply button shows ONLY once you've proven yourself at the gym (gate_cleared) and aren't already hired.
 	if not is_hired and gate_cleared:
 		var apply_btn : Button = _make_walnut_button(
-			"Apply for the job", Color(0.78, 1.0, 0.62, 1.0))
+			"Apply for the job", Palette.POSITIVE)
 		apply_btn.pressed.connect(_on_apply_pressed)
 		hbox.add_child(apply_btn)
 	var close_btn : Button = _make_walnut_button(
-		"Close", Color(0.95, 0.84, 0.56, 1.0))
+		"Close", Palette.ACCENT)
 	close_btn.pressed.connect(_on_close_pressed)
 	hbox.add_child(close_btn)
 	# Parent to THIS node (in the scene), not get_tree().root — so the
@@ -225,60 +221,24 @@ func _close_modal() -> void:
 	_modal = null
 
 
-# Walnut + brass panel style — matches the tavern Leave button.
+# Themed modal panel — pulled from the central UiStyle factory (adapts to the active scheme,
+# light or dark — keeps a slightly wider content margin to match this poster modal).
 func _build_panel_style() -> StyleBoxFlat:
 
-	var style : StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = Color(0.18, 0.11, 0.06, 0.96)
-	style.border_color = Color(0.78, 0.58, 0.24, 1.0)
-	style.border_width_left = 3
-	style.border_width_top = 3
-	style.border_width_right = 3
-	style.border_width_bottom = 3
-	style.corner_radius_top_left = 14
-	style.corner_radius_top_right = 14
-	style.corner_radius_bottom_right = 14
-	style.corner_radius_bottom_left = 14
+	var style : StyleBoxFlat = UiStyle.panel(true)
 	style.content_margin_left = 28
 	style.content_margin_right = 28
-	style.content_margin_top = 22
-	style.content_margin_bottom = 22
 	return style
 
 
-# Walnut/brass button — same family as the Leave button. Adds the
-# subtle hover/pressed state tints.
+# Themed button — routed through UiStyle.style_button so it picks up the active scheme's chrome.
+# [param font_color] carries the SEMANTIC label hue (POSITIVE for confirm, ACCENT for neutral).
 func _make_walnut_button(text: String, font_color: Color) -> Button:
 
 	var btn : Button = Button.new()
 	btn.text = text
-	btn.focus_mode = Control.FOCUS_NONE
 	btn.add_theme_font_size_override("font_size", 19)
-	btn.add_theme_color_override("font_color", font_color)
-	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	btn.add_theme_constant_override("outline_size", 3)
-	for state in ["normal", "hover", "pressed"]:
-		var s : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.22, 0.14, 0.08, 0.95)
-		if state == "hover":
-			bg = bg.lightened(0.10)
-		elif state == "pressed":
-			bg = bg.darkened(0.12)
-		s.bg_color = bg
-		s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-		s.border_width_left = 2
-		s.border_width_top = 2
-		s.border_width_right = 2
-		s.border_width_bottom = 2
-		s.corner_radius_top_left = 8
-		s.corner_radius_top_right = 8
-		s.corner_radius_bottom_right = 8
-		s.corner_radius_bottom_left = 8
-		s.content_margin_left = 18
-		s.content_margin_right = 18
-		s.content_margin_top = 8
-		s.content_margin_bottom = 8
-		btn.add_theme_stylebox_override(state, s)
+	UiStyle.style_button(btn, font_color)
 	return btn
 
 

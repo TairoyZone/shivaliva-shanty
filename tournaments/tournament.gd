@@ -107,8 +107,8 @@ func _show_bracket() -> void:
 			+ "Win two matches to take the %d-gold pot.") % [you_vs, other_a, other_b, PlayerState.tournament_pot]
 		btn_label = "Play your match  ▸"
 	_build_screen("GEM DROP TOURNAMENT", body, [
-		{"label": btn_label, "color": Color(0.78, 1.0, 0.62, 1.0), "action": _start_match},
-		{"label": "Withdraw", "color": Color(0.90, 0.80, 0.70, 1.0), "action": _leave},
+		{"label": btn_label, "color": Palette.POSITIVE, "action": _start_match},
+		{"label": "Withdraw", "color": Palette.ACCENT, "action": _leave},
 	])
 
 
@@ -117,7 +117,7 @@ func _show_champion() -> void:
 	_build_screen("TOURNAMENT CHAMPION!",
 		"You took the whole bracket — last pirate standing.\n\nPrize:   +%d gold."
 		% PlayerState.tournament_pot,
-		[{"label": "Collect your winnings", "color": Color(0.80, 1.0, 0.66, 1.0), "action": _leave}])
+		[{"label": "Collect your winnings", "color": Palette.POSITIVE, "action": _leave}])
 
 
 func _show_knocked_out() -> void:
@@ -125,7 +125,7 @@ func _show_knocked_out() -> void:
 	_build_screen("KNOCKED OUT",
 		"%s got the better of you this round.\n\n" % _name_of(PlayerState.tournament_opponent())
 		+ "The pot slips away — but there's always the next tournament.",
-		[{"label": "Head out", "color": Color(0.95, 0.86, 0.56, 1.0), "action": _leave}])
+		[{"label": "Head out", "color": Palette.ACCENT, "action": _leave}])
 
 
 # --- Flow --------------------------------------------------------------
@@ -194,18 +194,14 @@ func _build_screen(title_text: String, body_text: String, buttons: Array) -> voi
 	var title : Label = Label.new()
 	title.text = title_text
 	title.add_theme_font_size_override("font_size", 34)
-	title.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
-	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	title.add_theme_constant_override("outline_size", 4)
+	UiStyle.apply_title(title)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
 
 	var body : Label = Label.new()
 	body.text = body_text
 	body.add_theme_font_size_override("font_size", 19)
-	body.add_theme_color_override("font_color", Color(0.90, 0.86, 0.72, 1.0))
-	body.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.55))
-	body.add_theme_constant_override("outline_size", 2)
+	UiStyle.apply_primary(body)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD
 	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -223,17 +219,7 @@ func _build_screen(title_text: String, body_text: String, buttons: Array) -> voi
 
 func _panel_style() -> StyleBoxFlat:
 
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.13, 0.11, 0.08, 0.97)
-	s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-	s.border_width_left = 3
-	s.border_width_top = 3
-	s.border_width_right = 3
-	s.border_width_bottom = 3
-	s.corner_radius_top_left = 14
-	s.corner_radius_top_right = 14
-	s.corner_radius_bottom_right = 14
-	s.corner_radius_bottom_left = 14
+	var s : StyleBoxFlat = UiStyle.panel(true)
 	s.content_margin_left = 34
 	s.content_margin_right = 34
 	s.content_margin_top = 26
@@ -245,31 +231,6 @@ func _make_button(text: String, font_color: Color) -> Button:
 
 	var btn : Button = Button.new()
 	btn.text = text
-	btn.focus_mode = Control.FOCUS_NONE
 	btn.add_theme_font_size_override("font_size", 20)
-	btn.add_theme_color_override("font_color", font_color)
-	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	btn.add_theme_constant_override("outline_size", 3)
-	for state in ["normal", "hover", "pressed"]:
-		var sb : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.24, 0.16, 0.09, 0.96)
-		if state == "hover":
-			bg = bg.lightened(0.10)
-		elif state == "pressed":
-			bg = bg.darkened(0.12)
-		sb.bg_color = bg
-		sb.border_color = Color(0.78, 0.58, 0.24, 1.0)
-		sb.border_width_left = 2
-		sb.border_width_top = 2
-		sb.border_width_right = 2
-		sb.border_width_bottom = 2
-		sb.corner_radius_top_left = 10
-		sb.corner_radius_top_right = 10
-		sb.corner_radius_bottom_right = 10
-		sb.corner_radius_bottom_left = 10
-		sb.content_margin_left = 22
-		sb.content_margin_right = 22
-		sb.content_margin_top = 10
-		sb.content_margin_bottom = 10
-		btn.add_theme_stylebox_override(state, sb)
+	UiStyle.style_button(btn, font_color)
 	return btn

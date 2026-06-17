@@ -97,9 +97,7 @@ func _show_modal() -> void:
 	var title : Label = Label.new()
 	title.text = "GEM DROP TOURNAMENT" if _in_session else "TOURNAMENT BOARD"
 	title.add_theme_font_size_override("font_size", 30)
-	title.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
-	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	title.add_theme_constant_override("outline_size", 4)
+	UiStyle.apply_title(title)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
 	# Body.
@@ -114,9 +112,7 @@ func _show_modal() -> void:
 		body.text = ("No tournament running just now. They're called now and then — "
 			+ "swing by another time and try your luck for the pot.")
 	body.add_theme_font_size_override("font_size", 17)
-	body.add_theme_color_override("font_color", Color(0.92, 0.82, 0.58, 1.0))
-	body.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
-	body.add_theme_constant_override("outline_size", 2)
+	UiStyle.apply_primary(body)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD
 	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -128,10 +124,10 @@ func _show_modal() -> void:
 	vbox.add_child(hbox)
 	if _in_session and can_afford:
 		var enter_btn : Button = _make_walnut_button("Enter  (%d gold)" % ENTRY_FEE,
-			Color(0.78, 1.0, 0.62, 1.0))
+			Palette.POSITIVE)
 		enter_btn.pressed.connect(_on_enter_pressed)
 		hbox.add_child(enter_btn)
-	var close_btn : Button = _make_walnut_button("Close", Color(0.95, 0.84, 0.56, 1.0))
+	var close_btn : Button = _make_walnut_button("Close", Palette.ACCENT)
 	close_btn.pressed.connect(_close_modal)
 	hbox.add_child(close_btn)
 	_modal = layer
@@ -170,55 +166,15 @@ func _close_modal() -> void:
 
 func _build_panel_style() -> StyleBoxFlat:
 
-	var style : StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = Color(0.18, 0.11, 0.06, 0.96)
-	style.border_color = Color(0.78, 0.58, 0.24, 1.0)
-	style.border_width_left = 3
-	style.border_width_top = 3
-	style.border_width_right = 3
-	style.border_width_bottom = 3
-	style.corner_radius_top_left = 14
-	style.corner_radius_top_right = 14
-	style.corner_radius_bottom_right = 14
-	style.corner_radius_bottom_left = 14
-	style.content_margin_left = 28
-	style.content_margin_right = 28
-	style.content_margin_top = 22
-	style.content_margin_bottom = 22
-	return style
+	return UiStyle.panel(true)
 
 
 func _make_walnut_button(text: String, font_color: Color) -> Button:
 
 	var btn : Button = Button.new()
 	btn.text = text
-	btn.focus_mode = Control.FOCUS_NONE
 	btn.add_theme_font_size_override("font_size", 19)
-	btn.add_theme_color_override("font_color", font_color)
-	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	btn.add_theme_constant_override("outline_size", 3)
-	for state in ["normal", "hover", "pressed"]:
-		var s : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.22, 0.14, 0.08, 0.95)
-		if state == "hover":
-			bg = bg.lightened(0.10)
-		elif state == "pressed":
-			bg = bg.darkened(0.12)
-		s.bg_color = bg
-		s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-		s.border_width_left = 2
-		s.border_width_top = 2
-		s.border_width_right = 2
-		s.border_width_bottom = 2
-		s.corner_radius_top_left = 8
-		s.corner_radius_top_right = 8
-		s.corner_radius_bottom_right = 8
-		s.corner_radius_bottom_left = 8
-		s.content_margin_left = 18
-		s.content_margin_right = 18
-		s.content_margin_top = 8
-		s.content_margin_bottom = 8
-		btn.add_theme_stylebox_override(state, s)
+	UiStyle.style_button(btn, font_color)
 	return btn
 
 

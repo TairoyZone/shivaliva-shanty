@@ -73,22 +73,20 @@ func _show_modal() -> void:
 	var title : Label = Label.new()
 	title.text = "CINDER TROY'S FORGE — ARM YERSELF"
 	title.add_theme_font_size_override("font_size", 28)
-	title.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
-	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	title.add_theme_constant_override("outline_size", 4)
+	UiStyle.apply_title(title)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
 	var hint : Label = Label.new()
 	hint.text = "Forged in good steel — equip what ye buy in yer Backpack."
 	hint.add_theme_font_size_override("font_size", 15)
-	hint.add_theme_color_override("font_color", Color(0.82, 0.7, 0.45, 1.0))
+	UiStyle.apply_muted(hint)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(hint)
 	_rows_vbox = VBoxContainer.new()
 	_rows_vbox.add_theme_constant_override("separation", 10)
 	vbox.add_child(_rows_vbox)
 	_rebuild_rows()
-	var close_btn : Button = _make_walnut_button("Close", Color(0.95, 0.84, 0.56, 1.0))
+	var close_btn : Button = _make_walnut_button("Close", Palette.ACCENT)
 	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	close_btn.pressed.connect(_on_close_pressed)
 	vbox.add_child(close_btn)
@@ -129,19 +127,19 @@ func _make_weapon_row(entry: Dictionary) -> Control:
 	info.custom_minimum_size = Vector2(360.0, 0.0)
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(info)
-	_add_label(info, SkirmishWeapon.display_name(wid), 20, Color(0.98, 0.88, 0.5, 1.0))
-	_add_label(info, String(SkirmishWeapon.DESCRIPTIONS.get(wid, "")), 14, Color(0.86, 0.78, 0.6, 1.0))
-	_add_label(info, "%d gold" % gold, 15, Color(0.80, 0.92, 1.0, 1.0))
+	_add_label(info, SkirmishWeapon.display_name(wid), 20, Palette.ACCENT)
+	_add_label(info, String(SkirmishWeapon.DESCRIPTIONS.get(wid, "")), 14, Palette.TEXT_MUTED)
+	_add_label(info, "%d gold" % gold, 15, Palette.TEXT_PRIMARY)
 	# Buy / Owned / can't-afford.
 	var btn : Button
 	if PlayerState.owns_weapon(wid):
-		btn = _make_walnut_button("Owned", Color(0.7, 0.9, 0.7, 1.0))
+		btn = _make_walnut_button("Owned", Palette.POSITIVE)
 		btn.disabled = true
 	elif PlayerState.can_buy_weapon(wid, gold):
-		btn = _make_walnut_button("Buy", Color(0.78, 1.0, 0.62, 1.0))
+		btn = _make_walnut_button("Buy", Palette.POSITIVE)
 		btn.pressed.connect(_on_buy_pressed.bind(entry))
 	else:
-		btn = _make_walnut_button("Can't afford", Color(0.9, 0.6, 0.5, 1.0))
+		btn = _make_walnut_button("Can't afford", Palette.DANGER)
 		btn.disabled = true
 	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hbox.add_child(btn)
@@ -172,19 +170,18 @@ func _add_label(parent: VBoxContainer, text: String, size: int, color: Color) ->
 	label.text = text
 	label.add_theme_font_size_override("font_size", size)
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
-	label.add_theme_constant_override("outline_size", 2)
+	# Light schemes (dark text on a light page) want NO outline — a black halo just muddies dark ink.
+	if Palette.IS_DARK:
+		label.add_theme_color_override("font_outline_color", Palette.OUTLINE_HARD)
+		label.add_theme_constant_override("outline_size", 2)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	parent.add_child(label)
 
 
+# Themed modal panel from the central UiStyle factory (adapts to the active scheme, light or dark).
 func _build_panel_style() -> StyleBoxFlat:
 
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.18, 0.11, 0.06, 0.98)
-	s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-	s.set_border_width_all(3)
-	s.set_corner_radius_all(14)
+	var s : StyleBoxFlat = UiStyle.panel(true)
 	s.content_margin_left = 30
 	s.content_margin_right = 30
 	s.content_margin_top = 24
@@ -192,13 +189,10 @@ func _build_panel_style() -> StyleBoxFlat:
 	return s
 
 
+# Themed list-row (dark-token raised card — text on it uses TEXT_PRIMARY / TEXT_MUTED).
 func _build_row_style() -> StyleBoxFlat:
 
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.13, 0.08, 0.04, 0.9)
-	s.border_color = Color(0.5, 0.36, 0.18, 1.0)
-	s.set_border_width_all(2)
-	s.set_corner_radius_all(8)
+	var s : StyleBoxFlat = UiStyle.card()
 	s.content_margin_left = 14
 	s.content_margin_right = 14
 	s.content_margin_top = 10
@@ -206,33 +200,14 @@ func _build_row_style() -> StyleBoxFlat:
 	return s
 
 
+# Themed button — routed through UiStyle.style_button. [param font_color] carries the SEMANTIC
+# label hue (POSITIVE for buy/owned, DANGER for can't-afford, ACCENT for neutral).
 func _make_walnut_button(text: String, font_color: Color) -> Button:
 
 	var btn : Button = Button.new()
 	btn.text = text
-	btn.focus_mode = Control.FOCUS_NONE
 	btn.add_theme_font_size_override("font_size", 18)
-	btn.add_theme_color_override("font_color", font_color)
-	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	btn.add_theme_constant_override("outline_size", 3)
-	for state in ["normal", "hover", "pressed", "disabled"]:
-		var s : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.22, 0.14, 0.08, 0.95)
-		if state == "hover":
-			bg = bg.lightened(0.10)
-		elif state == "pressed":
-			bg = bg.darkened(0.12)
-		elif state == "disabled":
-			bg = bg.darkened(0.30)
-		s.bg_color = bg
-		s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-		s.set_border_width_all(2)
-		s.set_corner_radius_all(8)
-		s.content_margin_left = 18
-		s.content_margin_right = 18
-		s.content_margin_top = 8
-		s.content_margin_bottom = 8
-		btn.add_theme_stylebox_override(state, s)
+	UiStyle.style_button(btn, font_color)
 	return btn
 
 

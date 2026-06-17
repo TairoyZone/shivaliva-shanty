@@ -39,16 +39,14 @@ func _build_content() -> void:
 	var title : Label = Label.new()
 	title.text = "CHRISTEN HER"
 	title.add_theme_font_size_override("font_size", 24)
-	title.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
-	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	title.add_theme_constant_override("outline_size", 3)
+	UiStyle.apply_title(title)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_content.add_child(title)
 
 	var sub : Label = Label.new()
 	sub.text = "Your %s awaits a name. What do they call her?" % ShipClasses.display(_ship_id)
 	sub.add_theme_font_size_override("font_size", 14)
-	sub.add_theme_color_override("font_color", Color(0.86, 0.78, 0.6, 1.0))
+	UiStyle.apply_muted(sub)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_content.add_child(sub)
@@ -67,8 +65,8 @@ func _build_content() -> void:
 	var dice : Button = Button.new()
 	dice.text = "↻"
 	dice.tooltip_text = "Roll a name"
-	dice.focus_mode = Control.FOCUS_NONE
 	dice.add_theme_font_size_override("font_size", 17)
+	UiStyle.style_button(dice, Palette.ACCENT)
 	dice.pressed.connect(_on_roll)
 	row.add_child(dice)
 
@@ -79,11 +77,13 @@ func _build_content() -> void:
 	var ok : Button = Button.new()
 	ok.text = "Christen her"
 	ok.add_theme_font_size_override("font_size", 17)
+	UiStyle.style_button(ok, Palette.POSITIVE)
 	ok.pressed.connect(_on_christen)
 	btns.add_child(ok)
 	var skip : Button = Button.new()
 	skip.text = "Later"
 	skip.add_theme_font_size_override("font_size", 15)
+	UiStyle.style_button(skip, Palette.ACCENT)
 	skip.pressed.connect(_close)
 	btns.add_child(skip)
 

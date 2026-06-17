@@ -708,7 +708,7 @@ func _make_quest_card(quest: Dictionary) -> Control:
 	var marker : Label = Label.new()
 	marker.text = "!"
 	marker.add_theme_font_size_override("font_size", 22)
-	marker.add_theme_color_override("font_color", Color(0.96, 0.74, 0.24, 1.0))
+	marker.add_theme_color_override("font_color", Palette.ACCENT)   # the '!' quest marker reads as a blue heading accent on the light card (was gold = low contrast)
 	marker.custom_minimum_size = Vector2(20.0, 0.0)
 	marker.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(marker)

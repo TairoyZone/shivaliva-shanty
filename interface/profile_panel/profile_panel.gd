@@ -288,7 +288,7 @@ func _make_center_column() -> Control:
 	see_all.text = ("▸ See all %d trophies" % claimed_list.size()) if claimed_list.size() > TROPHY_PREVIEW \
 		else "▸ Open the trophy room"
 	see_all.add_theme_font_size_override("font_size", 12)
-	see_all.add_theme_color_override("font_color", COLOR_GOLD)
+	see_all.add_theme_color_override("font_color", Palette.ACCENT)   # the "see all trophies" link reads as a blue link on the light page (was gold = low contrast)
 	see_all.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	see_all.pressed.connect(func() -> void: TrophiesPanel.open(self))
 	col.add_child(see_all)
@@ -403,7 +403,7 @@ func _mini_btn(text: String) -> Button:
 	b.custom_minimum_size = Vector2(30, 28)
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	b.add_theme_font_size_override("font_size", 14)
-	b.add_theme_color_override("font_color", Color(0.95, 0.88, 0.66, 1.0))
+	b.add_theme_color_override("font_color", Palette.ACCENT)   # ▲/▼/✕ glyphs read blue on the light CARD_BG button (was gold = low contrast)
 	for st in ["normal", "hover", "pressed", "disabled"]:
 		var s : StyleBoxFlat = StyleBoxFlat.new()
 		var bg : Color = Palette.CARD_BG

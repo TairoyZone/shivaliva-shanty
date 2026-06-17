@@ -52,10 +52,10 @@ func _render_prompt() -> void:
 	var row : HBoxContainer = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 16)
-	var yes : Button = _make_button("Aye — be mine", Color(1.0, 0.72, 0.82))
+	var yes : Button = _make_button("Aye — be mine", Palette.POSITIVE)
 	yes.pressed.connect(_on_yes)
 	row.add_child(yes)
-	var no : Button = _make_button("Not yet", Color(0.86, 0.86, 0.86))
+	var no : Button = _make_button("Not yet", Palette.ACCENT)
 	no.pressed.connect(_close)
 	row.add_child(no)
 	_content.add_child(row)
@@ -83,7 +83,7 @@ func _show_result() -> void:
 	_add_body("You and %s are sweethearts now.\nThey'll greet you with an open heart from here on." % _npc_name)
 	var row : HBoxContainer = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	var ok : Button = _make_button("Done", _npc_color.lightened(0.4))
+	var ok : Button = _make_button("Done", Palette.ACCENT)
 	ok.pressed.connect(_close)
 	row.add_child(ok)
 	_content.add_child(row)
@@ -110,9 +110,7 @@ func _add_title(text: String) -> void:
 	var l : Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 28)
-	l.add_theme_color_override("font_color", Color(1.0, 0.74, 0.82, 1.0))
-	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	l.add_theme_constant_override("outline_size", 4)
+	UiStyle.apply_title(l)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_content.add_child(l)
 
@@ -122,7 +120,7 @@ func _add_body(text: String) -> void:
 	var l : Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 17)
-	l.add_theme_color_override("font_color", Color(0.94, 0.88, 0.78, 1.0))
+	UiStyle.apply_primary(l)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD
 	l.custom_minimum_size = Vector2(380.0, 0.0)
@@ -133,27 +131,8 @@ func _make_button(text: String, font_color: Color) -> Button:
 
 	var b : Button = Button.new()
 	b.text = text
-	b.focus_mode = Control.FOCUS_NONE
 	b.add_theme_font_size_override("font_size", 17)
-	b.add_theme_color_override("font_color", font_color)
-	b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	b.add_theme_constant_override("outline_size", 2)
-	for state in ["normal", "hover", "pressed"]:
-		var s : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.26, 0.12, 0.18, 0.96)
-		if state == "hover":
-			bg = bg.lightened(0.12)
-		elif state == "pressed":
-			bg = bg.darkened(0.12)
-		s.bg_color = bg
-		s.border_color = Color(0.86, 0.5, 0.62, 1.0)
-		s.set_border_width_all(2)
-		s.set_corner_radius_all(8)
-		s.content_margin_left = 14
-		s.content_margin_right = 14
-		s.content_margin_top = 7
-		s.content_margin_bottom = 7
-		b.add_theme_stylebox_override(state, s)
+	UiStyle.style_button(b, font_color)
 	return b
 
 

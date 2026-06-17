@@ -72,11 +72,11 @@ func _build() -> void:
 
 	for id in ORDER:
 		var label : String = "%s   ·   %s" % [SkirmishWeapon.power_type_name(id), String(TAGLINES.get(id, ""))]
-		var btn : Button = _make_walnut_button(label, SkirmishWeapon.color_for(id))
+		var btn : Button = _make_walnut_button(label, Palette.ACCENT)
 		btn.pressed.connect(_on_pick.bind(id))
 		vbox.add_child(btn)
 
-	var back : Button = _make_walnut_button("Not yet", Color(0.95, 0.84, 0.56, 1.0))
+	var back : Button = _make_walnut_button("Not yet", Palette.ACCENT)
 	back.pressed.connect(_on_cancel)
 	vbox.add_child(back)
 
@@ -105,9 +105,7 @@ func _make_title(text: String) -> Label:
 	var label : Label = Label.new()
 	label.text = text
 	label.add_theme_font_size_override("font_size", 28)
-	label.add_theme_color_override("font_color", Color(0.98, 0.86, 0.42, 1.0))
-	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	label.add_theme_constant_override("outline_size", 4)
+	UiStyle.apply_title(label)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return label
 
@@ -117,7 +115,7 @@ func _make_caption(text: String) -> Label:
 	var label : Label = Label.new()
 	label.text = text
 	label.add_theme_font_size_override("font_size", 15)
-	label.add_theme_color_override("font_color", Color(0.74, 0.80, 0.92, 1.0))
+	UiStyle.apply_muted(label)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.custom_minimum_size = Vector2(600.0, 0.0)
@@ -126,11 +124,7 @@ func _make_caption(text: String) -> Label:
 
 func _panel_style() -> StyleBoxFlat:
 
-	var style : StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = Color(0.18, 0.11, 0.06, 0.96)
-	style.border_color = Color(0.78, 0.58, 0.24, 1.0)
-	style.set_border_width_all(3)
-	style.set_corner_radius_all(14)
+	var style : StyleBoxFlat = UiStyle.panel(true)
 	style.content_margin_left = 30
 	style.content_margin_right = 30
 	style.content_margin_top = 24
@@ -142,25 +136,6 @@ func _make_walnut_button(text: String, font_color: Color) -> Button:
 
 	var btn : Button = Button.new()
 	btn.text = text
-	btn.focus_mode = Control.FOCUS_NONE
 	btn.add_theme_font_size_override("font_size", 18)
-	btn.add_theme_color_override("font_color", font_color)
-	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	btn.add_theme_constant_override("outline_size", 3)
-	for state in ["normal", "hover", "pressed"]:
-		var s : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.22, 0.14, 0.08, 0.95)
-		if state == "hover":
-			bg = bg.lightened(0.10)
-		elif state == "pressed":
-			bg = bg.darkened(0.12)
-		s.bg_color = bg
-		s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-		s.set_border_width_all(2)
-		s.set_corner_radius_all(8)
-		s.content_margin_left = 18
-		s.content_margin_right = 18
-		s.content_margin_top = 8
-		s.content_margin_bottom = 8
-		btn.add_theme_stylebox_override(state, s)
+	UiStyle.style_button(btn, font_color)
 	return btn
