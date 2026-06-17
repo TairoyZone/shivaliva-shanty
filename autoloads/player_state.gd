@@ -325,6 +325,10 @@ signal power_type_changed
 ## True once the gym master's ONE-TIME intro cinematic has played (the Pokémon-professor-style "choose your
 ## fighting style" scene that fires on first entering the Cradle Gym). Persisted, so it plays exactly once.
 var gym_intro_seen : bool = false
+## PERMANENT door unlocks — the [Door] key_ids you've EARNED (Mine/Grove/Jungle). Once earned, a door stays open
+## for good, so the key ITEM is just a keepsake you can safely TRASH (the door reads THIS set, not the bag).
+## Persisted. See [method grant_key] / [method door_unlocked] / [Door].
+var unlocked_doors : Array = []
 
 ## True once the player has signed up at the Hiring Board for Godfrey's
 ## lumberjacking job. Gates the WoodCuttingSign in the Forest — without
@@ -1093,12 +1097,40 @@ func add_item(item_id: String, count: int) -> int:
 ## job-apply (Mine/Grove keys) + the gym-ladder clear (Jungle key) + the load-time backfill.
 func grant_key(key_id: String) -> bool:
 
-	if item_count(key_id) > 0:
-		return false
-	add_item(key_id, 1)   # toasts "+1 <Key>" + lands it in the bag
+	if key_id in unlocked_doors:
+		return false   # already earned — the door's open for good; never re-mint a key you may have trashed
+	unlocked_doors.append(key_id)   # PERMANENT unlock, independent of holding the key item
+	add_item(key_id, 1)   # the key keepsake lands in the bag (trashable — the door stays open without it)
 	var kname : String = String((ITEM_DEFS.get(key_id, {}) as Dictionary).get("name", "A key"))
 	log_event("%s in hand — it unlocks a door on Cradle Rock for good." % kname, Color(0.96, 0.86, 0.4))
+	_save()
 	return true
+
+
+## True if the door-key [param key_id] has been EARNED (the door's permanently open). The [Door] reads THIS, not
+## whether the key item still sits in the bag — so trashing the key keepsake never re-locks the door.
+func door_unlocked(key_id: String) -> bool:
+
+	return key_id in unlocked_doors
+
+
+## Discard (delete) the stack at [param slot_index], or just [param amount] of it (-1 = the whole stack). The
+## backpack's TRASH slot calls this to clear out junk (e.g. a redundant door key). Persists.
+func discard_inventory(slot_index: int, amount: int = -1) -> void:
+
+	if slot_index < 0 or slot_index >= inventory.size():
+		return
+	var slot : Dictionary = inventory[slot_index]
+	if slot.is_empty():
+		return
+	var id : String = String(slot["id"])
+	var have : int = int(slot["count"])
+	var drop : int = have if amount < 0 else clampi(amount, 1, have)
+	inventory[slot_index] = {} if have - drop <= 0 else {"id": id, "count": have - drop}
+	var nm : String = String((ITEM_DEFS.get(id, {}) as Dictionary).get("name", id))
+	log_event("Discarded %s." % nm, Color(0.72, 0.72, 0.76))
+	_on_inventory_mutated(id)
+	_save()
 
 
 ## Remove up to [param count] of [param item_id]. Returns the amount
@@ -2547,6 +2579,7 @@ func clear_save() -> void:
 	equipped_weapon = "brawl"
 	player_power_type = ""
 	gym_intro_seen = false
+	unlocked_doors = []
 	npc_affinity = {}
 	npc_favor_done = {}
 	crew = {}
@@ -2610,6 +2643,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "equipped_weapon", equipped_weapon)
 	config.set_value(SAVE_SECTION, "player_power_type", player_power_type)
 	config.set_value(SAVE_SECTION, "gym_intro_seen", gym_intro_seen)
+	config.set_value(SAVE_SECTION, "unlocked_doors", unlocked_doors)
 	config.set_value(SAVE_SECTION, "weapons_model", "items_v1")
 	config.set_value(SAVE_SECTION, "npc_affinity", npc_affinity)
 	config.set_value(SAVE_SECTION, "npc_favor_done", npc_favor_done)
@@ -2681,6 +2715,7 @@ func _load() -> void:
 	equipped_weapon = String(config.get_value(SAVE_SECTION, "equipped_weapon", "brawl"))
 	player_power_type = String(config.get_value(SAVE_SECTION, "player_power_type", ""))   # "" = not yet chosen (old saves)
 	gym_intro_seen = bool(config.get_value(SAVE_SECTION, "gym_intro_seen", false))
+	unlocked_doors = config.get_value(SAVE_SECTION, "unlocked_doors", [])   # before the migration below seeds it
 	npc_affinity = config.get_value(SAVE_SECTION, "npc_affinity", {})
 	npc_favor_done = config.get_value(SAVE_SECTION, "npc_favor_done", {})
 	crew = config.get_value(SAVE_SECTION, "crew", {})
@@ -2714,15 +2749,15 @@ func _load() -> void:
 					inventory[i] = {"id": w, "count": 1}
 					break
 		owned_weapons = [SkirmishWeapon.DEFAULT_WEAPON]
-	# Door-keys backfill (2026-06-16): older saves earned the hire / gym-champion BEFORE keys existed, so
-	# they hold no key item and would be locked out. Mint the keys their progress already entitles them to.
-	# Direct slot inserts (skip add_item's toast/log — silent on load) only when the bag lacks the key.
+	# Door-unlock migration: doors now stay open via `unlocked_doors` (so a trashed key never re-locks one). Seed
+	# it from a HELD key item (saves made before this change) OR an earned MILESTONE (hire / gym-champion) — without
+	# adding any item, so old keys aren't duplicated and the player can freely discard the redundant key keepsakes.
+	for k in [KEY_MINE, KEY_GROVE, KEY_JUNGLE]:
+		if item_count(k) > 0 and not (k in unlocked_doors):
+			unlocked_doors.append(k)
 	for pair in [[hired_at_forge, KEY_MINE], [hired_at_workshop, KEY_GROVE], [ladder_complete(), KEY_JUNGLE]]:
-		if bool(pair[0]) and item_count(String(pair[1])) == 0:
-			for i in inventory.size():
-				if (inventory[i] as Dictionary).is_empty():
-					inventory[i] = {"id": String(pair[1]), "count": 1}
-					break
+		if bool(pair[0]) and not (String(pair[1]) in unlocked_doors):
+			unlocked_doors.append(String(pair[1]))
 	_suppress_save = false
 	# Mark already-earned trophies as seen so loading never spam-toasts; only live earns notify.
 	_seed_trophies_seen()

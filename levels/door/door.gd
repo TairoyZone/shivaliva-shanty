@@ -123,7 +123,9 @@ func _is_locked() -> bool:
 
 	if Engine.is_editor_hint() or required_key.is_empty():
 		return false
-	return PlayerState.item_count(required_key) <= 0
+	# Reads the PERMANENT unlock, not whether the key item is still in the bag — so discarding the redundant key
+	# keepsake (via the backpack trash slot) never re-locks a door you've already earned.
+	return not PlayerState.door_unlocked(required_key)
 
 
 # A small brass padlock centred on the door face — the "you need a key" tell.

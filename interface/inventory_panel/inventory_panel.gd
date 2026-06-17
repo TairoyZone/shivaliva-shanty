@@ -202,6 +202,18 @@ func _build_skeleton() -> void:
 	_bag_row = HBoxContainer.new()
 	_bag_row.add_theme_constant_override("separation", 8)
 	_items_page.add_child(_bag_row)
+	# TRASH drop-target — drag any item here to throw it away (e.g. a redundant door key). Right-aligned row.
+	var trash_row : HBoxContainer = HBoxContainer.new()
+	trash_row.add_theme_constant_override("separation", 8)
+	trash_row.alignment = BoxContainer.ALIGNMENT_END
+	var trash_hint : Label = Label.new()
+	trash_hint.text = "Drag an item here to discard  →"
+	trash_hint.add_theme_font_size_override("font_size", 12)
+	trash_hint.add_theme_color_override("font_color", Color(0.72, 0.66, 0.56, 0.95))
+	trash_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	trash_row.add_child(trash_hint)
+	trash_row.add_child(InventoryTrash.new())
+	_items_page.add_child(trash_row)
 
 	# Profile page (hidden until its tab is picked) — it now also hosts the hearties list.
 	_profile_view = ProfileView.new()
