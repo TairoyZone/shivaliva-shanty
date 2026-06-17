@@ -154,15 +154,13 @@ func _show_name_prompt() -> void:
 	var msg : Label = Label.new()
 	msg.text = "What do they call you?"
 	msg.add_theme_font_size_override("font_size", 26)
-	msg.add_theme_color_override("font_color", Color(0.98, 0.90, 0.6, 1.0))
-	msg.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	msg.add_theme_constant_override("outline_size", 3)
+	UiStyle.apply_title(msg)
 	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(msg)
 	var sub : Label = Label.new()
 	sub.text = "The folk of Cradle Rock will remember your name."
 	sub.add_theme_font_size_override("font_size", 15)
-	sub.add_theme_color_override("font_color", Color(0.82, 0.74, 0.56, 1.0))
+	UiStyle.apply_muted(sub)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD
 	vbox.add_child(sub)
@@ -193,7 +191,7 @@ func _show_name_prompt() -> void:
 	# Validation line (a name is REQUIRED + must be unused — empty/taken disables "Set sail").
 	var hint : Label = Label.new()
 	hint.add_theme_font_size_override("font_size", 13)
-	hint.add_theme_color_override("font_color", Color(0.96, 0.62, 0.5, 1.0))
+	hint.add_theme_color_override("font_color", Palette.DANGER)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.custom_minimum_size = Vector2(0, 16)
 	vbox.add_child(hint)
@@ -203,7 +201,7 @@ func _show_name_prompt() -> void:
 	var glabel : Label = Label.new()
 	glabel.text = "And you are…"
 	glabel.add_theme_font_size_override("font_size", 15)
-	glabel.add_theme_color_override("font_color", Color(0.82, 0.74, 0.56, 1.0))
+	UiStyle.apply_muted(glabel)
 	glabel.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(glabel)
 	var grow : HBoxContainer = HBoxContainer.new()
@@ -341,7 +339,7 @@ func _show_overwrite_confirm() -> void:
 	var msg : Label = Label.new()
 	msg.text = "Start a new game?\nThis erases your current saved progress."
 	msg.add_theme_font_size_override("font_size", 20)
-	msg.add_theme_color_override("font_color", Color(0.95, 0.86, 0.6, 1.0))
+	UiStyle.apply_primary(msg)
 	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	msg.autowrap_mode = TextServer.AUTOWRAP_WORD
 	vbox.add_child(msg)
@@ -373,54 +371,25 @@ func _close_confirm() -> void:
 
 func _panel_style() -> StyleBoxFlat:
 
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.18, 0.11, 0.06, 0.97)
-	s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-	s.border_width_left = 3
-	s.border_width_top = 3
-	s.border_width_right = 3
-	s.border_width_bottom = 3
-	s.corner_radius_top_left = 14
-	s.corner_radius_top_right = 14
-	s.corner_radius_bottom_right = 14
-	s.corner_radius_bottom_left = 14
-	s.content_margin_left = 30
-	s.content_margin_right = 30
-	s.content_margin_top = 24
-	s.content_margin_bottom = 24
-	return s
+	return UiStyle.panel(true)   # central theme (light page over the dark menu sky)
+
+
+# Map the old light button tints to the theme's semantic roles (the title sits over the dark menu sky, so its
+# light parchment buttons read fine): green→positive, red→danger, gold/blue→accent.
+func _btn_fg(c: Color) -> Color:
+
+	if c.g >= c.r and c.g >= c.b:
+		return Palette.POSITIVE
+	if c.r > c.g + 0.1 and c.b < c.r:
+		return Palette.DANGER
+	return Palette.ACCENT
 
 
 func _make_button(text: String, font_color: Color) -> Button:
 
 	var btn : Button = Button.new()
 	btn.text = text
-	btn.focus_mode = Control.FOCUS_NONE
 	btn.custom_minimum_size = Vector2(260, 0)
 	btn.add_theme_font_size_override("font_size", 22)
-	btn.add_theme_color_override("font_color", font_color)
-	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	btn.add_theme_constant_override("outline_size", 3)
-	for state in ["normal", "hover", "pressed"]:
-		var sb : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.20, 0.13, 0.07, 0.95)
-		if state == "hover":
-			bg = bg.lightened(0.10)
-		elif state == "pressed":
-			bg = bg.darkened(0.12)
-		sb.bg_color = bg
-		sb.border_color = Color(0.78, 0.58, 0.24, 1.0)
-		sb.border_width_left = 2
-		sb.border_width_top = 2
-		sb.border_width_right = 2
-		sb.border_width_bottom = 2
-		sb.corner_radius_top_left = 10
-		sb.corner_radius_top_right = 10
-		sb.corner_radius_bottom_right = 10
-		sb.corner_radius_bottom_left = 10
-		sb.content_margin_left = 20
-		sb.content_margin_right = 20
-		sb.content_margin_top = 10
-		sb.content_margin_bottom = 10
-		btn.add_theme_stylebox_override(state, sb)
+	UiStyle.style_button(btn, _btn_fg(font_color), Palette.CARD_BG, Palette.BORDER)
 	return btn

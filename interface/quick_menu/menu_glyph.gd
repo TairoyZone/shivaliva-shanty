@@ -5,9 +5,15 @@
 class_name MenuGlyph
 extends Control
 
-const GOLD : Color = Color(0.96, 0.86, 0.50, 1.0)
-const DARK : Color = Color(0.0, 0.0, 0.0, 0.55)
-const HANDLE : Color = Color(0.55, 0.38, 0.18, 1.0)
+# Theme-aware monochrome icon: the body draws in the on-surface INK (dark on the light page, cream on a dark
+# scheme) and the inner detail lines draw in the surface tone (CUT) so they read as cut-outs — a clean YPP-style
+# line icon on whatever the rail surface is. (Was a fixed brass GOLD that vanished on the light theme.)
+var GOLD : Color :
+	get: return Palette.TEXT_PRIMARY
+var DARK : Color :
+	get: return Color(Palette.CARD_BG.r, Palette.CARD_BG.g, Palette.CARD_BG.b, 0.85)
+var HANDLE : Color :
+	get: return Palette.TEXT_MUTED
 
 @export_enum("bag", "heart", "star", "jobs", "book", "bell", "scroll", "swords") var kind : String = "bag":
 	set(value):
@@ -108,8 +114,8 @@ func _scroll(c: Vector2) -> void:
 
 func _swords(c: Vector2) -> void:
 
-	# Crossed sabres (the duel-challenge card): two steel blades crossing, hilts + pommels at the bottom.
-	var steel : Color = Color(0.82, 0.86, 0.92, 1.0)
+	# Crossed sabres (the duel-challenge card): two blades crossing, hilts + pommels at the bottom.
+	var steel : Color = GOLD   # theme INK (dark on light)
 	draw_line(c + Vector2(-7.0, 7.5), c + Vector2(7.5, -7.5), steel, 2.4)   # blade ↗ (hilt bottom-left)
 	draw_line(c + Vector2(7.0, 7.5), c + Vector2(-7.5, -7.5), steel, 2.4)   # blade ↖ (hilt bottom-right)
 	draw_line(c + Vector2(-9.0, 5.5), c + Vector2(-5.0, 9.5), HANDLE, 2.2)  # left guard
