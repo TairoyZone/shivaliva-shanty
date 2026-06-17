@@ -15,8 +15,12 @@ const ARC_R : float = 26.0
 # swap retunes the clock too). The day/night ARC art (sun gold, moon pale, dim track) stays fixed — it's a
 # drawn indicator, not chrome.
 const ARC_TRACK : Color = Color(0.55, 0.45, 0.28, 0.7)
-const SUN : Color = Color(1.0, 0.86, 0.4, 1.0)
-const MOON : Color = Color(0.86, 0.89, 0.99, 1.0)
+# The sun/moon must CONTRAST the pill. On a DARK pill the old bright gold sun + pale moon read fine; on the
+# LIGHT pill they vanished (light-on-light), so use a deep amber sun + a dark slate moon there (Troy 2026-06-17).
+var SUN : Color :
+	get: return Color(1.0, 0.86, 0.4, 1.0) if Palette.IS_DARK else Color(0.84, 0.50, 0.10, 1.0)
+var MOON : Color :
+	get: return Color(0.86, 0.89, 0.99, 1.0) if Palette.IS_DARK else Color(0.22, 0.28, 0.50, 1.0)
 
 # Sun clock (mirrors DayNight): rises ~6:30, sets ~18:30, peaks 12:30.
 const SUNRISE : float = 390.0

@@ -144,14 +144,20 @@ static func button_styles(bg: Color, border: Color, glow: bool = false) -> Dicti
 	for state in ["normal", "hover", "pressed", "disabled"]:
 		var s : StyleBoxFlat = StyleBoxFlat.new()
 		var c : Color = bg
-		if state == "hover":
-			c = bg.lightened(0.10)
-		elif state == "pressed":
-			c = bg.darkened(0.12)
-		elif state == "disabled":
-			c = bg.darkened(0.28)
+		var b : Color = border
+		match state:
+			"hover":
+				# A COLORED highlight (accent rim) — NOT a wash to white, which is invisible on the light page
+				# (Troy 2026-06-17). On light, darken slightly so the fill reads as "lit"; on dark, lighten.
+				c = bg.lightened(0.10) if Palette.IS_DARK else bg.darkened(0.06)
+				b = Palette.ACCENT
+			"pressed":
+				c = bg.darkened(0.12)
+				b = Palette.ACCENT
+			"disabled":
+				c = bg.darkened(0.10) if Palette.IS_DARK else bg.lightened(0.05)
 		s.bg_color = c
-		s.border_color = border
+		s.border_color = b
 		s.set_border_width_all(2)
 		s.set_corner_radius_all(9)
 		s.content_margin_left = 16
@@ -159,7 +165,7 @@ static func button_styles(bg: Color, border: Color, glow: bool = false) -> Dicti
 		s.content_margin_top = 8
 		s.content_margin_bottom = 8
 		if glow and state != "disabled":
-			glow_shadow(s, border, 7)
+			glow_shadow(s, b, 7)
 		out[state] = s
 	return out
 
@@ -169,9 +175,15 @@ static func button_styles(bg: Color, border: Color, glow: bool = false) -> Dicti
 static func style_button(btn: Button, fg: Color = Palette.ACCENT, bg: Color = Palette.CARD_BG, border: Color = Palette.BORDER, glow: bool = false) -> void:
 
 	btn.focus_mode = Control.FOCUS_NONE
-	btn.add_theme_color_override("font_color", fg)
-	btn.add_theme_color_override("font_outline_color", Palette.OUTLINE_HARD)
-	btn.add_theme_constant_override("outline_size", 3)
+	# Pin EVERY font state to fg — else hover/pressed/focus fall back to the theme default (white) and vanish
+	# on the light page (Troy 2026-06-17). Disabled reads as muted, not invisible.
+	for slot in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
+		btn.add_theme_color_override(slot, fg)
+	btn.add_theme_color_override("font_disabled_color", Palette.TEXT_MUTED)
+	# A hard ink outline keeps text crisp on a DARK scheme; on the light page it just reads as too-bold, so skip.
+	if Palette.IS_DARK:
+		btn.add_theme_color_override("font_outline_color", Palette.OUTLINE_HARD)
+		btn.add_theme_constant_override("outline_size", 3)
 	var styles : Dictionary = button_styles(bg, border, glow)
 	for state in styles:
 		btn.add_theme_stylebox_override(state, styles[state])

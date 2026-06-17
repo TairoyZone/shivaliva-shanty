@@ -93,7 +93,10 @@ func _make_toggle(text: String, on: bool, setter: Callable) -> CheckButton:
 	cb.button_pressed = on
 	cb.focus_mode = Control.FOCUS_NONE
 	cb.add_theme_font_size_override("font_size", 21)
-	cb.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
+	# A CheckButton uses a SEPARATE font color when toggled ON (font_pressed_color, default white) — so an
+	# enabled toggle was rendering white/invisible on the light page (Troy 2026-06-17). Pin every state dark.
+	for slot in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color", "font_focus_color"]:
+		cb.add_theme_color_override(slot, Palette.TEXT_PRIMARY)
 	cb.toggled.connect(func(pressed: bool) -> void: setter.call(pressed))
 	return cb
 

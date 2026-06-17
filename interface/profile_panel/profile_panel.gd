@@ -56,10 +56,16 @@ func _ready() -> void:
 	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	add_child(scroll)
+	# Give the content a right gutter so the vertical scrollbar sits clear to the RIGHT of the text instead of
+	# overlapping it (Troy 2026-06-17).
+	var pad : MarginContainer = MarginContainer.new()
+	pad.add_theme_constant_override("margin_right", 12)
+	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(pad)
 	_root = VBoxContainer.new()
 	_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_root.add_theme_constant_override("separation", 8)
-	scroll.add_child(_root)
+	pad.add_child(_root)
 	PlayerState.crew_changed.connect(refresh)   # the roster updates live on hire / promote / dismiss
 	refresh()
 

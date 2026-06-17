@@ -280,19 +280,26 @@ func _make_dropdown(label_text: String, items: Array, selected: int, on_sel: Cal
 func _style_option_button(opt: OptionButton) -> void:
 
 	opt.add_theme_font_size_override("font_size", 17)
-	opt.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
+	# Pin EVERY font state — else the selected text goes white on hover/focus (Troy 2026-06-17).
+	for slot in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		opt.add_theme_color_override(slot, Palette.TEXT_PRIMARY)
+	opt.add_theme_color_override("font_disabled_color", Palette.TEXT_MUTED)
 	if Palette.IS_DARK:
 		opt.add_theme_color_override("font_outline_color", Palette.OUTLINE_HARD)
 		opt.add_theme_constant_override("outline_size", 3)
 	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
 		var s : StyleBoxFlat = StyleBoxFlat.new()
 		var bg : Color = Palette.CARD_BG
-		if state == "hover":
-			bg = bg.lightened(0.10)
-		elif state == "pressed":
-			bg = bg.darkened(0.12)
+		var bd : Color = Palette.BORDER
+		match state:
+			"hover", "focus":
+				bg = Palette.CARD_BG.lightened(0.10) if Palette.IS_DARK else Palette.CARD_BG.darkened(0.06)
+				bd = Palette.ACCENT   # a COLORED highlight, not a wash to white
+			"pressed":
+				bg = Palette.CARD_BG.darkened(0.12)
+				bd = Palette.ACCENT
 		s.bg_color = bg
-		s.border_color = Palette.BORDER
+		s.border_color = bd
 		s.set_border_width_all(2)
 		s.set_corner_radius_all(8)
 		s.content_margin_left = 16
@@ -454,17 +461,6 @@ func _make_button(text: String, font_color: Color) -> Button:
 
 	var btn : Button = Button.new()
 	btn.text = text
-	btn.focus_mode = Control.FOCUS_NONE
 	btn.add_theme_font_size_override("font_size", 18)
-	btn.add_theme_color_override("font_color", font_color)
-	btn.add_theme_color_override("font_outline_color", Palette.OUTLINE_HARD)
-	btn.add_theme_constant_override("outline_size", 3)
-	var styles : Dictionary = UiStyle.button_styles(Palette.CARD_BG, Palette.BORDER)
-	for state in styles:
-		var s : StyleBoxFlat = styles[state]
-		s.content_margin_left = 16
-		s.content_margin_right = 16
-		s.content_margin_top = 7
-		s.content_margin_bottom = 7
-		btn.add_theme_stylebox_override(state, s)
+	UiStyle.style_button(btn, font_color, Palette.CARD_BG, Palette.BORDER)   # all font states + colored hover
 	return btn

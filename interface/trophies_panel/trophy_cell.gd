@@ -46,8 +46,11 @@ static func make(t: Dictionary, on_dark: bool = false) -> Control:
 	cap.add_theme_font_size_override("font_size", 10)
 	if on_dark:
 		cap.add_theme_color_override("font_color", Palette.TEXT_PRIMARY if earned else Palette.TEXT_MUTED)
-		cap.add_theme_color_override("font_outline_color", Palette.OUTLINE_HARD)
-		cap.add_theme_constant_override("outline_size", 3)
+		# Only outline on a DARK scheme — a hard black outline on dark-on-light text reads as "too bold" / blobby
+		# (Troy 2026-06-17: the Profile trophy captions). Clean dark text needs none on the light page.
+		if Palette.IS_DARK:
+			cap.add_theme_color_override("font_outline_color", Palette.OUTLINE_HARD)
+			cap.add_theme_constant_override("outline_size", 3)
 	else:
 		cap.add_theme_color_override("font_color", Palette.INK_ON_LIGHT if earned else Palette.INK_ON_LIGHT_SOFT)
 	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

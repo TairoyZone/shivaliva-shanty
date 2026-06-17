@@ -975,8 +975,15 @@ func _make_slot(slot: Dictionary, index: int = -1) -> Control:
 		count.text = str(int(slot["count"]))
 		count.add_theme_font_size_override("font_size", 15)
 		count.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
-		count.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
-		count.add_theme_constant_override("outline_size", 4)
+		# A hard black outline made the count blobby/too-bold on the light slot (Troy 2026-06-17). On a light
+		# scheme use a thin LIGHT halo so the dark number still separates from a busy icon without the heaviness;
+		# keep the bold black outline only on dark schemes (where it reads as crisp).
+		if Palette.IS_DARK:
+			count.add_theme_color_override("font_outline_color", Palette.OUTLINE_HARD)
+			count.add_theme_constant_override("outline_size", 4)
+		else:
+			count.add_theme_color_override("font_outline_color", Color(Palette.CARD_LIGHT.r, Palette.CARD_LIGHT.g, Palette.CARD_LIGHT.b, 0.9))
+			count.add_theme_constant_override("outline_size", 2)
 		count.set_anchors_preset(Control.PRESET_FULL_RECT)
 		count.offset_left = 4.0
 		count.offset_top = 4.0

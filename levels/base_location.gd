@@ -63,11 +63,37 @@ func _ready() -> void:
 	Audio.play_music_track("overworld")   # the overworld bed (guarded — won't restart between locations)
 	_apply_sky()
 	_apply_mood()
+	_theme_location_banner()   # the scene-title pill follows the central HUD theme (Troy 2026-06-17)
 	# Co-op seam: spawn each session player (a loop-of-one in single-player). See [[multiplayer-direction]].
 	for id in SessionState.players:
 		_spawn_player(int(id))
 	var joystick : VirtualJoystick = _build_touch_joystick()
 	_build_overworld_camera(joystick)
+
+
+# Recolor the scene-title banner (each level's .tscn bakes a dark pill + gold label) to the central HUD theme,
+# so the overworld title matches the rest of the HUD on whatever scheme is active. One hook, every level.
+func _theme_location_banner() -> void:
+
+	var banner : Node = get_node_or_null("UI/LocationBanner")
+	if not (banner is PanelContainer):
+		return
+	var sb : StyleBoxFlat = StyleBoxFlat.new()
+	sb.bg_color = Palette.PANEL_BG
+	sb.border_color = Palette.BORDER
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(14)
+	sb.content_margin_left = 28
+	sb.content_margin_right = 28
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 8
+	UiStyle.glow_shadow(sb)
+	(banner as PanelContainer).add_theme_stylebox_override("panel", sb)
+	var loc : Node = banner.get_node_or_null("LocationLabel")
+	if loc is Label:
+		UiStyle.apply_title(loc as Label)
+		if not Palette.IS_DARK:
+			(loc as Label).add_theme_constant_override("outline_size", 0)   # drop any baked black outline on the light page
 
 
 ## Spawn the player for [param id] + parent it under the iso Y-sort root (falls back to self for legacy
