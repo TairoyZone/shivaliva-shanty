@@ -112,6 +112,14 @@ func _make_header() -> Control:
 	rank_label.add_theme_color_override("font_color", COLOR_INK_SOFT)
 	rank_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(rank_label)
+	# Your fighting CLASS — the gym master's power type, in its own colour (once chosen).
+	if PlayerState.has_power_type():
+		var style_label : Label = Label.new()
+		style_label.text = "⚔  %s" % SkirmishWeapon.power_type_name(PlayerState.player_power_type)
+		style_label.add_theme_font_size_override("font_size", 15)
+		style_label.add_theme_color_override("font_color", SkirmishWeapon.color_for(PlayerState.player_power_type))
+		style_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		box.add_child(style_label)
 	return box
 
 

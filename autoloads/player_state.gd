@@ -316,6 +316,12 @@ var last_deck_say : String = ""
 ## See [SkirmishWeapon] / [[combat-puzzle-direction]].
 var owned_weapons : Array = ["brawl"]
 var equipped_weapon : String = "brawl"
+## The player's chosen POWER TYPE / fighting CLASS (a [SkirmishWeapon] id: brawl/sword/long_range/mystic),
+## assigned by the gym master in the intro RPG beat — "" until chosen, and the gym ladder is LOCKED until then.
+## It IS your combat style: choosing it also equips that profile, so every Skirmish bout fights as the type (a
+## forge weapon can still override later). Shown on the Profile; the cast gossips the path you took.
+var player_power_type : String = ""
+signal power_type_changed
 
 ## True once the player has signed up at the Hiring Board for Godfrey's
 ## lumberjacking job. Gates the WoodCuttingSign in the Forest — without
@@ -1528,6 +1534,27 @@ func equip_weapon(weapon_id: String) -> void:
 	_save()
 
 
+## Has the player chosen their fighting CLASS with the gym master yet? Gates the gym ladder.
+func has_power_type() -> bool:
+
+	return not player_power_type.is_empty()
+
+
+## Assign the player's POWER TYPE / fighting class — the gym master's intro choice. Sets the combat style (equips
+## that profile so every Skirmish bout fights as the type), persists, and lets the whole cast gossip the path you
+## took. [param weapon_id] is a [SkirmishWeapon] id (brawl/sword/long_range/mystic).
+func choose_power_type(weapon_id: String) -> void:
+
+	if weapon_id.is_empty():
+		return
+	player_power_type = weapon_id
+	equipped_weapon = weapon_id   # your class IS your combat style; a forge weapon can still override later
+	power_type_changed.emit()
+	weapons_changed.emit()
+	note_happening("%s took up the %s's path at the Cradle Gym." % [_player_ref(), SkirmishWeapon.power_type_name(weapon_id)])
+	_save()
+
+
 ## True if the player has this weapon — bare fists (DEFAULT_WEAPON) are always available; otherwise it's the
 ## equipped one or a weapon ITEM sitting in the bag (weapons are items now — ONE class with everything else).
 func owns_weapon(weapon_id: String) -> bool:
@@ -2503,6 +2530,7 @@ func clear_save() -> void:
 	player_gender = ""
 	owned_weapons = ["brawl"]
 	equipped_weapon = "brawl"
+	player_power_type = ""
 	npc_affinity = {}
 	npc_favor_done = {}
 	crew = {}
@@ -2564,6 +2592,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "player_gender", player_gender)
 	config.set_value(SAVE_SECTION, "owned_weapons", owned_weapons)
 	config.set_value(SAVE_SECTION, "equipped_weapon", equipped_weapon)
+	config.set_value(SAVE_SECTION, "player_power_type", player_power_type)
 	config.set_value(SAVE_SECTION, "weapons_model", "items_v1")
 	config.set_value(SAVE_SECTION, "npc_affinity", npc_affinity)
 	config.set_value(SAVE_SECTION, "npc_favor_done", npc_favor_done)
@@ -2633,6 +2662,7 @@ func _load() -> void:
 	player_gender = String(config.get_value(SAVE_SECTION, "player_gender", ""))
 	owned_weapons = config.get_value(SAVE_SECTION, "owned_weapons", ["brawl"])
 	equipped_weapon = String(config.get_value(SAVE_SECTION, "equipped_weapon", "brawl"))
+	player_power_type = String(config.get_value(SAVE_SECTION, "player_power_type", ""))   # "" = not yet chosen (old saves)
 	npc_affinity = config.get_value(SAVE_SECTION, "npc_affinity", {})
 	npc_favor_done = config.get_value(SAVE_SECTION, "npc_favor_done", {})
 	crew = config.get_value(SAVE_SECTION, "crew", {})

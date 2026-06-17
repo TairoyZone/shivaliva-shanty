@@ -5,6 +5,9 @@
 ##   • brawl (default / fists) — a blocky CLUMP slammed at a random spot.
 ##   • sword — a thin vertical BLADE at a random column.
 ##   • long_range — a blade AIMED at your weakest (lowest) column.
+##   • mystic — a SCATTER strewn across the columns (chaos; no clean line to clear).
+## These double as the player's "POWER TYPES" (the gym-master class choice): Brawler=brawl, Swordsman=sword,
+## Marksman=long_range, Mystic=mystic. Kerr fights sword, Ellison long_range. See [[combat-power-types]].
 ## Stage-3 specials (e.g. stickier "bruise" garbage, a long-range pillar) come
 ## later; for now all garbage clears the same way — by completing the Tetris row
 ## it sits in (standard line clear; the old shatter-adjacent rule was dropped).
@@ -25,18 +28,29 @@ const BRUISE_DECAY : int = NORMAL_DECAY + 2
 const COLOR_BRAWL : Color = Color(0.92, 0.44, 0.40, 0.55)
 const COLOR_SWORD : Color = Color(0.95, 0.82, 0.42, 0.55)
 const COLOR_LONG : Color = Color(0.50, 0.70, 0.95, 0.55)
+const COLOR_MYSTIC : Color = Color(0.66, 0.40, 0.92, 0.55)
 
 ## Every weapon (equal-budget garbage SHAPES — variety, not power). The default for
 ## anyone with nothing equipped is brawl/fists. Used by the inventory equip UI.
-const ALL : Array[String] = ["brawl", "sword", "long_range"]
+const ALL : Array[String] = ["brawl", "sword", "long_range", "mystic"]
 const DISPLAY_NAMES : Dictionary = {
-	"brawl": "Fists", "sword": "Sword", "long_range": "Long Shot",
+	"brawl": "Fists", "sword": "Sword", "long_range": "Long Shot", "mystic": "Mystic",
+}
+## The player-facing POWER-TYPE / class name for each (the gym-master choice). Display names above are the
+## WEAPON flavour; these are the One-Piece-style archetype labels shown when you pick your fighter.
+const POWER_TYPE_NAMES : Dictionary = {
+	"brawl": "Brawler", "sword": "Swordsman", "long_range": "Marksman", "mystic": "Mystic",
 }
 const DESCRIPTIONS : Dictionary = {
 	"brawl": "Haymaker — a WIDE clump that clogs several columns (breadth).",
 	"sword": "Bruise — a thin blade whose garbage is SLOW to clear; it lingers (purple).",
 	"long_range": "Snipe — a thin blade AIMED at the foe's weakest column (precision).",
+	"mystic": "Hex — garbage SCATTERS across the columns; no clean line to clear (chaos).",
 }
+
+
+static func power_type_name(weapon_id: String) -> String:
+	return String(POWER_TYPE_NAMES.get(weapon_id, DISPLAY_NAMES.get(weapon_id, weapon_id)))
 
 
 static func display_name(weapon_id: String) -> String:
@@ -51,6 +65,8 @@ static func color_for(weapon_id: String) -> Color:
 			c = COLOR_SWORD
 		"long_range":
 			c = COLOR_LONG
+		"mystic":
+			c = COLOR_MYSTIC
 		_:
 			c = COLOR_BRAWL
 	c.a = 1.0
@@ -77,6 +93,8 @@ static func make_attack(weapon_id: String, budget: int, target: SkirmishBoard, l
 			"long_range":
 				var lc : int = target.lowest_col() if target != null else randi() % free
 				return {"shape": shape, "col": clampi(lc, 0, COLS - span), "color": COLOR_LONG, "decay": NORMAL_DECAY}
+			"mystic":
+				return {"shape": shape, "col": randi() % free, "color": COLOR_MYSTIC, "decay": NORMAL_DECAY}
 			_:
 				return {"shape": shape, "col": randi() % free, "color": COLOR_BRAWL, "decay": NORMAL_DECAY}
 	# Single line → the weapon's own shape.
@@ -87,6 +105,9 @@ static func make_attack(weapon_id: String, budget: int, target: SkirmishBoard, l
 		"long_range":
 			var col : int = target.lowest_col() if target != null else randi() % COLS
 			return {"shape": _blade(b), "col": col, "color": COLOR_LONG, "decay": NORMAL_DECAY}
+		"mystic":
+			# Hex: garbage SCATTERS across the columns (chaos). The spread spans the board, so col 0 (no offset).
+			return {"shape": _spread(b), "col": 0, "color": COLOR_MYSTIC, "decay": NORMAL_DECAY}
 		_:  # "brawl" / unarmed fists = the DEFAULT — a WIDE haymaker (breadth, not depth)
 			return {"shape": _clump(b, 3), "col": randi() % maxi(1, COLS - 2), "color": COLOR_BRAWL, "decay": NORMAL_DECAY}
 
@@ -112,6 +133,22 @@ static func _squares(n: int) -> Array:
 		out.append(Vector2i(cx + 1, 0))
 		out.append(Vector2i(cx, 1))
 		out.append(Vector2i(cx + 1, 1))
+	return out
+
+
+# A SCATTER of [param n] cells strewn across the columns (the Mystic's chaos) — spread with a stride so they're
+# never adjacent + never fill a clean row, staggered over a few rows. Spans the board, so it's placed at col 0.
+static func _spread(n: int) -> Array:
+
+	var out : Array = []
+	var x : int = 0
+	var row : int = 0
+	for i in n:
+		out.append(Vector2i(x % COLS, row))
+		x += 3   # stride 3 → neighbours aren't adjacent, no easy line
+		if x >= COLS:
+			row += 1
+			x = row % 3   # offset each row's start so columns vary row-to-row
 	return out
 
 

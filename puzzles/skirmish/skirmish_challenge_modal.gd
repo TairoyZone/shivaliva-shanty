@@ -11,6 +11,8 @@ extends CanvasLayer
 signal challenged(profile: NpcPersonality)
 ## Emitted on backing out.
 signal cancelled
+## Emitted when the player asks to re-pick their fighting style (the prop re-opens the [PowerTypePicker]).
+signal change_style
 
 
 func _ready() -> void:
@@ -89,6 +91,12 @@ func _build() -> void:
 	if PlayerState.ladder_complete():
 		foot = "You've topped the ladder — Gym Champion! Drop in for a rematch any time."
 	vbox.add_child(_make_caption(foot))
+	if PlayerState.has_power_type():
+		var style_btn : Button = _make_walnut_button(
+			"⚔  Change my fighting style   (now: %s)" % SkirmishWeapon.power_type_name(PlayerState.player_power_type),
+			Color(0.78, 0.70, 0.95, 1.0))
+		style_btn.pressed.connect(_on_change_style)
+		vbox.add_child(style_btn)
 	var back : Button = _make_walnut_button("Never mind", Color(0.95, 0.84, 0.56, 1.0))
 	back.pressed.connect(_on_cancel)
 	vbox.add_child(back)
@@ -126,6 +134,14 @@ func _on_cancel() -> void:
 	if get_tree() != null:
 		get_tree().paused = false
 	cancelled.emit()
+	queue_free()
+
+
+func _on_change_style() -> void:
+
+	if get_tree() != null:
+		get_tree().paused = false
+	change_style.emit()
 	queue_free()
 
 
