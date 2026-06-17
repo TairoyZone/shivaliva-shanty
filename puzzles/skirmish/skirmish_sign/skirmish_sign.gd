@@ -37,7 +37,6 @@ func _open_ladder() -> void:
 
 	var modal : SkirmishChallengeModal = SkirmishChallengeModal.new()
 	modal.challenged.connect(_on_challenged)
-	modal.change_style.connect(_open_picker)   # the ladder's "change style" re-opens the master's picker
 	add_child(modal)
 
 

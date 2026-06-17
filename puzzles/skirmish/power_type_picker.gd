@@ -67,17 +67,11 @@ func _build() -> void:
 	vbox.add_theme_constant_override("separation", 12)
 	panel.add_child(vbox)
 	vbox.add_child(_make_title("WHAT KIND OF FIGHTER ARE YOU?"))
-	var chosen_now : bool = PlayerState.has_power_type()
-	var lead : String = ("Hollow Ellison sizes you up. \"Before you climb my ladder, choose your style — it's how "
-		+ "you'll fight from here on. You can always come back and switch.\"")
-	if chosen_now:
-		lead = "Hollow Ellison nods. \"Reckon you'll fight a different way? Pick again — no shame in it.\""
-	vbox.add_child(_make_caption(lead))
+	vbox.add_child(_make_caption("Hollow Ellison sizes you up. \"Choose your style — it's how you'll fight from "
+		+ "here on. Choose well: a fighter's way is set ONCE, and there's no taking it back.\""))
 
 	for id in ORDER:
 		var label : String = "%s   ·   %s" % [SkirmishWeapon.power_type_name(id), String(TAGLINES.get(id, ""))]
-		if chosen_now and id == PlayerState.player_power_type:
-			label = "★  " + label + "   (your style)"
 		var btn : Button = _make_walnut_button(label, SkirmishWeapon.color_for(id))
 		btn.pressed.connect(_on_pick.bind(id))
 		vbox.add_child(btn)
