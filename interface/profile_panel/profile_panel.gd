@@ -88,7 +88,7 @@ func refresh() -> void:
 func _rule() -> Control:
 
 	var rule : ColorRect = ColorRect.new()
-	rule.color = COLOR_FRAME
+	rule.color = Color(Palette.BORDER.r, Palette.BORDER.g, Palette.BORDER.b, 0.5)
 	rule.custom_minimum_size = Vector2(0, 2)
 	return rule
 
@@ -103,13 +103,13 @@ func _make_header() -> Control:
 	var name_label : Label = Label.new()
 	name_label.text = "You"
 	name_label.add_theme_font_size_override("font_size", 28)
-	name_label.add_theme_color_override("font_color", COLOR_INK)
+	UiStyle.apply_title(name_label)   # glowing accent name (was dark ink on dark = invisible, 1.39:1)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(name_label)
 	var rank_label : Label = Label.new()
 	rank_label.text = "%s of Cradle Rock" % _player_rank()
 	rank_label.add_theme_font_size_override("font_size", 15)
-	rank_label.add_theme_color_override("font_color", COLOR_INK_SOFT)
+	UiStyle.apply_muted(rank_label)
 	rank_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(rank_label)
 	# Your fighting CLASS — the gym master's power type, in its own colour (once chosen).
@@ -261,7 +261,7 @@ func _make_center_column() -> Control:
 		var none : Label = Label.new()
 		none.text = "No trophies yet — earn them, then claim them in the Ayo! tab."
 		none.add_theme_font_size_override("font_size", 12)
-		none.add_theme_color_override("font_color", COLOR_INK_SOFT)
+		UiStyle.apply_muted(none)
 		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(none)
 		return col
@@ -297,7 +297,7 @@ func _make_center_column() -> Control:
 
 func _make_trophy(t: Dictionary) -> Control:
 
-	return TrophyCell.make(t)   # the ONE shared medallion cell (also used by the TrophiesPanel page)
+	return TrophyCell.make(t, true)   # on the bare (dark) Profile shelf → light captions (TrophiesPanel uses cream)
 
 
 # --- Right column: skills by category --------------------------------
@@ -345,7 +345,7 @@ func _crew_row(npc_name: String) -> Control:
 	var dot : Panel = Panel.new()
 	var ds : StyleBoxFlat = StyleBoxFlat.new()
 	ds.bg_color = _npc_color(npc_name)
-	ds.border_color = COLOR_FRAME
+	ds.border_color = Palette.BORDER
 	ds.set_border_width_all(1)
 	ds.set_corner_radius_all(11)
 	dot.add_theme_stylebox_override("panel", ds)
@@ -360,14 +360,14 @@ func _crew_row(npc_name: String) -> Control:
 	var name_l : Label = Label.new()
 	name_l.text = _given_name(npc_name)
 	name_l.add_theme_font_size_override("font_size", 15)
-	name_l.add_theme_color_override("font_color", COLOR_INK)
+	name_l.add_theme_color_override("font_color", Palette.INK_ON_LIGHT)   # on the cream crew card
 	name_l.clip_text = true
 	v.add_child(name_l)
 	var top : String = CrewSkills.top_skill(npc_name)
 	var sub : Label = Label.new()
 	sub.text = PlayerState.crew_rank(npc_name) + ("   ·   %s" % top if not top.is_empty() else "")
 	sub.add_theme_font_size_override("font_size", 12)
-	sub.add_theme_color_override("font_color", COLOR_INK_SOFT)
+	sub.add_theme_color_override("font_color", Palette.INK_ON_LIGHT_SOFT)
 	v.add_child(sub)
 	row.add_child(v)
 
@@ -406,7 +406,7 @@ func _mini_btn(text: String) -> Button:
 	b.add_theme_color_override("font_color", Color(0.95, 0.88, 0.66, 1.0))
 	for st in ["normal", "hover", "pressed", "disabled"]:
 		var s : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.26, 0.18, 0.10, 1.0)
+		var bg : Color = Palette.CARD_BG
 		if st == "hover":
 			bg = bg.lightened(0.12)
 		elif st == "pressed":
@@ -414,7 +414,7 @@ func _mini_btn(text: String) -> Button:
 		elif st == "disabled":
 			bg = bg.darkened(0.30)
 		s.bg_color = bg
-		s.border_color = COLOR_FRAME
+		s.border_color = Palette.BORDER
 		s.set_border_width_all(1)
 		s.set_corner_radius_all(6)
 		b.add_theme_stylebox_override(st, s)
@@ -454,14 +454,14 @@ func _make_skill_row(puzzle_id: String) -> Control:
 	var name_label : Label = Label.new()
 	name_label.text = display_name
 	name_label.add_theme_font_size_override("font_size", 15)
-	name_label.add_theme_color_override("font_color", COLOR_INK)
+	name_label.add_theme_color_override("font_color", Palette.INK_ON_LIGHT)   # on the cream skill card
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.clip_text = true   # a long name clips rather than forcing the card wider
 	top.add_child(name_label)
 	var best_label : Label = Label.new()
 	best_label.text = "—" if best <= 0 else str(best)
 	best_label.add_theme_font_size_override("font_size", 14)
-	best_label.add_theme_color_override("font_color", COLOR_INK_SOFT)
+	best_label.add_theme_color_override("font_color", Palette.INK_ON_LIGHT_SOFT)
 	top.add_child(best_label)
 
 	var bot : HBoxContainer = HBoxContainer.new()
@@ -481,7 +481,7 @@ func _section_label(text: String) -> Control:
 	var l : Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 18)
-	l.add_theme_color_override("font_color", COLOR_HEADER)
+	UiStyle.apply_title(l)   # section header — glowing accent on the dark window
 	return l
 
 
@@ -490,7 +490,7 @@ func _category_label(text: String) -> Control:
 	var l : Label = Label.new()
 	l.text = "— %s —" % text
 	l.add_theme_font_size_override("font_size", 13)
-	l.add_theme_color_override("font_color", COLOR_INK_SOFT)
+	UiStyle.apply_muted(l)
 	return l
 
 
@@ -499,7 +499,7 @@ func _kv_line(key: String, value: String) -> Control:
 	var l : Label = Label.new()
 	l.text = "%s:  %s" % [key, value]
 	l.add_theme_font_size_override("font_size", 14)
-	l.add_theme_color_override("font_color", COLOR_INK)
+	UiStyle.apply_primary(l)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD
 	return l
 
@@ -509,7 +509,7 @@ func _muted_line(text: String) -> Control:
 	var l : Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 13)
-	l.add_theme_color_override("font_color", COLOR_INK_SOFT)
+	UiStyle.apply_muted(l)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD
 	return l
 
@@ -563,16 +563,7 @@ func _make_progress_bar(ratio: float) -> Control:
 
 func _card_style() -> StyleBoxFlat:
 
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = COLOR_CARD
-	s.border_color = COLOR_FRAME
-	s.set_border_width_all(2)
-	s.set_corner_radius_all(8)
-	s.content_margin_left = 12
-	s.content_margin_right = 12
-	s.content_margin_top = 7
-	s.content_margin_bottom = 7
-	return s
+	return UiStyle.cream_card()   # the intentional parchment card (skill/crew rows) — its text stays dark INK
 
 
 func _given_name(full: String) -> String:

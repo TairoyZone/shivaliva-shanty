@@ -64,3 +64,109 @@ const SKY_FRAME : Color = Color(0.50, 0.62, 0.85, 0.92)       # cool sky-blue pa
 # --- Utility -----------------------------------------------------------
 const SHADOW_SOFT : Color = Color(0, 0, 0, 0.55)
 const OUTLINE_HARD : Color = Color(0, 0, 0, 0.9)
+
+
+# === HUD THEME — the global UI look (swappable scheme) =====================
+# Single source of truth for panels / buttons / TEXT + an outer GLOW, paired with [UiStyle] (the stylebox
+# factory). The ROLE TOKENS below are SET by [method use_scheme] from one of the [method _schemes]; flip
+# [constant DEFAULT_SCHEME] (or call Palette.use_scheme at runtime) to retune the WHOLE HUD in one place.
+#
+# Color-theory basis (Troy 2026-06-17, replacing the muddy walnut-on-walnut that failed contrast — the Profile
+# name read 1.39:1): a DEEP COOL base + WARM CREAM text (a temperature-complement = high contrast, >=12:1) +
+# ONE luminous accent used sparingly for glow / borders / headings. The warm WOOD/BRASS/SKY board family and
+# the cool-deck PANEL_TROUGH/SKY_FRAME family ABOVE are deliberate and stay UNCHANGED — these tokens are for
+# the menu/HUD chrome only.
+
+const DEFAULT_SCHEME : String = "stardust_gold"
+
+# Role tokens — read directly as Palette.PANEL_BG, Palette.TEXT_PRIMARY, … Initialized from the default scheme
+# at load (robust, no _static_init dependency); reassigned by use_scheme() to retheme live.
+static var _ACTIVE : Dictionary = _schemes()[DEFAULT_SCHEME]
+static var SCHEME_NAME : String = DEFAULT_SCHEME
+static var PANEL_BG : Color = _ACTIVE["panel_bg"]          # modal / window surface
+static var PANEL_BG_DARK : Color = _ACTIVE["panel_bg_dark"] # app backdrop / inset / rail
+static var CARD_BG : Color = _ACTIVE["card_bg"]            # raised list-row / button idle
+static var SLOT_BG : Color = _ACTIVE["slot_bg"]            # inset slot
+static var BORDER : Color = _ACTIVE["border"]             # panel / button rim (the new UI-chrome rim)
+static var GLOW : Color = _ACTIVE["glow"]                 # accent-tinted halo hue (alpha applied in UiStyle)
+static var ACCENT : Color = _ACTIVE["accent"]            # headings / active / highlight
+static var TEXT_PRIMARY : Color = _ACTIVE["text_primary"]  # cream body text on dark (>=12:1)
+static var TEXT_MUTED : Color = _ACTIVE["text_muted"]     # secondary labels on dark (>=7:1)
+static var INK_ON_LIGHT : Color = _ACTIVE["ink_on_light"]  # DARK text for CREAM cards — NEVER on a dark bg
+static var INK_ON_LIGHT_SOFT : Color = _ACTIVE["ink_on_light_soft"]
+static var CARD_LIGHT : Color = _ACTIVE["card_light"]     # the intentional cream/parchment card surface
+static var DANGER : Color = _ACTIVE["danger"]            # warnings / soured / destructive
+static var POSITIVE : Color = _ACTIVE["positive"]         # confirms / friend / success
+
+
+## Retune the whole HUD to a named scheme (see [method _schemes]). Any UI rebuilt afterwards picks it up — so
+## reopen the panel / re-enter the scene to see it. Unknown name falls back to the default.
+static func use_scheme(name: String) -> void:
+
+	var all : Dictionary = _schemes()
+	_ACTIVE = all.get(name, all[DEFAULT_SCHEME])
+	SCHEME_NAME = name if all.has(name) else DEFAULT_SCHEME
+	PANEL_BG = _ACTIVE["panel_bg"]
+	PANEL_BG_DARK = _ACTIVE["panel_bg_dark"]
+	CARD_BG = _ACTIVE["card_bg"]
+	SLOT_BG = _ACTIVE["slot_bg"]
+	BORDER = _ACTIVE["border"]
+	GLOW = _ACTIVE["glow"]
+	ACCENT = _ACTIVE["accent"]
+	TEXT_PRIMARY = _ACTIVE["text_primary"]
+	TEXT_MUTED = _ACTIVE["text_muted"]
+	INK_ON_LIGHT = _ACTIVE["ink_on_light"]
+	INK_ON_LIGHT_SOFT = _ACTIVE["ink_on_light_soft"]
+	CARD_LIGHT = _ACTIVE["card_light"]
+	DANGER = _ACTIVE["danger"]
+	POSITIVE = _ACTIVE["positive"]
+
+
+static func scheme_names() -> Array:
+
+	return _schemes().keys()
+
+
+# The candidate looks. Hex via Color.html (a call → can't be const), so built on demand. Each is high-contrast
+# by construction: warm cream text on a deep cool/charcoal base, one luminous accent for the glow + rims.
+static func _schemes() -> Dictionary:
+
+	return {
+		# Navy + treasure-GOLD ("celestial luxury") — keeps the pirate-gold brand (coins/trophies), on deep
+		# stardust-navy instead of mud. Cream text. The recommended ship-it.
+		"stardust_gold": {
+			"panel_bg": Color.html("#131A30"), "panel_bg_dark": Color.html("#0A0E1E"),
+			"card_bg": Color.html("#1E2742"), "slot_bg": Color.html("#0E1426"),
+			"border": Color.html("#C39B45"), "glow": Color.html("#E8B85C"), "accent": Color.html("#FFD479"),
+			"text_primary": Color.html("#F4ECD8"), "text_muted": Color.html("#AEB8D2"),
+			"ink_on_light": Color.html("#241A0A"), "ink_on_light_soft": Color.html("#4A3A1E"),
+			"card_light": Color.html("#F3EAD0"), "danger": Color.html("#FF6B6B"), "positive": Color.html("#7FE6A4"),
+		},
+		# Cool deep-space midnight-blue with an ice-blue glow — the most "new" / on-fiction read of the Stardust.
+		"stardust_indigo": {
+			"panel_bg": Color.html("#141B30"), "panel_bg_dark": Color.html("#0B1020"),
+			"card_bg": Color.html("#1E2842"), "slot_bg": Color.html("#0C1124"),
+			"border": Color.html("#3C4E7A"), "glow": Color.html("#5E8BE0"), "accent": Color.html("#7FB2FF"),
+			"text_primary": Color.html("#F2ECDC"), "text_muted": Color.html("#A9B4CE"),
+			"ink_on_light": Color.html("#1A1B26"), "ink_on_light_soft": Color.html("#3A3E52"),
+			"card_light": Color.html("#ECEEF6"), "danger": Color.html("#FF6B6B"), "positive": Color.html("#7FE6A4"),
+		},
+		# Warm BRASS on a near-black charcoal-aubergine hull — most continuous with the current gold art, safest.
+		"skyforge_brass": {
+			"panel_bg": Color.html("#1E1822"), "panel_bg_dark": Color.html("#141017"),
+			"card_bg": Color.html("#2B222E"), "slot_bg": Color.html("#171019"),
+			"border": Color.html("#C08A3E"), "glow": Color.html("#E8A23C"), "accent": Color.html("#FFC964"),
+			"text_primary": Color.html("#FBF1DC"), "text_muted": Color.html("#C8B79A"),
+			"ink_on_light": Color.html("#2A1D0C"), "ink_on_light_soft": Color.html("#54401F"),
+			"card_light": Color.html("#F5EBD6"), "danger": Color.html("#FF7A66"), "positive": Color.html("#9BE08A"),
+		},
+		# Royal violet-plum dusk with an orchid glow — the boldest, "magic-hour nebula" (ties to the Mystic).
+		"nebula_plum": {
+			"panel_bg": Color.html("#21172F"), "panel_bg_dark": Color.html("#160E22"),
+			"card_bg": Color.html("#2E2140"), "slot_bg": Color.html("#190F26"),
+			"border": Color.html("#5A3E78"), "glow": Color.html("#B070E0"), "accent": Color.html("#E0A0FF"),
+			"text_primary": Color.html("#F5EEDF"), "text_muted": Color.html("#BBA6C8"),
+			"ink_on_light": Color.html("#241632"), "ink_on_light_soft": Color.html("#473459"),
+			"card_light": Color.html("#F1EADF"), "danger": Color.html("#FF6E8A"), "positive": Color.html("#8FE0B0"),
+		},
+	}

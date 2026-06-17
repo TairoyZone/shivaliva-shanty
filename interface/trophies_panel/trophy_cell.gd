@@ -10,7 +10,9 @@ const INK_SOFT : Color = Color(0.42, 0.32, 0.18, 1.0)
 const LOCKED : Color = Color(0.62, 0.56, 0.46, 1.0)
 
 
-static func make(t: Dictionary) -> Control:
+## [param on_dark] = the cell sits on the bare DARK window (the Profile shelf), so the caption uses the light
+## text tiers; default false = on a CREAM card (the TrophiesPanel page), where dark INK is correct.
+static func make(t: Dictionary, on_dark: bool = false) -> Control:
 
 	var earned : bool = Trophies.is_earned(String(t["id"]))
 	var cell : VBoxContainer = VBoxContainer.new()
@@ -42,7 +44,12 @@ static func make(t: Dictionary) -> Control:
 	var cap : Label = Label.new()
 	cap.text = String(t["name"])
 	cap.add_theme_font_size_override("font_size", 10)
-	cap.add_theme_color_override("font_color", INK if earned else INK_SOFT)
+	if on_dark:
+		cap.add_theme_color_override("font_color", Palette.TEXT_PRIMARY if earned else Palette.TEXT_MUTED)
+		cap.add_theme_color_override("font_outline_color", Palette.OUTLINE_HARD)
+		cap.add_theme_constant_override("outline_size", 3)
+	else:
+		cap.add_theme_color_override("font_color", Palette.INK_ON_LIGHT if earned else Palette.INK_ON_LIGHT_SOFT)
 	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cap.autowrap_mode = TextServer.AUTOWRAP_WORD
 	cap.custom_minimum_size = Vector2(64, 0)

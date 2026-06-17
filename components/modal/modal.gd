@@ -48,13 +48,9 @@ func _modal_esc_to_close() -> bool:
 	return true
 
 func _modal_panel_style() -> StyleBoxFlat:
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.18, 0.11, 0.06, 0.97)
-	s.border_color = Color(0.78, 0.58, 0.24, 1.0)
-	s.set_border_width_all(3)
-	s.set_corner_radius_all(14)
-	s.set_content_margin_all(22)
-	return s
+	# The ONE place every centered modal gets its chrome — routed through the central theme (deep panel +
+	# accent rim + outer glow halo). Recolors + reglows every pop-up at once via Palette.use_scheme().
+	return UiStyle.panel(true)
 
 ## Build the modal's UI into [member _content]. Called once, after the scaffolding is up.
 func _build_content() -> void:

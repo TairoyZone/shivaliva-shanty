@@ -794,27 +794,12 @@ func _build_tutorial_page() -> Control:
 
 func _window_style() -> StyleBoxFlat:
 
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.18, 0.11, 0.06, 0.98)
-	s.border_color = Palette.BRASS_FRAME
-	s.set_border_width_all(3)
-	s.set_corner_radius_all(14)
-	s.content_margin_left = 24
-	s.content_margin_right = 24
-	s.content_margin_top = 20
-	s.content_margin_bottom = 20
-	return s
+	return UiStyle.window(true)   # central theme: deep surface + accent rim + outer glow halo
 
 
 func _rail_bg_style() -> StyleBoxFlat:
 
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.16, 0.11, 0.06, 0.90)
-	s.border_color = Color(Palette.BRASS_FRAME.r, Palette.BRASS_FRAME.g, Palette.BRASS_FRAME.b, 0.6)
-	s.set_border_width_all(2)
-	s.set_corner_radius_all(12)
-	s.set_content_margin_all(6)
-	return s
+	return UiStyle.rail_bg()
 
 
 # --- Rail styling ----------------------------------------------------
@@ -830,18 +815,9 @@ func _style_rail_button(btn: Button, active: bool) -> void:
 
 	if btn == null:
 		return
-	for state in ["normal", "hover", "pressed"]:
-		var s : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.27, 0.17, 0.09, 1.0) if active else Color(0.15, 0.10, 0.05, 0.85)
-		if state == "hover":
-			bg = bg.lightened(0.10)
-		elif state == "pressed":
-			bg = bg.darkened(0.10)
-		s.bg_color = bg
-		s.border_color = Palette.BRASS_FRAME if active else Color(0.40, 0.30, 0.16, 0.85)
-		s.set_border_width_all(2)
-		s.set_corner_radius_all(9)
-		btn.add_theme_stylebox_override(state, s)
+	var styles : Dictionary = UiStyle.rail_button(active)   # central theme (active = accent rim + glow)
+	for state in styles:
+		btn.add_theme_stylebox_override(state, styles[state])
 
 
 # --- Open / close (fold) ---------------------------------------------
@@ -1098,12 +1074,7 @@ func make_drag_preview(item_id: String, count: int) -> Control:
 
 func _slot_style(filled: bool, equipped: bool = false) -> StyleBoxFlat:
 
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = Color(0.24, 0.17, 0.08, 1.0) if equipped else COLOR_SLOT_BG
-	s.border_color = COLOR_TITLE if equipped else (COLOR_SLOT_BORDER if filled else COLOR_SLOT_EMPTY_BORDER)
-	s.set_border_width_all(3 if equipped else 2)
-	s.set_corner_radius_all(6)
-	return s
+	return UiStyle.slot(filled, equipped)   # central theme (equipped = accent rim + glow)
 
 
 # The Stardew-style backpack-upgrade row beneath the grid: the next tier's slots + cost, or "fully upgraded".

@@ -10,7 +10,7 @@ const COLOR_CARD : Color = Color(0.99, 0.94, 0.78, 1.0)
 const COLOR_INK : Color = Color(0.30, 0.20, 0.08, 1.0)
 const COLOR_INK_SOFT : Color = Color(0.42, 0.32, 0.18, 1.0)
 const COLOR_FRAME : Color = Color(0.52, 0.36, 0.16, 1.0)
-const COLOR_HEART : Color = Color(0.88, 0.32, 0.44, 1.0)   # romance/sweetheart note only
+const COLOR_HEART : Color = Color(0.74, 0.16, 0.32, 1.0)   # romance/sweetheart note (deepened to read on the cream card)
 
 # (Visibility rule: ONLY hearties — genuine FRIENDS (≥ Friend tier) — show. Strangers, acquaintances and
 # soured standings stay hidden; this is your friends roster, not the whole cast. See refresh() / PlayerState.is_heartie.)
@@ -94,14 +94,14 @@ func _make_npc_card(profile: NpcPersonality) -> Control:
 	var name_label : Label = Label.new()
 	name_label.text = who
 	name_label.add_theme_font_size_override("font_size", 21)
-	name_label.add_theme_color_override("font_color", COLOR_INK)
+	name_label.add_theme_color_override("font_color", Palette.INK_ON_LIGHT)   # on the cream heartie card
 	col.add_child(name_label)
 	var sub : Label = Label.new()
 	sub.text = "%s   ·   %s" % [tier, _favour_note(who)]
 	sub.add_theme_font_size_override("font_size", 14)
 	# A soured standing reads in RED — Wary/Disliked/Despised is a warning, not a friendship.
 	sub.add_theme_color_override("font_color",
-		Color(0.92, 0.45, 0.38, 1.0) if affinity < 0 else COLOR_INK_SOFT)
+		Palette.DANGER if affinity < 0 else Palette.INK_ON_LIGHT_SOFT)
 	col.add_child(sub)
 	var rom : String = _romance_note(who, profile)
 	if not rom.is_empty():
@@ -132,7 +132,7 @@ func _make_empty_hint() -> Control:
 	var hint : Label = Label.new()
 	hint.text = "No hearties yet.\n\nChat and lend a hand with favours to grow close — once an islander becomes a Friend, they'll appear here as a heartie."
 	hint.add_theme_font_size_override("font_size", 16)
-	hint.add_theme_color_override("font_color", COLOR_INK_SOFT)
+	UiStyle.apply_muted(hint)   # on the bare (dark) window
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
 	hint.custom_minimum_size = Vector2(0.0, 160.0)
@@ -145,7 +145,7 @@ func _make_portrait(profile: NpcPersonality) -> Control:
 	var swatch : PanelContainer = PanelContainer.new()
 	var s : StyleBoxFlat = StyleBoxFlat.new()
 	s.bg_color = profile.portrait_color
-	s.border_color = COLOR_FRAME
+	s.border_color = Palette.BORDER
 	s.border_width_left = 2
 	s.border_width_top = 2
 	s.border_width_right = 2
@@ -188,19 +188,4 @@ func _initial(who: String) -> String:
 
 func _card_style() -> StyleBoxFlat:
 
-	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = COLOR_CARD
-	s.border_color = COLOR_FRAME
-	s.border_width_left = 2
-	s.border_width_top = 2
-	s.border_width_right = 2
-	s.border_width_bottom = 2
-	s.corner_radius_top_left = 8
-	s.corner_radius_top_right = 8
-	s.corner_radius_bottom_right = 8
-	s.corner_radius_bottom_left = 8
-	s.content_margin_left = 12
-	s.content_margin_right = 14
-	s.content_margin_top = 8
-	s.content_margin_bottom = 8
-	return s
+	return UiStyle.cream_card()   # the intentional parchment heartie card; its text stays dark INK_ON_LIGHT
