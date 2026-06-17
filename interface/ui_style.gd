@@ -213,3 +213,53 @@ static func apply_title(l: Label) -> void:
 	if Palette.IS_DARK:
 		l.add_theme_color_override("font_outline_color", Color(Palette.GLOW.r, Palette.GLOW.g, Palette.GLOW.b, 0.5))
 		l.add_theme_constant_override("outline_size", 4)
+
+
+# --- Sliders --------------------------------------------------------------
+
+static var _disc_cache : Dictionary = {}
+
+
+## A small filled-circle texture (slider grabbers etc.), cached: a [param fill] body ringed in [param ring].
+static func _disc(diameter: int, fill: Color, ring: Color) -> ImageTexture:
+
+	var key : String = "%d|%s|%s" % [diameter, fill.to_html(), ring.to_html()]
+	if _disc_cache.has(key):
+		return _disc_cache[key]
+	var img : Image = Image.create_empty(diameter, diameter, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var c : float = float(diameter - 1) * 0.5
+	var r : float = float(diameter) * 0.5
+	for y in diameter:
+		for x in diameter:
+			var dist : float = Vector2(float(x) - c, float(y) - c).length()
+			if dist <= r - 0.5:
+				img.set_pixel(x, y, ring if dist >= r - 2.5 else fill)
+	var tex : ImageTexture = ImageTexture.create_from_image(img)
+	_disc_cache[key] = tex
+	return tex
+
+
+## Theme an HSlider (volume etc.) onto the central palette: a recessed track, an accent fill, and a cream grabber
+## ringed in accent — so it matches the HUD and moves with Palette.use_scheme(). (Troy 2026-06-17.)
+static func style_slider(s: HSlider) -> void:
+
+	var track : StyleBoxFlat = StyleBoxFlat.new()
+	track.bg_color = Palette.SLOT_BG
+	track.border_color = Color(Palette.BORDER.r, Palette.BORDER.g, Palette.BORDER.b, 0.7)
+	track.set_border_width_all(1)
+	track.set_corner_radius_all(4)
+	track.content_margin_top = 4.0
+	track.content_margin_bottom = 4.0
+	s.add_theme_stylebox_override("slider", track)
+	var fill : StyleBoxFlat = StyleBoxFlat.new()
+	fill.bg_color = Palette.ACCENT
+	fill.set_corner_radius_all(4)
+	fill.content_margin_top = 4.0
+	fill.content_margin_bottom = 4.0
+	s.add_theme_stylebox_override("grabber_area", fill)
+	s.add_theme_stylebox_override("grabber_area_highlight", fill)
+	var knob : ImageTexture = _disc(20, Palette.CARD_LIGHT, Palette.ACCENT)
+	s.add_theme_icon_override("grabber", knob)
+	s.add_theme_icon_override("grabber_highlight", knob)
+	s.add_theme_icon_override("grabber_disabled", knob)

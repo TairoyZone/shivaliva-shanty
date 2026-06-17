@@ -168,9 +168,11 @@ func _build_ui() -> void:
 
 func _panel_style(bg: Color) -> StyleBoxFlat:
 
+	# Follows the central HUD theme: the hue + rim come from Palette so the chat chrome moves with everything
+	# else (Troy 2026-06-17), but each caller's ALPHA is kept so the bar/log/menu stay airy/translucent.
 	var s : StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = bg
-	s.border_color = _brass(0.6)   # lowkey brass rim (matches the NPC chat panel / menu family)
+	s.bg_color = Color(Palette.PANEL_BG.r, Palette.PANEL_BG.g, Palette.PANEL_BG.b, bg.a)
+	s.border_color = Palette.BORDER
 	s.set_border_width_all(2)
 	s.set_corner_radius_all(10)
 	s.content_margin_left = 8.0
@@ -196,26 +198,10 @@ func _chat_font(desktop: int, touch: int) -> int:
 # A small warm-brass button (Send / Log / the private-chat target chip) — matches the NPC chat panel.
 func _style_chat_button(btn: Button) -> void:
 
+	# Routed through the central theme (Send / Log / scope / the private-chat chip) so the chat buttons match the
+	# rest of the HUD and recolour with Palette.use_scheme() (Troy 2026-06-17).
 	btn.add_theme_font_size_override("font_size", _chat_font(14, 18))
-	btn.add_theme_color_override("font_color", Color(0.95, 0.86, 0.58, 1.0))
-	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
-	btn.add_theme_constant_override("outline_size", 2)
-	for state in ["normal", "hover", "pressed"]:
-		var s : StyleBoxFlat = StyleBoxFlat.new()
-		var bg : Color = Color(0.22, 0.15, 0.08, 0.92)
-		if state == "hover":
-			bg = bg.lightened(0.10)
-		elif state == "pressed":
-			bg = bg.darkened(0.12)
-		s.bg_color = bg
-		s.border_color = _brass(0.7)
-		s.set_border_width_all(1)
-		s.set_corner_radius_all(7)
-		s.content_margin_left = 10.0
-		s.content_margin_right = 10.0
-		s.content_margin_top = 4.0
-		s.content_margin_bottom = 4.0
-		btn.add_theme_stylebox_override(state, s)
+	UiStyle.style_button(btn, Palette.ACCENT)
 
 
 # A subtly warm input field — dark walnut trough, faint brass rim that brightens on focus.
@@ -224,25 +210,23 @@ func _style_chat_input(le: LineEdit) -> void:
 	le.add_theme_font_size_override("font_size", _chat_font(15, 23))
 	if TouchEnv.is_touch():
 		le.custom_minimum_size = Vector2(0.0, 40.0)   # a taller, tappable field for the bigger touch font
-	le.add_theme_color_override("font_color", Color(0.20, 0.13, 0.06, 1.0))           # dark ink on parchment
-	le.add_theme_color_override("font_placeholder_color", Color(0.42, 0.35, 0.24, 0.7))
-	# A clear blinking insertion caret so you can see exactly where you're editing + fix typos (Troy 2026-06-14,
-	# standard chat-field behaviour). Dark warm caret to read on the light parchment field.
-	le.add_theme_color_override("caret_color", Color(0.32, 0.20, 0.08, 1.0))
+	le.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)                    # follows the theme
+	le.add_theme_color_override("font_placeholder_color", Palette.TEXT_MUTED)
+	le.add_theme_color_override("caret_color", Palette.TEXT_PRIMARY)
 	le.caret_blink = true
 	le.caret_blink_interval = 0.5
 	var normal : StyleBoxFlat = StyleBoxFlat.new()
-	normal.bg_color = Color(0.83, 0.74, 0.57, 0.6)   # a slightly-inset lighter trough on the parchment bar
+	normal.bg_color = Palette.SLOT_BG                 # a slightly-inset trough on the bar
 	normal.set_corner_radius_all(7)
 	normal.set_border_width_all(1)
-	normal.border_color = _brass(0.3)
+	normal.border_color = Color(Palette.BORDER.r, Palette.BORDER.g, Palette.BORDER.b, 0.5)
 	normal.content_margin_left = 8.0
 	normal.content_margin_right = 8.0
 	normal.content_margin_top = 4.0
 	normal.content_margin_bottom = 4.0
 	le.add_theme_stylebox_override("normal", normal)
 	var focused : StyleBoxFlat = normal.duplicate()
-	focused.border_color = _brass(0.75)
+	focused.border_color = Palette.ACCENT            # the accent rim brightens on focus
 	le.add_theme_stylebox_override("focus", focused)
 
 
@@ -553,13 +537,16 @@ func _update_scope_chip() -> void:
 
 	if _scope_btn == null:
 		return
+	# Reads on the light themed button: private = the persona's hue DARKENED (keeps the identity cue), All = accent.
 	if _in_private:
 		_scope_btn.text = "→ %s  ▾" % _short_name()
-		var col : Color = _private_persona.portrait_color.lightened(0.4) if _private_persona != null else Color(0.95, 0.86, 0.58, 1.0)
+		var col : Color = _private_persona.portrait_color.darkened(0.4) if _private_persona != null else Palette.TEXT_PRIMARY
 		_scope_btn.add_theme_color_override("font_color", col)
+		_scope_btn.add_theme_color_override("font_hover_color", col)
 	else:
 		_scope_btn.text = "All  ▾"
-		_scope_btn.add_theme_color_override("font_color", Color(0.80, 0.95, 1.0, 1.0))   # cool = speak to the room
+		_scope_btn.add_theme_color_override("font_color", Palette.ACCENT)
+		_scope_btn.add_theme_color_override("font_hover_color", Palette.ACCENT)
 
 
 # Pop a small list ABOVE the chip: "All" (the room) + everyone present (a private word).
@@ -605,11 +592,15 @@ func _on_scope_picked(id: int) -> void:
 
 func _style_popup(menu: PopupMenu) -> void:
 
-	menu.add_theme_stylebox_override("panel", _panel_style(Color(0.16, 0.11, 0.06, 0.97)))
-	menu.add_theme_color_override("font_color", Color(0.95, 0.90, 0.78, 1.0))
-	menu.add_theme_color_override("font_hover_color", Color(1.0, 0.96, 0.72, 1.0))
-	menu.add_theme_color_override("font_disabled_color", Color(0.70, 0.66, 0.58, 0.7))
+	menu.add_theme_stylebox_override("panel", _panel_style(Color(0.0, 0.0, 0.0, 0.97)))   # only the alpha is used (theme hue)
+	menu.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
+	menu.add_theme_color_override("font_hover_color", Palette.ACCENT)
+	menu.add_theme_color_override("font_disabled_color", Palette.TEXT_MUTED)
 	menu.add_theme_font_size_override("font_size", _chat_font(15, 20))
+	var hov : StyleBoxFlat = StyleBoxFlat.new()
+	hov.bg_color = Palette.SLOT_BG
+	hov.set_corner_radius_all(6)
+	menu.add_theme_stylebox_override("hover", hov)
 
 
 func _connect_npc_signals() -> void:

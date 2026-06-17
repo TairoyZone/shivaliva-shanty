@@ -10,8 +10,8 @@ extends Control
 
 
 const TRACK_DIM : Color = Color(0.34, 0.42, 0.60, 0.85)
-const TRACK_LIT : Color = Color(0.62, 0.82, 1.0, 1.0)
-const WAYPOINT : Color = Color(0.66, 0.74, 0.88, 1.0)
+const TRACK_LIT : Color = Color(0.20, 0.45, 0.75, 1.0)   # the travelled track — deeper so it reads on light
+const WAYPOINT : Color = Color(0.40, 0.50, 0.66, 1.0)
 const ISLE : Color = Color(0.42, 0.70, 0.40, 1.0)
 const ISLE_PEAK : Color = Color(0.56, 0.82, 0.52, 1.0)
 const ISLE_EDGE : Color = Color(0.22, 0.42, 0.22, 1.0)
@@ -20,14 +20,14 @@ const HOME_ISLE : Color = Color(0.50, 0.58, 0.50, 1.0)
 const HOME_PEAK : Color = Color(0.62, 0.70, 0.60, 1.0)
 const HULL_C : Color = Color(0.52, 0.34, 0.16, 1.0)
 const HULL_EDGE : Color = Color(0.30, 0.19, 0.09, 1.0)
-const SAIL_C : Color = Color(0.96, 0.94, 0.86, 1.0)
+const SAIL_C : Color = Color(0.55, 0.50, 0.42, 1.0)   # muted, so the ship's sail reads on the light chart
 const MAST_C : Color = Color(0.30, 0.19, 0.09, 1.0)
 const SWORD_PEND : Color = Color(0.60, 0.66, 0.78, 0.85)
 const SWORD_WON : Color = Color(0.55, 0.95, 0.58, 1.0)
 const SWORD_LOST : Color = Color(1.0, 0.74, 0.50, 1.0)
-const TEXT_DEST : Color = Color(0.88, 0.94, 1.0, 1.0)
-const TEXT_STOP : Color = Color(0.92, 0.90, 0.70, 1.0)
-const TEXT_HAUL : Color = Color(0.98, 0.86, 0.46, 1.0)
+const TEXT_DEST : Color = Color(0.25, 0.43, 0.71, 1.0)   # the HUD accent blue (heading) — reads on the light bar
+const TEXT_STOP : Color = Color(0.16, 0.14, 0.10, 1.0)   # dark body
+const TEXT_HAUL : Color = Color(0.16, 0.14, 0.10, 1.0)
 
 const LM : float = 24.0          # left/right track margins
 const RM : float = 26.0
@@ -73,8 +73,8 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip_contents = true
 	_bg = StyleBoxFlat.new()
-	_bg.bg_color = Palette.PANEL_TROUGH   # the deck's cool-HUD family (shared w/ the MeterBar troughs)
-	_bg.border_color = Palette.SKY_FRAME
+	_bg.bg_color = Palette.PANEL_BG   # follows the HUD theme (light) — a cockpit frame for the route map (Troy 2026-06-17)
+	_bg.border_color = Palette.BORDER
 	_bg.set_border_width_all(2)
 	_bg.set_corner_radius_all(10)
 	# Repaint when the layout resolves our size (matches the codebase's other size-dependent

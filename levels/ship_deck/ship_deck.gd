@@ -628,7 +628,7 @@ func _build_ui() -> void:
 	# left corner, the clock owns the right corner, and the chart banner is centred: one item per zone, no
 	# crowding. Clear of the ☰ (offset_left past it) so it never overlaps the pause button.
 	vitals_card.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	vitals_card.offset_left = 72.0
+	vitals_card.offset_left = 96.0   # clear breathing room past the pause ☰ (Troy 2026-06-17)
 	vitals_card.offset_top = 12.0
 	vitals_card.grow_horizontal = Control.GROW_DIRECTION_END
 	vitals_card.grow_vertical = Control.GROW_DIRECTION_END
