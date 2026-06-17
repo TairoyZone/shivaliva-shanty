@@ -165,6 +165,10 @@ func _make_caption(text: String) -> Label:
 	label.add_theme_font_size_override("font_size", 15)
 	label.add_theme_color_override("font_color", Color(0.74, 0.80, 0.92, 1.0))
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# WRAP within the panel's inner width (600 wide - 30 margins each side) so a long line never widens the modal
+	# off-screen — keeps the window its normal size no matter the caption length.
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	label.custom_minimum_size = Vector2(540.0, 0.0)
 	return label
 
 
