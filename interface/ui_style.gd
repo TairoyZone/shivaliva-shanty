@@ -177,8 +177,8 @@ static func style_button(btn: Button, fg: Color = Palette.ACCENT, bg: Color = Pa
 	btn.focus_mode = Control.FOCUS_NONE
 	# Pin EVERY font state to fg — else hover/pressed/focus fall back to the theme default (white) and vanish
 	# on the light page (Troy 2026-06-17). Disabled reads as muted, not invisible.
-	for slot in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
-		btn.add_theme_color_override(slot, fg)
+	for fc in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
+		btn.add_theme_color_override(fc, fg)
 	btn.add_theme_color_override("font_disabled_color", Palette.TEXT_MUTED)
 	# A hard ink outline keeps text crisp on a DARK scheme; on the light page it just reads as too-bold, so skip.
 	if Palette.IS_DARK:
