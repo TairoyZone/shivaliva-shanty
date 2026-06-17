@@ -134,13 +134,16 @@ func _build_skeleton() -> void:
 	_window = PanelContainer.new()
 	_window.add_theme_stylebox_override("panel", _window_style())
 	# Corner-pin the window just LEFT of the rail + BELOW the top HUD, growing left + down to fit its page
-	# (equal left/right + top/bottom offsets at the pin point + grow directions — a shrink container).
+	# (equal left/right + top/bottom offsets at the pin point + grow directions — a shrink container). The right
+	# edge must clear the WHOLE rail apparatus (the icon strip ~84px + its tuck HANDLE ~26px + margins), else the
+	# window's right-edge content slides under the rail — RAIL_CLEARANCE is that gap (fixes the side-panel overlap).
+	const RAIL_CLEARANCE : float = 140.0
 	_window.anchor_left = 1.0
 	_window.anchor_right = 1.0
 	_window.anchor_top = 0.0
 	_window.anchor_bottom = 0.0
-	_window.offset_left = -72.0
-	_window.offset_right = -72.0
+	_window.offset_left = -RAIL_CLEARANCE
+	_window.offset_right = -RAIL_CLEARANCE
 	_window.offset_top = 150.0
 	_window.offset_bottom = 150.0
 	_window.grow_horizontal = Control.GROW_DIRECTION_BEGIN
