@@ -377,6 +377,12 @@ func compose_system(persona: NpcPersonality, include_secret: bool) -> String:
 	var pronoun_roster : String = _cast_pronouns_block()
 	if not pronoun_roster.is_empty():
 		parts.append(pronoun_roster)   # so NPCs use each other's correct pronouns instead of guessing
+	# SHARED SOCIAL MEMORY — the cast's collective awareness of recent PUBLIC goings-on (a gym win, a beast downed),
+	# persisted + cross-NPC + cross-scene. Public-only, so it's safe on BOTH the private + ambient paths. Sits here,
+	# at the town-knowledge tier (with the gazetteer + roster), ABOVE the private secret/romance/battle blocks.
+	var goings : String = _happenings_block(persona)
+	if not goings.is_empty():
+		parts.append(goings)
 	var voyage : String = _voyage_block()
 	if not voyage.is_empty():
 		parts.append(voyage)   # mid-pillage: the live ship + route facts, so the crew talks about it accurately
@@ -891,6 +897,58 @@ func _cast_pronouns_block() -> String:
 		return ""
 	return ("THE CAST — always use the correct pronouns for each person below; NEVER guess someone's gender:\n"
 		+ ", ".join(lines) + ".")
+
+
+# Scene-stem keyword → ISLAND. Everything not matched is Cradle Rock (the home isle, by fallback). The ONE place
+# to extend when a new island's scenes arrive. CONVENTION: a named island's scene FILES must contain the island
+# keyword in their stem (e.g. driftspar_tavern.tscn) OR each stem gets its own entry here — otherwise an event
+# recorded there falls through to "cradle_rock" and reads as the wrong island. Keys are matched as substrings, so
+# keep them distinctive. (An NPC's own `island` field + this map are all that scopes the shared social memory.)
+const SCENE_ISLAND : Dictionary = {"frontier_isle": "driftspar", "driftspar": "driftspar"}
+
+
+func _scene_island(place: String) -> String:
+
+	for key in SCENE_ISLAND:
+		if place.contains(key):
+			return String(SCENE_ISLAND[key])
+	return "cradle_rock"
+
+
+## THE SHARED SOCIAL MEMORY block — folds PlayerState.recent_happenings (recent PUBLIC goings-on) into the prompt
+## so the WHOLE cast is collectively aware of them, across NPCs + scenes + reloads. Framed as HEARSAY (not live
+## fact) to dodge the GROUND_TRUTH "you witnessed it" trap: events on the asker's OWN island read as "around here
+## lately," other islands' as distant "word from afar." Only the most recent few reach the prompt (bounded token
+## cost). Public-only by construction (PlayerState only ever records public events here), so it's safe on the
+## ambient path too. "" when nothing's happened. The cross-NPC layer of the NPC Awareness Stack (see CLAUDE.md).
+func _happenings_block(persona: NpcPersonality) -> String:
+
+	var feed : Array = PlayerState.recent_happenings
+	if feed.is_empty():
+		return ""
+	var asker_island : String = persona.island if not persona.island.is_empty() else "cradle_rock"
+	var here : Array = []
+	var afar : Array = []
+	var start : int = maxi(0, feed.size() - 5)   # only the latest few reach the prompt (storage holds more)
+	for i in range(start, feed.size()):
+		var e : Dictionary = feed[i]
+		var line : String = String(e.get("text", "")).strip_edges()
+		if line.is_empty():
+			continue
+		if _scene_island(String(e.get("place", ""))) == asker_island:
+			here.append(line)
+		else:
+			afar.append(line)
+	if here.is_empty() and afar.is_empty():
+		return ""
+	var out : String = ("AROUND THE ISLAND LATELY — loose talk + word that's reached you (you MAY naturally bring up "
+		+ "or react to any of it if it fits the moment, but you did NOT necessarily see it yourself, so don't claim "
+		+ "you were there, don't treat it as happening this very instant, and NEVER list it back or recite it):")
+	for l in here:
+		out += "\n- " + l
+	for l in afar:
+		out += "\n- (word from afar) " + l
+	return out
 
 
 # VOYAGE AWARENESS — when the player is mid-pillage, fold the LIVE ship + route facts into the prompt so the

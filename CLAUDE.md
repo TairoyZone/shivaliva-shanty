@@ -43,6 +43,18 @@ Compatibility, 1280×720. No build step — run `main.tscn`, or any `puzzles/*/<
   global `NpcBrain.GROUND_TRUTH_RULES` (in every prompt) forbids denying a settled result or inventing
   rules/scores; each versus game also feeds its rules via `VersusPuzzleScene._rules_brief()` and a "match/duel is
   OVER, X won" frame once it ends (gem_drop/skirmish_duel). See `…/memory/npc_situational_awareness.md`.
+- **The NPC Awareness Stack** (the ONE place all NPC knowledge is assembled — `NpcBrain.compose_system`): every
+  chat prompt = identity/voice (`.tres`) + role/locale + world grounding (`ISLAND_GAZETTEER`, pronoun roster,
+  live time) + **private memory** (this NPC's own persisted chat history, per-NPC) + **shared social memory**
+  (NEW) + **live situational awareness** (`npc_chat_context`) + relationship (affinity/romance/battle). All of it
+  is AUTOMATIC for any NPC — adding one is still just a `.tres`. The **shared social memory** is the cross-NPC,
+  cross-scene, reload-surviving layer: `PlayerState.recent_happenings` — a HARD-CAPPED (`HAPPENINGS_CAP`) global
+  log of NOTABLE **public** events, written ONLY via the one choke-point **`PlayerState.note_happening(text, place)`**
+  (so a new activity/island just adds one call) and folded in by `NpcBrain._happenings_block` as island-scoped
+  **hearsay** ("around here lately" vs "word from afar"). **Hidden-info-safe by construction**: it may hold ONLY
+  public facts — NEVER a private chat line, romance step, secret, or per-seat state. Because it's capped, the save
+  + the per-prompt token cost stay BOUNDED no matter how long you play. Multi-island scope = the
+  `NpcPersonality.island` field + `NpcBrain.SCENE_ISLAND` map; nothing else.
 - For **risky logic / new systems**, prefer design → build → adversarial review before handoff. Be
   deliberate about multi-agent *workflows* — they're powerful but slow/expensive; reserve them for
   genuinely risky or open-ended work, just build for routine edits.
@@ -177,8 +189,16 @@ duel scene) · `gem_drop` · `poker` (cards + `test_*.gd` logic tests) · `lumbe
   model can't compare numbers), `_own_secret_view` (the asker's OWN hidden view only; **`""` for OPEN
   boards**). NEVER re-implement `npc_chat_context` — that defeats the base. Ref: gem_drop (open, simplest) ·
   skirmish_duel (1v1) · poker (hidden cards + multi-seat).
-- **New NPC:** instance the `Npc` scene, set `@export`s + assign a `NpcPersonality` `.tres`;
-  optionally add a one-line entry to `Npc.NPC_FAVORS`.
+- **New NPC:** instance the `Npc` scene, set `@export`s + assign a `NpcPersonality` `.tres` (clone an existing
+  one; set name + the `chat_*` fields + `island`); optionally add a one-line entry to `Npc.NPC_FAVORS`. They
+  inherit the ENTIRE NPC Awareness Stack (world grounding + private + shared memory + relationships) for free — no
+  awareness code per NPC.
+- **New ISLAND's NPCs:** (1) clone a profile `.tres`, set its `island` field (e.g. `"driftspar"`); (2) register
+  it in `NpcRegistry`; (3) name the island's scene FILES with the island keyword (e.g. `driftspar_tavern.tscn`) so
+  `NpcBrain.SCENE_ISLAND` maps them (or add each stem there) + (optionally) extend the `ISLAND_GAZETTEER`. Shared-
+  memory awareness is then automatic + correctly scoped (own-island events read as "around here," other islands'
+  as "word from afar"). To make a new event cast-aware, add ONE `PlayerState.note_happening("…", place)` call at
+  its outcome site (public facts only — see the standing rule).
 - **New prop/door/building:** a scene with `Interactable`/`Puzzle`/`Door`/`Building` attached + its
   `@export`s; add a `StaticBody2D` child if it should be solid.
 

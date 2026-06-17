@@ -102,6 +102,11 @@ extends Resource
 @export_multiline var chat_secret : String = ""
 ## Where they are, in-world (defaults to Cradle Rock). Grounds the NPC so replies fit the setting.
 @export var chat_locale : String = "Cradle Rock, a floating sky-island"
+## Which ISLAND this NPC lives on — the one knob that scopes the SHARED social memory for multi-island: an NPC
+## hears goings-on from their OWN island as things "around here," and another island's news as distant "word from
+## afar." Default covers Cradle Rock; a new island's cast just sets this (e.g. "driftspar"). See the NPC Awareness
+## Stack in CLAUDE.md + [NpcBrain._happenings_block].
+@export var island : String = "cradle_rock"
 ## How readily this NPC throws down a friendly SKIRMISH duel during chat (the unique-hook challenge path).
 ## 0 = a pacifist who never challenges (a healer); 1 = a scrapper who'll spar at the lightest provocation (a
 ## swordsman). They ALWAYS take the player up on an explicit challenge — this only biases SPONTANEOUS ones.

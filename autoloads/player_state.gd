@@ -698,7 +698,8 @@ func ordeal_mark_defeated(id: String) -> bool:
 	if id.is_empty() or id in jungle_ordeal_beats:
 		return false
 	jungle_ordeal_beats.append(id)
-	_save()
+	var beast : String = "Jungle King" if id == ORDEAL_KING else id.capitalize()
+	note_happening("%s downed the %s in the Jungle Ordeal." % [_player_ref(), beast])   # cast-wide awareness (also persists this append)
 	check_new_trophies()   # beating the King earns the Badge of Honour — toast it the moment it lands
 	return true
 
@@ -741,7 +742,7 @@ func ladder_mark_beaten(who: String) -> bool:
 	if who.is_empty() or who in gym_ladder_beats:
 		return false
 	gym_ladder_beats.append(who)
-	_save()
+	note_happening("%s bested %s in a friendly bout at the Cradle Gym." % [_player_ref(), who])   # cast-wide awareness (also persists this append)
 	check_new_trophies()   # clearing the top earns the Gym Champion trophy — toast it the moment it lands
 	if ladder_complete():
 		grant_key(KEY_JUNGLE)   # beating the gym hands you the Jungle Key — unlocks the Jungle Ordeal door
@@ -872,6 +873,18 @@ var npc_chat_log : Dictionary = {}
 ## "this was just now" freshness note in chat. Overwritten by the next duel; cleared on New Game.
 var recent_duel : Dictionary = {}
 signal battle_record_changed
+
+## --- THE SHARED SOCIAL MEMORY (the cast's collective short-term awareness) -------------------------------
+## Max NOTABLE happenings kept — a HARD cap, so the save AND the per-prompt token cost stay BOUNDED no matter
+## how many hours you play (they're a rolling window, never a growing list). See Troy's perf question 2026-06-17.
+const HAPPENINGS_CAP : int = 12
+## ONE global, persisted, capped log of NOTABLE PUBLIC goings-on — {text, place} — a gym win, a beast downed,
+## etc. Folded into EVERY NPC's prompt (via [NpcBrain]) so the whole cast has CROSS-NPC + cross-scene awareness
+## ("word reached me you bested Jade at the gym") that survives scene changes AND reloads. PUBLIC events ONLY —
+## never private chat lines, romance, secrets, or hidden game state, so it's hidden-info-safe BY CONSTRUCTION.
+## Written ONLY via [method note_happening] (the one choke-point a new activity / island calls). This is the
+## "shared social memory" layer of the NPC Awareness Stack — see CLAUDE.md + [[npc-situational-awareness]].
+var recent_happenings : Array = []
 
 ## Lifetime tournaments won (champion count). Persisted — an earn-only
 ## achievement stat. Bumped via [method record_tournament_win].
@@ -1730,6 +1743,36 @@ func save_npc_chat(npc_name: String, messages: Array) -> void:
 	_save()
 
 
+## How the cast refers to the player in a happening line — their chosen name, or "The traveller" before they've
+## named themselves. (Every NPC prompt is also told the player's name, so they read this as "you".)
+func _player_ref() -> String:
+
+	return player_name if not player_name.is_empty() else "The traveller"
+
+
+## THE ONE CHOKE-POINT for the shared social memory: record a NOTABLE PUBLIC happening the whole cast becomes
+## aware of (capped + persisted). [param text] must be a SHORT, pre-written, third-person line ("bested Mossy
+## Jade in a gym bout") — NEVER raw chat, romance, a secret, or any hidden state (that keeps the feed hidden-
+## info-safe). [param place] defaults to the current scene's file stem (where it happened); [NpcBrain] derives the
+## island from it for the "here vs word-from-afar" framing. Adding a new event/island = just one call to this.
+func note_happening(text: String, place: String = "") -> void:
+
+	if _suppress_save:
+		return   # don't record during a load/reset batch (mirrors the other mutators)
+	var t : String = text.strip_edges()
+	if t.is_empty():
+		return
+	var where : String = place
+	if where.is_empty():
+		var tree : SceneTree = get_tree()
+		if tree != null and tree.current_scene != null:
+			where = String(tree.current_scene.scene_file_path).get_file().get_basename()
+	recent_happenings.append({"text": t, "place": where})
+	if recent_happenings.size() > HAPPENINGS_CAP:
+		recent_happenings = recent_happenings.slice(recent_happenings.size() - HAPPENINGS_CAP)
+	_save()
+
+
 ## Set + persist the player's name (typed at New Game). Trimmed + capped at 20 chars.
 func set_player_name(new_name: String) -> void:
 
@@ -2456,6 +2499,7 @@ func clear_save() -> void:
 	pending_challenges = []
 	npc_battle_record = {}
 	npc_chat_log = {}
+	recent_happenings = []
 	recent_duel = {}
 	NpcMood.clear_all()   # a transient table mood never carries into a fresh game
 	tournaments_won = 0
@@ -2517,6 +2561,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "pending_challenges", pending_challenges)
 	config.set_value(SAVE_SECTION, "npc_battle_record", npc_battle_record)
 	config.set_value(SAVE_SECTION, "npc_chat_log", npc_chat_log)
+	config.set_value(SAVE_SECTION, "recent_happenings", recent_happenings)
 	config.set_value(SAVE_SECTION, "tournaments_won", tournaments_won)
 	config.set_value(SAVE_SECTION, "last_scene", last_scene)
 	config.set_value(SAVE_SECTION, "last_position_x", last_position.x)
@@ -2571,6 +2616,7 @@ func _load() -> void:
 	pending_challenges = config.get_value(SAVE_SECTION, "pending_challenges", [])
 	npc_battle_record = config.get_value(SAVE_SECTION, "npc_battle_record", {})
 	npc_chat_log = config.get_value(SAVE_SECTION, "npc_chat_log", {})
+	recent_happenings = config.get_value(SAVE_SECTION, "recent_happenings", [])   # [] default = old saves just start empty
 	tournaments_won = int(config.get_value(SAVE_SECTION, "tournaments_won", 0))
 	last_scene = String(config.get_value(SAVE_SECTION, "last_scene", ""))
 	# Migrate a save whose last_scene points at a since-renamed scene so Continue resumes correctly
