@@ -322,6 +322,9 @@ var equipped_weapon : String = "brawl"
 ## forge weapon can still override later). Shown on the Profile; the cast gossips the path you took.
 var player_power_type : String = ""
 signal power_type_changed
+## True once the gym master's ONE-TIME intro cinematic has played (the Pokémon-professor-style "choose your
+## fighting style" scene that fires on first entering the Cradle Gym). Persisted, so it plays exactly once.
+var gym_intro_seen : bool = false
 
 ## True once the player has signed up at the Hiring Board for Godfrey's
 ## lumberjacking job. Gates the WoodCuttingSign in the Forest — without
@@ -2543,6 +2546,7 @@ func clear_save() -> void:
 	owned_weapons = ["brawl"]
 	equipped_weapon = "brawl"
 	player_power_type = ""
+	gym_intro_seen = false
 	npc_affinity = {}
 	npc_favor_done = {}
 	crew = {}
@@ -2605,6 +2609,7 @@ func _save() -> void:
 	config.set_value(SAVE_SECTION, "owned_weapons", owned_weapons)
 	config.set_value(SAVE_SECTION, "equipped_weapon", equipped_weapon)
 	config.set_value(SAVE_SECTION, "player_power_type", player_power_type)
+	config.set_value(SAVE_SECTION, "gym_intro_seen", gym_intro_seen)
 	config.set_value(SAVE_SECTION, "weapons_model", "items_v1")
 	config.set_value(SAVE_SECTION, "npc_affinity", npc_affinity)
 	config.set_value(SAVE_SECTION, "npc_favor_done", npc_favor_done)
@@ -2675,6 +2680,7 @@ func _load() -> void:
 	owned_weapons = config.get_value(SAVE_SECTION, "owned_weapons", ["brawl"])
 	equipped_weapon = String(config.get_value(SAVE_SECTION, "equipped_weapon", "brawl"))
 	player_power_type = String(config.get_value(SAVE_SECTION, "player_power_type", ""))   # "" = not yet chosen (old saves)
+	gym_intro_seen = bool(config.get_value(SAVE_SECTION, "gym_intro_seen", false))
 	npc_affinity = config.get_value(SAVE_SECTION, "npc_affinity", {})
 	npc_favor_done = config.get_value(SAVE_SECTION, "npc_favor_done", {})
 	crew = config.get_value(SAVE_SECTION, "crew", {})

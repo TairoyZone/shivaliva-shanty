@@ -10,6 +10,48 @@ func _ready() -> void:
 
 	super._ready()
 	_resolve_ladder_return()
+	_maybe_play_intro()
+
+
+# THE GYM-MASTER INTRO — a one-time, Pokémon-professor-style cinematic the FIRST time you set foot in the gym:
+# Hollow Ellison welcomes you (the typewriter dialogue) then has you choose your fighting STYLE (the power type),
+# and closes with a line. Gated on gym_intro_seen so it plays exactly once.
+func _maybe_play_intro() -> void:
+
+	if PlayerState.gym_intro_seen:
+		return
+	PlayerState.gym_intro_seen = true   # set up front so it's one-time even if they back out
+	PlayerState._save()
+	await get_tree().create_timer(0.5).timeout   # let the scene settle + the player land before the cinematic
+	if not is_inside_tree():
+		return
+	Overlay.show_dialog("Hollow Ellison", [
+		"So. A new face wanders into my gym.",
+		"Everyone who climbs my ladder fights their own way — the brawler's fists, the swordsman's edge, the marksman's aim... and stranger paths still.",
+		"Before you spar a single soul here, you'll need to know YOURS.",
+		"Tell me, traveller — what kind of fighter are you?",
+	], _open_intro_picker)
+
+
+func _open_intro_picker() -> void:
+
+	if not is_inside_tree():
+		return
+	var picker : PowerTypePicker = PowerTypePicker.new()
+	picker.chosen.connect(_on_intro_chosen)
+	add_child(picker)   # cancelling the picker self-cleans (you can choose later at the Spar sign)
+
+
+func _on_intro_chosen(weapon_id: String) -> void:
+
+	PlayerState.choose_power_type(weapon_id)
+	# The picker sets _handing_off (it normally chains to the ladder); the intro doesn't, so un-pause ourselves.
+	if get_tree() != null:
+		get_tree().paused = false
+	Overlay.show_dialog("Hollow Ellison", [
+		"%s. A fine path — wear it well." % SkirmishWeapon.power_type_name(weapon_id),
+		"Climb my ladder when you reckon you're ready to prove it.",
+	])
 
 
 # On return from a gym-ladder bout, record a WIN — it unlocks the next rung (and clearing the top earns the

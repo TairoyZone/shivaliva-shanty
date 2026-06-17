@@ -33,6 +33,9 @@ var is_active : bool = false
 
 var _panel_style : StyleBoxFlat
 var _pending_lines : Array[String] = []
+## Optional callback fired ONCE when the current dialog closes — lets a caller chain something after the lines
+## (e.g. the gym intro hands off to the power-type picker). Captured + cleared on close so it never double-fires.
+var _on_done : Callable = Callable()
 ## The typewriter (borrow #4): each line/body reveals char-by-char; an advance press first completes the
 ## reveal, then the next press advances. See [[godot-borrow-todo]].
 const CHAR_TIME : float = 0.018
@@ -62,11 +65,14 @@ func _ready() -> void:
 	add_child(EscToClose.new(_close, func() -> bool: return is_active))
 
 
-func show_dialog(speaker: String, lines: Array[String]) -> void:
+func show_dialog(speaker: String, lines: Array[String], on_done: Callable = Callable()) -> void:
 
 	if lines.is_empty():
+		if on_done.is_valid():
+			on_done.call()   # nothing to say, but still fire the chain (e.g. straight to the picker)
 		return
 	_apply_dialog_style()
+	_on_done = on_done
 	_title_label.text = speaker
 	_hint_label.text = "Tap to continue" if TouchEnv.is_touch() else "[E] / [Space] to continue"
 	_pending_lines = lines.duplicate()
@@ -82,6 +88,7 @@ func show_lore(title: String, body: String) -> void:
 	_title_label.text = title
 	_hint_label.text = "Tap to close" if TouchEnv.is_touch() else "[E] to close"
 	_pending_lines.clear()
+	_on_done = Callable()   # lore never chains — clear any stale dialog callback
 	_panel.visible = true
 	is_active = true
 	_type_line(body)
@@ -156,6 +163,11 @@ func _close() -> void:
 	_panel.visible = false
 	is_active = false
 	_pending_lines.clear()
+	# Fire the one-shot completion callback (captured + cleared first, so a re-entrant show_dialog from it works).
+	var done : Callable = _on_done
+	_on_done = Callable()
+	if done.is_valid():
+		done.call()
 
 
 func _apply_dialog_style() -> void:
