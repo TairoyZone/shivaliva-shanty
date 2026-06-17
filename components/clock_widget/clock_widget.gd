@@ -72,6 +72,7 @@ func _ready() -> void:
 	add_child(_phase_label)
 
 	_refresh(true)
+	call_deferred("_refresh", true)   # re-fit once the HUD has set our right-edge offset
 
 
 func _process(_delta: float) -> void:
@@ -86,12 +87,31 @@ func _refresh(force: bool) -> void:
 	_last_min = m
 	_time_label.text = GameClock.time_string()
 	_phase_label.text = GameClock.phase().capitalize()
+	_fit_width()
 	queue_redraw()
+
+
+# Shrink the pill to FIT its current text (right-anchored, grows left) so there's no dead space after a short
+# phase like "Midday" — the longest ("The Dead Of Night") still fits (Troy 2026-06-17).
+func _fit_width() -> void:
+
+	var font : Font = get_theme_default_font()
+	if font == null:
+		return
+	var tw : float = font.get_string_size(_time_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 21).x
+	var pw : float = font.get_string_size(_phase_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12).x
+	var w : float = clampf(TEXT_X + maxf(tw, pw) + 16.0, 150.0, 240.0)
+	if absf(w - size.x) < 1.0:
+		return
+	offset_left = offset_right - w   # keep the right edge fixed
+	var col_w : float = w - TEXT_X - 8.0
+	_time_label.size.x = col_w
+	_phase_label.size.x = col_w
 
 
 func _draw() -> void:
 
-	draw_style_box(_panel_style, Rect2(Vector2.ZERO, Vector2(W, H)))
+	draw_style_box(_panel_style, Rect2(Vector2.ZERO, size))
 
 	var m : float = PlayerState.game_minutes
 	var is_day : bool = m >= SUNRISE and m <= SUNSET
