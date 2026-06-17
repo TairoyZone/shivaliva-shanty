@@ -106,8 +106,10 @@ static func make_attack(weapon_id: String, budget: int, target: SkirmishBoard, l
 			var col : int = target.lowest_col() if target != null else randi() % COLS
 			return {"shape": _blade(b), "col": col, "color": COLOR_LONG, "decay": NORMAL_DECAY}
 		"mystic":
-			# Hex: garbage SCATTERS across the columns (chaos). The spread spans the board, so col 0 (no offset).
-			return {"shape": _spread(b), "col": 0, "color": COLOR_MYSTIC, "decay": NORMAL_DECAY}
+			# Hex: garbage SCATTERS within a BAND (chaos — no clean line to clear), dropped at a RANDOM column like
+			# the others so it can still settle in a valley. Equal budget = no power edge (the variety-not-power lock).
+			var band : int = mini(COLS, 6)
+			return {"shape": _spread(b, band), "col": randi() % maxi(1, COLS - band + 1), "color": COLOR_MYSTIC, "decay": NORMAL_DECAY}
 		_:  # "brawl" / unarmed fists = the DEFAULT — a WIDE haymaker (breadth, not depth)
 			return {"shape": _clump(b, 3), "col": randi() % maxi(1, COLS - 2), "color": COLOR_BRAWL, "decay": NORMAL_DECAY}
 
@@ -136,19 +138,21 @@ static func _squares(n: int) -> Array:
 	return out
 
 
-# A SCATTER of [param n] cells strewn across the columns (the Mystic's chaos) — spread with a stride so they're
-# never adjacent + never fill a clean row, staggered over a few rows. Spans the board, so it's placed at col 0.
-static func _spread(n: int) -> Array:
+# A SCATTER of [param n] cells strewn WITHIN a [param band]-wide window (the Mystic's chaos) — stride 2 so they're
+# never adjacent + never fill a clean row, staggered over a few rows. Returned at local x 0..band-1, so make_attack
+# can drop it at a RANDOM column (it can settle in a valley like every other weapon — equal budget, no power edge).
+static func _spread(n: int, band: int = 6) -> Array:
 
+	var w : int = clampi(band, 1, COLS)
 	var out : Array = []
 	var x : int = 0
 	var row : int = 0
 	for i in n:
-		out.append(Vector2i(x % COLS, row))
-		x += 3   # stride 3 → neighbours aren't adjacent, no easy line
-		if x >= COLS:
+		out.append(Vector2i(x % w, row))
+		x += 2   # stride 2 within the band → scattered (gaps), never a solid line
+		if x >= w:
 			row += 1
-			x = row % 3   # offset each row's start so columns vary row-to-row
+			x = row % 2   # offset each row's start so columns vary
 	return out
 
 

@@ -9,6 +9,10 @@ extends CanvasLayer
 signal chosen(weapon_id: String)
 signal cancelled
 
+# True while we hand off straight to ANOTHER paused modal (the ladder) — so our deferred _exit_tree doesn't
+# un-pause the tree the new modal just paused. Only the chaining handler sets it; a plain cancel still unpauses.
+var _handing_off : bool = false
+
 
 # The 4 types offered, in order (Brawler the all-rounder first). Concise taglines so the buttons stay tidy —
 # the full DESCRIPTIONS live on [SkirmishWeapon].
@@ -32,6 +36,8 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 
+	if _handing_off:
+		return   # the ladder modal we opened owns the pause now — don't clobber it
 	if get_tree() != null:
 		get_tree().paused = false
 
@@ -83,8 +89,9 @@ func _build() -> void:
 
 func _on_pick(weapon_id: String) -> void:
 
-	if get_tree() != null:
-		get_tree().paused = false
+	# Hand off to the ladder (the receiver opens it + pauses). Don't unpause here — keep the tree paused so the
+	# overworld behind the new modal stays frozen (the _handing_off flag stops our _exit_tree from unpausing).
+	_handing_off = true
 	chosen.emit(weapon_id)
 	queue_free()
 

@@ -171,7 +171,7 @@ func _build_combatants(ally_personas: Array, foe_count: int) -> void:
 	_player.is_player = true
 	_player.cname = "You"
 	_player.portrait = Color(0.95, 0.78, 0.34, 1.0)
-	_player.weapon = PlayerState.equipped_weapon   # what you've equipped in the inventory
+	_player.weapon = PlayerState.combat_weapon()   # your power-type class (or an equipped forge weapon you own)
 	_player.color = SkirmishWeapon.color_for(_player.weapon)
 	_combatants.append(_player)
 

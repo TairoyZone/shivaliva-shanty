@@ -94,7 +94,7 @@ func _ready() -> void:
 	# can't read a stale TRUE from a prior win and falsely mark a gym-ladder rung / Jungle Ordeal beast
 	# beaten on return. Only a real resolution (_end_duel) sets it. (Review catch, Troy 2026-06-16.)
 	PlayerState.last_skirmish_won = false
-	_player_weapon = PlayerState.equipped_weapon   # what you've equipped in the inventory
+	_player_weapon = PlayerState.combat_weapon()   # your power-type class (or an equipped forge weapon you own)
 	_opponent_name = _resolve_opponent()
 	# Chat-reachable + situationally aware foe — the poker hook in the duel too (Troy 2026-06-10). The scope
 	# menu / RoomChat find them in the "npc" group; the SCENE feeds the live duel via npc_chat_context below.

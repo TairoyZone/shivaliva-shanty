@@ -14,6 +14,9 @@ signal cancelled
 ## Emitted when the player asks to re-pick their fighting style (the prop re-opens the [PowerTypePicker]).
 signal change_style
 
+# True while we hand off to the picker — so our deferred _exit_tree doesn't un-pause the tree the picker paused.
+var _handing_off : bool = false
+
 
 func _ready() -> void:
 
@@ -26,6 +29,8 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 
+	if _handing_off:
+		return   # the picker we opened owns the pause now — don't clobber it
 	if get_tree() != null:
 		get_tree().paused = false
 
@@ -139,8 +144,8 @@ func _on_cancel() -> void:
 
 func _on_change_style() -> void:
 
-	if get_tree() != null:
-		get_tree().paused = false
+	# Hand off to the picker (it pauses); keep the tree frozen so the gym behind stays still.
+	_handing_off = true
 	change_style.emit()
 	queue_free()
 

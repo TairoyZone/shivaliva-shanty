@@ -1547,12 +1547,24 @@ func choose_power_type(weapon_id: String) -> void:
 
 	if weapon_id.is_empty():
 		return
+	# Your CLASS. Combat reads it via combat_weapon(); it does NOT set equipped_weapon — so picking Swordsman doesn't
+	# gift you the forge's paid sword (ownership stays inventory-driven). note_happening persists it (no extra _save).
 	player_power_type = weapon_id
-	equipped_weapon = weapon_id   # your class IS your combat style; a forge weapon can still override later
 	power_type_changed.emit()
 	weapons_changed.emit()
 	note_happening("%s took up the %s's path at the Cradle Gym." % [_player_ref(), SkirmishWeapon.power_type_name(weapon_id)])
-	_save()
+
+
+## The weapon the player actually FIGHTS as — a genuinely-owned FORGE weapon (an equipped inventory item) wins,
+## else your power-type CLASS, else bare fists. Read by the duel + the boarding, so the class drives combat WITHOUT
+## granting free ownership of a paid weapon. (A forge weapon you buy + equip still overrides your class.)
+func combat_weapon() -> String:
+
+	if equipped_weapon != SkirmishWeapon.DEFAULT_WEAPON and _inventory_has(equipped_weapon):
+		return equipped_weapon
+	if not player_power_type.is_empty():
+		return player_power_type
+	return SkirmishWeapon.DEFAULT_WEAPON
 
 
 ## True if the player has this weapon — bare fists (DEFAULT_WEAPON) are always available; otherwise it's the
